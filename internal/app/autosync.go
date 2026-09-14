@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -14,17 +16,41 @@ import (
 
 const autoSyncTimeout = 3 * time.Second
 
-func syncAtLaunch(store *data.Store) string {
-	if err := autoSyncRound(store); err != nil {
-		return "Sync failed: " + err.Error()
+type launchSync struct {
+	// Toast is the transient status message; cleared by the first keypress.
+	Toast string
+	// Offline stays set for the session: the server never answered.
+	Offline bool
+}
+
+func syncAtLaunch(store *data.Store) launchSync {
+	err := autoSyncRound(store)
+	switch {
+	case err == nil:
+		return launchSync{}
+	case unreachable(err):
+		return launchSync{Toast: "Sync server unreachable; changes queue locally", Offline: true}
+	default:
+		return launchSync{Toast: "Sync failed: " + err.Error()}
 	}
-	return ""
 }
 
 func syncAtExit(store *data.Store) {
-	if err := autoSyncRound(store); err != nil {
+	err := autoSyncRound(store)
+	switch {
+	case err == nil:
+	case unreachable(err):
+		fmt.Fprintln(os.Stderr, "Sync server unreachable; changes queued locally.\nRun `phasionary sync now` when it is back.")
+	default:
 		fmt.Fprintf(os.Stderr, "Sync failed: %v\nRun `phasionary sync now` when the server is back.\n", err)
 	}
+}
+
+// A *url.Error means the round trip itself failed (dial, timeout, TLS); a
+// server that answered yields *syncclient.HTTPError instead.
+func unreachable(err error) bool {
+	var ue *url.Error
+	return errors.As(err, &ue)
 }
 
 func autoSyncRound(store *data.Store) error {

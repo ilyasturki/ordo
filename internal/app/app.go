@@ -720,7 +720,7 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 		if m.ui.Modes.IsEdit() && isCursor {
 			return m.renderEditProjectLine()
 		}
-		return renderProjectLine(m.project.Name, isSelected, focused, m.ui.Filter.HasActiveFilter(), visualMode, m.statusText(), m.ui.Screen.Width)
+		return renderProjectLine(m.project.Name, isSelected, focused, m.ui.Filter.HasActiveFilter(), visualMode, m.ui.Screen.SyncOffline, m.statusText(), m.ui.Screen.Width)
 
 	case LayoutCategory:
 		category := m.project.Categories[item.CategoryIndex]
@@ -897,7 +897,8 @@ func Run(dataDir string, projectSelector string, cfgManager config.Reader, worki
 	}
 	m.ui.Fold = foldState
 	m.ui.Screen.ExpandDescriptions = expandDescriptions
-	m.ui.Screen.StatusMsg = syncStatus
+	m.ui.Screen.StatusMsg = syncStatus.Toast
+	m.ui.Screen.SyncOffline = syncStatus.Offline
 	// Reopen on the row this project was last left on. Runs after the fold state
 	// is in place so a cursor inside a folded category resolves to that
 	// category's header rather than to a row that isn't rendered. The viewport

@@ -228,7 +228,9 @@ stop being a six-step copy of codes between terminals.
 - **The host enrolls itself.** On startup the server spends a code on its own
   TUI over loopback — the machine holding the database has nothing to prove to
   the network. It skips a device that is already enrolled (which may name
-  another server) and a machine with no data directory. `--no-local-enroll`
+  another server) and a machine with no data directory. Because the
+  enrollment outlives the server process, every start on an enrolled host
+  prints that its TUI now syncs and how to log out. `--no-local-enroll`
   turns it off, and the NixOS unit sets it.
 - **The phone scans.** The server prints a pairing block on startup when
   stdout is a terminal (never into a journal, where a code would outlive its

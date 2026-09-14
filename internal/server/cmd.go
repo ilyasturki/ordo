@@ -38,8 +38,16 @@ func envHosts(name string) []string {
 	return strings.Fields(strings.ReplaceAll(os.Getenv(name), ",", " "))
 }
 
+type LocalState int
+
+const (
+	LocalSkipped LocalState = iota
+	LocalEnrolled
+	LocalAlreadyEnrolled
+)
+
 // Injected: syncclient's tests run this package, so the import points one way.
-type LocalEnroll func(ctx context.Context, serverURL string, mint func() (string, error)) (pushed int, enrolled bool, err error)
+type LocalEnroll func(ctx context.Context, serverURL string, mint func() (string, error)) (pushed int, state LocalState, err error)
 
 func NewRootCmd(local LocalEnroll) *cobra.Command {
 	var (
@@ -84,12 +92,16 @@ the per-device bearer tokens travel in every request.`,
 					// The bound address may be a wildcard, which cannot be dialed.
 					_, boundPort, _ := net.SplitHostPort(bound)
 					mint := func() (string, error) { return db.NewEnrollCode(ctx) }
-					pushed, enrolled, err := local(ctx, "http://127.0.0.1:"+boundPort, mint)
+					pushed, state, err := local(ctx, "http://127.0.0.1:"+boundPort, mint)
 					switch {
 					case err != nil:
 						log.Printf("this machine was not enrolled automatically: %v", err)
-					case enrolled:
-						log.Printf("enrolled this machine and uploaded %d change(s); undo with `phasionary sync logout`", pushed)
+					case state == LocalEnrolled:
+						fmt.Printf("\nEnrolled this machine's phasionary and uploaded %d change(s).\n", pushed)
+					}
+					if state != LocalSkipped {
+						fmt.Println("This machine's phasionary now syncs with this server at launch and at quit;")
+						fmt.Println("while the server is down its TUI shows [offline]. Undo with `phasionary sync logout`.")
 					}
 				}
 				// A code in a log file would outlive its ten minutes.

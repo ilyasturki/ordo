@@ -14,7 +14,7 @@ import (
 	"phasionary/internal/ui"
 )
 
-func renderProjectLine(name string, selected, focused, filtered, visualMode bool, statusText string, width int) string {
+func renderProjectLine(name string, selected, focused, filtered, visualMode, offline bool, statusText string, width int) string {
 	prefix := "  "
 	if selected {
 		prefix = "> "
@@ -34,6 +34,9 @@ func renderProjectLine(name string, selected, focused, filtered, visualMode bool
 	}
 	if visualMode {
 		line += " " + ui.VisualTagStyle.Render("[visual]")
+	}
+	if offline {
+		line += " " + ui.OfflineTagStyle.Render("[offline]")
 	}
 
 	if statusText == "" {

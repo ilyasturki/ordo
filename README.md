@@ -72,7 +72,7 @@ On the machine hosting the server:
 phasionary-server            # listens on 0.0.0.0:7777, enrolls this machine, prints a QR
 ```
 
-It enrolls the local phasionary itself and uploads its projects — the machine holding the database has nothing to prove, so there is no code to copy — then prints a QR for the next device. Scan it from a phone and the web app opens already enrolled. `phasionary-server pair` prints another one whenever you need it; the QR only ever goes to a terminal, never to a log. On another computer, use the address it prints:
+It enrolls the local phasionary itself and uploads its projects — the machine holding the database has nothing to prove, so there is no code to copy — then prints a QR for the next device. That enrollment outlives the server process: from then on the TUI on that machine syncs with it, and `phasionary sync logout` is the way back to local-only, which is what you want after trying the server once on a laptop. Every start says so while the machine is enrolled; `--no-local-enroll` skips it altogether. Scan it from a phone and the web app opens already enrolled. `phasionary-server pair` prints another one whenever you need it; the QR only ever goes to a terminal, never to a log. On another computer, use the address it prints:
 
 ```bash
 phasionary sync login http://server:7777   # asks for the code, uploads local projects
@@ -81,7 +81,7 @@ phasionary sync status
 phasionary sync logout                     # back to local-only
 ```
 
-Once enrolled, the TUI pulls when it starts and pushes when you quit, so the phone is never waiting on a forgotten `sync now`. Both are capped at three seconds: an unreachable server delays a session, it never blocks one. Nothing else touches the network.
+Once enrolled, the TUI pulls when it starts and pushes when you quit, so the phone is never waiting on a forgotten `sync now`. Both are capped at three seconds: an unreachable server delays a session, it never blocks one. When the server cannot be reached the project line carries an `[offline]` tag for the session and the changes wait in the outbox; a server that answers with an error shows the error instead. Nothing else touches the network.
 
 Stop any file syncer (Syncthing, Dropbox, …) carrying `~/.local/share/phasionary` before enrolling: two pipes moving the same files fight each other. The device identity and token live in `~/.local/state/phasionary/`, which must never be copied between machines. If a sync changes a project the TUI has open, the TUI's next save is refused until you press `R` to reload.
 
