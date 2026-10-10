@@ -212,6 +212,45 @@ func TestParentCategoryWithOnlyAreasShowsNoPlaceholder(t *testing.T) {
 	assert.NotContains(t, strings.Join(screen(m), "\n"), "(no tasks)")
 }
 
+func TestCategoryJumpsStopAtEveryHeader(t *testing.T) {
+	m := newNestedModel(t)
+	selectRow(t, m, selection.FocusTask, "loose")
+	var visited []string
+	for range 4 {
+		m.jumpToNextCategory()
+		visited = append(visited, cursorItem(t, m))
+	}
+	assert.Equal(t, []string{"category:ui", "category:api", "category:v1", "category:v1"}, visited)
+	m.jumpToPrevCategory()
+	m.jumpToPrevCategory()
+	assert.Equal(t, "category:ui", cursorItem(t, m))
+	m.jumpToLast()
+	assert.Equal(t, "task:old", cursorItem(t, m))
+}
+
+func TestSubtaskDescriptionKeepsTheCapAndExpands(t *testing.T) {
+	p := nestedProject()
+	body := strings.Repeat("line\n", 30) + "last"
+	p.Categories[1].Tasks[2].Description = body
+	m := newTestModel(t, p)
+	m.ui.Screen.Height = 40
+	m.ui.Screen.ExpandDescriptions = true
+	m.rebuildPositions()
+
+	selectRow(t, m, selection.FocusDescription, "sound")
+	desc := lineWith(t, screen(m), "line")
+	assert.Equal(t, column(lineWith(t, screen(m), "Add a sound"), "Add"), column(desc, "line")-2, "the bar sits flush with the subtask's title")
+	start, end, ok := m.buildLayout().rowRange(m.selected())
+	require.True(t, ok)
+	assert.Equal(t, maxFocusedDescriptionRows+1, end-start, "a focused description is capped, plus its tail row")
+
+	selectRow(t, m, selection.FocusTask, "sound")
+	m.toggleExpandRow()
+	selectRow(t, m, selection.FocusDescription, "sound")
+	start, end, _ = m.buildLayout().rowRange(m.selected())
+	assert.Equal(t, 31, end-start, "ze shows the subtask's description whole")
+}
+
 func TestPickerCountsNestedTasks(t *testing.T) {
 	open, inProgress := projectStats(nestedProject())
 	assert.Equal(t, 4, open, "loose, timer, sound and auth are open")
