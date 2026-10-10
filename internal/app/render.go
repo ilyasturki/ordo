@@ -72,10 +72,11 @@ func (m model) withEditError(rows string, overhead int) string {
 	return rows + "\n" + strings.Repeat(" ", overhead) + ui.ErrorStyle.Render(msg)
 }
 
-func renderCategoryLine(name string, estimateMinutes int, aggregateStatus string, selected bool, folded bool, width int, focused bool, visualMode bool, isCursor bool, cut bool, searchQuery string, searchMatch lipgloss.Style) string {
-	prefix := "  "
+func renderCategoryLine(h categoryHeader, selected bool, width int, focused bool, visualMode bool, isCursor bool, searchQuery string, searchMatch lipgloss.Style) string {
+	name, estimateMinutes, aggregateStatus, cut := h.name, h.estimate, h.status, h.cut
+	prefix := "  " + strings.Repeat(" ", h.indent)
 	if selected {
-		prefix = "> "
+		prefix = "> " + strings.Repeat(" ", h.indent)
 	}
 	style := ui.CategoryStyle
 	if selected {
@@ -93,7 +94,7 @@ func renderCategoryLine(name string, estimateMinutes int, aggregateStatus string
 	}
 
 	foldIndicator := "▼ "
-	if folded {
+	if h.folded {
 		foldIndicator = "▶ "
 	}
 
@@ -110,6 +111,21 @@ func renderCategoryLine(name string, estimateMinutes int, aggregateStatus string
 			statusBadge = ui.GetSelectedStatusStyle(aggregateStatus, focused).Render(statusBadgeText)
 		default:
 			statusBadge = ui.StatusStyle(aggregateStatus).Render(statusBadgeText)
+		}
+	}
+
+	progressBadge := ""
+	if h.progress != "" {
+		text := " " + h.progress
+		switch {
+		case selected && visualMode && isCursor:
+			progressBadge = ui.GetVisualCursorStyle(focused).Render(text)
+		case selected && visualMode:
+			progressBadge = ui.GetVisualSelectedStyle(focused).Render(text)
+		case selected:
+			progressBadge = ui.GetSelectedStyle(focused).Render(text)
+		default:
+			progressBadge = ui.MutedStyle.Render(text)
 		}
 	}
 
@@ -140,15 +156,15 @@ func renderCategoryLine(name string, estimateMinutes int, aggregateStatus string
 		}
 	}
 
-	suffix := cutBadge + statusBadge + estimateBadge
+	suffix := cutBadge + statusBadge + progressBadge + estimateBadge
 
 	if width <= 0 {
 		return style.Render(prefix+foldIndicator) + ui.HighlightMatches(name, searchQuery, style, searchMatch) + suffix
 	}
 
-	available := categoryNameWidth(width, estimateMinutes, aggregateStatus, cut)
+	available := categoryNameWidth(width, h)
 	lines := ui.WrapClamped(name, available, ui.MaxLineRows, ui.FirstMatchIndex(name, searchQuery))
-	indent := strings.Repeat(" ", prefixWidth+categoryFoldWidth)
+	indent := strings.Repeat(" ", prefixWidth+h.indent+categoryFoldWidth)
 
 	var result []string
 	for i, line := range lines {
@@ -170,23 +186,29 @@ func renderCategoryLine(name string, estimateMinutes int, aggregateStatus string
 const categoryFoldWidth = 2 // "▼ "
 
 // categoryNameWidth is shared by the renderer and the layout so both count the same rows.
-func categoryNameWidth(width, estimateMinutes int, aggregateStatus string, cut bool) int {
+func categoryNameWidth(width int, h categoryHeader) int {
 	badges := 0
-	if aggregateStatus != "" {
-		badges += ansi.StringWidth(" [" + statusIcon(aggregateStatus) + "]")
+	if h.status != "" {
+		badges += ansi.StringWidth(" [" + statusIcon(h.status) + "]")
 	}
-	if estimateMinutes > 0 {
-		badges += ansi.StringWidth(" ~" + FormatEstimate(estimateMinutes))
+	if h.progress != "" {
+		badges += ansi.StringWidth(" " + h.progress)
 	}
-	if cut {
+	if h.estimate > 0 {
+		badges += ansi.StringWidth(" ~" + FormatEstimate(h.estimate))
+	}
+	if h.cut {
 		badges += ansi.StringWidth(ui.CutMark)
 	}
-	return safeWidth(width, prefixWidth+categoryFoldWidth+badges)
+	return safeWidth(width, prefixWidth+h.indent+categoryFoldWidth+badges)
 }
 
-func (m model) renderTaskLine(task domain.Task, selected bool, width int, focused bool, visualMode bool, isCursor bool, cut bool) string {
+func (m model) renderTaskLine(catIdx, taskIdx int, selected bool, width int, focused bool, visualMode bool, isCursor bool, cut bool) string {
 	cfg := m.deps.CfgManager.Get()
+	cat := m.project.Categories[catIdx]
+	task := cat.Tasks[taskIdx]
 	renderer := components.NewTaskLineRenderer(width, cfg.StatusDisplay, cfg.PriorityColor, focused).
+		WithNesting(taskIndent(cat, taskIdx), taskProgress(cat, taskIdx, &m.ui.Fold)).
 		WithVisualMode(visualMode).
 		WithCursor(isCursor).
 		WithCut(cut).
@@ -198,8 +220,9 @@ func (m model) renderTaskLine(task domain.Task, selected bool, width int, focuse
 	return renderer.Render(task, selected)
 }
 
-func (m model) renderTaskDescription(task domain.Task, descriptionRows int, selected bool, width int, focused bool, visualMode bool, isCursor bool, cut bool) string {
+func (m model) renderTaskDescription(catIdx, taskIdx int, descriptionRows int, selected bool, width int, focused bool, visualMode bool, isCursor bool, cut bool) string {
 	cfg := m.deps.CfgManager.Get()
+	task := m.project.Categories[catIdx].Tasks[taskIdx]
 	renderer := components.NewTaskLineRenderer(width, cfg.StatusDisplay, cfg.PriorityColor, focused).
 		WithVisualMode(visualMode).
 		WithCursor(isCursor).
@@ -208,14 +231,15 @@ func (m model) renderTaskDescription(task domain.Task, descriptionRows int, sele
 	if q := m.searchQuery(); q != "" {
 		renderer = renderer.WithSearch(q, m.searchMatchStyle(selected))
 	}
-	indent := taskTitleColumn(task, cfg.StatusDisplay)
+	indent := taskTitleColumn(task, cfg.StatusDisplay, m.rowIndent(catIdx, taskIdx))
 	return renderer.RenderDescription(task, indent, selected)
 }
 
 // taskTitleColumn returns the column where the task title begins on its row,
-// so the description's blockquote bar can sit flush with the title.
-func taskTitleColumn(task domain.Task, statusDisplay string) int {
-	prefix := "  "
+// shifted right by indent, so the description's blockquote bar can sit flush
+// with the title.
+func taskTitleColumn(task domain.Task, statusDisplay string, indent int) int {
+	prefix := "  " + strings.Repeat(" ", indent)
 	dotText := ui.TagSegmentText(task.TagColor)
 	priorityIcon := ui.PriorityIcon(task.Priority)
 	iconText := ""
@@ -259,19 +283,19 @@ func formatStatus(status, displayMode string) string {
 	return ui.StatusStyle(status).Render(statusLabel(status, displayMode))
 }
 
-func (m model) renderEditCategoryLine() string {
-	prefix := "> "
+func (m model) renderEditCategoryLine(indent int) string {
+	prefix := "> " + strings.Repeat(" ", indent)
 	cursorStyle := ui.GetCursorStyle(m.ui.Screen.WindowFocused)
 	if m.ui.Edit.isAdding && m.ui.Edit.input.Value() == "" {
 		placeholder := ui.MutedStyle.Render("Enter category name...")
 		styledText := cursorStyle.Render(" ") + placeholder
-		return prefixLine(styledText, m.ui.Screen.Width, prefixWidth, prefix)
+		return prefixLine(styledText, m.ui.Screen.Width, prefixWidth+indent, prefix)
 	}
-	return m.withEditError(renderEditRows(m.editRows(prefixWidth), prefixWidth, prefix, ui.CategoryStyle, cursorStyle), prefixWidth)
+	return m.withEditError(renderEditRows(m.editRows(prefixWidth+indent), prefixWidth+indent, prefix, ui.CategoryStyle, cursorStyle), prefixWidth+indent)
 }
 
-func (m model) renderEditTaskLine(task domain.Task) string {
-	prefix := "> "
+func (m model) renderEditTaskLine(task domain.Task, indent int) string {
+	prefix := "> " + strings.Repeat(" ", indent)
 	cfg := m.deps.CfgManager.Get()
 	statusText := formatStatus(task.Status, cfg.StatusDisplay)
 	titleStyle := ui.PriorityStyle(task.Priority, cfg.PriorityColor)
@@ -288,7 +312,7 @@ func (m model) renderEditTaskLine(task domain.Task) string {
 		dotPrefix = dotStyle.Render(dotPlain)
 	}
 	prefixPart := fmt.Sprintf("%s[%s] %s%s", prefix, statusText, dotPrefix, iconPrefix)
-	overhead := taskTitleColumn(task, cfg.StatusDisplay)
+	overhead := taskTitleColumn(task, cfg.StatusDisplay, indent)
 	cursorStyle := ui.GetCursorStyle(m.ui.Screen.WindowFocused)
 	if m.ui.Edit.isAdding && m.ui.Edit.input.Value() == "" {
 		placeholder := ui.MutedStyle.Render("Enter task title...")
@@ -352,14 +376,14 @@ func layoutSeparator(prefix, label string, width int) separatorLayout {
 // off from the rule. When selected the whole row takes the selection band; in
 // visual mode it takes the visual cursor or visual range band so a divider
 // swept into a task selection reads as part of the block.
-func (m model) renderSeparatorLine(label string, selected, focused, visualMode, isCursor, cut bool, width int, searchQuery string, searchMatch lipgloss.Style) string {
-	prefix := "  "
+func (m model) renderSeparatorLine(label string, indent int, selected, focused, visualMode, isCursor, cut bool, width int, searchQuery string, searchMatch lipgloss.Style) string {
+	prefix := "  " + strings.Repeat(" ", indent)
 	if selected {
-		prefix = "> "
+		prefix = "> " + strings.Repeat(" ", indent)
 	}
 	avail := 0
 	if width > 0 {
-		avail = safeWidth(width, prefixWidth)
+		avail = safeWidth(width, prefixWidth+indent)
 	}
 	layout := layoutSeparator(prefix, strings.TrimSpace(label), sepContentWidth(avail))
 
@@ -397,16 +421,17 @@ func (m model) renderSeparatorLine(label string, selected, focused, visualMode, 
 
 // renderEditSeparatorLine draws the inline editor for a separator's label,
 // entered with Enter. An empty value shows a placeholder rather than a rule.
-func (m model) renderEditSeparatorLine() string {
-	styledPrefix := ui.SeparatorStyle.Render("> " + separatorLead + " ")
+func (m model) renderEditSeparatorLine(indent int) string {
+	styledPrefix := ui.SeparatorStyle.Render("> " + strings.Repeat(" ", indent) + separatorLead + " ")
+	overhead := separatorPrefixWidth + indent
 	cursorStyle := ui.GetCursorStyle(m.ui.Screen.WindowFocused)
 
 	if m.ui.Edit.input.Value() == "" {
 		placeholder := ui.MutedStyle.Render("Enter separator label...")
 		styledText := cursorStyle.Render(" ") + placeholder
-		return prefixLine(styledText, m.ui.Screen.Width, separatorPrefixWidth, styledPrefix)
+		return prefixLine(styledText, m.ui.Screen.Width, overhead, styledPrefix)
 	}
-	return renderEditRows(m.editRows(separatorPrefixWidth), separatorPrefixWidth, styledPrefix, ui.HeaderStyle, cursorStyle)
+	return renderEditRows(m.editRows(overhead), overhead, styledPrefix, ui.HeaderStyle, cursorStyle)
 }
 
 func (m model) statusText() string {

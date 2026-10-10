@@ -26,6 +26,8 @@ type TaskLineRenderer struct {
 	searchMatch         lipgloss.Style
 	titleRows           int
 	descriptionRows     int
+	indent              string
+	progress            string
 }
 
 // Uncapped as a row limit lets a field take every row it wraps to.
@@ -44,6 +46,13 @@ func NewTaskLineRenderer(width int, statusDisplay, priorityColor string, focused
 
 func (r *TaskLineRenderer) WithRowLimits(title, description int) *TaskLineRenderer {
 	r.titleRows, r.descriptionRows = title, description
+	return r
+}
+
+// WithNesting shifts the row right by indent columns and adds a progress badge
+// after the title, "" for none.
+func (r *TaskLineRenderer) WithNesting(indent int, progress string) *TaskLineRenderer {
+	r.indent, r.progress = strings.Repeat(" ", indent), progress
 	return r
 }
 
@@ -103,9 +112,9 @@ func (r *TaskLineRenderer) selectedStyle() lipgloss.Style {
 }
 
 func (r *TaskLineRenderer) Render(task domain.Task, selected bool) string {
-	prefix := "  "
+	prefix := "  " + r.indent
 	if selected {
-		prefix = "> "
+		prefix = "> " + r.indent
 	}
 	priorityIcon := ui.PriorityIcon(task.Priority)
 
@@ -294,7 +303,7 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 	descMarker := r.formatDescriptionBadge(task.Description, false)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, false)
 	cutBadge, _ := r.formatCutBadge(false)
-	suffix := cutBadge + descMarker + estimate
+	suffix := cutBadge + r.formatProgressBadge(false) + descMarker + estimate
 	titleStyle := r.maybeCut(ui.TaskTitleStyle(task.Priority, task.Status, r.priorityColor))
 	prefixPart := fmt.Sprintf("%s[%s] ", prefix, status)
 
@@ -347,7 +356,7 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 	descMarker := r.formatDescriptionBadge(task.Description, true)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, true)
 	cutBadge, _ := r.formatCutBadge(true)
-	suffix := cutBadge + descMarker + estimate
+	suffix := cutBadge + r.formatProgressBadge(true) + descMarker + estimate
 
 	prefixPart := selectedStyle.Render(prefix+"[") +
 		statusStyle.Render(statusText) +
@@ -363,12 +372,12 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 
 // titleWidth reserves the trailing badges on every row although only the last carries them.
 func (r *TaskLineRenderer) titleWidth(task domain.Task) int {
-	lead := "  [" + r.statusLabel(task.Status) + "] " + ui.TagSegmentText(task.TagColor)
+	lead := "  " + r.indent + "[" + r.statusLabel(task.Status) + "] " + ui.TagSegmentText(task.TagColor)
 	if icon := ui.PriorityIcon(task.Priority); icon != "" {
 		lead += icon + " "
 	}
 	_, cutText := r.formatCutBadge(false)
-	badges := cutText + r.descriptionBadgeText(task.Description) + r.estimateBadgeText(task.EstimateMinutes)
+	badges := cutText + r.progressBadgeText() + r.descriptionBadgeText(task.Description) + r.estimateBadgeText(task.EstimateMinutes)
 	return safeWidth(r.width, ansi.StringWidth(lead+badges))
 }
 
@@ -474,6 +483,24 @@ func (r *TaskLineRenderer) estimateBadgeText(minutes int) string {
 		return ""
 	}
 	return " ~" + formatEstimateShort(minutes)
+}
+
+func (r *TaskLineRenderer) progressBadgeText() string {
+	if r.progress == "" {
+		return ""
+	}
+	return " " + r.progress
+}
+
+func (r *TaskLineRenderer) formatProgressBadge(selected bool) string {
+	text := r.progressBadgeText()
+	if text == "" {
+		return ""
+	}
+	if selected {
+		return r.selectedStyle().Render(text)
+	}
+	return r.maybeCut(ui.MutedStyle).Render(text)
 }
 
 func (r *TaskLineRenderer) formatDescriptionBadge(description string, selected bool) string {

@@ -106,8 +106,12 @@ func (m model) filterCategoryView() string {
 		lines = append(lines, ui.MutedStyle.Render("  (no categories)"))
 	} else {
 		for i, cat := range m.project.Categories {
+			label := cat.Name
+			if cat.ParentID != "" {
+				label = strings.Repeat(" ", nestIndent) + label
+			}
 			lines = append(lines, renderCheckboxLine(
-				cat.Name,
+				label,
 				m.ui.Filter.IsCategoryEnabled(cat.ID),
 				i == m.ui.Filter.Selected(),
 			))

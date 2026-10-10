@@ -1,22 +1,34 @@
 package app
 
-import "phasionary/internal/app/selection"
+import (
+	"phasionary/internal/app/selection"
+	"phasionary/internal/domain"
+)
 
+// toggleFold folds or unfolds the innermost fold around the cursor: a
+// category's header folds that category, a parent task or its subtask folds
+// the parent, and any other task folds its category.
 func (m *model) toggleFold() {
 	pos, ok := m.selectedPosition()
 	if !ok {
 		return
 	}
 
-	var categoryID string
+	var id string
 	switch pos.Kind {
-	case selection.FocusCategory, selection.FocusTask:
-		categoryID = m.project.Categories[pos.CategoryIndex].ID
+	case selection.FocusCategory:
+		id = pos.ID
+	case selection.FocusTask, selection.FocusDescription:
+		cat := m.project.Categories[pos.CategoryIndex]
+		id = cat.ID
+		if head := domain.BlockStart(cat.Tasks, pos.TaskIndex); domain.HasChildren(cat.Tasks, head) {
+			id = cat.Tasks[head].ID
+		}
 	default:
 		return
 	}
 
-	m.ui.Fold.Toggle(categoryID)
+	m.ui.Fold.Toggle(id)
 	m.saveFoldState()
 	m.rebuildPositions()
 	m.ensureVisible()

@@ -108,7 +108,7 @@ func (m *model) shiftTasksAcross(catIdx, lo, hi, dir int) string {
 	// A row the filter hides in the destination would take the cursor with it
 	// into the invisible — refuse instead of letting the selection vanish.
 	for i := lo; i <= hi; i++ {
-		if !taskRowVisible(&m.ui.Filter, src.Tasks[i], dst.ID) {
+		if !taskRowVisible(&m.ui.Filter, src.Tasks[i], dst.ID, dst.ParentID) {
 			return "Can't move: the filter would hide it there"
 		}
 	}
@@ -154,7 +154,7 @@ func (m *model) nextVisibleTaskRow(catIdx, lo, hi, dir int) int {
 		i = lo - 1
 	}
 	for ; i >= 0 && i < len(cat.Tasks); i += dir {
-		if taskRowVisible(&m.ui.Filter, cat.Tasks[i], cat.ID) {
+		if taskRowVisible(&m.ui.Filter, cat.Tasks[i], cat.ID, cat.ParentID) {
 			return i
 		}
 	}

@@ -102,7 +102,15 @@ func (m model) taskInfoLines(catIdx, taskIdx int) []string {
 		fmt.Sprintf("Priority: %s", formatPriorityLabel(task.Priority)),
 		fmt.Sprintf("Tag:      %s", formatTagInfo(task)),
 		fmt.Sprintf("Estimate: %s", FormatEstimateLabel(task.EstimateMinutes)),
-		fmt.Sprintf("Category: %s", category.Name),
+		fmt.Sprintf("Category: %s", m.project.CategoryPath(catIdx)),
+	)
+	if parent := domain.ParentIndex(category.Tasks, taskIdx); parent >= 0 {
+		lines = append(lines, fmt.Sprintf("Parent:   %s", truncateText(category.Tasks[parent].Title, max(infoMaxWidth-labelWidth-3, 1))))
+	}
+	if done, total := category.ChildProgress(taskIdx); total > 0 {
+		lines = append(lines, fmt.Sprintf("Subtasks: %d of %d done", done, total))
+	}
+	lines = append(lines,
 		"",
 		fmt.Sprintf("Created:  %s", FormatDateWithRelative(task.CreatedAt)),
 		fmt.Sprintf("Updated:  %s", FormatDateWithRelative(task.UpdatedAt)),
@@ -132,7 +140,6 @@ func (m model) taskInfoLines(catIdx, taskIdx int) []string {
 
 func (m model) separatorInfoLines(catIdx, taskIdx int) []string {
 	sep := m.project.Categories[catIdx].Tasks[taskIdx]
-	category := m.project.Categories[catIdx]
 
 	label := sep.Title
 	if label == "" {
@@ -143,7 +150,7 @@ func (m model) separatorInfoLines(catIdx, taskIdx int) []string {
 		ui.DialogTitleStyle.Render("Separator Info"),
 		"",
 		fmt.Sprintf("Label:    %s", label),
-		fmt.Sprintf("Category: %s", category.Name),
+		fmt.Sprintf("Category: %s", m.project.CategoryPath(catIdx)),
 		"",
 		fmt.Sprintf("Created:  %s", FormatDateWithRelative(sep.CreatedAt)),
 		fmt.Sprintf("Updated:  %s", FormatDateWithRelative(sep.UpdatedAt)),
@@ -152,15 +159,23 @@ func (m model) separatorInfoLines(catIdx, taskIdx int) []string {
 
 func (m model) categoryInfoLines(catIdx int) []string {
 	category := m.project.Categories[catIdx]
-	counts := category.StatusCounts()
+	counts := m.project.TreeStatusCounts(catIdx)
 
 	lines := []string{
 		ui.DialogTitleStyle.Render("Category Info"),
 		"",
 		fmt.Sprintf("Name:     %s", category.Name),
+	}
+	if parent := domain.ParentIndex(m.project.Categories, catIdx); parent >= 0 {
+		lines = append(lines, fmt.Sprintf("Parent:   %s", m.project.Categories[parent].Name))
+	}
+	if subs := domain.BlockEnd(m.project.Categories, catIdx) - catIdx - 1; subs > 0 {
+		lines = append(lines, fmt.Sprintf("Sub-categories: %d", subs))
+	}
+	lines = append(lines,
 		fmt.Sprintf("Estimate: %s", FormatEstimateLabel(category.EstimateMinutes)),
 		fmt.Sprintf("Created:  %s", FormatDateWithRelative(category.CreatedAt)),
-	}
+	)
 
 	if category.UpdatedAt != "" {
 		lines = append(lines, fmt.Sprintf("Updated:  %s", FormatDateWithRelative(category.UpdatedAt)))
@@ -168,7 +183,7 @@ func (m model) categoryInfoLines(catIdx int) []string {
 
 	lines = append(lines,
 		"",
-		fmt.Sprintf("Total Tasks: %d", category.TaskCount()),
+		fmt.Sprintf("Total Tasks: %d", counts.Total()),
 		"",
 	)
 	lines = append(lines, statusBreakdownLines(counts)...)

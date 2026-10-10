@@ -190,7 +190,10 @@ func (f *FilterState) HasActiveFilter() bool {
 	return len(f.statuses) > 0 || len(f.priorities) > 0 || len(f.categories) > 0 || len(f.tags) > 0
 }
 
-func (f *FilterState) TaskVisible(task domain.Task, categoryID string) bool {
+// TaskVisible judges a task of the category categoryID, whose parent category
+// is parentCategoryID or "": picking a category in the filter picks its
+// sub-categories too.
+func (f *FilterState) TaskVisible(task domain.Task, categoryID, parentCategoryID string) bool {
 	if !f.HasActiveFilter() {
 		return true
 	}
@@ -200,7 +203,7 @@ func (f *FilterState) TaskVisible(task domain.Task, categoryID string) bool {
 	if len(f.priorities) > 0 && !f.priorities[task.Priority] {
 		return false
 	}
-	if len(f.categories) > 0 && !f.categories[categoryID] {
+	if len(f.categories) > 0 && !f.categories[categoryID] && !f.categories[parentCategoryID] {
 		return false
 	}
 	// The "untagged" row is keyed by "", which an untagged task's empty TagColor

@@ -116,18 +116,41 @@ func (m *model) restoreSelection(kind selection.FocusKind, catID, taskID string)
 		(catID != "" && m.selectItem(selection.FocusCategory, catID))
 }
 
-// taskRowVisible is the single source of truth for whether a row in a
-// category's Tasks slice is shown. Separators are hidden whenever any filter is
-// active (they carry no status/priority to match against); ordinary tasks defer
-// to the filter's per-task rule.
-func taskRowVisible(filter *FilterState, task domain.Task, categoryID string) bool {
+// taskRowVisible is the single source of truth for whether the filter keeps a
+// row in a category's Tasks slice, before nesting widens or folds narrow it
+// (see shownRows). Separators are hidden whenever any filter is active (they
+// carry no status/priority to match against); ordinary tasks defer to the
+// filter's per-task rule. parentCategoryID is the category's parent, or "".
+func taskRowVisible(filter *FilterState, task domain.Task, categoryID, parentCategoryID string) bool {
 	if task.IsSeparator() {
 		return filter == nil || !filter.HasActiveFilter()
 	}
-	return filter == nil || filter.TaskVisible(task, categoryID)
+	return filter == nil || filter.TaskVisible(task, categoryID, parentCategoryID)
 }
 
-// expandedTaskID's description row shows even while descriptions are hidden.
+// shownRows reports, row by row, whether the list shows cat's tasks: what the
+// filter keeps, plus a parent whose subtask it keeps, so the subtask shows in
+// context, minus the subtasks of a folded parent.
+func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool {
+	shown := make([]bool, len(cat.Tasks))
+	for i, task := range cat.Tasks {
+		shown[i] = taskRowVisible(filter, task, cat.ID, cat.ParentID)
+	}
+	for i := 0; i < len(cat.Tasks); {
+		end := domain.BlockEnd(cat.Tasks, i)
+		folded := fold != nil && fold.IsFolded(cat.Tasks[i].ID)
+		for j := i + 1; j < end; j++ {
+			shown[i] = shown[i] || shown[j]
+			shown[j] = shown[j] && !folded
+		}
+		i = end
+	}
+	return shown
+}
+
+// rebuildPositions lists the rows the list shows. A folded category hides its
+// rows and its sub-categories; expandedTaskID's description row shows even
+// while descriptions are hidden.
 func rebuildPositions(categories []domain.Category, filter *FilterState, fold *FoldState, expandDescriptions bool, expandedTaskID string) []selection.Position {
 	positions := make([]selection.Position, 0)
 	positions = append(positions, selection.Position{
@@ -135,7 +158,13 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 		CategoryIndex: -1,
 		TaskIndex:     -1,
 	})
+	foldedParent := ""
 	for cIndex, category := range categories {
+		if category.ParentID == "" {
+			foldedParent = ""
+		} else if category.ParentID == foldedParent {
+			continue
+		}
 		positions = append(positions, selection.Position{
 			Kind:          selection.FocusCategory,
 			CategoryIndex: cIndex,
@@ -143,10 +172,14 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 			ID:            category.ID,
 		})
 		if fold != nil && fold.IsFolded(category.ID) {
+			if category.ParentID == "" {
+				foldedParent = category.ID
+			}
 			continue
 		}
+		shown := shownRows(category, filter, fold)
 		for tIndex, task := range category.Tasks {
-			if !taskRowVisible(filter, task, category.ID) {
+			if !shown[tIndex] {
 				continue
 			}
 			if task.IsSeparator() {
@@ -177,8 +210,6 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 	return positions
 }
 
-// rebuildPositions keeps the cursor on the item it was on, or the nearest
-// shown ancestor; a deleted item leaves it at its row index.
 func (m *model) rebuildPositions() {
 	prev, had := m.selectedPosition()
 	positions := rebuildPositions(m.project.Categories, &m.ui.Filter, &m.ui.Fold, m.ui.Screen.ExpandDescriptions, m.ui.Screen.ExpandedTaskID)

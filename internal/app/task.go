@@ -235,42 +235,10 @@ func (m *model) reverseCategories() {
 		return
 	}
 	m.recordHistory()
-	// Capture the selection so the same item stays selected after the flip: a
-	// category at index i moves to len-1-i, and a task/description keeps its
-	// index within its (now relocated) category.
-	position, hasSelection := m.selectedPosition()
 	m.project.ReverseCategories()
 	m.rebuildPositions()
-	// The project header (FocusProject) stays put at the top; only category and
-	// task/description rows are relocated by the flip. selectTaskOrCategory maps
-	// a category position (TaskIndex -1, which matches no task) to its header,
-	// and a task/description to its task row at the mirrored category index.
-	if hasSelection && position.Kind != selection.FocusProject {
-		newCatIndex := len(m.project.Categories) - 1 - position.CategoryIndex
-		m.selectTaskOrCategory(newCatIndex, position.TaskIndex)
-	}
 	m.ensureVisible()
 	m.storeTaskUpdate()
-}
-
-// isRowKind reports whether a focus kind addresses a row in a category's Tasks
-// slice (a task or a separator) — the kinds that share the by-index reorder and
-// selection machinery.
-func isRowKind(kind selection.FocusKind) bool {
-	return kind == selection.FocusTask || kind == selection.FocusSeparator
-}
-
-func (m *model) selectTaskOrCategory(catIndex, taskIndex int) {
-	// A given (catIndex, taskIndex) resolves to exactly one row, which is either
-	// a task or a separator; match whichever kind sits there.
-	if m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		return isRowKind(p.Kind) && p.CategoryIndex == catIndex && p.TaskIndex == taskIndex
-	}) {
-		return
-	}
-	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		return p.Kind == selection.FocusCategory && p.CategoryIndex == catIndex
-	})
 }
 
 func (m *model) cutSelectedTask() tea.Cmd {
@@ -332,6 +300,7 @@ func (m *model) focusTask(selector string) error {
 	if err != nil {
 		return fmt.Errorf("task %q not found in project %q", selector, m.project.Name)
 	}
-	m.landOnRow(selection.Position{Kind: selection.FocusTask, CategoryIndex: catIdx, TaskIndex: taskIdx})
+	m.landOnRow(selection.Position{Kind: selection.FocusTask, CategoryIndex: catIdx, TaskIndex: taskIdx,
+		ID: m.project.Categories[catIdx].Tasks[taskIdx].ID})
 	return nil
 }

@@ -775,46 +775,52 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 		return renderProjectLine(m.project.Name, isSelected, focused, m.ui.Filter.HasActiveFilter(), visualMode, m.statusText(), m.ui.Screen.Width)
 
 	case LayoutCategory:
-		category := m.project.Categories[item.CategoryIndex]
+		indent := m.rowIndent(item.CategoryIndex, -1)
 		if m.editorOpen() && isCursor {
-			return m.renderEditCategoryLine()
+			return m.renderEditCategoryLine(indent)
 		}
-		folded := m.ui.Fold.IsFolded(category.ID)
-		cut := m.isCategoryCut(category.ID)
-		return renderCategoryLine(category.Name, category.EstimateMinutes, category.AggregateStatus(), isSelected, folded, m.ui.Screen.Width, focused, inVisualRange, isCursor, cut, m.searchQuery(), m.searchMatchStyle(isCursor))
+		cut := m.isCategoryCut(m.project.Categories[item.CategoryIndex].ID)
+		header := headerOf(&m.project, item.CategoryIndex, &m.ui.Fold, cut)
+		return renderCategoryLine(header, isSelected, m.ui.Screen.Width, focused, inVisualRange, isCursor, m.searchQuery(), m.searchMatchStyle(isCursor))
 
 	case LayoutTask:
 		task := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
 		if m.editorOpen() && isCursor {
-			return m.renderEditTaskLine(task)
+			return m.renderEditTaskLine(task, m.rowIndent(item.CategoryIndex, item.TaskIndex))
 		}
 		cut := m.isTaskCut(task.ID)
-		return m.renderTaskLine(task, isSelected, m.ui.Screen.Width, focused, inVisualRange, isCursor, cut)
+		return m.renderTaskLine(item.CategoryIndex, item.TaskIndex, isSelected, m.ui.Screen.Width, focused, inVisualRange, isCursor, cut)
 
 	case LayoutSeparator:
+		indent := m.rowIndent(item.CategoryIndex, item.TaskIndex)
 		if m.editorOpen() && isCursor {
-			return m.renderEditSeparatorLine()
+			return m.renderEditSeparatorLine(indent)
 		}
 		sep := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
-		return m.renderSeparatorLine(sep.Title, isSelected, focused, visualMode, isCursor, m.isTaskCut(sep.ID), m.ui.Screen.Width, m.searchQuery(), m.searchMatchStyle(isCursor))
+		return m.renderSeparatorLine(sep.Title, indent, isSelected, focused, visualMode, isCursor, m.isTaskCut(sep.ID), m.ui.Screen.Width, m.searchQuery(), m.searchMatchStyle(isCursor))
 
 	case LayoutDescription:
 		task := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
 		cut := m.isTaskCut(task.ID)
 		rows := m.rowLimits().descriptionRows(item.CategoryIndex, item.TaskIndex, task.ID)
-		return m.renderTaskDescription(task, rows, isSelected, m.ui.Screen.Width, focused, visualMode, isCursor, cut)
+		return m.renderTaskDescription(item.CategoryIndex, item.TaskIndex, rows, isSelected, m.ui.Screen.Width, focused, visualMode, isCursor, cut)
 
 	case LayoutEmptyCategory:
-		return ui.MutedStyle.Render("    (no tasks)")
+		return ui.MutedStyle.Render(placeholderIndent(m.rowIndent(item.CategoryIndex, -1)) + "(no tasks)")
 
 	case LayoutFolded:
-		return ui.MutedStyle.Render("    (folded)")
+		return ui.MutedStyle.Render(placeholderIndent(m.rowIndent(item.CategoryIndex, -1)) + "(folded)")
 
 	case LayoutSpacing:
 		return strings.Repeat("\n", item.Height-1)
 	}
 
 	return ""
+}
+
+// placeholderIndent lines a category's placeholder up under its name.
+func placeholderIndent(indent int) string {
+	return strings.Repeat(" ", prefixWidth+categoryFoldWidth+indent)
 }
 
 // renderLayoutItemWindow draws the item's rows from top on; maxRows <= 0 means

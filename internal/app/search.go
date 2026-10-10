@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"phasionary/internal/app/selection"
+	"phasionary/internal/domain"
 	"phasionary/internal/ui"
 )
 
@@ -270,45 +271,42 @@ func nextMatchingRow(rows []selection.Position, from, dir int, includeFrom bool,
 	return -1
 }
 
-// landOnRow moves the cursor onto the given logical row, unfolding its category
-// if necessary. A collapsed description row resolves to its parent task row.
+// landOnRow moves the cursor onto the given logical row, unfolding whatever
+// hides it. A collapsed description row resolves to its parent task row.
 func (m *model) landOnRow(r selection.Position) {
 	if r.CategoryIndex < 0 || r.CategoryIndex >= len(m.project.Categories) {
 		return
 	}
-	if isRowKind(r.Kind) || r.Kind == selection.FocusDescription {
-		catID := m.project.Categories[r.CategoryIndex].ID
-		if m.ui.Fold.IsFolded(catID) {
-			m.ui.Fold.Toggle(catID)
-			m.rebuildPositions()
+	unfolded := false
+	for _, id := range m.hidingFolds(r) {
+		if m.ui.Fold.IsFolded(id) {
+			m.ui.Fold.Toggle(id)
+			unfolded = true
 		}
 	}
-	switch r.Kind {
-	case selection.FocusCategory:
-		m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-			return p.Kind == selection.FocusCategory && p.CategoryIndex == r.CategoryIndex
-		})
-	case selection.FocusSeparator:
-		m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-			return p.Kind == selection.FocusSeparator && p.CategoryIndex == r.CategoryIndex && p.TaskIndex == r.TaskIndex
-		})
-	case selection.FocusDescription:
-		if m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-			return p.Kind == selection.FocusDescription && p.CategoryIndex == r.CategoryIndex && p.TaskIndex == r.TaskIndex
-		}) {
-			break
-		}
-		m.selectTaskRow(r.CategoryIndex, r.TaskIndex)
-	case selection.FocusTask:
-		m.selectTaskRow(r.CategoryIndex, r.TaskIndex)
+	if unfolded {
+		m.rebuildPositions()
 	}
+	m.selectItem(r.Kind, r.ID)
 	m.ensureVisible()
 }
 
-func (m *model) selectTaskRow(catIdx, taskIdx int) {
-	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		return p.Kind == selection.FocusTask && p.CategoryIndex == catIdx && p.TaskIndex == taskIdx
-	})
+// hidingFolds lists the folds that can hide a row: its parent task's, its
+// category's and that category's parent's. A category header hides behind its
+// parent's fold only.
+func (m *model) hidingFolds(r selection.Position) []string {
+	cat := m.project.Categories[r.CategoryIndex]
+	var ids []string
+	if r.Kind != selection.FocusCategory && r.TaskIndex >= 0 && r.TaskIndex < len(cat.Tasks) {
+		ids = append(ids, cat.ID)
+		if parent := domain.ParentIndex(cat.Tasks, r.TaskIndex); parent >= 0 {
+			ids = append(ids, cat.Tasks[parent].ID)
+		}
+	}
+	if cat.ParentID != "" {
+		ids = append(ids, cat.ParentID)
+	}
+	return ids
 }
 
 // matchCount is the number of rows the query matches, shown in the search bar.

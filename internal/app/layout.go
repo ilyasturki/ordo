@@ -137,15 +137,17 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 			}
 			seenCategory = true
 			category := project.Categories[pos.CategoryIndex]
-			item.Kind, item.Height = LayoutCategory, b.rowHeight(posIndex, b.countCategoryLines(category))
+			item.Kind, item.Height = LayoutCategory, b.rowHeight(posIndex, b.countCategoryLines(&project, pos.CategoryIndex))
 			add(item)
 			switch {
 			case b.fold != nil && b.fold.IsFolded(category.ID):
 				placeholder(LayoutFolded, pos.CategoryIndex)
-			case !rowOfCategory(positions, posIndex+1, pos.CategoryIndex):
+			case rowOfCategory(positions, posIndex+1, pos.CategoryIndex):
+				if category.ParentID == "" {
+					spacing(b.config.BlankAfterCatHead)
+				}
+			case !subCategoryOf(project, positions, posIndex+1, category.ID):
 				placeholder(LayoutEmptyCategory, pos.CategoryIndex)
-			default:
-				spacing(b.config.BlankAfterCatHead)
 			}
 
 		case selection.FocusSeparator:
@@ -153,18 +155,26 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 			add(item)
 
 		case selection.FocusTask:
-			task := project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-			item.Kind, item.Height = LayoutTask, b.rowHeight(posIndex, b.countTaskLines(task))
+			item.Kind, item.Height = LayoutTask, b.rowHeight(posIndex, b.countTaskLines(project.Categories[pos.CategoryIndex], pos.TaskIndex))
 			add(item)
 
 		case selection.FocusDescription:
-			task := project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
+			cat := project.Categories[pos.CategoryIndex]
+			task := cat.Tasks[pos.TaskIndex]
 			item.Kind = LayoutDescription
-			item.Height = components.DescriptionHeight(task.Description, b.width, taskTitleColumn(task, b.statusDisplay), b.limits.descriptionRows(pos.CategoryIndex, pos.TaskIndex, task.ID))
+			column := taskTitleColumn(task, b.statusDisplay, taskIndent(cat, pos.TaskIndex))
+			item.Height = components.DescriptionHeight(task.Description, b.width, column, b.limits.descriptionRows(pos.CategoryIndex, pos.TaskIndex, task.ID))
 			add(item)
 		}
 	}
 	return layout
+}
+
+// subCategoryOf reports whether positions[i] is the header of a sub-category
+// of the category parentID.
+func subCategoryOf(project domain.Project, positions []selection.Position, i int, parentID string) bool {
+	return i < len(positions) && positions[i].Kind == selection.FocusCategory &&
+		project.Categories[positions[i].CategoryIndex].ParentID == parentID
 }
 
 // rowOfCategory reports whether positions[i] is a row inside the category at
@@ -174,20 +184,23 @@ func rowOfCategory(positions []selection.Position, i, catIdx int) bool {
 		positions[i].Kind != selection.FocusProject && positions[i].CategoryIndex == catIdx
 }
 
-func (b *LayoutBuilder) countTaskLines(task domain.Task) int {
+func (b *LayoutBuilder) countTaskLines(cat domain.Category, taskIdx int) int {
+	task := cat.Tasks[taskIdx]
 	return components.NewTaskLineRenderer(b.width, b.statusDisplay, "", false).
+		WithNesting(taskIndent(cat, taskIdx), taskProgress(cat, taskIdx, b.fold)).
 		WithDescriptionExpanded(b.expandDescriptions).
 		WithCut(b.taskCut != nil && b.taskCut(task.ID)).
 		WithRowLimits(b.limits.titleRows(task.ID), components.DescriptionPreviewLines).
 		TitleRows(task)
 }
 
-func (b *LayoutBuilder) countCategoryLines(category domain.Category) int {
+func (b *LayoutBuilder) countCategoryLines(project *domain.Project, catIdx int) int {
 	if b.width <= 0 {
 		return 1
 	}
+	category := project.Categories[catIdx]
 	cut := b.categoryCut != nil && b.categoryCut(category.ID)
-	available := categoryNameWidth(b.width, category.EstimateMinutes, category.AggregateStatus(), cut)
+	available := categoryNameWidth(b.width, headerOf(project, catIdx, b.fold, cut))
 	return ui.CountClamped(category.Name, available, ui.MaxLineRows)
 }
 
@@ -239,14 +252,15 @@ func (m *model) editOverlay() (int, int) {
 
 // editOverhead is the width left of the edited text for the field at pos.
 func (m *model) editOverhead(pos selection.Position) int {
+	indent := m.rowIndent(pos.CategoryIndex, pos.TaskIndex)
 	switch pos.Kind {
 	case selection.FocusTask:
 		task := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-		return taskTitleColumn(task, m.deps.CfgManager.Get().StatusDisplay)
+		return taskTitleColumn(task, m.deps.CfgManager.Get().StatusDisplay, indent)
 	case selection.FocusProject:
 		return projectPrefixWidth
 	case selection.FocusSeparator:
-		return separatorPrefixWidth
+		return separatorPrefixWidth + indent
 	}
-	return prefixWidth
+	return prefixWidth + indent
 }
