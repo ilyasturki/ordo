@@ -105,11 +105,11 @@ Timestamps are RFC 3339 in UTC to the second: `2026-05-23T16:37:34Z`.
 - A writer stamps the version it writes, on every save.
 - A file without the field reads as version 1.
 
-The number goes up when a change would be misread by an older reader. That includes a new field an older writer would drop (see below).
+The number goes up when an older phasionary would misread a file, or would lose data by saving it without a field it does not know (see below). A new field whose loss is harmless needs no bump.
 
 ## Unknown fields are dropped
 
-Phasionary decodes a project into fixed types and writes back only the fields listed above. A field another app adds survives until phasionary next saves that project, then it is gone. Another client writes these fields and no others. A new field lands in phasionary first, with a schema bump when losing it would lose data.
+Phasionary decodes a project into fixed types and writes back only the fields listed above. A field another app adds survives until phasionary next saves that project, then it is gone. Another client writes these fields and no others. A new field lands in phasionary first.
 
 ## Writing a file
 

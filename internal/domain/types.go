@@ -61,9 +61,9 @@ var (
 
 // ProjectSchemaVersion is the version of the on-disk project format this
 // binary reads and writes. Files written before versioning existed carry no
-// schema field and are read as version 1. Bump it only for a change an older
-// binary would misread — a new optional field does not need a bump — and
-// never reuse a number.
+// schema field and are read as version 1. Bump it when an older binary would
+// misread a file, or would lose data by saving it without a field it does not
+// know; never reuse a number.
 const ProjectSchemaVersion = 1
 
 // ErrSchemaTooNew is returned when a project file declares a schema version

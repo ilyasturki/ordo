@@ -21,5 +21,5 @@ Add a new tape for any new mode, modal, or non-trivial keybinding.
 
 `docs/file-format.md` is the contract other apps code against. A change to the
 JSON shape (`internal/domain/types.go`), the write and lock path
-(`internal/data`), or the stale guard updates it in the same commit; a change an
-older reader would misread also bumps `ProjectSchemaVersion`.
+(`internal/data`), or the stale guard updates it in the same commit, and bumps
+`ProjectSchemaVersion` when its Schema section says so.
