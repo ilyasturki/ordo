@@ -1,0 +1,70 @@
+{
+  "schema": 2,
+  "id": "4d1c0b8e-6a1f-4c55-9e0e-2f1b7c3d9a10",
+  "name": "Versions",
+  "created_at": "2026-09-01T09:00:00Z",
+  "updated_at": "2026-10-09T18:00:00Z",
+  "categories": [
+    {
+      "id": "c-v020",
+      "name": "v0.2.0",
+      "created_at": "2026-10-01T09:00:00Z",
+      "tasks": [
+        {"id": "t-onboard", "title": "Onboarding screen for first launch", "status": "in_progress", "created_at": "2026-10-01T09:05:00Z", "updated_at": "2026-10-02T10:00:00Z", "priority": "medium"}
+      ]
+    },
+    {
+      "id": "c-workout",
+      "name": "workout",
+      "parent_id": "c-v020",
+      "created_at": "2026-10-01T09:01:00Z",
+      "tasks": [
+        {"id": "t-timer", "title": "Rest timer between sets", "status": "in_progress", "created_at": "2026-10-01T09:10:00Z", "updated_at": "2026-10-03T11:00:00Z", "tag_color": "blue"},
+        {"id": "t-timer-default", "parent_id": "t-timer", "title": "Pick a default rest length", "status": "completed", "created_at": "2026-10-01T09:11:00Z", "updated_at": "2026-10-03T11:00:00Z", "completion_date": "2026-10-03T11:00:00Z"},
+        {"id": "t-timer-sound", "parent_id": "t-timer", "title": "Play a sound when the rest ends", "status": "todo", "created_at": "2026-10-01T09:12:00Z", "updated_at": "2026-10-01T09:12:00Z"},
+        {"id": "t-timer-skip", "parent_id": "t-timer", "title": "Skip the rest from the notification", "status": "todo", "created_at": "2026-10-01T09:13:00Z", "updated_at": "2026-10-01T09:13:00Z"},
+        {"id": "t-sets", "title": "Fix the set counter after an edit", "status": "completed", "created_at": "2026-10-01T09:20:00Z", "updated_at": "2026-10-04T15:00:00Z", "completion_date": "2026-10-04T15:00:00Z"},
+        {"id": "t-history", "title": "Workout history chart", "status": "todo", "created_at": "2026-10-01T09:25:00Z", "updated_at": "2026-10-01T09:25:00Z", "priority": "high"}
+      ]
+    },
+    {
+      "id": "c-ui",
+      "name": "ui/ux",
+      "parent_id": "c-v020",
+      "created_at": "2026-10-01T09:02:00Z",
+      "tasks": [
+        {"id": "t-dark", "title": "Dark mode for the charts", "status": "todo", "created_at": "2026-10-01T09:30:00Z", "updated_at": "2026-10-01T09:30:00Z"},
+        {"id": "t-icons", "title": "Replace the tab bar icons", "status": "todo", "created_at": "2026-10-01T09:31:00Z", "updated_at": "2026-10-01T09:31:00Z"},
+        {"id": "t-icons-draw", "parent_id": "t-icons", "title": "Draw the five icons", "status": "todo", "created_at": "2026-10-01T09:32:00Z", "updated_at": "2026-10-01T09:32:00Z"},
+        {"id": "t-icons-ship", "parent_id": "t-icons", "title": "Export them at three sizes", "status": "todo", "created_at": "2026-10-01T09:33:00Z", "updated_at": "2026-10-01T09:33:00Z"}
+      ]
+    },
+    {
+      "id": "c-v013",
+      "name": "v0.1.13",
+      "created_at": "2026-09-20T09:00:00Z",
+      "tasks": [
+        {"id": "t-crash", "title": "Crash when deleting the last exercise", "status": "completed", "created_at": "2026-09-20T09:05:00Z", "updated_at": "2026-09-25T10:00:00Z", "completion_date": "2026-09-25T10:00:00Z", "priority": "high"},
+        {"id": "s-later", "kind": "separator", "title": "later", "status": "", "created_at": "2026-09-20T09:06:00Z", "updated_at": "2026-09-20T09:06:00Z"},
+        {"id": "t-export", "title": "Export workouts as CSV", "status": "todo", "created_at": "2026-09-20T09:07:00Z", "updated_at": "2026-09-20T09:07:00Z"}
+      ]
+    },
+    {
+      "id": "c-exercises",
+      "name": "exercises",
+      "parent_id": "c-v013",
+      "created_at": "2026-09-20T09:01:00Z",
+      "tasks": [
+        {"id": "t-library", "title": "Exercise library search", "status": "completed", "created_at": "2026-09-20T09:10:00Z", "updated_at": "2026-09-24T10:00:00Z", "completion_date": "2026-09-24T10:00:00Z"}
+      ]
+    },
+    {
+      "id": "c-next",
+      "name": "next",
+      "created_at": "2026-09-01T09:00:00Z",
+      "tasks": [
+        {"id": "t-sync", "title": "Sync across devices", "status": "todo", "created_at": "2026-09-01T09:05:00Z", "updated_at": "2026-09-01T09:05:00Z", "priority": "low"}
+      ]
+    }
+  ]
+}
