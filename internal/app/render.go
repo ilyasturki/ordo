@@ -60,7 +60,16 @@ func renderProjectLine(name string, selected, focused, filtered, visualMode bool
 func (m model) renderEditProjectLine() string {
 	prefix := "> " + ui.HeaderStyle.Render("■ ")
 	cursorStyle := ui.GetCursorStyle(m.ui.Screen.WindowFocused)
-	return renderEditRows(m.editRows(projectPrefixWidth), projectPrefixWidth, prefix, ui.HeaderStyle, cursorStyle)
+	return m.withEditError(renderEditRows(m.editRows(projectPrefixWidth), projectPrefixWidth, prefix, ui.HeaderStyle, cursorStyle), projectPrefixWidth)
+}
+
+// withEditError adds the editor's error as one row under the edited text.
+func (m model) withEditError(rows string, overhead int) string {
+	if m.ui.Edit.err == "" {
+		return rows
+	}
+	msg := truncateText(m.ui.Edit.err, safeWidth(m.ui.Screen.Width, overhead))
+	return rows + "\n" + strings.Repeat(" ", overhead) + ui.ErrorStyle.Render(msg)
 }
 
 func renderCategoryLine(name string, estimateMinutes int, aggregateStatus string, selected bool, folded bool, width int, focused bool, visualMode bool, isCursor bool, cut bool, searchQuery string, searchMatch lipgloss.Style) string {
@@ -258,7 +267,7 @@ func (m model) renderEditCategoryLine() string {
 		styledText := cursorStyle.Render(" ") + placeholder
 		return prefixLine(styledText, m.ui.Screen.Width, prefixWidth, prefix)
 	}
-	return renderEditRows(m.editRows(prefixWidth), prefixWidth, prefix, ui.CategoryStyle, cursorStyle)
+	return m.withEditError(renderEditRows(m.editRows(prefixWidth), prefixWidth, prefix, ui.CategoryStyle, cursorStyle), prefixWidth)
 }
 
 func (m model) renderEditTaskLine(task domain.Task) string {

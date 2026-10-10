@@ -310,7 +310,11 @@ func (m *model) editOverlay() (int, int) {
 	if !ok {
 		return -1, 0
 	}
-	return m.selected(), len(el.rows)
+	rows := len(el.rows)
+	if m.ui.Edit.err != "" {
+		rows++
+	}
+	return m.selected(), rows
 }
 
 // editOverhead is the width left of the edited text for the field at pos.

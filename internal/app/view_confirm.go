@@ -62,6 +62,39 @@ func (m model) confirmDeleteVisualRangeView() string {
 	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
 }
 
+func (m model) confirmMergeView() string {
+	pos, ok := m.selectedPosition()
+	dst, err := m.project.FindCategoryByID(m.ui.Edit.mergeInto)
+	if !ok || err != nil || pos.Kind != selection.FocusCategory {
+		return ""
+	}
+	target := truncateText(m.project.Categories[dst].Name, 30)
+	src := m.project.Categories[pos.CategoryIndex]
+	var lines []string
+	switch n := src.TaskCount(); {
+	case m.ui.Edit.isAdding:
+		lines = []string{
+			fmt.Sprintf("Merge into %q?", target),
+			fmt.Sprintf("The new category is dropped and the cursor moves to %q.", target),
+		}
+	case len(src.Tasks) == 0:
+		lines = []string{
+			fmt.Sprintf("Merge %q into %q?", truncateText(src.Name, 30), target),
+			fmt.Sprintf("%q is empty, so it is deleted.", truncateText(src.Name, 30)),
+		}
+	default:
+		lines = []string{
+			fmt.Sprintf("Merge %q into %q?", truncateText(src.Name, 30), target),
+			fmt.Sprintf("Its %d task(s) move to the end of %q under a %q separator,", n, target, truncateText(src.Name, 30)),
+			"then the category is deleted. u undoes it.",
+		}
+	}
+	lines = append(lines, "", ui.RenderHints([]ui.Hint{
+		{Key: "y/enter", Label: "merge"}, {Key: "n/esc", Label: "keep editing"},
+	}))
+	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
+}
+
 func (m model) confirmDeleteProjectView() string {
 	var projectName string
 	for _, p := range m.ui.Picker.projects {

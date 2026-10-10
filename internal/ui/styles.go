@@ -24,6 +24,7 @@ var (
 	DialogTitleStyle = lipgloss.NewStyle().Bold(true)
 	DialogHintStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
 	SuccessStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	ErrorStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	FilterTagStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
 	VisualTagStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("3")).Bold(true)
 

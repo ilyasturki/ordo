@@ -183,7 +183,7 @@ func TestUndo_RenameTask(t *testing.T) {
 }
 
 func TestUndo_RenameProject(t *testing.T) {
-	m := newTestModel(t, sampleProject())
+	m := newStoredModel(t, sampleProject())
 	m.ui.Selection.MoveTo(0) // project line
 	m.startEditing()
 	m.ui.Edit.input.SetValue("Renamed Project")

@@ -180,12 +180,7 @@ func (m *model) applyProjectEdit(content string) {
 		return
 	}
 
-	m.recordHistory()
-	// RenameProject takes the global lock so a duplicate name across
-	// projects is rejected instead of silently producing two homonyms.
-	updated, err := m.deps.Store.RenameProject(m.project.ID, name)
-	if err != nil {
-		m.discardLastHistory()
+	if err := m.renameProject(name); err != nil {
 		if errors.Is(err, data.ErrDuplicateProjectName) {
 			m.ui.Screen.StatusMsg = "A project with that name already exists"
 			return
@@ -193,7 +188,6 @@ func (m *model) applyProjectEdit(content string) {
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Failed to save: %v", err)
 		return
 	}
-	m.project = updated
 	m.ui.Screen.StatusMsg = "Project updated"
 }
 

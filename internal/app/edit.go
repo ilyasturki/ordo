@@ -1,6 +1,8 @@
 package app
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -8,6 +10,7 @@ import (
 
 	"phasionary/internal/app/modes"
 	"phasionary/internal/app/selection"
+	"phasionary/internal/data"
 	"phasionary/internal/domain"
 )
 
@@ -189,6 +192,15 @@ func (m *model) removeNewCategory() {
 
 func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 	defer m.ensureVisible()
+	if m.ui.Edit.mergeInto != "" {
+		switch msg.String() {
+		case "y", "enter":
+			m.mergeEditedCategory()
+		case "n", "esc":
+			m.ui.Edit.mergeInto = ""
+		}
+		return nil
+	}
 	switch msg.String() {
 	case "enter":
 		m.finishEditing()
@@ -204,9 +216,13 @@ func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 		// bubbles' own paste reads through atotto alone, missing the Wayland fallback.
 		return readClipboardForEditor(modes.ModeEdit)
 	}
+	before := m.ui.Edit.input.Value()
 	var cmd tea.Cmd
 	m.ui.Edit.input, cmd = m.ui.Edit.input.Update(msg)
 	sanitizeInput(&m.ui.Edit.input)
+	if m.ui.Edit.input.Value() != before {
+		m.ui.Edit.err = ""
+	}
 	return cmd
 }
 
@@ -261,10 +277,12 @@ func (m *model) finishEditing() {
 	switch position.Kind {
 	case selection.FocusProject:
 		if m.project.Name != trimmed {
-			m.recordHistory()
-			m.project.Name = trimmed
-			m.project.UpdatedAt = domain.NowTimestamp()
-			m.storeTaskUpdate()
+			if err := m.renameProject(trimmed); errors.Is(err, data.ErrDuplicateProjectName) {
+				m.ui.Edit.err = fmt.Sprintf("A project named %q already exists", trimmed)
+				return
+			} else if err != nil {
+				m.ui.Screen.StatusMsg = fmt.Sprintf("Failed to save: %v", err)
+			}
 		}
 	case selection.FocusTask:
 		task := &m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
@@ -277,7 +295,9 @@ func (m *model) finishEditing() {
 			m.storeTaskUpdate()
 		}
 	case selection.FocusCategory:
-		m.finishCategoryEditing(position, trimmed)
+		if !m.finishCategoryEditing(position, trimmed) {
+			return
+		}
 	default:
 		m.cancelEditing()
 		return
@@ -297,10 +317,19 @@ func (m *model) finishSeparatorEditing(position selection.Position, label string
 	m.storeTaskUpdate()
 }
 
-func (m *model) finishCategoryEditing(position selection.Position, name string) {
+// finishCategoryEditing applies the name and reports whether the editor can
+// close. A name another category holds keeps the editor open with an error and
+// offers to merge into that category instead.
+func (m *model) finishCategoryEditing(position selection.Position, name string) bool {
 	currentName := m.project.Categories[position.CategoryIndex].Name
 	if !m.ui.Edit.isAdding && currentName == name {
-		return
+		return true
+	}
+	if i := domain.CategoryNameConflict(m.project.Categories, name, position.CategoryIndex); i >= 0 {
+		target := m.project.Categories[i]
+		m.ui.Edit.err = fmt.Sprintf("A category named %q already exists", target.Name)
+		m.ui.Edit.mergeInto = target.ID
+		return false
 	}
 	if !m.ui.Edit.isAdding {
 		m.recordHistory()
@@ -309,12 +338,69 @@ func (m *model) finishCategoryEditing(position selection.Position, name string) 
 		if m.ui.Edit.isAdding {
 			m.removeNewCategory()
 		}
-		// Drop the snapshot recorded for either the rename or the addition since
-		// the rename failed (e.g. duplicate name).
 		m.discardLastHistory()
-		return
+		m.ui.Screen.StatusMsg = fmt.Sprintf("Rename failed: %v", err)
+		return true
 	}
 	m.storeTaskUpdate()
+	return true
+}
+
+// mergeEditedCategory accepts the merge offer: the edited category goes into
+// the one whose name it took, as one undo step, and the editor closes. A new
+// category was only ever a name, so it is dropped and the cursor moves to the
+// existing one.
+func (m *model) mergeEditedCategory() {
+	position, ok := m.selectedPosition()
+	dst, err := m.project.FindCategoryByID(m.ui.Edit.mergeInto)
+	if !ok || err != nil {
+		m.cancelEditing()
+		return
+	}
+	target := m.project.Categories[dst]
+	src := m.project.Categories[position.CategoryIndex]
+	if m.ui.Edit.isAdding {
+		m.cancelEditing()
+	} else {
+		m.recordHistory()
+		if err := m.project.MergeCategory(position.CategoryIndex, dst); err != nil {
+			m.discardLastHistory()
+			m.ui.Screen.StatusMsg = fmt.Sprintf("Merge failed: %v", err)
+		} else {
+			m.storeTaskUpdate()
+			m.ui.Screen.StatusMsg = fmt.Sprintf("Merged %q into %q", src.Name, target.Name)
+		}
+		m.ui.Modes.ToNormal()
+		m.ui.Edit.reset()
+	}
+	m.rebuildPositions()
+
+	// Land on the separator that now heads the moved tasks, else the header.
+	onTarget := func(p selection.Position) bool {
+		return p.Kind != selection.FocusProject && m.project.Categories[p.CategoryIndex].ID == target.ID
+	}
+	if len(src.Tasks) == 0 || !m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
+		return onTarget(p) && p.Kind == selection.FocusSeparator && p.TaskIndex == len(target.Tasks)
+	}) {
+		m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
+			return onTarget(p) && p.Kind == selection.FocusCategory
+		})
+	}
+	m.ensureVisible()
+}
+
+// renameProject applies a new project name through the store, which checks it
+// against every other project under the global lock.
+func (m *model) renameProject(name string) error {
+	m.recordHistory()
+	updated, err := m.deps.Store.RenameProject(m.project.ID, name)
+	if err != nil {
+		m.discardLastHistory()
+		return err
+	}
+	m.project = updated
+	m.invalidateLayout()
+	return nil
 }
 
 func (m *model) cancelEditing() {

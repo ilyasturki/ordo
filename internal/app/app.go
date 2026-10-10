@@ -718,6 +718,9 @@ func (m model) renderView() string {
 		content += bar
 	}
 	modal := components.NewModal(m.ui.Screen.Width, m.ui.Screen.Height)
+	if m.ui.Modes.IsEdit() && m.ui.Edit.mergeInto != "" {
+		return modal.Render(content, m.confirmMergeView())
+	}
 	switch m.ui.Modes.Current() {
 	case modes.ModeHelp:
 		return modal.Render(content, m.helpView())
