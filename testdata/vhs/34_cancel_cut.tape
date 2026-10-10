@@ -6,13 +6,16 @@ Set FontSize 16
 Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
 Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
 
+# x writes the system clipboard, as y does. Your clipboard's text is saved
+# first and put back at the end.
 Hide
-Type "clear && ./phasionary -p Default"
+Type "clear && timeout 2 wl-paste -n > /tmp/phas-vt/clip.bak 2>/dev/null; ./phasionary -p Default"
 Enter
 Sleep 800ms
 Show
 
-# Mark a single task for cut, then esc: the ghosting and the ✂ badge go away
+# Cut a single task: the status line says p moves it and esc cancels, and the
+# shortcut bar keeps saying so. Then esc: the ghosting and the ✂ badge go away
 # and the status line reports the cancellation.
 Type "j"
 Sleep 200ms
@@ -63,5 +66,7 @@ Sleep 500ms
 
 Hide
 Type "q"
+Sleep 300ms
+Type "clear && ([ -s /tmp/phas-vt/clip.bak ] && timeout 2 wl-copy < /tmp/phas-vt/clip.bak || timeout 2 wl-copy --clear)"
 Enter
 Sleep 300ms
