@@ -77,7 +77,7 @@ func run(stdin io.Reader, stdout io.Writer, name string, args ...string) error {
 	// A child that escaped the group could hold stdout open forever.
 	cmd.WaitDelay = 100 * time.Millisecond
 	err = cmd.Run()
-	if ctx.Err() != nil {
+	if err != nil && ctx.Err() != nil {
 		return ErrTimeout
 	}
 	return err

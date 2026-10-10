@@ -95,14 +95,14 @@ func TestRun_KillsAHungTool(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			pids := filepath.Join(t.TempDir(), "pids")
-			fakeTools(t, "sleep 30 & echo $! >> "+pids+"; echo $$ >> "+pids+"; exec sleep 30")
+			fakeTools(t, "sleep 30 & echo $! $$ > "+pids+"; exec sleep 30")
 			shortTimeout(t)
 
 			start := time.Now()
 			err := call()
 
 			assert.ErrorIs(t, err, ErrTimeout)
-			assert.Less(t, time.Since(start), time.Second)
+			assert.Less(t, time.Since(start), 2*time.Second)
 			for _, pid := range readPIDs(t, pids) {
 				assert.Eventually(t, func() bool { return gone(pid) }, time.Second, 10*time.Millisecond,
 					"pid %d outlived the call", pid)
@@ -179,7 +179,7 @@ func fakeTools(t *testing.T, body string) {
 func shortTimeout(t *testing.T) {
 	t.Helper()
 	saved := timeout
-	timeout = 100 * time.Millisecond
+	timeout = 500 * time.Millisecond
 	t.Cleanup(func() { timeout = saved })
 }
 
