@@ -32,10 +32,6 @@ type Config struct {
 	ShowShortcutBar             bool   `json:"show_shortcut_bar"`
 	ExpandDescriptionsByDefault bool   `json:"expand_descriptions_by_default"`
 
-	// HelpExpanded remembers whether the help dialog opens on the full
-	// shortcut reference rather than the essentials card.
-	HelpExpanded bool `json:"help_expanded"`
-
 	TaskCommands []TaskCommand `json:"task_commands,omitempty"`
 }
 
@@ -87,7 +83,6 @@ func DefaultConfig() Config {
 		PriorityColor:               PriorityColorFull,
 		ShowShortcutBar:             true,
 		ExpandDescriptionsByDefault: false,
-		HelpExpanded:                false,
 	}
 }
 

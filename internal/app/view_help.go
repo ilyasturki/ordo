@@ -7,7 +7,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"phasionary/internal/config"
 	"phasionary/internal/ui"
 )
 
@@ -260,7 +259,7 @@ func (s cardShortcut) entry() helpEntry {
 }
 
 func (m model) helpExpanded() bool {
-	return m.deps.CfgManager.Get().HelpExpanded
+	return m.ui.Screen.HelpExpanded
 }
 
 // Depends only on the mode and the terminal, never on what the filter matched:
@@ -382,10 +381,7 @@ func (m *model) moveHelpColumn(delta int) {
 // The cursor resets to the top: the two faces share no ordering, so carrying a
 // position across would land anywhere.
 func (m *model) toggleHelpExpanded() {
-	expanded := !m.helpExpanded()
-	_ = m.deps.CfgManager.Update(func(cfg *config.Config) {
-		cfg.HelpExpanded = expanded
-	})
+	m.ui.Screen.HelpExpanded = !m.ui.Screen.HelpExpanded
 	m.ui.Help.Focused = 0
 	m.ui.Help.ScrollOffset = 0
 	m.ensureHelpVisible()

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"testing"
 
 	"charm.land/bubbles/v2/textinput"
@@ -9,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"phasionary/internal/config"
 	"phasionary/internal/ui"
 )
 
@@ -27,7 +27,7 @@ func helpExpand(t *testing.T, m *model) {
 	t.Helper()
 	m.ui.Modes.ToHelp()
 	m.ui.Help = HelpState{}
-	require.NoError(t, m.deps.CfgManager.Update(func(cfg *config.Config) { cfg.HelpExpanded = true }))
+	m.ui.Screen.HelpExpanded = true
 	m.ensureHelpVisible()
 }
 
@@ -194,7 +194,7 @@ func TestHelp_GeometryIsStableAcrossFiltering(t *testing.T) {
 	assert.Equal(t, lipgloss.Height(before), lipgloss.Height(empty), "height holds with no matches")
 }
 
-func TestHelp_ToggleExpandsAndPersists(t *testing.T) {
+func TestHelp_ToggleLastsTheSession(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Screen.Width, m.ui.Screen.Height = 120, 40
 	m.ui.Modes.ToHelp()
@@ -203,8 +203,15 @@ func TestHelp_ToggleExpandsAndPersists(t *testing.T) {
 	after, _ := m.handleHelpKey(tea.KeyPressMsg{Text: "a"})
 	am := after.(model)
 	assert.True(t, am.helpExpanded())
-	assert.True(t, am.deps.CfgManager.Get().HelpExpanded, "the choice is saved")
 	assert.Equal(t, 0, am.ui.Help.Focused)
+
+	reopened, _ := am.handleKeyMsg(tea.KeyPressMsg{Text: "?"})
+	reopened, _ = reopened.(model).handleKeyMsg(tea.KeyPressMsg{Text: "?"})
+	assert.True(t, reopened.(model).helpExpanded(), "reopening help keeps the choice")
+
+	data, err := json.Marshal(am.deps.CfgManager.Get())
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), "help", "the choice never reaches the config")
 
 	back, _ := am.handleHelpKey(tea.KeyPressMsg{Text: "a"})
 	assert.False(t, back.(model).helpExpanded())

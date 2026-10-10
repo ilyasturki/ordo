@@ -88,7 +88,7 @@ func TestManager(t *testing.T) {
 		// Should contain default config with status_display
 		data, err := os.ReadFile(configPath)
 		require.NoError(t, err)
-		assert.JSONEq(t, `{"status_display":"icons","priority_color":"full","show_shortcut_bar":true,"expand_descriptions_by_default":false,"help_expanded":false}`, string(data))
+		assert.JSONEq(t, `{"status_display":"icons","priority_color":"full","show_shortcut_bar":true,"expand_descriptions_by_default":false}`, string(data))
 	})
 
 	t.Run("a hand-edited empty field loads as the default", func(t *testing.T) {

@@ -20,7 +20,7 @@ Type "jj"
 Sleep 400ms
 Screenshot "/tmp/phas-vt/vhs-out/02_help_card_focus.png"
 
-# `a` switches to the full reference (and remembers the choice).
+# `a` switches to the full reference for this session.
 Type "a"
 Sleep 500ms
 Screenshot "/tmp/phas-vt/vhs-out/02_help_full.png"
@@ -48,8 +48,26 @@ Sleep 200ms
 Enter
 Sleep 600ms
 Screenshot "/tmp/phas-vt/vhs-out/02_help_enter_dispatches.png"
+Sleep 500ms
+
+# Expand again, then relaunch: a new session opens on the card.
+Type "?"
+Sleep 400ms
+Type "a"
+Sleep 400ms
+Escape
+Sleep 300ms
+Type "q"
+Sleep 300ms
+Type "clear && ./phasionary -p Default"
+Enter
+Sleep 800ms
+Type "?"
+Sleep 600ms
+Screenshot "/tmp/phas-vt/vhs-out/02_help_fresh_launch_card.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
 Hide
+Escape
 Type "q"
