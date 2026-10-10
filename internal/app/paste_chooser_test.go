@@ -10,6 +10,7 @@ import (
 
 	"phasionary/internal/app/modes"
 	"phasionary/internal/app/selection"
+	"phasionary/internal/clipboard"
 	"phasionary/internal/domain"
 )
 
@@ -101,7 +102,7 @@ func TestPasteChooser_EditorClipboardReadLandsOnlyWhereItWasAsked(t *testing.T) 
 	assert.Len(t, m.project.Categories[0].Tasks, 3)
 
 	m.startEditing()
-	send(t, m, editorClipboardMsg{mode: modes.ModeEdit, err: assert.AnError})
+	send(t, m, editorClipboardMsg{mode: modes.ModeEdit, err: clipboard.ErrTimeout})
 	assert.Equal(t, "Can't read the clipboard: paste with the terminal instead", m.ui.Screen.StatusMsg)
 }
 

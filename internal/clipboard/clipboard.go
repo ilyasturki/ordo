@@ -68,13 +68,20 @@ func Read() (string, error) {
 	}
 }
 
+// ErrNoBackend only when no tool ran: one that ran and failed most likely found
+// the clipboard empty.
 func read(ctx context.Context) (string, error) {
-	if !atotto.Unsupported {
-		if text, err := atotto.ReadAll(); err == nil {
-			return text, nil
-		}
+	if atotto.Unsupported {
+		return wlRead(ctx)
 	}
-	return wlRead(ctx)
+	text, err := atotto.ReadAll()
+	if err == nil {
+		return text, nil
+	}
+	if text, wlErr := wlRead(ctx); !errors.Is(wlErr, ErrNoBackend) {
+		return text, wlErr
+	}
+	return "", err
 }
 
 func wlWrite(text string) error {

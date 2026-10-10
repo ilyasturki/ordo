@@ -82,6 +82,22 @@ func TestRead_GivesUpOnAHungTool(t *testing.T) {
 	assert.Less(t, time.Since(start), time.Second)
 }
 
+func TestRead_AFailingToolIsNotAMissingOne(t *testing.T) {
+	dir := t.TempDir()
+	script := "#!/bin/sh\necho 'Nothing is copied' >&2\nexit 1\n"
+	for _, name := range []string{"wl-paste", "xclip", "xsel"} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755))
+	}
+	t.Setenv("PATH", dir)
+	t.Setenv("WAYLAND_DISPLAY", "wayland-0")
+
+	_, err := Read()
+
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ErrNoBackend, "an empty clipboard must not read as an unreachable one")
+	assert.NotErrorIs(t, err, ErrTimeout)
+}
+
 func TestRuntimeDir_FallsBackToTheLogindPath(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", "")
 

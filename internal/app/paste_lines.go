@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -319,14 +320,21 @@ func readClipboardForEditor(mode modes.Mode) tea.Cmd {
 	}
 }
 
-const clipboardUnreadable = "Can't read the clipboard: paste with the terminal instead"
+// clipboardReadFailure tells a clipboard nothing can read from one that holds
+// nothing: the tools exit non-zero on an empty clipboard too.
+func clipboardReadFailure(err error) string {
+	if errors.Is(err, clipboard.ErrNoBackend) || errors.Is(err, clipboard.ErrTimeout) {
+		return "Can't read the clipboard: paste with the terminal instead"
+	}
+	return "Nothing to paste"
+}
 
 func (m *model) handleEditorClipboard(msg editorClipboardMsg) tea.Cmd {
 	if m.ui.Modes.Current() != msg.mode {
 		return nil
 	}
 	if msg.err != nil {
-		m.ui.Screen.StatusMsg = clipboardUnreadable
+		m.ui.Screen.StatusMsg = clipboardReadFailure(msg.err)
 		return nil
 	}
 	return m.handlePaste(msg.text)
@@ -334,7 +342,7 @@ func (m *model) handleEditorClipboard(msg editorClipboardMsg) tea.Cmd {
 
 func (m *model) pasteClipboardLines(msg clipboardLinesMsg) {
 	if msg.err != nil {
-		m.ui.Screen.StatusMsg = clipboardUnreadable
+		m.ui.Screen.StatusMsg = clipboardReadFailure(msg.err)
 		return
 	}
 	m.pasteText(msg.text)

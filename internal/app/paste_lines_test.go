@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"phasionary/internal/clipboard"
 	"phasionary/internal/domain"
 	"phasionary/internal/export"
 )
@@ -308,6 +309,9 @@ func TestPasteClipboardLines_EmptyOrFailedClipboard(t *testing.T) {
 	assert.Equal(t, "Nothing to paste", m.ui.Screen.StatusMsg)
 
 	m.pasteClipboardLines(clipboardLinesMsg{err: assert.AnError})
+	assert.Equal(t, "Nothing to paste", m.ui.Screen.StatusMsg, "the tools fail on an empty clipboard too")
+
+	m.pasteClipboardLines(clipboardLinesMsg{err: clipboard.ErrNoBackend})
 	assert.Equal(t, "Can't read the clipboard: paste with the terminal instead", m.ui.Screen.StatusMsg)
 
 	assert.Len(t, m.project.Categories[0].Tasks, 3, "nothing was inserted")
