@@ -19,14 +19,14 @@ func newCategoriesCmd() *cobra.Command {
 		Short:   "List categories",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return viewProject(projectSelector(nil), func(project domain.Project) error {
-				return writeCategories(cmd.OutOrStdout(), project.Categories)
+				return writeCategories(cmd.OutOrStdout(), project)
 			})
 		},
 	}
 	return cmd
 }
 
-const categoryIdentifierHelp = "The <category> argument accepts a category name or ID (full or 4+ char prefix)."
+const categoryIdentifierHelp = "The <category> argument accepts a category name, a path parent/name for a sub-category, or an ID (full or 4+ char prefix)."
 
 func newCategoryCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -53,11 +53,11 @@ func newCategoryShowCmd() *cobra.Command {
 		ValidArgsFunction: completeCategories,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return viewProject(projectSelector(nil), func(project domain.Project) error {
-				cat, _, err := resolveCategory(project, args[0])
+				_, idx, err := resolveCategory(project, args[0])
 				if err != nil {
 					return err
 				}
-				return writeCategoryDetail(cmd.OutOrStdout(), *cat)
+				return writeCategoryDetail(cmd.OutOrStdout(), project, idx)
 			})
 		},
 	}
@@ -65,16 +65,30 @@ func newCategoryShowCmd() *cobra.Command {
 }
 
 func newCategoryAddCmd() *cobra.Command {
+	var parent string
+
 	cmd := &cobra.Command{
 		Use:     "add <name>",
 		Aliases: []string{"ca"},
 		Short:   "Add a category",
+		Long:    "Add a category, or with --parent a sub-category of a top-level one.\n\n" + categoryIdentifierHelp,
 		Args:    exactArgs("name"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 			var created domain.Category
 			err := withProject(projectSelector(nil), func(_ *data.Store, project *domain.Project) error {
-				cat, err := operations.CreateCategory(project, name)
+				parentID := ""
+				if parent != "" {
+					p, _, err := resolveCategory(*project, parent)
+					if err != nil {
+						return err
+					}
+					if p.ParentID != "" {
+						return fmt.Errorf("category %q is a sub-category: nesting goes one level deep", p.Name)
+					}
+					parentID = p.ID
+				}
+				cat, err := operations.CreateCategoryUnder(project, parentID, name)
 				if err != nil {
 					if errors.Is(err, domain.ErrDuplicateCategoryName) {
 						return fmt.Errorf("category %q already exists", strings.TrimSpace(name))
@@ -91,6 +105,10 @@ func newCategoryAddCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVar(&parent, "parent", "", "add it under this top-level category")
+	_ = cmd.RegisterFlagCompletionFunc("parent", completeCategories)
+
 	return cmd
 }
 
@@ -134,6 +152,23 @@ func newCategoryEditCmd() *cobra.Command {
 	return cmd
 }
 
+// categoryLoad counts what deleting the category at i takes along: its tasks
+// and its sub-categories' ones, and the sub-categories.
+func categoryLoad(project domain.Project, i int) (tasks, subs int) {
+	end := domain.BlockEnd(project.Categories, i)
+	for _, c := range project.Categories[i:end] {
+		tasks += c.TaskCount()
+	}
+	return tasks, end - i - 1
+}
+
+func plural(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
+}
+
 func newCategoryDeleteCmd() *cobra.Command {
 	var force bool
 
@@ -150,13 +185,18 @@ func newCategoryDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			cat, _, err := resolveCategory(project, args[0])
+			cat, idx, err := resolveCategory(project, args[0])
 			if err != nil {
 				return err
 			}
 
-			if len(cat.Tasks) > 0 && !force {
-				fmt.Fprintf(cmd.OutOrStdout(), "Category %q has %d tasks. Delete anyway? [y/N]: ", cat.Name, len(cat.Tasks))
+			tasks, subs := categoryLoad(project, idx)
+			if (tasks > 0 || subs > 0) && !force {
+				what := fmt.Sprintf("%d tasks", tasks)
+				if subs > 0 {
+					what = fmt.Sprintf("%d sub-categor%s and %d tasks", subs, plural(subs, "y", "ies"), tasks)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Category %q has %s. Delete anyway? [y/N]: ", cat.Name, what)
 				var response string
 				if _, err := fmt.Fscanln(cmd.InOrStdin(), &response); err != nil {
 					return nil
@@ -177,11 +217,13 @@ func newCategoryDeleteCmd() *cobra.Command {
 				if rerr != nil {
 					return rerr
 				}
-				if !force && len(lockedCat.Tasks) > len(cat.Tasks) {
-					return fmt.Errorf("category %q gained %d task(s) since the prompt; re-run with -f to confirm", lockedCat.Name, len(lockedCat.Tasks)-len(cat.Tasks))
+				lockedTasks, lockedSubs := categoryLoad(*p, idx)
+				if !force && (lockedTasks > tasks || lockedSubs > subs) {
+					return fmt.Errorf("category %q gained tasks or sub-categories since the prompt; re-run with -f to confirm", lockedCat.Name)
 				}
 				deletedName = lockedCat.Name
-				return p.RemoveCategory(idx)
+				p.RemoveCategoryBlock(idx)
+				return nil
 			})
 			if err != nil {
 				return err

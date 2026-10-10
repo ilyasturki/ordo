@@ -14,13 +14,13 @@ func nestedStoreProject(t *testing.T, dataDir string) domain.Project {
 		ID:   "nested-1",
 		Name: "Nested",
 		Categories: []domain.Category{
-			{ID: "v2", Name: "v0.2.0", Tasks: []domain.Task{{ID: "loose", Title: "Loose", Status: domain.StatusTodo}}},
-			{ID: "ui", Name: "ui", ParentID: "v2", Tasks: []domain.Task{
+			{ID: "cat-v2", Name: "v0.2.0", Tasks: []domain.Task{{ID: "loose", Title: "Loose", Status: domain.StatusTodo}}},
+			{ID: "cat-ui", Name: "ui", ParentID: "cat-v2", Tasks: []domain.Task{
 				{ID: "timer", Title: "Rest timer", Status: domain.StatusInProgress},
 				{ID: "pick", ParentID: "timer", Title: "Pick a default", Status: domain.StatusCompleted},
 				{ID: "sets", Title: "Fix sets", Status: domain.StatusTodo},
 			}},
-			{ID: "v1", Name: "v0.1.0"},
+			{ID: "cat-v1", Name: "v0.1.0"},
 		},
 	}
 	saved, err := data.NewStore(filepath.Join(dataDir, "projects")).ImportProject(p)

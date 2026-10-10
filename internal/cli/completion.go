@@ -89,8 +89,8 @@ func completeCategories(cmd *cobra.Command, args []string, toComplete string) ([
 		return nil, cobra.ShellCompDirectiveError
 	}
 	var completions []string
-	for _, cat := range project.Categories {
-		completions = append(completions, cat.Name)
+	for i := range project.Categories {
+		completions = append(completions, cliPath(project, i))
 	}
 	return completions, cobra.ShellCompDirectiveNoFileComp
 }

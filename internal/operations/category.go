@@ -7,10 +7,18 @@ import (
 	"phasionary/internal/domain"
 )
 
-// CreateCategory adds a category named name (trimmed) to p. Returns
+// CreateCategory adds a top-level category named name (trimmed) to p. Returns
 // ErrNameRequired for an empty name or domain.ErrDuplicateCategoryName when the
-// name collides case-insensitively with an existing category.
+// name collides case-insensitively with a sibling.
 func CreateCategory(p *domain.Project, name string) (domain.Category, error) {
+	return CreateCategoryUnder(p, "", name)
+}
+
+// CreateCategoryUnder is CreateCategory for a sub-category of the top-level
+// category parentID, landing after its other sub-categories. It also returns
+// domain.ErrCategoryNotFound or domain.ErrNestDepth for a parent that can't
+// take one.
+func CreateCategoryUnder(p *domain.Project, parentID, name string) (domain.Category, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return domain.Category{}, ErrNameRequired
@@ -18,7 +26,7 @@ func CreateCategory(p *domain.Project, name string) (domain.Category, error) {
 	if err := domain.ValidateLine(name); err != nil {
 		return domain.Category{}, err
 	}
-	cat, err := p.AddCategoryNamed(name)
+	cat, err := p.AddCategoryUnder(parentID, name)
 	if err != nil {
 		return domain.Category{}, err
 	}

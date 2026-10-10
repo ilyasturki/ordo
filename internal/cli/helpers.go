@@ -22,7 +22,7 @@ func argHint(name string) string {
 	case "task":
 		return "task title or ID (full or 4+ char prefix)"
 	case "category":
-		return "category name or ID (full or 4+ char prefix)"
+		return "category name, parent/name or ID (full or 4+ char prefix)"
 	case "project":
 		return "project name or ID"
 	}
@@ -145,14 +145,15 @@ func resolveTask(project domain.Project, selector string) (TaskRef, error) {
 	}
 	return TaskRef{
 		Task:          &project.Categories[cIdx].Tasks[tIdx],
-		CategoryName:  project.Categories[cIdx].Name,
+		CategoryName:  cliPath(project, cIdx),
 		CategoryIndex: cIdx,
 		TaskIndex:     tIdx,
 	}, nil
 }
 
-// resolveCategory matches an exact ID, then a name, then an ID prefix. A name
-// that several categories share is refused rather than resolved to the first.
+// resolveCategory matches an exact ID, then a name at any level, then a path
+// "parent/name", then an ID prefix. A name or path that several categories
+// share is refused rather than resolved to the first.
 func resolveCategory(project domain.Project, selector string) (*domain.Category, int, error) {
 	trimmed := strings.TrimSpace(selector)
 	notFound := fmt.Errorf("category %q not found", selector)
@@ -173,6 +174,9 @@ func resolveCategory(project domain.Project, selector string) (*domain.Category,
 			named = append(named, i)
 		}
 	}
+	if len(named) == 0 {
+		named = pathMatches(project, trimmed)
+	}
 	switch len(named) {
 	case 0:
 	case 1:
@@ -180,9 +184,9 @@ func resolveCategory(project domain.Project, selector string) (*domain.Category,
 	default:
 		ids := make([]string, len(named))
 		for j, i := range named {
-			ids[j] = cats[i].ID
+			ids[j] = fmt.Sprintf("%s (%s)", cats[i].ID, cliPath(project, i))
 		}
-		return nil, -1, fmt.Errorf("%d categories are named %q; pass an ID instead: %s",
+		return nil, -1, fmt.Errorf("%d categories are named %q; pass a path or an ID instead: %s",
 			len(named), trimmed, strings.Join(ids, ", "))
 	}
 
@@ -195,4 +199,28 @@ func resolveCategory(project domain.Project, selector string) (*domain.Category,
 		}
 	}
 	return nil, -1, notFound
+}
+
+// pathMatches lists the sub-categories a path "parent/name" names, trying each
+// "/" in it as the split, since a name may hold one too.
+func pathMatches(project domain.Project, path string) []int {
+	var out []int
+	for _, split := range domain.SplitCategoryPath(path) {
+		parent, name := domain.NormalizeName(split[0]), domain.NormalizeName(split[1])
+		for i, c := range project.Categories {
+			p := domain.ParentIndex(project.Categories, i)
+			if p >= 0 && domain.NormalizeName(project.Categories[p].Name) == parent && domain.NormalizeName(c.Name) == name {
+				out = append(out, i)
+			}
+		}
+	}
+	return out
+}
+
+// cliPath is the path the CLI resolves back to the category at i.
+func cliPath(project domain.Project, i int) string {
+	if p := domain.ParentIndex(project.Categories, i); p >= 0 {
+		return project.Categories[p].Name + domain.CategoryPathSep + project.Categories[i].Name
+	}
+	return project.Categories[i].Name
 }

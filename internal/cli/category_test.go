@@ -80,7 +80,7 @@ func TestResolveCategory_RefusesAmbiguousName(t *testing.T) {
 	}}
 
 	_, _, err := resolveCategory(p, "v0.2.0")
-	if err == nil || !strings.Contains(err.Error(), "aaaa-1111, bbbb-2222") {
+	if err == nil || !strings.Contains(err.Error(), "aaaa-1111") || !strings.Contains(err.Error(), "bbbb-2222") {
 		t.Fatalf("ambiguous name: err = %v, want it to list both IDs", err)
 	}
 

@@ -55,6 +55,9 @@ Every TUI action has a CLI counterpart, useful for scripts and quick edits. All 
 ```bash
 phasionary tasks -s todo -C Feature                   # Filter tasks
 phasionary task add -C Feature "Build widget"         # Capture
+phasionary category add ui --parent v0.2.0            # Nest a sub-category
+phasionary task add --parent <id> "Pick a default"    # Nest a subtask
+phasionary tasks -C v0.2.0/ui                         # Address it by path
 phasionary task edit <id> --description "Details"     # Describe
 phasionary task status <id> in_progress               # Triage
 phasionary export -f json -o project.json             # Snapshot

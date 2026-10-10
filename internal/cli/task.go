@@ -36,11 +36,17 @@ func newTasksCmd() *cobra.Command {
 			}
 
 			return viewProject(projectSelector(nil), func(project domain.Project) error {
-				var tasks []TaskListItem
-				for _, cat := range project.Categories {
-					if category != "" && domain.NormalizeName(cat.Name) != domain.NormalizeName(category) {
-						continue
+				lo, hi := 0, len(project.Categories)
+				if category != "" {
+					_, idx, err := resolveCategory(project, category)
+					if err != nil {
+						return err
 					}
+					lo, hi = idx, domain.BlockEnd(project.Categories, idx)
+				}
+				var tasks []TaskListItem
+				for ci := lo; ci < hi; ci++ {
+					cat := project.Categories[ci]
 					for _, task := range cat.Tasks {
 						if task.IsSeparator() {
 							continue
@@ -53,10 +59,11 @@ func newTasksCmd() *cobra.Command {
 						}
 						tasks = append(tasks, TaskListItem{
 							ID:              task.ID,
+							ParentID:        task.ParentID,
 							Title:           task.Title,
 							Status:          task.Status,
 							Priority:        task.Priority,
-							Category:        cat.Name,
+							Category:        cliPath(project, ci),
 							EstimateMinutes: task.EstimateMinutes,
 							TagColor:        task.TagColor,
 						})
@@ -69,7 +76,7 @@ func newTasksCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&status, "status", "s", "", "filter by status (todo, in_progress, completed, cancelled)")
-	cmd.Flags().StringVarP(&category, "category", "C", "", "filter by category name")
+	cmd.Flags().StringVarP(&category, "category", "C", "", "filter by category, its sub-categories included: name, parent/name or ID")
 	cmd.Flags().StringVar(&priority, "priority", "", "filter by priority (critical, high, medium, low, trivial)")
 
 	_ = cmd.RegisterFlagCompletionFunc("status", completeStatuses)
@@ -113,7 +120,7 @@ func newTaskShowCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("task %q not found", args[0])
 				}
-				return writeTaskDetail(cmd.OutOrStdout(), *ref.Task, ref.CategoryName)
+				return writeTaskDetail(cmd.OutOrStdout(), project, ref.CategoryIndex, ref.TaskIndex)
 			})
 		},
 	}
@@ -123,6 +130,7 @@ func newTaskShowCmd() *cobra.Command {
 func newTaskAddCmd() *cobra.Command {
 	var (
 		categoryName string
+		parent       string
 		priority     string
 		estimate     string
 		description  string
@@ -132,9 +140,10 @@ func newTaskAddCmd() *cobra.Command {
 		Use:     "add <title>",
 		Aliases: []string{"ta"},
 		Short:   "Add a task",
+		Long:    "Add a task to a category, or with --parent a subtask of a top-level task.\n\n" + categoryIdentifierHelp,
 		Args:    exactArgs("title"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if strings.TrimSpace(categoryName) == "" {
+			if strings.TrimSpace(categoryName) == "" && strings.TrimSpace(parent) == "" {
 				return errors.New("--category is required")
 			}
 			if strings.TrimSpace(args[0]) == "" {
@@ -148,16 +157,20 @@ func newTaskAddCmd() *cobra.Command {
 
 			var created domain.Task
 			err = withProject(projectSelector(nil), func(_ *data.Store, project *domain.Project) error {
-				cat, _, err := resolveCategory(*project, categoryName)
+				catID, parentID, err := taskDestination(*project, categoryName, parent)
 				if err != nil {
 					return err
 				}
-				created, err = operations.CreateTask(project, cat.ID, operations.TaskFields{
+				created, err = operations.CreateTask(project, catID, operations.TaskFields{
 					Title:       args[0],
 					Priority:    priority,
 					Estimate:    minutes,
 					Description: description,
+					ParentID:    parentID,
 				})
+				if errors.Is(err, domain.ErrNestDepth) {
+					return fmt.Errorf("task %q is a subtask: nesting goes one level deep", parent)
+				}
 				return err
 			})
 			if err != nil {
@@ -168,15 +181,44 @@ func newTaskAddCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&categoryName, "category", "C", "", "category name (required)")
+	cmd.Flags().StringVarP(&categoryName, "category", "C", "", "category: name, parent/name or ID (required without --parent)")
+	cmd.Flags().StringVar(&parent, "parent", "", "add it as a subtask of this task: title or ID")
 	cmd.Flags().StringVar(&priority, "priority", "", "priority: critical|high|medium|low|trivial")
 	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "time estimate: 30, 2h, 1.5h, 2h30m")
 	cmd.Flags().StringVar(&description, "description", "", "description, may span several lines")
 
 	_ = cmd.RegisterFlagCompletionFunc("category", completeCategories)
+	_ = cmd.RegisterFlagCompletionFunc("parent", completeTasks)
 	_ = cmd.RegisterFlagCompletionFunc("priority", completePriorities)
 
 	return cmd
+}
+
+// taskDestination resolves where task add puts a task: the category -C names,
+// or the parent task's, which -C then has to agree with.
+func taskDestination(project domain.Project, categoryName, parent string) (catID, parentID string, err error) {
+	if parent == "" {
+		cat, _, err := resolveCategory(project, categoryName)
+		if err != nil {
+			return "", "", err
+		}
+		return cat.ID, "", nil
+	}
+	ref, err := resolveTask(project, parent)
+	if err != nil {
+		return "", "", fmt.Errorf("task %q not found", parent)
+	}
+	cat := project.Categories[ref.CategoryIndex]
+	if strings.TrimSpace(categoryName) != "" {
+		named, _, err := resolveCategory(project, categoryName)
+		if err != nil {
+			return "", "", err
+		}
+		if named.ID != cat.ID {
+			return "", "", fmt.Errorf("task %q is in category %q, not %q", ref.Task.Title, cliPath(project, ref.CategoryIndex), categoryName)
+		}
+	}
+	return cat.ID, ref.Task.ID, nil
 }
 
 func newTaskEditCmd() *cobra.Command {
@@ -265,8 +307,13 @@ func newTaskDeleteCmd() *cobra.Command {
 				return fmt.Errorf("task %q not found", args[0])
 			}
 
+			subtasks := domain.BlockEnd(project.Categories[ref.CategoryIndex].Tasks, ref.TaskIndex) - ref.TaskIndex - 1
 			if !force {
-				fmt.Fprintf(cmd.OutOrStdout(), "Delete task %q? [y/N]: ", ref.Task.Title)
+				what := fmt.Sprintf("task %q", ref.Task.Title)
+				if subtasks > 0 {
+					what += fmt.Sprintf(" and its %d subtask%s", subtasks, plural(subtasks, "", "s"))
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Delete %s? [y/N]: ", what)
 				var response string
 				if _, err := fmt.Fscanln(cmd.InOrStdin(), &response); err != nil {
 					return nil
@@ -285,7 +332,12 @@ func newTaskDeleteCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("task %q not found", args[0])
 				}
-				return p.Categories[r.CategoryIndex].RemoveTask(r.TaskIndex)
+				cat := &p.Categories[r.CategoryIndex]
+				if !force && domain.BlockEnd(cat.Tasks, r.TaskIndex)-r.TaskIndex-1 > subtasks {
+					return fmt.Errorf("task %q gained subtasks since the prompt; re-run with -f to confirm", r.Task.Title)
+				}
+				cat.RemoveTaskBlock(r.TaskIndex)
+				return nil
 			})
 			if err != nil {
 				return err
