@@ -38,7 +38,7 @@ func benchProject(cats, tasksPer int) domain.Project {
 }
 
 func benchModel(p domain.Project, expandDesc bool) *model {
-	positions := rebuildPositions(p.Categories, nil, nil, expandDesc)
+	positions := rebuildPositions(p.Categories, nil, nil, expandDesc, "")
 	sel := selection.NewManager(positions, 0)
 	mode := modes.NewMachine(modes.ModeNormal)
 	ui := NewUIState(sel, mode)

@@ -233,8 +233,8 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 			totalHeight += taskHeight
 			posIndex++
 
-			if b.expandDescriptions && task.Description != "" {
-				descHeight := components.DescriptionHeight(task.Description, b.width, taskTitleColumn(task, b.statusDisplay), b.limits.descriptionRows(catIdx, taskIdx))
+			if (b.expandDescriptions || b.limits.expands(task.ID)) && task.Description != "" {
+				descHeight := components.DescriptionHeight(task.Description, b.width, taskTitleColumn(task, b.statusDisplay), b.limits.descriptionRows(catIdx, taskIdx, task.ID))
 				items = append(items, LayoutItem{
 					Kind:          LayoutDescription,
 					Height:        descHeight,
@@ -258,6 +258,7 @@ func (b *LayoutBuilder) countTaskLines(task domain.Task) int {
 	return components.NewTaskLineRenderer(b.width, b.statusDisplay, "", false).
 		WithDescriptionExpanded(b.expandDescriptions).
 		WithCut(b.taskCut != nil && b.taskCut(task.ID)).
+		WithRowLimits(b.limits.titleRows(task.ID), components.DescriptionPreviewLines).
 		TitleRows(task)
 }
 

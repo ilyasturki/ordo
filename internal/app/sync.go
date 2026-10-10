@@ -128,7 +128,9 @@ func taskRowVisible(filter *FilterState, task domain.Task, categoryID string) bo
 	return filter == nil || filter.TaskVisible(task, categoryID)
 }
 
-func rebuildPositions(categories []domain.Category, filter *FilterState, fold *FoldState, expandDescriptions bool) []selection.Position {
+// expandedTaskID names a task whose description row shows even while
+// descriptions are hidden.
+func rebuildPositions(categories []domain.Category, filter *FilterState, fold *FoldState, expandDescriptions bool, expandedTaskID string) []selection.Position {
 	positions := make([]selection.Position, 0)
 	positions = append(positions, selection.Position{
 		Kind:          selection.FocusProject,
@@ -161,7 +163,7 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 				CategoryIndex: cIndex,
 				TaskIndex:     tIndex,
 			})
-			if expandDescriptions && task.Description != "" {
+			if (expandDescriptions || task.ID == expandedTaskID) && task.Description != "" {
 				positions = append(positions, selection.Position{
 					Kind:          selection.FocusDescription,
 					CategoryIndex: cIndex,
@@ -174,7 +176,7 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 }
 
 func (m *model) rebuildPositions() {
-	positions := rebuildPositions(m.project.Categories, &m.ui.Filter, &m.ui.Fold, m.ui.Screen.ExpandDescriptions)
+	positions := rebuildPositions(m.project.Categories, &m.ui.Filter, &m.ui.Fold, m.ui.Screen.ExpandDescriptions, m.ui.Screen.ExpandedTaskID)
 	m.ui.Selection.SetPositions(positions)
 	// Structure changed (filter, fold, add/delete, reload, undo/redo): the
 	// memoized layout is stale.

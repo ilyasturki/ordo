@@ -185,7 +185,8 @@ func (m model) renderTaskLine(task domain.Task, selected bool, width int, focuse
 		WithVisualMode(visualMode).
 		WithCursor(isCursor).
 		WithCut(cut).
-		WithDescriptionExpanded(m.ui.Screen.ExpandDescriptions)
+		WithDescriptionExpanded(m.ui.Screen.ExpandDescriptions).
+		WithRowLimits(m.rowLimits().titleRows(task.ID), components.DescriptionPreviewLines)
 	if q := m.searchQuery(); q != "" {
 		renderer = renderer.WithSearch(q, m.searchMatchStyle(isCursor))
 	}

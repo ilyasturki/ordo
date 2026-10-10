@@ -176,7 +176,7 @@ func (m *model) restoreFolds(foldedIDs []string) {
 // disabled, dropping the leading project row (never a search target) so the
 // search row model stays in lockstep with the main list.
 func (m model) searchRows() []selection.Position {
-	positions := rebuildPositions(m.project.Categories, &m.ui.Filter, nil, m.ui.Screen.ExpandDescriptions)
+	positions := rebuildPositions(m.project.Categories, &m.ui.Filter, nil, m.ui.Screen.ExpandDescriptions, "")
 	return positions[1:] // positions[0] is always the FocusProject row
 }
 

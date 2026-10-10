@@ -21,6 +21,18 @@ Show
 
 Sleep 400ms
 Screenshot "/tmp/phas-vt/vhs-out/32_long_title_clamped.png"
+Sleep 400ms
+
+# The cursor on it changes nothing: a focused title keeps the clamp, so moving
+# past it never shifts the rows below (ze expands it: 42_expand_row).
+Type "/w001"
+Sleep 400ms
+Enter
+Sleep 400ms
+Escape
+Sleep 600ms
+Screenshot "/tmp/phas-vt/vhs-out/32_long_title_focused_clamped.png"
+Sleep 400ms
 
 # A match past the clamp still shows: the window opens on it.
 Type "/w120"

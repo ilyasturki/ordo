@@ -102,6 +102,7 @@ func (m model) listenSaveErrors() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
 	if updated, ok := next.(model); ok {
+		updated.collapseLeftRow()
 		updated.trackCursor()
 		return updated, cmd
 	}
@@ -759,7 +760,7 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 	case LayoutDescription:
 		task := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
 		cut := m.isTaskCut(task.ID)
-		rows := m.rowLimits().descriptionRows(item.CategoryIndex, item.TaskIndex)
+		rows := m.rowLimits().descriptionRows(item.CategoryIndex, item.TaskIndex, task.ID)
 		return m.renderTaskDescription(task, rows, isSelected, m.ui.Screen.Width, focused, visualMode, isCursor, cut)
 
 	case LayoutEmptyCategory:
@@ -898,7 +899,7 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 
 	foldState := NewFoldStateFrom(stateManager.GetFoldedCategories(project.ID))
 	expandDescriptions := cfgManager.Get().ExpandDescriptionsByDefault
-	positions := rebuildPositions(project.Categories, nil, &foldState, expandDescriptions)
+	positions := rebuildPositions(project.Categories, nil, &foldState, expandDescriptions, "")
 	initialSelection := findFirstTaskIndex(positions)
 	selMgr := selection.NewManager(positions, initialSelection)
 	modeMachine := modes.NewMachine(startMode)

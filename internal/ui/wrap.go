@@ -10,9 +10,8 @@ import (
 // MaxLineRows caps how many wrapped rows a single-line field — a task title, a
 // category name — may occupy in the list.
 //
-// Titles carry no length limit, so the bound has to live here instead. The
-// viewport scrolls by layout item, not by row (see Viewport.ComputeVisibility),
-// so a row taller than the screen has a tail no scroll offset can reach.
+// Titles carry no length limit, so the bound has to live here instead: it holds
+// even on the focused row, so j/k past a long title never shifts the rows below.
 const MaxLineRows = 3
 
 // Ellipsis marks text elided at either end of a clamped or scrolled window,

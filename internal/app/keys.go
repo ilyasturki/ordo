@@ -36,9 +36,9 @@ func void(fn func(*model)) bindingAction {
 
 var normalBindings = []keyBinding{
 	{keys: []string{"up", "k"}, display: "j / k", desc: "move up / down", section: sectionNavigation,
-		action: func(m *model) tea.Cmd { m.moveSelection(-1); return nil }},
+		action: func(m *model) tea.Cmd { m.stepCursor(-1); return nil }},
 	{keys: []string{"down", "j"}, section: sectionNavigation,
-		action: func(m *model) tea.Cmd { m.moveSelection(1); return nil }},
+		action: func(m *model) tea.Cmd { m.stepCursor(1); return nil }},
 	{keys: []string{"ctrl+d"}, display: "ctrl+d / ctrl+u", desc: "half page down / up", section: sectionNavigation,
 		action: func(m *model) tea.Cmd { m.moveSelectionByPage(0.5); return nil }},
 	{keys: []string{"ctrl+u"}, section: sectionNavigation,
@@ -71,6 +71,8 @@ var normalBindings = []keyBinding{
 		action: void((*model).bottomOnSelected)},
 	{keys: []string{"d"}, prefix: 'z', display: "zd", desc: "show / hide descriptions", section: sectionNavigation,
 		action: void((*model).toggleExpandDescriptions)},
+	{keys: []string{"e"}, prefix: 'z', display: "ze", desc: "expand row in full", section: sectionNavigation,
+		action: void((*model).toggleExpandRow)},
 	{keys: []string{"/"}, desc: "search", section: sectionNavigation,
 		action: func(m *model) tea.Cmd { return m.startSearch() }},
 	{keys: []string{"n"}, display: "n / N", desc: "next / previous match", section: sectionNavigation,

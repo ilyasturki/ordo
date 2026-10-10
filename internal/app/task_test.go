@@ -422,7 +422,7 @@ func TestRebuildPositions_ExpandedDescriptions_AddsRowOnlyForNonEmptyDesc(t *tes
 	p := sampleProject()
 	p.Categories[0].Tasks[0].Description = "Some details"
 
-	positions := rebuildPositions(p.Categories, nil, nil, true)
+	positions := rebuildPositions(p.Categories, nil, nil, true, "")
 
 	descCount := 0
 	for _, pos := range positions {

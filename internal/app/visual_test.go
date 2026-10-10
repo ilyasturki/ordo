@@ -19,7 +19,7 @@ func (s *stubConfigReader) Update(fn func(*config.Config)) error { fn(&s.cfg); r
 
 func newTestModel(t *testing.T, project domain.Project) *model {
 	t.Helper()
-	positions := rebuildPositions(project.Categories, nil, nil, false)
+	positions := rebuildPositions(project.Categories, nil, nil, false, "")
 	sel := selection.NewManager(positions, 0)
 	mode := modes.NewMachine(modes.ModeNormal)
 	ui := NewUIState(sel, mode)
