@@ -166,9 +166,10 @@ func resolveCategory(project domain.Project, selector string) (*domain.Category,
 		}
 	}
 
+	needle := domain.NormalizeName(trimmed)
 	var named []int
 	for i := range cats {
-		if domain.NormalizeName(cats[i].Name) == domain.NormalizeName(trimmed) {
+		if domain.NormalizeName(cats[i].Name) == needle {
 			named = append(named, i)
 		}
 	}
