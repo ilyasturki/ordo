@@ -146,7 +146,7 @@ func (m model) tagEditView() string {
 			swatch = ui.MutedStyle.Render("○ None (remove)")
 		} else {
 			style, _ := ui.TagDotStyle(color, false)
-			swatch = style.Render(ui.TagDot) + " " + tagColorName(color)
+			swatch = style.Render(ui.TagGlyph(color)) + " " + tagColorName(color)
 		}
 		lines = append(lines, marker+swatch)
 	}
@@ -330,19 +330,25 @@ func tagColorIndex(color string) int {
 	return 0
 }
 
-// tagColorName is the human-facing name of a tag color, used in the info,
-// filter, and tag-editor views.
+// tagColorName is the human-facing name of a tag mark, used in the info,
+// filter, and tag-picker views.
 func tagColorName(color string) string {
-	switch color {
+	hue, diamond := strings.CutSuffix(color, "-diamond")
+	var name string
+	switch hue {
 	case domain.TagGreen:
-		return "Green"
+		name = "Green"
 	case domain.TagBlue:
-		return "Blue"
+		name = "Blue"
 	case domain.TagMagenta:
-		return "Magenta"
+		name = "Magenta"
 	case domain.TagCyan:
-		return "Cyan"
+		name = "Cyan"
 	default:
 		return color
 	}
+	if diamond {
+		name += " diamond"
+	}
+	return name
 }

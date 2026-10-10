@@ -225,7 +225,7 @@ func formatTagInfo(task domain.Task) string {
 	if !ok {
 		return "None"
 	}
-	return style.Render(ui.TagDot) + " " + tagColorName(task.TagColor)
+	return style.Render(ui.TagGlyph(task.TagColor)) + " " + tagColorName(task.TagColor)
 }
 
 func formatPriorityLabel(priority string) string {

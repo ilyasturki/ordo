@@ -27,21 +27,26 @@ const (
 	// are unused. An absent/empty Kind is an ordinary task.
 	KindSeparator = "separator"
 
-	// Tag colors are stored as stable name strings (not ANSI numbers) so the
-	// on-disk value stays legible and survives any palette change. The renderer
-	// maps each name to a basic ANSI color that tracks the terminal theme. The
-	// four were picked to dodge the strongest existing collisions (red =
-	// high-priority/cancelled, yellow = todo/search/visual).
-	TagGreen   = "green"
-	TagBlue    = "blue"
-	TagMagenta = "magenta"
-	TagCyan    = "cyan"
+	// Tag marks are stored as stable names, not ANSI numbers. Each is a hue the
+	// terminal theme tracks (red and yellow already mean priority, status and
+	// search) times a glyph: the plain name is a dot, the -diamond name a diamond.
+	TagGreen          = "green"
+	TagBlue           = "blue"
+	TagMagenta        = "magenta"
+	TagCyan           = "cyan"
+	TagGreenDiamond   = "green-diamond"
+	TagBlueDiamond    = "blue-diamond"
+	TagMagentaDiamond = "magenta-diamond"
+	TagCyanDiamond    = "cyan-diamond"
 )
 
-// TagColorCycle is the canonical palette order `t` steps through and the single
-// source of truth the other tag-color lists derive from: NextTagColor walks it,
-// and the editor/filter build their rows by adding the "no tag" sentinel.
-var TagColorCycle = []string{TagGreen, TagBlue, TagMagenta, TagCyan}
+// TagColorCycle is the canonical mark order `t` steps through and the single
+// source of truth the other tag lists derive from: NextTagColor walks it, and
+// the picker and filter build their rows by adding the "no tag" sentinel.
+var TagColorCycle = []string{
+	TagGreen, TagBlue, TagMagenta, TagCyan,
+	TagGreenDiamond, TagBlueDiamond, TagMagentaDiamond, TagCyanDiamond,
+}
 
 // PriorityOrder lists the priority levels highest-first and is the single source
 // of truth the priority lists derive from: ValidatePriority checks membership
@@ -400,12 +405,10 @@ func (t *Task) CyclePriority() bool {
 }
 
 func ValidateTagColor(color string) error {
-	switch color {
-	case "", TagGreen, TagBlue, TagMagenta, TagCyan:
+	if color == "" || slices.Contains(TagColorCycle, color) {
 		return nil
-	default:
-		return errors.New("invalid tag color")
 	}
+	return errors.New("invalid tag color")
 }
 
 // NextTagColor returns the color that follows color in TagColorCycle, wrapping
@@ -423,7 +426,7 @@ func NextTagColor(color string) string {
 	return "" // last color, or any unrecognized value, wraps to no tag
 }
 
-// CycleTag advances the tag one step through the palette (…→cyan→none→green→…).
+// CycleTag advances the tag one step through the palette, wrapping through none.
 // Always reports a change.
 func (t *Task) CycleTag() bool {
 	t.TagColor = NextTagColor(t.TagColor)

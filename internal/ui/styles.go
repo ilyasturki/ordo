@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image/color"
+	"strings"
 
 	"charm.land/lipgloss/v2"
 )
@@ -131,11 +132,11 @@ func priorityColor(priority string) (color.Color, bool) {
 	}
 }
 
-// tagColor maps a stored tag color name to a basic ANSI color. Like the
-// priority palette these are 0–6 so the terminal keeps them legible on both
-// light and dark themes (ANSI 16–255 and hex do not track the theme).
+// tagColor maps a stored tag mark name to its hue. Like the priority palette
+// these are ANSI 0–6 so the terminal keeps them legible on both light and dark
+// themes (ANSI 16–255 and hex do not track the theme).
 func tagColor(name string) (color.Color, bool) {
-	switch name {
+	switch strings.TrimSuffix(name, tagDiamondSuffix) {
 	case "green":
 		return lipgloss.Color("2"), true
 	case "blue":
@@ -149,8 +150,16 @@ func tagColor(name string) (color.Color, bool) {
 	}
 }
 
-// TagDot is the glyph drawn before a tagged task's title.
-const TagDot = "●"
+const tagDiamondSuffix = "-diamond"
+
+// TagGlyph is the glyph drawn for a tag mark, a dot or a diamond. Both are one
+// cell wide with East Asian ambiguous width, so they align the same way.
+func TagGlyph(name string) string {
+	if strings.HasSuffix(name, tagDiamondSuffix) {
+		return "◆"
+	}
+	return "●"
+}
 
 // TagDotVisible reports whether name is a renderable tag color — i.e. whether a
 // dot should be drawn (and its column reserved) at all.
@@ -192,7 +201,7 @@ func TagSegmentText(name string) string {
 	if !TagDotVisible(name) {
 		return ""
 	}
-	return TagDot + " "
+	return TagGlyph(name) + " "
 }
 
 // PriorityStyle returns the text style for a task title with the given

@@ -470,7 +470,8 @@ func TestTask_CyclePriority(t *testing.T) {
 func TestTask_CycleTag(t *testing.T) {
 	t.Run("walks the palette then back to none", func(t *testing.T) {
 		task := Task{}
-		want := []string{TagGreen, TagBlue, TagMagenta, TagCyan, ""}
+		want := []string{TagGreen, TagBlue, TagMagenta, TagCyan,
+			TagGreenDiamond, TagBlueDiamond, TagMagentaDiamond, TagCyanDiamond, ""}
 		for _, expected := range want {
 			task.CycleTag()
 			assert.Equal(t, expected, task.TagColor)
@@ -489,15 +490,17 @@ func TestNextTagColor(t *testing.T) {
 	assert.Equal(t, TagBlue, NextTagColor(TagGreen))
 	assert.Equal(t, TagMagenta, NextTagColor(TagBlue))
 	assert.Equal(t, TagCyan, NextTagColor(TagMagenta))
-	assert.Equal(t, "", NextTagColor(TagCyan))
+	assert.Equal(t, TagGreenDiamond, NextTagColor(TagCyan))
+	assert.Equal(t, "", NextTagColor(TagCyanDiamond))
 	assert.Equal(t, "", NextTagColor("bogus"))
 }
 
 func TestValidateTagColor(t *testing.T) {
-	for _, c := range []string{"", TagGreen, TagBlue, TagMagenta, TagCyan} {
+	for _, c := range append([]string{""}, TagColorCycle...) {
 		assert.NoError(t, ValidateTagColor(c))
 	}
 	assert.Error(t, ValidateTagColor("red"))
+	assert.Error(t, ValidateTagColor("red-diamond"))
 	assert.Error(t, ValidateTagColor("2"))
 }
 
