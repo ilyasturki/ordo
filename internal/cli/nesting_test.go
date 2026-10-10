@@ -192,6 +192,37 @@ func TestDeletePromptNamesChildren(t *testing.T) {
 	}
 }
 
+func TestDeleteAsksForACategoryOfSeparators(t *testing.T) {
+	dir := t.TempDir()
+	sep, err := domain.NewSeparator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sep.Title = "later"
+	project := domain.Project{ID: "seps-1", Name: "Seps", Categories: []domain.Category{
+		{ID: "cat-a", Name: "A", Tasks: []domain.Task{sep}},
+	}}
+	if _, err := data.NewStore(filepath.Join(dir, "projects")).ImportProject(project); err != nil {
+		t.Fatal(err)
+	}
+	cmd := newRootCmd()
+	var buf strings.Builder
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetIn(strings.NewReader("n\n"))
+	cmd.SetArgs([]string{"--data", dir, "category", "delete", "A", "--project", "Seps"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "0 tasks and 1 separator") {
+		t.Fatalf("prompt = %q", buf.String())
+	}
+	p, err := data.NewStore(filepath.Join(dir, "projects")).LoadProject("Seps")
+	if err != nil || len(p.Categories) != 1 {
+		t.Fatalf("categories = %v, err = %v; want A kept", p.Categories, err)
+	}
+}
+
 func TestResolveCategoryPaths(t *testing.T) {
 	p := domain.Project{Categories: []domain.Category{
 		{ID: "v2-id", Name: "v0.2.0"},

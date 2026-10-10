@@ -152,8 +152,12 @@ func newCategoryEditCmd() *cobra.Command {
 	return cmd
 }
 
-func categoryLoad(project domain.Project, i int) (tasks, subs int) {
-	return project.TreeTaskCount(i), domain.ChildCount(project.Categories, i)
+func categoryLoad(project domain.Project, i int) (rows, tasks, subs int) {
+	block := project.Categories[i:domain.BlockEnd(project.Categories, i)]
+	for _, c := range block {
+		rows += len(c.Tasks)
+	}
+	return rows, project.TreeTaskCount(i), len(block) - 1
 }
 
 func plural(n int, singular, plural string) string {
@@ -184,11 +188,19 @@ func newCategoryDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			tasks, subs := categoryLoad(project, idx)
-			if (tasks > 0 || subs > 0) && !force {
-				what := fmt.Sprintf("%d tasks", tasks)
+			rows, tasks, subs := categoryLoad(project, idx)
+			if (rows > 0 || subs > 0) && !force {
+				var parts []string
 				if subs > 0 {
-					what = fmt.Sprintf("%d sub-categor%s and %d tasks", subs, plural(subs, "y", "ies"), tasks)
+					parts = append(parts, fmt.Sprintf("%d sub-categor%s", subs, plural(subs, "y", "ies")))
+				}
+				parts = append(parts, fmt.Sprintf("%d tasks", tasks))
+				if seps := rows - tasks; seps > 0 {
+					parts = append(parts, fmt.Sprintf("%d separator%s", seps, plural(seps, "", "s")))
+				}
+				what := parts[len(parts)-1]
+				if len(parts) > 1 {
+					what = strings.Join(parts[:len(parts)-1], ", ") + " and " + what
 				}
 				fmt.Fprintf(cmd.OutOrStdout(), "Category %q has %s. Delete anyway? [y/N]: ", cat.Name, what)
 				var response string
@@ -211,8 +223,8 @@ func newCategoryDeleteCmd() *cobra.Command {
 				if rerr != nil {
 					return rerr
 				}
-				lockedTasks, lockedSubs := categoryLoad(*p, idx)
-				if !force && (lockedTasks > tasks || lockedSubs > subs) {
+				lockedRows, _, lockedSubs := categoryLoad(*p, idx)
+				if !force && (lockedRows > rows || lockedSubs > subs) {
 					return fmt.Errorf("category %q gained tasks or sub-categories since the prompt; re-run with -f to confirm", lockedCat.Name)
 				}
 				deletedName = lockedCat.Name
