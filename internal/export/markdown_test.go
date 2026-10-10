@@ -462,6 +462,21 @@ func TestMarkerToStatus(t *testing.T) {
 	}
 }
 
+func TestImportMarkdown_MergesRepeatedHeadings(t *testing.T) {
+	md := "# P\n\n## v0.2.0\n\n- [ ] one\n\n## next\n\n- [ ] two\n\n## V0.2.0 \n\n### later\n- [x] three\n"
+	imported, err := ImportMarkdown(strings.NewReader(md), "")
+	require.NoError(t, err)
+
+	require.Len(t, imported.Categories, 2)
+	first := imported.Categories[0]
+	assert.Equal(t, "v0.2.0", first.Name)
+	require.Len(t, first.Tasks, 3)
+	assert.Equal(t, "one", first.Tasks[0].Title)
+	assert.True(t, first.Tasks[1].IsSeparator())
+	assert.Equal(t, "three", first.Tasks[2].Title)
+	assert.Equal(t, "next", imported.Categories[1].Name)
+}
+
 func TestExportMarkdown_TagLeavesTitleAlone(t *testing.T) {
 	project := domain.Project{
 		Name: "Tagged",

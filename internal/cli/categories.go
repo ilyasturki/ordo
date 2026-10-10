@@ -3,11 +3,13 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"phasionary/internal/data"
 	"phasionary/internal/domain"
+	"phasionary/internal/operations"
 )
 
 func newCategoriesCmd() *cobra.Command {
@@ -53,7 +55,7 @@ func newCategoryShowCmd() *cobra.Command {
 			return viewProject(projectSelector(nil), func(project domain.Project) error {
 				cat, _, err := resolveCategory(project, args[0])
 				if err != nil {
-					return fmt.Errorf("category %q not found", args[0])
+					return err
 				}
 				return writeCategoryDetail(cmd.OutOrStdout(), *cat)
 			})
@@ -70,12 +72,12 @@ func newCategoryAddCmd() *cobra.Command {
 		Args:    exactArgs("name"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			var created *domain.Category
+			var created domain.Category
 			err := withProject(projectSelector(nil), func(_ *data.Store, project *domain.Project) error {
-				cat, err := project.AddCategoryNamed(name)
+				cat, err := operations.CreateCategory(project, name)
 				if err != nil {
 					if errors.Is(err, domain.ErrDuplicateCategoryName) {
-						return fmt.Errorf("category %q already exists", name)
+						return fmt.Errorf("category %q already exists", strings.TrimSpace(name))
 					}
 					return err
 				}
@@ -107,23 +109,22 @@ func newCategoryEditCmd() *cobra.Command {
 				return fmt.Errorf("--name is required")
 			}
 
+			var renamed domain.Category
 			err := withProject(projectSelector(nil), func(_ *data.Store, project *domain.Project) error {
-				_, catIdx, err := resolveCategory(*project, args[0])
+				cat, _, err := resolveCategory(*project, args[0])
 				if err != nil {
-					return fmt.Errorf("category %q not found", args[0])
-				}
-				if err := project.RenameCategory(catIdx, name); err != nil {
-					if errors.Is(err, domain.ErrDuplicateCategoryName) {
-						return fmt.Errorf("category %q already exists", name)
-					}
 					return err
 				}
-				return nil
+				renamed, err = operations.RenameCategory(project, cat.ID, name)
+				if errors.Is(err, domain.ErrDuplicateCategoryName) {
+					return fmt.Errorf("category %q already exists", strings.TrimSpace(name))
+				}
+				return err
 			})
 			if err != nil {
 				return err
 			}
-			writeSuccess(cmd.OutOrStdout(), fmt.Sprintf("Renamed category to: %s", name))
+			writeSuccess(cmd.OutOrStdout(), fmt.Sprintf("Renamed category to: %s", renamed.Name))
 			return nil
 		},
 	}
@@ -151,7 +152,7 @@ func newCategoryDeleteCmd() *cobra.Command {
 
 			cat, _, err := resolveCategory(project, args[0])
 			if err != nil {
-				return fmt.Errorf("category %q not found", args[0])
+				return err
 			}
 
 			if len(cat.Tasks) > 0 && !force {
@@ -174,7 +175,7 @@ func newCategoryDeleteCmd() *cobra.Command {
 			_, err = store.WithProjectLocked(project.ID, func(p *domain.Project) error {
 				lockedCat, idx, rerr := resolveCategory(*p, args[0])
 				if rerr != nil {
-					return fmt.Errorf("category %q not found", args[0])
+					return rerr
 				}
 				if !force && len(lockedCat.Tasks) > len(cat.Tasks) {
 					return fmt.Errorf("category %q gained %d task(s) since the prompt; re-run with -f to confirm", lockedCat.Name, len(lockedCat.Tasks)-len(cat.Tasks))

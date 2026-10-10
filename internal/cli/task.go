@@ -150,7 +150,7 @@ func newTaskAddCmd() *cobra.Command {
 			err = withProject(projectSelector(nil), func(_ *data.Store, project *domain.Project) error {
 				cat, _, err := resolveCategory(*project, categoryName)
 				if err != nil {
-					return fmt.Errorf("category %q not found", categoryName)
+					return err
 				}
 				created, err = operations.CreateTask(project, cat.ID, operations.TaskFields{
 					Title:       args[0],
@@ -414,7 +414,7 @@ func newTaskMoveCmd() *cobra.Command {
 				}
 				_, dstCatIdx, err := resolveCategory(*project, targetCategory)
 				if err != nil {
-					return fmt.Errorf("category %q not found", targetCategory)
+					return err
 				}
 				if ref.CategoryIndex == dstCatIdx {
 					return fmt.Errorf("task is already in category %q", targetCategory)

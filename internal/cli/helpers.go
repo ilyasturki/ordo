@@ -151,30 +151,47 @@ func resolveTask(project domain.Project, selector string) (TaskRef, error) {
 	}, nil
 }
 
+// resolveCategory matches an exact ID, then a name, then an ID prefix. A name
+// that several categories share is refused rather than resolved to the first.
 func resolveCategory(project domain.Project, selector string) (*domain.Category, int, error) {
-	selector = strings.TrimSpace(selector)
-	if selector == "" {
-		return nil, -1, ErrNotFound
+	trimmed := strings.TrimSpace(selector)
+	notFound := fmt.Errorf("category %q not found", selector)
+	if trimmed == "" {
+		return nil, -1, notFound
 	}
-
-	needle := domain.NormalizeName(selector)
-	minPrefixLen := 4
-
-	for cIdx := range project.Categories {
-		cat := &project.Categories[cIdx]
-
-		if cat.ID == selector {
-			return cat, cIdx, nil
-		}
-
-		if len(selector) >= minPrefixLen && strings.HasPrefix(strings.ToLower(cat.ID), strings.ToLower(selector)) {
-			return cat, cIdx, nil
-		}
-
-		if domain.NormalizeName(cat.Name) == needle {
-			return cat, cIdx, nil
+	cats := project.Categories
+	for i := range cats {
+		if cats[i].ID == trimmed {
+			return &cats[i], i, nil
 		}
 	}
 
-	return nil, -1, ErrNotFound
+	var named []int
+	for i := range cats {
+		if domain.NormalizeName(cats[i].Name) == domain.NormalizeName(trimmed) {
+			named = append(named, i)
+		}
+	}
+	switch len(named) {
+	case 0:
+	case 1:
+		return &cats[named[0]], named[0], nil
+	default:
+		ids := make([]string, len(named))
+		for j, i := range named {
+			ids[j] = cats[i].ID
+		}
+		return nil, -1, fmt.Errorf("%d categories are named %q; pass an ID instead: %s",
+			len(named), trimmed, strings.Join(ids, ", "))
+	}
+
+	const minPrefixLen = 4
+	if len(trimmed) >= minPrefixLen {
+		for i := range cats {
+			if strings.HasPrefix(strings.ToLower(cats[i].ID), strings.ToLower(trimmed)) {
+				return &cats[i], i, nil
+			}
+		}
+	}
+	return nil, -1, notFound
 }

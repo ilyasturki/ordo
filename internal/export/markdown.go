@@ -210,9 +210,17 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 	}
 
 	for _, cd := range categories {
-		cat, err := domain.NewCategory(cd.name)
-		if err != nil {
-			return domain.Project{}, err
+		// A repeated heading continues the category it names.
+		var cat *domain.Category
+		if i := domain.CategoryNameConflict(project.Categories, cd.name, -1); i >= 0 {
+			cat = &project.Categories[i]
+		} else {
+			fresh, err := domain.NewCategory(cd.name)
+			if err != nil {
+				return domain.Project{}, err
+			}
+			project.Categories = append(project.Categories, fresh)
+			cat = &project.Categories[len(project.Categories)-1]
 		}
 		for _, td := range cd.tasks {
 			if td.kind == domain.KindSeparator {
@@ -239,7 +247,6 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 			task.Description = td.description
 			cat.Tasks = append(cat.Tasks, task)
 		}
-		project.Categories = append(project.Categories, cat)
 	}
 
 	return project, nil

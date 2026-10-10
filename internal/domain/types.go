@@ -618,15 +618,59 @@ func (p *Project) RemoveCategory(index int) error {
 	return nil
 }
 
+// CategoryNameConflict is the one category uniqueness rule: it returns the index
+// of the category in cats, other than except, whose name matches name trimmed
+// and case-insensitively, or -1. Pass except -1 to check a new name.
+func CategoryNameConflict(cats []Category, name string, except int) int {
+	normalized := NormalizeName(name)
+	for i, cat := range cats {
+		if i != except && NormalizeName(cat.Name) == normalized {
+			return i
+		}
+	}
+	return -1
+}
+
+// UniqueCategoryName returns name, or name with the first free " (n)" suffix
+// from 2 up when a category in cats already carries it.
+func UniqueCategoryName(cats []Category, name string) string {
+	candidate := name
+	for n := 2; CategoryNameConflict(cats, candidate, -1) >= 0; n++ {
+		candidate = fmt.Sprintf("%s (%d)", name, n)
+	}
+	return candidate
+}
+
+// MergeCategory moves the category at src into the one at dst and removes src.
+// Its tasks land at the end of dst under a separator labelled with src's name;
+// an empty src just goes.
+func (p *Project) MergeCategory(src, dst int) error {
+	if src < 0 || src >= len(p.Categories) || dst < 0 || dst >= len(p.Categories) {
+		return errors.New("category index out of range")
+	}
+	if src == dst {
+		return errors.New("cannot merge a category into itself")
+	}
+	from := p.Categories[src]
+	if len(from.Tasks) > 0 {
+		sep, err := NewSeparator()
+		if err != nil {
+			return err
+		}
+		sep.Title = strings.TrimSpace(from.Name)
+		to := &p.Categories[dst]
+		to.Tasks = append(append(to.Tasks, sep), from.Tasks...)
+		to.UpdatedAt = NowTimestamp()
+	}
+	return p.RemoveCategory(src)
+}
+
 func (p *Project) RenameCategory(index int, name string) error {
 	if index < 0 || index >= len(p.Categories) {
 		return errors.New("category index out of range")
 	}
-	normalized := NormalizeName(name)
-	for i, cat := range p.Categories {
-		if i != index && NormalizeName(cat.Name) == normalized {
-			return ErrDuplicateCategoryName
-		}
+	if CategoryNameConflict(p.Categories, name, index) >= 0 {
+		return ErrDuplicateCategoryName
 	}
 	p.Categories[index].Name = name
 	now := NowTimestamp()
@@ -636,11 +680,8 @@ func (p *Project) RenameCategory(index int, name string) error {
 }
 
 func (p *Project) AddCategoryNamed(name string) (*Category, error) {
-	normalized := NormalizeName(name)
-	for _, cat := range p.Categories {
-		if NormalizeName(cat.Name) == normalized {
-			return nil, ErrDuplicateCategoryName
-		}
+	if CategoryNameConflict(p.Categories, name, -1) >= 0 {
+		return nil, ErrDuplicateCategoryName
 	}
 	cat, err := NewCategory(name)
 	if err != nil {
