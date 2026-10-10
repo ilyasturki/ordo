@@ -88,6 +88,13 @@ func newConfigSetCmd() *cobra.Command {
 				err = cfgManager.Update(func(c *config.Config) {
 					c.StatusDisplay = value
 				})
+			case "copy_via":
+				if value != config.CopyViaOSC52 && value != config.CopyViaWlCopy {
+					return fmt.Errorf("invalid value for copy_via: %s (use osc52 or wl-copy)", value)
+				}
+				err = cfgManager.Update(func(c *config.Config) {
+					c.CopyVia = value
+				})
 			default:
 				return fmt.Errorf("unknown config key: %s", key)
 			}
