@@ -126,6 +126,7 @@ func newTaskAddCmd() *cobra.Command {
 		categoryName string
 		priority     string
 		estimate     string
+		description  string
 	)
 
 	cmd := &cobra.Command{
@@ -153,9 +154,10 @@ func newTaskAddCmd() *cobra.Command {
 					return fmt.Errorf("category %q not found", categoryName)
 				}
 				created, err = operations.CreateTask(project, cat.ID, operations.TaskFields{
-					Title:    args[0],
-					Priority: priority,
-					Estimate: minutes,
+					Title:       args[0],
+					Priority:    priority,
+					Estimate:    minutes,
+					Description: description,
 				})
 				return err
 			})
@@ -170,6 +172,7 @@ func newTaskAddCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&categoryName, "category", "C", "", "category name (required)")
 	cmd.Flags().StringVar(&priority, "priority", "", "priority: critical|high|medium|low|trivial")
 	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "time estimate: 30, 2h, 1.5h, 2h30m")
+	cmd.Flags().StringVar(&description, "description", "", "description, may span several lines")
 
 	_ = cmd.RegisterFlagCompletionFunc("category", completeCategories)
 	_ = cmd.RegisterFlagCompletionFunc("priority", completePriorities)
@@ -179,9 +182,10 @@ func newTaskAddCmd() *cobra.Command {
 
 func newTaskEditCmd() *cobra.Command {
 	var (
-		title    string
-		priority string
-		estimate string
+		title       string
+		priority    string
+		estimate    string
+		description string
 	)
 
 	cmd := &cobra.Command{
@@ -215,6 +219,13 @@ func newTaskEditCmd() *cobra.Command {
 					}
 					task.SetEstimate(minutes)
 				}
+				if cmd.Flags().Changed("description") {
+					_, err := operations.UpdateTask(project, project.Categories[ref.CategoryIndex].ID, task.ID,
+						operations.TaskUpdate{Description: &description})
+					if err != nil {
+						return err
+					}
+				}
 				updatedTitle = task.Title
 				return nil
 			})
@@ -229,6 +240,7 @@ func newTaskEditCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&title, "title", "t", "", "new title")
 	cmd.Flags().StringVar(&priority, "priority", "", "priority: critical|high|medium|low|trivial")
 	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "time estimate: 30, 2h, 1.5h, 2h30m")
+	cmd.Flags().StringVar(&description, "description", "", `new description, "" clears it`)
 
 	_ = cmd.RegisterFlagCompletionFunc("priority", completePriorities)
 

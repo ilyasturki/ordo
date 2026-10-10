@@ -212,6 +212,7 @@ type TaskDetail struct {
 	CreatedAt       string `json:"created_at"`
 	UpdatedAt       string `json:"updated_at"`
 	CompletionDate  string `json:"completion_date,omitempty"`
+	Description     string `json:"description,omitempty"`
 }
 
 func writeTaskDetail(w io.Writer, task domain.Task, categoryName string) error {
@@ -227,6 +228,7 @@ func writeTaskDetail(w io.Writer, task domain.Task, categoryName string) error {
 		CreatedAt:       task.CreatedAt,
 		UpdatedAt:       task.UpdatedAt,
 		CompletionDate:  task.CompletionDate,
+		Description:     task.Description,
 	}
 
 	if getOutputFormat() == FormatJSON {
@@ -255,6 +257,9 @@ func writeTaskDetail(w io.Writer, task domain.Task, categoryName string) error {
 	fmt.Fprintf(w, "Updated:  %s\n", detail.UpdatedAt)
 	if detail.CompletionDate != "" {
 		fmt.Fprintf(w, "Completed: %s\n", detail.CompletionDate)
+	}
+	if detail.Description != "" {
+		fmt.Fprintf(w, "\n%s\n", detail.Description)
 	}
 	return nil
 }

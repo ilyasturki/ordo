@@ -2,7 +2,9 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"phasionary/internal/data"
@@ -114,5 +116,64 @@ func TestTaskAdd_UnknownCategory(t *testing.T) {
 	if _, err := runCLI(t, dir, "task", "add", "x",
 		"--category", "Nope", "--project", "Default"); err == nil {
 		t.Fatal("expected task add to fail on unknown category")
+	}
+}
+
+func TestTaskDescription_AddShowEditClear(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := runCLI(t, dir, "init"); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	if _, err := runCLI(t, dir, "task", "add", "Call the bank",
+		"--category", "Feature", "--description", "ask about fees\nbring the contract",
+		"--project", "Default"); err != nil {
+		t.Fatalf("task add: %v", err)
+	}
+
+	out, err := runCLI(t, dir, "task", "show", "Call the bank", "--json", "--project", "Default")
+	if err != nil {
+		t.Fatalf("task show --json: %v", err)
+	}
+	var shown TaskDetailOutput
+	if err := json.Unmarshal([]byte(out), &shown); err != nil {
+		t.Fatalf("decode %q: %v", out, err)
+	}
+	if want := "ask about fees\nbring the contract"; shown.Task.Description != want {
+		t.Errorf("json description = %q, want %q", shown.Task.Description, want)
+	}
+
+	if _, err := runCLI(t, dir, "task", "edit", "Call the bank",
+		"--description", "fees only", "--project", "Default"); err != nil {
+		t.Fatalf("task edit: %v", err)
+	}
+	out, err = runCLI(t, dir, "task", "show", "Call the bank", "--json=false", "--project", "Default")
+	if err != nil {
+		t.Fatalf("task show: %v", err)
+	}
+	if !strings.HasSuffix(out, "\n\nfees only\n") {
+		t.Errorf("text show should end with the description, got:\n%s", out)
+	}
+
+	if _, err := runCLI(t, dir, "task", "edit", "Call the bank",
+		"--description", "", "--project", "Default"); err != nil {
+		t.Fatalf("task edit clear: %v", err)
+	}
+	got, _ := findTask(firstCategoryTasks(t, loadDefault(t, dir), "Feature"), "Call the bank")
+	if got.Description != "" {
+		t.Errorf("description = %q after clearing, want empty", got.Description)
+	}
+}
+
+func TestTaskEdit_RejectsControlCharsInDescription(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := runCLI(t, dir, "init"); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	if _, err := runCLI(t, dir, "task", "add", "Plain", "--category", "Feature", "--project", "Default"); err != nil {
+		t.Fatalf("task add: %v", err)
+	}
+	if _, err := runCLI(t, dir, "task", "edit", "Plain",
+		"--description", "bad\x1b[31m", "--project", "Default"); err == nil {
+		t.Fatal("expected edit to reject an escape sequence in the description")
 	}
 }
