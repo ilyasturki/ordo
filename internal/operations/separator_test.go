@@ -15,7 +15,7 @@ func projectWithTasks(t *testing.T, titles ...string) (*domain.Project, string) 
 	if err != nil {
 		t.Fatalf("new project: %v", err)
 	}
-	cat, err := p.AddCategoryNamed("Work")
+	cat, err := p.AddCategoryUnder("", "Work")
 	if err != nil {
 		t.Fatalf("add category: %v", err)
 	}

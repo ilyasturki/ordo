@@ -164,9 +164,7 @@ func (m *model) appendToFocusedDescription(text string, retiresCopy bool) {
 	task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
 	task.Description = appendDescription(task.Description, pasteBlock(text))
 	task.UpdatedAt = domain.NowTimestamp()
-	id := task.ID
 	m.rebuildPositions()
-	m.selectTaskLevelRow(id, pos.Kind == selection.FocusDescription)
 	m.storeTaskUpdate()
 	m.ui.Screen.StatusMsg = "Appended to the description"
 }

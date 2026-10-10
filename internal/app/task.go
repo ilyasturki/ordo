@@ -95,9 +95,9 @@ func (m *model) confirmDelete(keepChildren bool) {
 func (m model) deletedChildren(pos selection.Position) int {
 	switch pos.Kind {
 	case selection.FocusTask:
-		return domain.BlockEnd(m.project.Categories[pos.CategoryIndex].Tasks, pos.TaskIndex) - pos.TaskIndex - 1
+		return domain.ChildCount(m.project.Categories[pos.CategoryIndex].Tasks, pos.TaskIndex)
 	case selection.FocusCategory:
-		return domain.BlockEnd(m.project.Categories, pos.CategoryIndex) - pos.CategoryIndex - 1
+		return domain.ChildCount(m.project.Categories, pos.CategoryIndex)
 	}
 	return 0
 }
@@ -115,12 +115,7 @@ func (m *model) deleteTask(position selection.Position, keepChildren bool) {
 	if keepChildren {
 		cat.ReleaseSubtasks(taskIndex)
 	}
-	end := domain.BlockEnd(cat.Tasks, taskIndex)
-	removed := slices.Clone(cat.Tasks[taskIndex:end])
-	ids := make([]string, len(removed))
-	for i, t := range removed {
-		ids[i] = t.ID
-	}
+	removed, ids := m.taskBlock(position)
 	m.ui.Clipboard = ClipboardState{Tasks: removed, TaskIDs: ids}
 	m.ui.TagCopiedLast = false
 

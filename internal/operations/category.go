@@ -7,15 +7,8 @@ import (
 	"phasionary/internal/domain"
 )
 
-// CreateCategory adds a top-level category named name (trimmed) to p. Returns
-// ErrNameRequired for an empty name or domain.ErrDuplicateCategoryName when the
-// name collides case-insensitively with a sibling.
-func CreateCategory(p *domain.Project, name string) (domain.Category, error) {
-	return CreateCategoryUnder(p, "", name)
-}
-
-// CreateCategoryUnder fails with domain.ErrCategoryNotFound or domain.ErrNestDepth on a bad parent.
-func CreateCategoryUnder(p *domain.Project, parentID, name string) (domain.Category, error) {
+// CreateCategory fails with ErrNameRequired, or the domain's ErrDuplicateCategoryName, ErrCategoryNotFound or ErrNestDepth.
+func CreateCategory(p *domain.Project, parentID, name string) (domain.Category, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return domain.Category{}, ErrNameRequired

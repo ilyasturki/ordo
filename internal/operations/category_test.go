@@ -28,7 +28,7 @@ func categoryOrder(p *domain.Project) []string {
 func TestCreateCategory(t *testing.T) {
 	p := projectWithCategories()
 
-	got, err := operations.CreateCategory(p, "Feature")
+	got, err := operations.CreateCategory(p, "", "Feature")
 	if err != nil {
 		t.Fatalf("CreateCategory: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestCreateCategory(t *testing.T) {
 func TestCreateCategory_DuplicateCaseInsensitive(t *testing.T) {
 	p := projectWithCategories("Feature")
 
-	_, err := operations.CreateCategory(p, "feature")
+	_, err := operations.CreateCategory(p, "", "feature")
 	if !errors.Is(err, domain.ErrDuplicateCategoryName) {
 		t.Fatalf("err = %v, want ErrDuplicateCategoryName", err)
 	}
@@ -52,7 +52,7 @@ func TestCreateCategory_DuplicateCaseInsensitive(t *testing.T) {
 func TestCreateCategory_EmptyRejected(t *testing.T) {
 	p := projectWithCategories()
 
-	_, err := operations.CreateCategory(p, "   ")
+	_, err := operations.CreateCategory(p, "", "   ")
 	if !errors.Is(err, operations.ErrNameRequired) {
 		t.Fatalf("err = %v, want ErrNameRequired", err)
 	}

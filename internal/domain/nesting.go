@@ -158,7 +158,11 @@ func PickBlocks[T any, P outline[T]](items []T, picked map[string]bool) []T {
 }
 
 func HasChildren[T any, P outline[T]](items []T, i int) bool {
-	return BlockEnd[T, P](items, i) > i+1
+	return ChildCount[T, P](items, i) > 0
+}
+
+func ChildCount[T any, P outline[T]](items []T, i int) int {
+	return BlockEnd[T, P](items, i) - i - 1
 }
 
 func nestTarget[T any, P outline[T]](items []T, lo, hi int) (int, error) {
@@ -332,10 +336,6 @@ func (c *Category) IndentTasks(lo, hi int) error {
 	return nil
 }
 
-func (c *Category) IndentTask(i int) error {
-	return c.IndentTasks(i, i+1)
-}
-
 func (c *Category) OutdentTasks(lo, hi int) (int, error) {
 	at, err := unnest(c.Tasks, lo, hi)
 	if err != nil {
@@ -347,10 +347,6 @@ func (c *Category) OutdentTasks(lo, hi int) (int, error) {
 	}
 	c.UpdatedAt = now
 	return at, nil
-}
-
-func (c *Category) OutdentTask(i int) (int, error) {
-	return c.OutdentTasks(i, i+1)
 }
 
 func (p *Project) IndentCategories(lo, hi int) error {
@@ -373,10 +369,6 @@ func (p *Project) IndentCategories(lo, hi int) error {
 	return nil
 }
 
-func (p *Project) IndentCategory(i int) error {
-	return p.IndentCategories(i, i+1)
-}
-
 func (p *Project) OutdentCategories(lo, hi int) (int, error) {
 	if p.Categories[lo].ParentID == "" {
 		return lo, ErrNotNested
@@ -396,10 +388,6 @@ func (p *Project) OutdentCategories(lo, hi int) (int, error) {
 	}
 	p.UpdatedAt = now
 	return at, nil
-}
-
-func (p *Project) OutdentCategory(i int) (int, error) {
-	return p.OutdentCategories(i, i+1)
 }
 
 // CategoryNameConflict is the one name rule, unique among siblings: a clash's index, or -1.

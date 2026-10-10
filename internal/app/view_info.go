@@ -174,7 +174,7 @@ func (m model) categoryInfoLines(catIdx int) []string {
 	if parent := domain.ParentIndex(m.project.Categories, catIdx); parent >= 0 {
 		lines = append(lines, fmt.Sprintf("Parent:   %s", m.infoValue(m.project.Categories[parent].Name)))
 	}
-	if subs := domain.BlockEnd(m.project.Categories, catIdx) - catIdx - 1; subs > 0 {
+	if subs := domain.ChildCount(m.project.Categories, catIdx); subs > 0 {
 		lines = append(lines, fmt.Sprintf("Sub-categories: %d", subs))
 	}
 	lines = append(lines,

@@ -140,7 +140,7 @@ func (m *model) pasteTasks() {
 		m.ui.Clipboard = ClipboardState{Tasks: rows, TaskIDs: ids, Text: clip.Text, Written: clip.Written}
 	}
 	m.rebuildPositions()
-	m.selectTaskLevelRow(rows[0].ID, false)
+	m.selectTaskLevelRow(rows[0].ID)
 	m.ensureVisible()
 	m.storeTaskUpdate()
 	m.ui.Screen.StatusMsg = pastedRowsStatus(rows, clip.IsCut)

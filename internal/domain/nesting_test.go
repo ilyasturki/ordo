@@ -80,42 +80,42 @@ func TestBlockEndAndParentIndex(t *testing.T) {
 func TestIndentTask(t *testing.T) {
 	t.Run("nests under the task above as its last subtask", func(t *testing.T) {
 		c := Category{Tasks: nestedTasks("a", "a1<a", "b")}
-		require.NoError(t, c.IndentTask(2))
+		require.NoError(t, c.IndentTasks(2, 3))
 		assert.Equal(t, []string{"a", "a1<a", "b<a"}, taskShape(c.Tasks))
 	})
 	t.Run("refuses the first task", func(t *testing.T) {
 		c := Category{Tasks: nestedTasks("a", "b")}
-		assert.ErrorIs(t, c.IndentTask(0), ErrNothingToNest)
+		assert.ErrorIs(t, c.IndentTasks(0, 1), ErrNothingToNest)
 	})
 	t.Run("refuses a subtask", func(t *testing.T) {
 		c := Category{Tasks: nestedTasks("a", "a1<a", "a2<a")}
-		assert.ErrorIs(t, c.IndentTask(2), ErrNestDepth)
+		assert.ErrorIs(t, c.IndentTasks(2, 3), ErrNestDepth)
 	})
 	t.Run("refuses a parent", func(t *testing.T) {
 		c := Category{Tasks: nestedTasks("a", "b", "b1<b")}
-		assert.ErrorIs(t, c.IndentTask(1), ErrNestDepth)
+		assert.ErrorIs(t, c.IndentTasks(1, 2), ErrNestDepth)
 	})
 	t.Run("refuses under a separator", func(t *testing.T) {
 		c := Category{Tasks: nestedTasks("a", "-", "b")}
-		assert.ErrorIs(t, c.IndentTask(2), ErrNothingToNest)
+		assert.ErrorIs(t, c.IndentTasks(2, 3), ErrNothingToNest)
 	})
 	t.Run("a separator never nests", func(t *testing.T) {
 		c := Category{Tasks: nestedTasks("a", "-")}
-		assert.ErrorIs(t, c.IndentTask(1), ErrSeparatorNest)
+		assert.ErrorIs(t, c.IndentTasks(1, 2), ErrSeparatorNest)
 	})
 }
 
 func TestOutdentTask(t *testing.T) {
 	t.Run("lands right after the parent's block", func(t *testing.T) {
 		c := Category{Tasks: nestedTasks("a", "a1<a", "a2<a", "a3<a", "b")}
-		at, err := c.OutdentTask(1)
+		at, err := c.OutdentTasks(1, 2)
 		require.NoError(t, err)
 		assert.Equal(t, 3, at)
 		assert.Equal(t, []string{"a", "a2<a", "a3<a", "a1", "b"}, taskShape(c.Tasks))
 	})
 	t.Run("refuses a top-level task", func(t *testing.T) {
 		c := Category{Tasks: nestedTasks("a", "b")}
-		_, err := c.OutdentTask(1)
+		_, err := c.OutdentTasks(1, 2)
 		assert.ErrorIs(t, err, ErrNotNested)
 	})
 }
@@ -279,28 +279,28 @@ func TestAddCategoryUnder(t *testing.T) {
 func TestIndentOutdentCategory(t *testing.T) {
 	t.Run("nests under the top-level category above", func(t *testing.T) {
 		p := Project{Categories: nestedCategories("v1", "ui<v1", "v2", "ui")}
-		require.NoError(t, p.IndentCategory(3))
+		require.NoError(t, p.IndentCategories(3, 4))
 		assert.Equal(t, []string{"v1", "ui<v1", "v2", "ui<v2"}, categoryShape(p.Categories))
 	})
 	t.Run("refuses a name its new siblings carry", func(t *testing.T) {
 		p := Project{Categories: nestedCategories("v1", "ui<v1", "ui")}
-		assert.ErrorIs(t, p.IndentCategory(2), ErrDuplicateCategoryName)
+		assert.ErrorIs(t, p.IndentCategories(2, 3), ErrDuplicateCategoryName)
 		assert.Equal(t, []string{"v1", "ui<v1", "ui"}, categoryShape(p.Categories))
 	})
 	t.Run("refuses a category with sub-categories", func(t *testing.T) {
 		p := Project{Categories: nestedCategories("v1", "v2", "a<v2")}
-		assert.ErrorIs(t, p.IndentCategory(1), ErrNestDepth)
+		assert.ErrorIs(t, p.IndentCategories(1, 2), ErrNestDepth)
 	})
 	t.Run("outdent lands after the parent's block", func(t *testing.T) {
 		p := Project{Categories: nestedCategories("v1", "a<v1", "b<v1", "v2")}
-		at, err := p.OutdentCategory(1)
+		at, err := p.OutdentCategories(1, 2)
 		require.NoError(t, err)
 		assert.Equal(t, 2, at)
 		assert.Equal(t, []string{"v1", "b<v1", "a", "v2"}, categoryShape(p.Categories))
 	})
 	t.Run("outdent refuses a taken top-level name", func(t *testing.T) {
 		p := Project{Categories: nestedCategories("v1", "v2<v1", "v2")}
-		_, err := p.OutdentCategory(1)
+		_, err := p.OutdentCategories(1, 2)
 		assert.ErrorIs(t, err, ErrDuplicateCategoryName)
 	})
 }

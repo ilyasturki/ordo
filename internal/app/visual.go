@@ -610,15 +610,12 @@ func (m *model) visualRun() (lo, hi, catIdx int, ok bool) {
 	return lo, hi, catIdx, true
 }
 
-// selectTaskLevelRow moves the selection to the task-level row with the given
-// task ID — the description row when onDescription is set, the task row
-// otherwise. No-op when id is empty or the row no longer exists.
-func (m *model) selectTaskLevelRow(id string, onDescription bool) {
+func (m *model) selectTaskLevelRow(id string) {
 	if id == "" {
 		return
 	}
 	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		if !visualTaskLevel(p.Kind) || (p.Kind == selection.FocusDescription) != onDescription {
+		if !visualTaskLevel(p.Kind) || p.Kind == selection.FocusDescription {
 			return false
 		}
 		return m.project.Categories[p.CategoryIndex].Tasks[p.TaskIndex].ID == id

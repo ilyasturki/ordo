@@ -287,7 +287,7 @@ func (m *model) pasteLinesInEdit(text string) bool {
 	idx := pos.TaskIndex
 	if adding && rows[0].separator && cat.Tasks[idx].ParentID != "" {
 		// A separator never nests, so the new row first leaves its parent's block.
-		idx, _ = cat.OutdentTask(idx)
+		idx, _ = cat.OutdentTasks(idx, idx+1)
 	}
 	edited := &cat.Tasks[idx]
 	switch {
@@ -332,7 +332,7 @@ func (m *model) pasteLinesInEdit(text string) bool {
 	m.ui.Modes.ToNormal()
 	m.ui.Edit.reset()
 	m.rebuildPositions()
-	m.selectTaskLevelRow(last, false)
+	m.selectTaskLevelRow(last)
 	m.ensureVisible()
 	m.storeTaskUpdate()
 	added := rest
@@ -432,7 +432,7 @@ func (m *model) insertPastedRows(rows []pastedRow, retiresCopy bool) {
 	cat.UpdatedAt = domain.NowTimestamp()
 
 	m.rebuildPositions()
-	m.selectTaskLevelRow(newRows[len(newRows)-1].ID, false)
+	m.selectTaskLevelRow(newRows[len(newRows)-1].ID)
 	m.ensureVisible()
 	m.storeTaskUpdate()
 	m.ui.Screen.StatusMsg = pastedRowsSummary(rows)

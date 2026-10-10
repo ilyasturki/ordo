@@ -194,16 +194,16 @@ func TestSchemaFollowsNesting(t *testing.T) {
 
 	cat := &project.Categories[0]
 	require.GreaterOrEqual(t, len(cat.Tasks), 2)
-	require.NoError(t, cat.IndentTask(1))
+	require.NoError(t, cat.IndentTasks(1, 2))
 	require.NoError(t, store.SaveProjectLocked(project))
 	assert.Equal(t, 2, schemaOnDisk(), "a subtask needs schema 2")
 
-	_, err = cat.OutdentTask(1)
+	_, err = cat.OutdentTasks(1, 2)
 	require.NoError(t, err)
 	require.NoError(t, store.SaveProjectLocked(project))
 	assert.Equal(t, 1, schemaOnDisk(), "without nesting the file drops back to 1")
 
-	require.NoError(t, project.IndentCategory(1))
+	require.NoError(t, project.IndentCategories(1, 2))
 	require.NoError(t, store.SaveProjectLocked(project))
 	assert.Equal(t, 2, schemaOnDisk(), "a sub-category needs schema 2")
 }

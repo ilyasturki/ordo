@@ -33,7 +33,7 @@ func TestUniqueCategoryName(t *testing.T) {
 func TestRenameAndAddShareTheRule(t *testing.T) {
 	p := Project{Categories: namedCats("v0.2.0", "next")}
 	assert.ErrorIs(t, p.RenameCategory(1, " V0.2.0"), ErrDuplicateCategoryName)
-	_, err := p.AddCategoryNamed("NEXT")
+	_, err := p.AddCategoryUnder("", "NEXT")
 	assert.ErrorIs(t, err, ErrDuplicateCategoryName)
 	assert.NoError(t, p.RenameCategory(0, "V0.2.0"), "renaming to a case variant of itself is fine")
 }

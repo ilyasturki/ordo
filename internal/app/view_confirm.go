@@ -109,7 +109,7 @@ func (m model) confirmMergeView() string {
 	if src.TaskCount() == 0 {
 		moved = "Its separators move"
 	}
-	subs := domain.BlockEnd(m.project.Categories, srcIdx) - srcIdx - 1
+	subs := domain.ChildCount(m.project.Categories, srcIdx)
 	var lines []string
 	switch {
 	case m.ui.Edit.isAdding:

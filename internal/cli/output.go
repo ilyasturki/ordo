@@ -364,7 +364,7 @@ func writeCategoryDetail(w io.Writer, project domain.Project, i int) error {
 		CreatedAt:       cat.CreatedAt,
 		UpdatedAt:       cat.UpdatedAt,
 		TaskCount:       project.TreeTaskCount(i),
-		SubCategories:   domain.BlockEnd(project.Categories, i) - i - 1,
+		SubCategories:   domain.ChildCount(project.Categories, i),
 		EstimateMinutes: cat.EstimateMinutes,
 	}
 

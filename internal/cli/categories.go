@@ -88,7 +88,7 @@ func newCategoryAddCmd() *cobra.Command {
 					}
 					parentID = p.ID
 				}
-				cat, err := operations.CreateCategoryUnder(project, parentID, name)
+				cat, err := operations.CreateCategory(project, parentID, name)
 				if err != nil {
 					if errors.Is(err, domain.ErrDuplicateCategoryName) {
 						return fmt.Errorf("category %q already exists", strings.TrimSpace(name))
@@ -153,11 +153,7 @@ func newCategoryEditCmd() *cobra.Command {
 }
 
 func categoryLoad(project domain.Project, i int) (tasks, subs int) {
-	end := domain.BlockEnd(project.Categories, i)
-	for _, c := range project.Categories[i:end] {
-		tasks += c.TaskCount()
-	}
-	return tasks, end - i - 1
+	return project.TreeTaskCount(i), domain.ChildCount(project.Categories, i)
 }
 
 func plural(n int, singular, plural string) string {

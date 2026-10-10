@@ -700,10 +700,6 @@ func (p *Project) RenameCategory(index int, name string) error {
 	return nil
 }
 
-func (p *Project) AddCategoryNamed(name string) (*Category, error) {
-	return p.AddCategoryUnder("", name)
-}
-
 func (p *Project) AddCategoryUnder(parentID, name string) (*Category, error) {
 	at := len(p.Categories)
 	if parentID != "" {

@@ -310,7 +310,7 @@ func newTaskDeleteCmd() *cobra.Command {
 				return fmt.Errorf("task %q not found", args[0])
 			}
 
-			subtasks := domain.BlockEnd(project.Categories[ref.CategoryIndex].Tasks, ref.TaskIndex) - ref.TaskIndex - 1
+			subtasks := domain.ChildCount(project.Categories[ref.CategoryIndex].Tasks, ref.TaskIndex)
 			if !force {
 				what := fmt.Sprintf("task %q", ref.Task.Title)
 				if subtasks > 0 {
@@ -336,7 +336,7 @@ func newTaskDeleteCmd() *cobra.Command {
 					return fmt.Errorf("task %q not found", args[0])
 				}
 				cat := &p.Categories[r.CategoryIndex]
-				if !force && domain.BlockEnd(cat.Tasks, r.TaskIndex)-r.TaskIndex-1 > subtasks {
+				if !force && domain.ChildCount(cat.Tasks, r.TaskIndex) > subtasks {
 					return fmt.Errorf("task %q gained subtasks since the prompt; re-run with -f to confirm", r.Task.Title)
 				}
 				cat.RemoveTaskBlock(r.TaskIndex)

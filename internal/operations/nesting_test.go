@@ -117,7 +117,7 @@ func TestDeleteCategoryTakesSubCategories(t *testing.T) {
 	if _, err := p.AddCategoryUnder(parent, "sub"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.AddCategoryNamed("other"); err != nil {
+	if _, err := p.AddCategoryUnder("", "other"); err != nil {
 		t.Fatal(err)
 	}
 	if err := DeleteCategory(p, parent); err != nil {
