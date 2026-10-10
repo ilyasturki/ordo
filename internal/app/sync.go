@@ -30,7 +30,7 @@ func (m *model) storeTaskUpdate() {
 
 func saveFailedMessage(err error) string {
 	if errors.Is(err, data.ErrStaleProject) {
-		return "Project changed on disk; press R to reload (unsaved edits are dropped)"
+		return "Project changed on disk; press r to reload (unsaved edits are dropped)"
 	}
 	return "Save failed: " + err.Error()
 }
