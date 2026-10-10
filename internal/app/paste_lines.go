@@ -14,9 +14,10 @@ import (
 
 // A separator with an empty title renders as a bare rule.
 type pastedRow struct {
-	title     string
-	status    string
-	separator bool
+	title       string
+	status      string
+	separator   bool
+	description string
 }
 
 var (
@@ -27,15 +28,64 @@ var (
 	rulePattern     = regexp.MustCompile(`^\s*(?:-{3,}|\*{3,}|_{3,})\s*$`)
 )
 
-func parsePastedRows(text string) []pastedRow {
-	var rows []pastedRow
-	var bare []int
-	hasMarked := false
+func splitPasteLines(text string) []string {
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	return strings.Split(strings.ReplaceAll(text, "\r", "\n"), "\n")
+}
 
-	for _, raw := range strings.Split(strings.ReplaceAll(text, "\r", "\n"), "\n") {
-		if strings.TrimSpace(raw) == "" {
+func isListItem(line string) bool {
+	return bulletPattern.MatchString(line) || checkboxPattern.MatchString(line)
+}
+
+func indentOf(line string) int {
+	return len(line) - len(strings.TrimLeft(line, " \t"))
+}
+
+// continuesDescription reports whether a line belongs to the description of
+// the task above it. An indented list item stays a row of its own: this is the
+// one place that decides what nesting means.
+func continuesDescription(line string, parentIndent int) bool {
+	return indentOf(line) > parentIndent && !isListItem(line)
+}
+
+func parsePastedRows(text string) []pastedRow {
+	lines := splitPasteLines(text)
+	// Bare lines standing beside list items are the separators that group them;
+	// headings and rules say nothing about the shape of the rest.
+	hasMarked := false
+	for _, line := range lines {
+		if rulePattern.MatchString(line) || headingPattern.MatchString(line) {
 			continue
 		}
+		if body, _, marked := parseItem(line); marked && body != "" {
+			hasMarked = true
+			break
+		}
+	}
+
+	var rows []pastedRow
+	var desc []string
+	parentIndent := -1
+	flush := func() {
+		if len(desc) > 0 {
+			rows[len(rows)-1].description = dedentLines(desc)
+		}
+		desc = nil
+	}
+	for _, raw := range lines {
+		if strings.TrimSpace(raw) == "" {
+			if desc != nil {
+				desc = append(desc, "")
+			}
+			continue
+		}
+		if parentIndent >= 0 && continuesDescription(raw, parentIndent) {
+			desc = append(desc, raw)
+			continue
+		}
+		flush()
+		parentIndent = -1
+
 		if rulePattern.MatchString(raw) {
 			rows = append(rows, pastedRow{separator: true})
 			continue
@@ -46,45 +96,63 @@ func parsePastedRows(text string) []pastedRow {
 			continue
 		}
 
-		body := raw
-		marked := false
-		if m := bulletPattern.FindString(body); m != "" {
-			body = body[len(m):]
-			marked = true
-		}
-		status := domain.StatusTodo
-		if m := checkboxPattern.FindStringSubmatch(body); m != nil {
-			body = body[len(m[0]):]
-			marked = true
-			switch m[1] {
-			case "x", "X":
-				status = domain.StatusCompleted
-			case "~":
-				status = domain.StatusInProgress
-			case "-":
-				status = domain.StatusCancelled
-			}
-		}
-		body = strings.Clone(strings.TrimSpace(body))
+		body, status, marked := parseItem(raw)
 		if body == "" {
 			continue
 		}
-		if marked {
-			hasMarked = true
-		} else {
-			bare = append(bare, len(rows))
+		body = strings.Clone(body)
+		if !marked && hasMarked {
+			rows = append(rows, pastedRow{title: body, separator: true})
+			continue
 		}
 		rows = append(rows, pastedRow{title: body, status: status})
+		parentIndent = indentOf(raw)
 	}
+	flush()
+	return rows
+}
 
-	// Bare lines standing beside bulleted ones are the separators that group
-	// them; headings and rules say nothing about the shape of the rest.
-	if hasMarked {
-		for _, i := range bare {
-			rows[i] = pastedRow{title: rows[i].title, separator: true}
+func parseItem(raw string) (body, status string, marked bool) {
+	body = raw
+	if m := bulletPattern.FindString(body); m != "" {
+		body = body[len(m):]
+		marked = true
+	}
+	status = domain.StatusTodo
+	if m := checkboxPattern.FindStringSubmatch(body); m != nil {
+		body = body[len(m[0]):]
+		marked = true
+		switch m[1] {
+		case "x", "X":
+			status = domain.StatusCompleted
+		case "~":
+			status = domain.StatusInProgress
+		case "-":
+			status = domain.StatusCancelled
 		}
 	}
-	return rows
+	return strings.TrimSpace(body), status, marked
+}
+
+// dedentLines strips the indent the lines share and the blank lines that trail
+// them.
+func dedentLines(lines []string) string {
+	for len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	common := -1
+	for _, l := range lines {
+		if l != "" && (common < 0 || indentOf(l) < common) {
+			common = indentOf(l)
+		}
+	}
+	out := make([]string, len(lines))
+	for i, l := range lines {
+		if l != "" {
+			out[i] = strings.TrimRight(l[common:], " \t")
+		}
+	}
+	return strings.Clone(strings.Join(out, "\n"))
 }
 
 func newTaskForRow(row pastedRow) (domain.Task, error) {
@@ -98,7 +166,17 @@ func newTaskForRow(row pastedRow) (domain.Task, error) {
 		return domain.Task{}, err
 	}
 	_ = task.SetStatus(row.status)
+	task.Description = row.description
 	return task, nil
+}
+
+// appendDescription puts text on the line below what the description holds.
+func appendDescription(existing, text string) string {
+	existing = strings.TrimRight(existing, "\n")
+	if existing == "" || text == "" {
+		return existing + text
+	}
+	return existing + "\n" + text
 }
 
 func pastedRowsSummary(rows []pastedRow) string {
@@ -178,6 +256,9 @@ func (m *model) pasteLinesInEdit(text string) bool {
 	case typed != "":
 		edited.Title = typed
 	}
+	if fold {
+		edited.Description = appendDescription(edited.Description, rows[0].description)
+	}
 	edited.UpdatedAt = domain.NowTimestamp()
 	for i, task := range newRows {
 		cat.InsertTask(pos.TaskIndex+1+i, task)
@@ -215,19 +296,10 @@ func (m *model) pasteClipboardLines(msg clipboardLinesMsg) {
 		m.ui.Screen.StatusMsg = "Nothing to paste"
 		return
 	}
-	pos, ok := m.selectedPosition()
-	if !ok || len(m.project.Categories) == 0 {
+	catIndex, taskIndex, ok := m.pasteDestination()
+	if !ok {
 		m.ui.Screen.StatusMsg = "No category to paste into"
 		return
-	}
-
-	catIndex := pos.CategoryIndex
-	taskIndex := 0
-	switch pos.Kind {
-	case selection.FocusProject:
-		catIndex = 0
-	case selection.FocusTask, selection.FocusDescription, selection.FocusSeparator:
-		taskIndex = pos.TaskIndex + 1
 	}
 
 	newRows := make([]domain.Task, 0, len(rows))

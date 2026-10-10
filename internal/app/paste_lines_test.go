@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"phasionary/internal/domain"
+	"phasionary/internal/export"
 )
 
 func task(title, status string) pastedRow {
@@ -57,16 +58,75 @@ func TestParsePastedRows(t *testing.T) {
 			task("auth", domain.StatusCompleted),
 			sep(""),
 		}},
-		{"indentation carries no meaning", "- parent\n  - child\n    - grandchild", []pastedRow{
+		{"indented list items stay rows of their own", "- parent\n  - child\n    - grandchild", []pastedRow{
 			task("parent", domain.StatusTodo),
 			task("child", domain.StatusTodo),
 			task("grandchild", domain.StatusTodo),
+		}},
+		{"indented lines under a task are its description", "- [x] parent\n    first\n\n      deeper\n    ---\n\n- next", []pastedRow{
+			{title: "parent", status: domain.StatusCompleted, description: "first\n\n  deeper\n---"},
+			task("next", domain.StatusTodo),
+		}},
+		{"a blank line before the description still folds", "Title\n\n  body", []pastedRow{
+			{title: "Title", status: domain.StatusTodo, description: "body"},
+		}},
+		{"lines indented alike are siblings", "  plain\n  also plain", []pastedRow{
+			task("plain", domain.StatusTodo),
+			task("also plain", domain.StatusTodo),
+		}},
+		{"a separator takes no description", "## Group\n  note\n- a", []pastedRow{
+			sep("Group"),
+			sep("note"),
+			task("a", domain.StatusTodo),
+		}},
+		{"an indented list item after a description ends it", "- a\n  about a\n  - b", []pastedRow{
+			{title: "a", status: domain.StatusTodo, description: "about a"},
+			task("b", domain.StatusTodo),
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, tc.want, parsePastedRows(tc.in))
 		})
 	}
+}
+
+func TestParsePastedRows_TheAppsOwnCopiesComeBackWhole(t *testing.T) {
+	cat := domain.Category{Name: "Sprint", Tasks: []domain.Task{
+		{ID: "a", Title: "Write handlers", Status: domain.StatusInProgress, Description: "GET and PUT\n\n- one list item"},
+		{ID: "s", Kind: domain.KindSeparator, Title: "Later"},
+		{ID: "b", Title: "Ship", Status: domain.StatusTodo, Description: "on friday\n---\nafter review"},
+	}}
+
+	assert.Equal(t, []pastedRow{
+		sep("Sprint"),
+		{title: "Write handlers", status: domain.StatusInProgress, description: "GET and PUT"},
+		task("one list item", domain.StatusTodo),
+		sep("Later"),
+		{title: "Ship", status: domain.StatusTodo, description: "on friday\n---\nafter review"},
+	}, parsePastedRows(export.ExportCategoryMarkdown(cat)),
+		"Y: descriptions fold back, a list inside one still splits off")
+
+	m := newTestModelWithDescription(t)
+	require.True(t, m.selectTaskIdx(0, 0))
+	m.enterVisualMode()
+	m.visualMoveCursor(2)
+	assert.Equal(t, []pastedRow{
+		{title: "Alpha", status: domain.StatusTodo, description: "alpha details"},
+		task("Beta", domain.StatusTodo),
+	}, parsePastedRows(m.visualMarkdownText(m.visualSelectedPositions(), false)), "visual y")
+}
+
+func TestPasteClipboardLines_KeepsFoldedDescriptions(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+
+	m.pasteClipboardLines(clipboardLinesMsg{text: "- [ ] handlers\n    GET and PUT\n- auth"})
+
+	tasks := m.project.Categories[0].Tasks
+	require.Len(t, tasks, 5)
+	assert.Equal(t, "handlers", tasks[1].Title)
+	assert.Equal(t, "GET and PUT", tasks[1].Description)
+	assert.Equal(t, "auth", tasks[2].Title)
 }
 
 // startAddTaskAt lands the cursor on (catIdx, taskIdx) and opens the add flow,
@@ -157,6 +217,18 @@ func TestPasteLinesInEdit_SplitsAnExistingTitle(t *testing.T) {
 	require.Len(t, m.project.Categories[0].Tasks, 3, "the batch undoes in one step")
 	assert.Equal(t, first, m.project.Categories[0].Tasks[0].Title)
 	assert.Equal(t, domain.StatusInProgress, m.project.Categories[0].Tasks[0].Status)
+}
+
+func TestPasteLinesInEdit_FirstRowsDescriptionJoinsTheEditedTask(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	m.project.Categories[0].Tasks[0].Description = "already here"
+	m.startEditing()
+
+	require.True(t, m.pasteLinesInEdit("- a\n  about a\n- b"))
+
+	assert.Equal(t, "already here\nabout a", m.project.Categories[0].Tasks[0].Description)
+	assert.Equal(t, "b", m.project.Categories[0].Tasks[1].Title)
 }
 
 func TestPasteLinesInEdit_LeadingSeparatorSpareTheEditedTask(t *testing.T) {
