@@ -56,6 +56,7 @@ Every TUI action has a CLI counterpart, useful for scripts and quick edits. All 
 ```bash
 phasionary tasks -s todo -C Feature                   # Filter tasks
 phasionary task add -C Feature "Build widget"         # Capture
+phasionary task edit <id> --description "Details"     # Describe
 phasionary task status <id> in_progress               # Triage
 phasionary export -f json -o project.json             # Snapshot
 phasionary import project.md                          # Restore from markdown
