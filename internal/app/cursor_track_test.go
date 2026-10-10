@@ -169,3 +169,30 @@ func TestConfirmDeleteProject_DropsTheQueuedCursor(t *testing.T) {
 	assert.NotContains(t, stub.cursors, doomed.ID)
 	assert.Contains(t, saver.dropped, doomed.ID)
 }
+
+func TestConfirmDeleteProject_FallbackKeepsTheStaleGuard(t *testing.T) {
+	dir := t.TempDir()
+	seed := data.NewStore(dir)
+	keep, err := seed.CreateProject("Keep")
+	require.NoError(t, err)
+	doomed, err := seed.CreateProject("Doomed")
+	require.NoError(t, err)
+
+	store := data.NewStore(dir)
+	m := newTestModel(t, doomed)
+	withStubStateManager(m)
+	withStubCursorSaver(m)
+	m.deps.Store = store
+	m.ui.Picker = ProjectPickerState{projects: []domain.Project{doomed, keep}, selected: 0}
+	m.ui.ConfirmDelete = ConfirmDeleteState{Kind: ConfirmDeleteProject, ProjectID: doomed.ID}
+
+	m.confirmDeleteProject()
+	require.Equal(t, keep.ID, m.project.ID)
+
+	_, err = seed.WithProjectLocked(keep.ID, func(p *domain.Project) error {
+		p.Name = "Renamed elsewhere"
+		return nil
+	})
+	require.NoError(t, err)
+	assert.ErrorIs(t, store.SaveProjectLocked(m.project), data.ErrStaleProject)
+}

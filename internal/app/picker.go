@@ -179,7 +179,14 @@ func (m *model) confirmDeleteProject() {
 			return
 		}
 		if len(projects) > 0 {
-			m.project = projects[0]
+			next, err := m.deps.Store.LoadProjectByID(projects[0].ID)
+			if err != nil {
+				m.ui.Screen.StatusMsg = fmt.Sprintf("Error loading project: %v", err)
+				m.ui.ConfirmDelete.reset()
+				m.ui.Modes.ToProjectPicker()
+				return
+			}
+			m.project = next
 			_ = m.deps.StateManager.SetProjectForDir(m.project.ID)
 			m.ui.Filter = NewFilterState()
 			m.ui.Fold = NewFoldStateFrom(m.deps.StateManager.GetFoldedCategories(m.project.ID))
