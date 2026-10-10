@@ -44,8 +44,7 @@ func conflictNotice(names []string) string {
 	return fmt.Sprintf("Conflict: %s (+%d more)", names[0], len(names)-1)
 }
 
-// Sets msg as the status, unless the open project has conflict copies the
-// status line has not named yet.
+// Shows msg, or the open project's conflict copies the status line has not named yet.
 func (m *model) announceConflicts(msg string) {
 	if m.deps.Store == nil {
 		m.ui.Screen.StatusMsg = msg
