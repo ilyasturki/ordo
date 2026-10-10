@@ -22,6 +22,7 @@ func (m *model) resolvePaste(msg clipboardLinesMsg) {
 	if !m.ui.Modes.IsNormal() {
 		return
 	}
+	retiresCopy := false
 	if !m.ui.Clipboard.empty() {
 		// An unreadable clipboard (OSC 52 only) can't contradict the copy.
 		if m.clipboardVouchedFor() || msg.err != nil || strings.TrimSpace(msg.text) == "" ||
@@ -29,9 +30,13 @@ func (m *model) resolvePaste(msg clipboardLinesMsg) {
 			m.pasteInternal()
 			return
 		}
-		m.ui.Clipboard = ClipboardState{}
+		retiresCopy = true
 	}
-	m.pasteClipboardLines(msg)
+	if msg.err != nil {
+		m.ui.Screen.StatusMsg = clipboardReadFailure(msg.err)
+		return
+	}
+	m.pasteText(msg.text, retiresCopy)
 }
 
 func (m *model) clipboardVouchedFor() bool {

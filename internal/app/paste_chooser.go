@@ -33,14 +33,15 @@ type PasteChooserState struct {
 	options  []pasteOption
 	selected int
 	// A paste made in the title editor, which the chooser returns to.
-	fromEdit bool
+	fromEdit    bool
+	retiresCopy bool
 }
 
 func pasteNeedsChooser(rows []pastedRow) bool {
 	return len(rows) > 1 || (len(rows) == 1 && rows[0].description != "")
 }
 
-func (m *model) openPasteChooser(text string, rows []pastedRow) {
+func (m *model) openPasteChooser(text string, rows []pastedRow, retiresCopy bool) {
 	fromEdit := m.ui.Modes.IsEdit()
 	oneLine := "one task, every line joined into the title"
 	if fromEdit {
@@ -61,7 +62,7 @@ func (m *model) openPasteChooser(text string, rows []pastedRow) {
 	if !m.ui.Modes.ToPasteChooser() {
 		return
 	}
-	m.ui.PasteChooser = PasteChooserState{text: text, rows: rows, options: options, fromEdit: fromEdit}
+	m.ui.PasteChooser = PasteChooserState{text: text, rows: rows, options: options, fromEdit: fromEdit, retiresCopy: retiresCopy}
 }
 
 func (m *model) appendTarget(fromEdit bool) (string, bool) {
@@ -123,18 +124,18 @@ func (m *model) applyPaste(mode pasteMode) {
 	}
 	switch mode {
 	case pasteAsRows:
-		m.insertPastedRows(st.rows)
+		m.insertPastedRows(st.rows, st.retiresCopy)
 	case pasteAsDescription:
 		row := titleAndDescription(st.text)
 		if row.title == "" {
 			m.ui.Screen.StatusMsg = "Nothing to paste as a title"
 			return
 		}
-		m.insertPastedRows([]pastedRow{row})
+		m.insertPastedRows([]pastedRow{row}, st.retiresCopy)
 	case pasteAsOneLine:
-		m.insertPastedRows([]pastedRow{{title: flattenPaste(st.text), status: domain.StatusTodo}})
+		m.insertPastedRows([]pastedRow{{title: flattenPaste(st.text), status: domain.StatusTodo}}, st.retiresCopy)
 	case pasteAppend:
-		m.appendToFocusedDescription(st.text)
+		m.appendToFocusedDescription(st.text, st.retiresCopy)
 	}
 }
 
@@ -153,12 +154,15 @@ func (m *model) applyPasteInEditor(mode pasteMode, st PasteChooserState) {
 	}
 }
 
-func (m *model) appendToFocusedDescription(text string) {
+func (m *model) appendToFocusedDescription(text string, retiresCopy bool) {
 	pos, ok := m.selectedPosition()
 	if !ok || (pos.Kind != selection.FocusTask && pos.Kind != selection.FocusDescription) {
 		return
 	}
 	m.recordHistory()
+	if retiresCopy {
+		m.ui.Clipboard = ClipboardState{}
+	}
 	task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
 	task.Description = appendDescription(task.Description, pasteBlock(text))
 	task.UpdatedAt = domain.NowTimestamp()

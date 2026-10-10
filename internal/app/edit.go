@@ -388,7 +388,7 @@ func (m *model) handlePaste(text string) tea.Cmd {
 	var cmd tea.Cmd
 	switch m.ui.Modes.Current() {
 	case modes.ModeNormal:
-		m.pasteText(text)
+		m.pasteText(text, false)
 	case modes.ModeEdit:
 		m.pasteIntoEditor(text)
 	case modes.ModeDescriptionEdit:
@@ -429,7 +429,7 @@ func (m *model) handlePaste(text string) tea.Cmd {
 func (m *model) pasteIntoEditor(text string) {
 	if m.ui.Edit.itemType == selection.FocusTask {
 		if rows := parsePastedRows(text); pasteNeedsChooser(rows) {
-			m.openPasteChooser(text, rows)
+			m.openPasteChooser(text, rows, false)
 			return
 		}
 	}

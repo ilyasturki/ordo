@@ -340,28 +340,22 @@ func (m *model) handleEditorClipboard(msg editorClipboardMsg) tea.Cmd {
 	return m.handlePaste(msg.text)
 }
 
-func (m *model) pasteClipboardLines(msg clipboardLinesMsg) {
-	if msg.err != nil {
-		m.ui.Screen.StatusMsg = clipboardReadFailure(msg.err)
-		return
-	}
-	m.pasteText(msg.text)
-}
-
-func (m *model) pasteText(text string) {
+// retiresCopy: the clipboard held newer text than the app's copy, which the
+// paste drops in its own undo step.
+func (m *model) pasteText(text string, retiresCopy bool) {
 	rows := parsePastedRows(text)
 	if len(rows) == 0 {
 		m.ui.Screen.StatusMsg = "Nothing to paste"
 		return
 	}
 	if pasteNeedsChooser(rows) {
-		m.openPasteChooser(text, rows)
+		m.openPasteChooser(text, rows, retiresCopy)
 		return
 	}
-	m.insertPastedRows(rows)
+	m.insertPastedRows(rows, retiresCopy)
 }
 
-func (m *model) insertPastedRows(rows []pastedRow) {
+func (m *model) insertPastedRows(rows []pastedRow, retiresCopy bool) {
 	catIndex, taskIndex, ok := m.pasteDestination()
 	if !ok {
 		m.ui.Screen.StatusMsg = "No category to paste into"
@@ -379,6 +373,9 @@ func (m *model) insertPastedRows(rows []pastedRow) {
 	}
 
 	m.recordHistory()
+	if retiresCopy {
+		m.ui.Clipboard = ClipboardState{}
+	}
 	for i, task := range newRows {
 		m.project.Categories[catIndex].InsertTask(taskIndex+i, task)
 	}

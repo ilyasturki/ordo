@@ -106,10 +106,31 @@ func TestPasteChooser_EditorClipboardReadLandsOnlyWhereItWasAsked(t *testing.T) 
 	assert.Equal(t, "Can't read the clipboard: paste with the terminal instead", m.ui.Screen.StatusMsg)
 }
 
+func TestPaste_ANewerClipboardRetiresTheCopyInThePastesUndoStep(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	m.cutSelectedTask()
+	landWrite(m)
+
+	require.True(t, m.selectTaskIdx(1, 0))
+	m.resolvePaste(clipboardLinesMsg{text: threeLines})
+	require.True(t, m.ui.Modes.IsPasteChooser())
+	send(t, m, key("esc"))
+	assert.True(t, m.isTaskCut("t1"), "a cancelled chooser leaves the cut alone")
+
+	m.resolvePaste(clipboardLinesMsg{text: threeLines})
+	send(t, m, key("enter"))
+	assert.False(t, m.ui.Clipboard.IsCut, "the paste of newer text drops the stale cut")
+
+	m.undo()
+	assert.True(t, m.isTaskCut("t1"), "and undoing the paste brings the cut back")
+	assert.Equal(t, []string{"t4", "t5"}, taskIDs(m.project.Categories[1]))
+}
+
 func TestPasteChooser_TitleSummarisesTheParse(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))
-	m.pasteText("## A\n- one\n  about one\n- two\n---\n- three\n- four")
+	m.pasteText("## A\n- one\n  about one\n- two\n---\n- three\n- four", false)
 
 	view := m.pasteChooserView()
 	assert.Contains(t, view, "Paste: 4 tasks, 2 separators, 1 description")
@@ -118,12 +139,12 @@ func TestPasteChooser_TitleSummarisesTheParse(t *testing.T) {
 func TestPasteChooser_AppendOnlyOnATask(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(1) // Cat A
-	m.pasteText(threeLines)
+	m.pasteText(threeLines, false)
 	assert.Len(t, m.ui.PasteChooser.options, 3)
 	send(t, m, key("esc"))
 
 	require.True(t, m.selectTaskIdx(0, 0))
-	m.pasteText(threeLines)
+	m.pasteText(threeLines, false)
 	require.Len(t, m.ui.PasteChooser.options, 4)
 	assert.Equal(t, "append to the description of “Alpha”", m.ui.PasteChooser.options[3].label)
 }
@@ -131,7 +152,7 @@ func TestPasteChooser_AppendOnlyOnATask(t *testing.T) {
 func TestPasteChooser_NavigatesWithJKAndEnter(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))
-	m.pasteText(threeLines)
+	m.pasteText(threeLines, false)
 	send(t, m, key("j"))
 	send(t, m, key("j"))
 	send(t, m, key("k"))
@@ -146,7 +167,7 @@ func TestPasteChooser_NavigatesWithJKAndEnter(t *testing.T) {
 func TestPasteChooser_EscCancels(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))
-	m.pasteText(threeLines)
+	m.pasteText(threeLines, false)
 	send(t, m, key("esc"))
 
 	assert.True(t, m.ui.Modes.IsNormal())
@@ -371,7 +392,7 @@ func TestPasteChooser_DescriptionModeNeverSavesAnEmptyTitle(t *testing.T) {
 func TestPasteChooser_KeepsTheTaskFocused(t *testing.T) {
 	m := newTestModelWithDescription(t)
 	m.ui.Selection.MoveTo(3) // t1's description row
-	m.pasteText(threeLines)
+	m.pasteText(threeLines, false)
 	send(t, m, key("a"))
 
 	pos, ok := m.selectedPosition()

@@ -121,7 +121,7 @@ func TestPasteClipboardLines_KeepsFoldedDescriptions(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))
 
-	m.pasteClipboardLines(clipboardLinesMsg{text: "- [ ] handlers\n    GET and PUT\n- auth"})
+	m.resolvePaste(clipboardLinesMsg{text: "- [ ] handlers\n    GET and PUT\n- auth"})
 	require.True(t, m.ui.Modes.IsPasteChooser())
 	send(t, m, key("enter"))
 
@@ -274,7 +274,7 @@ func TestPasteClipboardLines_InsertsBelowSelection(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))
 
-	m.pasteClipboardLines(clipboardLinesMsg{text: "## Backend\n- [x] handlers\n- auth"})
+	m.resolvePaste(clipboardLinesMsg{text: "## Backend\n- [x] handlers\n- auth"})
 	require.True(t, m.ui.Modes.IsPasteChooser(), "several rows ask how to paste")
 	send(t, m, key("enter"))
 
@@ -295,7 +295,7 @@ func TestPasteClipboardLines_SingleLineBecomesOneTask(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))
 
-	m.pasteClipboardLines(clipboardLinesMsg{text: "  buy milk  "})
+	m.resolvePaste(clipboardLinesMsg{text: "  buy milk  "})
 
 	assert.Equal(t, "buy milk", m.project.Categories[0].Tasks[1].Title)
 	assert.Equal(t, "Added 1 task", m.ui.Screen.StatusMsg)
@@ -305,13 +305,13 @@ func TestPasteClipboardLines_EmptyOrFailedClipboard(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))
 
-	m.pasteClipboardLines(clipboardLinesMsg{text: "   \n\n"})
+	m.resolvePaste(clipboardLinesMsg{text: "   \n\n"})
 	assert.Equal(t, "Nothing to paste", m.ui.Screen.StatusMsg)
 
-	m.pasteClipboardLines(clipboardLinesMsg{err: assert.AnError})
+	m.resolvePaste(clipboardLinesMsg{err: assert.AnError})
 	assert.Equal(t, "Nothing to paste", m.ui.Screen.StatusMsg, "the tools fail on an empty clipboard too")
 
-	m.pasteClipboardLines(clipboardLinesMsg{err: clipboard.ErrNoBackend})
+	m.resolvePaste(clipboardLinesMsg{err: clipboard.ErrNoBackend})
 	assert.Equal(t, "Can't read the clipboard: paste with the terminal instead", m.ui.Screen.StatusMsg)
 
 	assert.Len(t, m.project.Categories[0].Tasks, 3, "nothing was inserted")
