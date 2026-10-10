@@ -106,49 +106,14 @@ func (m *model) reloadProject() {
 // longer exists degrades to its category header rather than failing outright, so
 // deleting a task leaves the cursor nearby instead of at the top of the list.
 func (m *model) restoreSelection(kind selection.FocusKind, catID, taskID string) bool {
-	categories := m.project.Categories
-
-	selectCategory := func() bool {
-		if catID == "" {
-			return false
-		}
-		return m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-			return p.Kind == selection.FocusCategory &&
-				p.CategoryIndex >= 0 && p.CategoryIndex < len(categories) &&
-				categories[p.CategoryIndex].ID == catID
-		})
-	}
-	selectTaskRow := func(want selection.FocusKind) bool {
-		if taskID == "" {
-			return false
-		}
-		return m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-			if p.Kind != want || p.CategoryIndex < 0 || p.CategoryIndex >= len(categories) {
-				return false
-			}
-			cat := categories[p.CategoryIndex]
-			return p.TaskIndex >= 0 && p.TaskIndex < len(cat.Tasks) && cat.Tasks[p.TaskIndex].ID == taskID
-		})
-	}
-
 	switch kind {
 	case selection.FocusProject:
-		return m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-			return p.Kind == selection.FocusProject
-		})
+		return m.selectItem(selection.FocusProject, "")
 	case selection.FocusCategory:
-		return selectCategory()
-	case selection.FocusTask, selection.FocusSeparator:
-		return selectTaskRow(kind) || selectCategory()
-	case selection.FocusDescription:
-		// A description row only exists while descriptions are expanded, which is
-		// a config toggle that may differ from the session that saved it — land on
-		// the parent task instead of drifting to the top.
-		return selectTaskRow(selection.FocusDescription) ||
-			selectTaskRow(selection.FocusTask) ||
-			selectCategory()
+		return catID != "" && m.selectItem(selection.FocusCategory, catID)
 	}
-	return false
+	return (taskID != "" && m.selectItem(kind, taskID)) ||
+		(catID != "" && m.selectItem(selection.FocusCategory, catID))
 }
 
 // taskRowVisible is the single source of truth for whether a row in a
@@ -175,6 +140,7 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 			Kind:          selection.FocusCategory,
 			CategoryIndex: cIndex,
 			TaskIndex:     -1,
+			ID:            category.ID,
 		})
 		if fold != nil && fold.IsFolded(category.ID) {
 			continue
@@ -188,6 +154,7 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 					Kind:          selection.FocusSeparator,
 					CategoryIndex: cIndex,
 					TaskIndex:     tIndex,
+					ID:            task.ID,
 				})
 				continue
 			}
@@ -195,12 +162,14 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 				Kind:          selection.FocusTask,
 				CategoryIndex: cIndex,
 				TaskIndex:     tIndex,
+				ID:            task.ID,
 			})
 			if (expandDescriptions || task.ID == expandedTaskID) && task.Description != "" {
 				positions = append(positions, selection.Position{
 					Kind:          selection.FocusDescription,
 					CategoryIndex: cIndex,
 					TaskIndex:     tIndex,
+					ID:            task.ID,
 				})
 			}
 		}
@@ -208,9 +177,15 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 	return positions
 }
 
+// rebuildPositions keeps the cursor on the item it was on, or the nearest
+// shown ancestor; a deleted item leaves it at its row index.
 func (m *model) rebuildPositions() {
+	prev, had := m.selectedPosition()
 	positions := rebuildPositions(m.project.Categories, &m.ui.Filter, &m.ui.Fold, m.ui.Screen.ExpandDescriptions, m.ui.Screen.ExpandedTaskID)
 	m.ui.Selection.SetPositions(positions)
+	if had {
+		m.selectItem(prev.Kind, prev.ID)
+	}
 	// Structure changed (filter, fold, add/delete, reload, undo/redo): the
 	// memoized layout is stale.
 	m.invalidateLayout()

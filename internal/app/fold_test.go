@@ -139,11 +139,3 @@ func TestUnfoldAll_ClearsAllFolds(t *testing.T) {
 	// All rows visible again: project + 2 cats + 5 tasks = 8.
 	assert.Equal(t, 8, m.ui.Selection.Count())
 }
-
-func TestFindCategoryPositionIndex(t *testing.T) {
-	m := newTestModel(t, sampleProject())
-	assert.Equal(t, 1, m.findCategoryPositionIndex(0))
-	assert.Equal(t, 5, m.findCategoryPositionIndex(1))
-	// Missing category falls back to 0.
-	assert.Equal(t, 0, m.findCategoryPositionIndex(99))
-}

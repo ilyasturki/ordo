@@ -3,6 +3,7 @@ package app
 import (
 	"phasionary/internal/app/selection"
 	"phasionary/internal/data"
+	"phasionary/internal/domain"
 )
 
 // cursorKindNames maps focus kinds to the strings stored in state.json. The
@@ -120,4 +121,52 @@ func (m *model) applyStoredCursor() {
 		return
 	}
 	m.ui.Selection.SetSelected(findFirstTaskIndex(m.ui.Selection.Positions()))
+}
+
+type itemRef struct {
+	kind selection.FocusKind
+	id   string
+}
+
+// selectItem moves the cursor onto the row showing an item, or onto its
+// nearest shown ancestor when a fold or the filter hides that row: the parent
+// task, then the category, then its parent category. Reports whether it
+// landed.
+func (m *model) selectItem(kind selection.FocusKind, id string) bool {
+	for _, ref := range m.itemAnchors(kind, id) {
+		if m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
+			return p.Kind == ref.kind && p.ID == ref.id
+		}) {
+			return true
+		}
+	}
+	return false
+}
+
+// itemAnchors lists the rows that can stand for an item, nearest first. A
+// description row stands for its task too.
+func (m *model) itemAnchors(kind selection.FocusKind, id string) []itemRef {
+	refs := []itemRef{{kind, id}}
+	switch kind {
+	case selection.FocusProject:
+		return refs
+	case selection.FocusCategory:
+		if ci, err := m.project.FindCategoryByID(id); err == nil {
+			if parent := domain.ParentIndex(m.project.Categories, ci); parent >= 0 {
+				refs = append(refs, itemRef{selection.FocusCategory, m.project.Categories[parent].ID})
+			}
+		}
+		return refs
+	case selection.FocusDescription:
+		refs = append(refs, itemRef{selection.FocusTask, id})
+	}
+	ci, ti := m.findTaskByID(id)
+	if ci < 0 {
+		return refs
+	}
+	cat := m.project.Categories[ci]
+	if parent := domain.ParentIndex(cat.Tasks, ti); parent >= 0 {
+		refs = append(refs, itemRef{selection.FocusTask, cat.Tasks[parent].ID})
+	}
+	return append(refs, m.itemAnchors(selection.FocusCategory, cat.ID)...)
 }

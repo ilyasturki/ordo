@@ -1,19 +1,16 @@
 package app
 
 import (
-	"phasionary/internal/app/selection"
+	"phasionary/internal/data"
 	"phasionary/internal/domain"
 )
 
 const historyLimit = 100
 
 type historyEntry struct {
-	project      domain.Project
-	clipboard    ClipboardState
-	hadSelection bool
-	selKind      selection.FocusKind
-	selCatID     string
-	selTaskID    string
+	project   domain.Project
+	clipboard ClipboardState
+	cursor    data.Cursor
 }
 
 type HistoryState struct {
@@ -83,23 +80,12 @@ func cloneClipboard(c ClipboardState) ClipboardState {
 }
 
 func (m *model) snapshotEntry() historyEntry {
-	entry := historyEntry{
+	cursor, _ := m.currentCursor()
+	return historyEntry{
 		project:   cloneProject(m.project),
 		clipboard: cloneClipboard(m.ui.Clipboard),
+		cursor:    cursor,
 	}
-	if pos, ok := m.selectedPosition(); ok {
-		entry.hadSelection = true
-		entry.selKind = pos.Kind
-		if pos.CategoryIndex >= 0 && pos.CategoryIndex < len(m.project.Categories) {
-			cat := m.project.Categories[pos.CategoryIndex]
-			entry.selCatID = cat.ID
-			if (pos.Kind == selection.FocusTask || pos.Kind == selection.FocusDescription) &&
-				pos.TaskIndex >= 0 && pos.TaskIndex < len(cat.Tasks) {
-				entry.selTaskID = cat.Tasks[pos.TaskIndex].ID
-			}
-		}
-	}
-	return entry
 }
 
 // recordHistory captures the current state on the undo stack and clears redo.
@@ -173,69 +159,9 @@ func (m *model) applyHistoryEntry(e historyEntry) {
 	m.project = cloneProject(e.project)
 	m.ui.Clipboard = cloneClipboard(e.clipboard)
 	m.rebuildPositions()
-	if e.hadSelection {
-		if !m.historyRestoreSelection(e.selKind, e.selCatID, e.selTaskID) {
-			idx := findFirstTaskIndex(m.ui.Selection.Positions())
-			m.ui.Selection.SetSelected(idx)
-		}
+	if !e.cursor.IsZero() && !m.restoreCursor(e.cursor) {
+		m.ui.Selection.SetSelected(findFirstTaskIndex(m.ui.Selection.Positions()))
 	}
 	m.ensureVisible()
 	m.storeTaskUpdate()
-}
-
-func (m *model) historyRestoreSelection(kind selection.FocusKind, catID, taskID string) bool {
-	categories := m.project.Categories
-	switch kind {
-	case selection.FocusProject:
-		return m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-			return p.Kind == selection.FocusProject
-		})
-	case selection.FocusCategory:
-		if catID == "" {
-			return false
-		}
-		return m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-			return p.Kind == selection.FocusCategory &&
-				p.CategoryIndex >= 0 && p.CategoryIndex < len(categories) &&
-				categories[p.CategoryIndex].ID == catID
-		})
-	case selection.FocusTask, selection.FocusDescription:
-		if taskID != "" {
-			if m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-				if p.Kind != kind {
-					return false
-				}
-				if p.CategoryIndex < 0 || p.CategoryIndex >= len(categories) {
-					return false
-				}
-				cat := categories[p.CategoryIndex]
-				return p.TaskIndex >= 0 && p.TaskIndex < len(cat.Tasks) && cat.Tasks[p.TaskIndex].ID == taskID
-			}) {
-				return true
-			}
-			// Fallback: if the description row is gone (e.g. desc cleared), try the task.
-			if kind == selection.FocusDescription {
-				if m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-					if p.Kind != selection.FocusTask {
-						return false
-					}
-					if p.CategoryIndex < 0 || p.CategoryIndex >= len(categories) {
-						return false
-					}
-					cat := categories[p.CategoryIndex]
-					return p.TaskIndex >= 0 && p.TaskIndex < len(cat.Tasks) && cat.Tasks[p.TaskIndex].ID == taskID
-				}) {
-					return true
-				}
-			}
-		}
-		if catID != "" {
-			return m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-				return p.Kind == selection.FocusCategory &&
-					p.CategoryIndex >= 0 && p.CategoryIndex < len(categories) &&
-					categories[p.CategoryIndex].ID == catID
-			})
-		}
-	}
-	return false
 }

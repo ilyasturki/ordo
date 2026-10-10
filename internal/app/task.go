@@ -60,18 +60,10 @@ func (m *model) clearDescription(pos selection.Position) {
 		return
 	}
 	m.recordHistory()
-	taskID := task.ID
 	task.Description = ""
 	task.UpdatedAt = domain.NowTimestamp()
 	m.storeTaskUpdate()
 	m.rebuildPositions()
-	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		if p.Kind != selection.FocusTask || p.CategoryIndex < 0 || p.CategoryIndex >= len(m.project.Categories) {
-			return false
-		}
-		c := m.project.Categories[p.CategoryIndex]
-		return p.TaskIndex >= 0 && p.TaskIndex < len(c.Tasks) && c.Tasks[p.TaskIndex].ID == taskID
-	})
 	m.ensureVisible()
 	m.ui.Screen.StatusMsg = "Description cleared"
 }

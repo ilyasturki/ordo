@@ -94,14 +94,9 @@ func (m *model) collapseLeftRow() {
 	}
 }
 
-// The expanded task may own a description row that exists only while it is expanded.
 func (m *model) setExpandedTask(id string) {
-	cursor, ok := m.currentCursor()
 	m.ui.Screen.ExpandedTaskID = id
 	m.rebuildPositions()
-	if ok {
-		m.restoreCursor(cursor)
-	}
 	m.ensureVisible()
 }
 
