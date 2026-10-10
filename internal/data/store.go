@@ -102,8 +102,7 @@ func (s *Store) LoadProjectByID(id string) (domain.Project, error) {
 	if err != nil {
 		return domain.Project{}, err
 	}
-	// Saves go to the path of the ID inside the file, so a mismatch would
-	// split one project across two files.
+	// Saves follow the inner ID, so a mismatch would split the project across two files.
 	if project.ID != id {
 		return domain.Project{}, ErrProjectNotFound
 	}
@@ -417,8 +416,7 @@ func (s *Store) ConflictFiles(id string) []string {
 func (s *Store) lockPath(id string) string { return s.projectPath(id) + ".lock" }
 func (s *Store) tmpPath(id string) string  { return s.projectPath(id) + ".tmp" }
 
-// The .lock file stays on disk: unlinking it would break mutual exclusion for a
-// process already flocked to the old inode.
+// The .lock file stays: unlinking it breaks mutual exclusion for a process flocked to the old inode.
 func (s *Store) DeleteProject(id string) error {
 	f, err := s.acquireProjectLock(id)
 	if err != nil {

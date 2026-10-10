@@ -85,8 +85,7 @@ func (s *Store) saveNewProjectLocked(project domain.Project) error {
 // each other's updates between read and write.
 //
 // Returns ErrProjectNotFound without creating a .lock file when the project
-// does not exist; this avoids unauthenticated 404 spam littering the data dir
-// with empty lock files.
+// does not exist, so a mistyped ID leaves no empty lock file behind.
 func (s *Store) WithProjectLocked(id string, fn func(*domain.Project) error) (domain.Project, error) {
 	// Checked before the stat so a malformed ID never reaches the filesystem at
 	// all, not even to probe whether a path outside the data directory exists.

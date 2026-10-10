@@ -5,8 +5,7 @@ import (
 	"os"
 )
 
-// Returned only by snapshot saves; overwriting would discard another writer's
-// edits.
+// Returned only by snapshot saves; overwriting would discard another writer's edits.
 var ErrStaleProject = errors.New("project changed on disk since it was loaded")
 
 // Atomic rename changes the inode per write; size and mtime cover inode reuse.

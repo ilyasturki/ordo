@@ -1,5 +1,3 @@
-// Package fsutil holds the crash-safe whole-file write and the advisory file
-// lock that the project files and state.json share.
 package fsutil
 
 import (
