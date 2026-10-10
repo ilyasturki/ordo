@@ -257,12 +257,16 @@ func (m model) handlePickerFilterKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		m.ui.Picker.moveWithinProjects(-1, visible)
 		return m, nil
 	}
+	return m, m.updatePickerFilter(msg)
+}
+
+func (m *model) updatePickerFilter(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	m.ui.Picker.filter, cmd = m.ui.Picker.filter.Update(msg)
 	sanitizeInput(&m.ui.Picker.filter)
 	m.ui.Picker.query = m.ui.Picker.filter.Value()
-	m.ui.Picker.applyFilter(visible)
-	return m, cmd
+	m.ui.Picker.applyFilter(m.pickerVisibleCount())
+	return cmd
 }
 
 func (m *model) createProjectFromPicker() {

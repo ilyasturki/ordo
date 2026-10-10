@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"phasionary/internal/app/modes"
 	"phasionary/internal/app/selection"
 	"phasionary/internal/clipboard"
 	"phasionary/internal/domain"
@@ -179,14 +180,20 @@ func appendDescription(existing, text string) string {
 	return existing + "\n" + text
 }
 
-func pastedRowsSummary(rows []pastedRow) string {
-	seps := 0
+// describeRows counts what a paste holds, e.g. "4 tasks, 2 separators".
+func describeRows(rows []pastedRow, withDescriptions bool) string {
+	tasks, seps, descs := 0, 0, 0
 	for _, r := range rows {
-		if r.separator {
+		switch {
+		case r.separator:
 			seps++
+		case r.description != "":
+			descs++
+			tasks++
+		default:
+			tasks++
 		}
 	}
-	tasks := len(rows) - seps
 	var parts []string
 	if tasks > 0 {
 		parts = append(parts, fmt.Sprintf("%d %s", tasks, plural(tasks, "task", "tasks")))
@@ -194,7 +201,17 @@ func pastedRowsSummary(rows []pastedRow) string {
 	if seps > 0 {
 		parts = append(parts, fmt.Sprintf("%d %s", seps, plural(seps, "separator", "separators")))
 	}
-	return "Added " + strings.Join(parts, ", ")
+	if withDescriptions && descs > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", descs, plural(descs, "description", "descriptions")))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func pastedRowsSummary(rows []pastedRow) string {
+	if len(rows) == 0 {
+		return "Pasted"
+	}
+	return "Added " + describeRows(rows, false)
 }
 
 // pasteLinesInEdit turns a multi-line paste made in the inline task editor into
@@ -205,7 +222,7 @@ func (m *model) pasteLinesInEdit(text string) bool {
 		return false
 	}
 	rows := parsePastedRows(text)
-	if len(rows) < 2 {
+	if !pasteNeedsChooser(rows) {
 		return false
 	}
 	pos, ok := m.selectedPosition()
@@ -264,10 +281,14 @@ func (m *model) pasteLinesInEdit(text string) bool {
 		cat.InsertTask(pos.TaskIndex+1+i, task)
 	}
 
+	last := edited.ID
+	if len(newRows) > 0 {
+		last = newRows[len(newRows)-1].ID
+	}
 	m.ui.Modes.ToNormal()
 	m.ui.Edit.reset()
 	m.rebuildPositions()
-	m.selectTaskLevelRow(newRows[len(newRows)-1].ID, false)
+	m.selectTaskLevelRow(last, false)
 	m.ensureVisible()
 	m.storeTaskUpdate()
 	added := rest
@@ -290,12 +311,57 @@ func readClipboardLines() tea.Cmd {
 	}
 }
 
+// editorClipboardMsg answers a ctrl+v made in the editor of mode.
+type editorClipboardMsg struct {
+	mode modes.Mode
+	text string
+	err  error
+}
+
+func readClipboardForEditor(mode modes.Mode) tea.Cmd {
+	return func() tea.Msg {
+		text, err := clipboard.Read()
+		return editorClipboardMsg{mode: mode, text: text, err: err}
+	}
+}
+
+const clipboardUnreadable = "Can't read the clipboard: paste with the terminal instead"
+
+func (m *model) handleEditorClipboard(msg editorClipboardMsg) tea.Cmd {
+	if m.ui.Modes.Current() != msg.mode {
+		return nil
+	}
+	if msg.err != nil {
+		m.ui.Screen.StatusMsg = clipboardUnreadable
+		return nil
+	}
+	return m.handlePaste(msg.text)
+}
+
 func (m *model) pasteClipboardLines(msg clipboardLinesMsg) {
-	rows := parsePastedRows(msg.text)
-	if msg.err != nil || len(rows) == 0 {
+	if msg.err != nil {
+		m.ui.Screen.StatusMsg = clipboardUnreadable
+		return
+	}
+	m.pasteText(msg.text)
+}
+
+// pasteText lands text from the clipboard or the terminal below the cursor,
+// asking how first when it spans several lines.
+func (m *model) pasteText(text string) {
+	rows := parsePastedRows(text)
+	if len(rows) == 0 {
 		m.ui.Screen.StatusMsg = "Nothing to paste"
 		return
 	}
+	if pasteNeedsChooser(rows) {
+		m.openPasteChooser(text, rows)
+		return
+	}
+	m.insertPastedRows(rows)
+}
+
+func (m *model) insertPastedRows(rows []pastedRow) {
 	catIndex, taskIndex, ok := m.pasteDestination()
 	if !ok {
 		m.ui.Screen.StatusMsg = "No category to paste into"

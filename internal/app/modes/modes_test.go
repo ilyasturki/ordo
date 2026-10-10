@@ -158,3 +158,20 @@ func TestMachine_ConvenienceMethods(t *testing.T) {
 		assert.True(t, m.IsNormal())
 	})
 }
+
+func TestMachine_PasteChooserReturnsWhereItOpened(t *testing.T) {
+	m := NewMachine(ModeEdit)
+	assert.True(t, m.ToPasteChooser())
+	assert.True(t, m.IsPasteChooser())
+	assert.False(t, m.CanPerformAction(ActionDeleteItem))
+	assert.False(t, m.ToHelp())
+	assert.True(t, m.ToEdit())
+
+	m = NewMachine(ModeNormal)
+	assert.True(t, m.ToPasteChooser())
+	m.ToNormal()
+	assert.True(t, m.IsNormal())
+
+	m = NewMachine(ModeSearch)
+	assert.False(t, m.ToPasteChooser())
+}

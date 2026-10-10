@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"phasionary/internal/app/modes"
 	"phasionary/internal/app/selection"
 	"phasionary/internal/domain"
 )
@@ -199,6 +200,10 @@ func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 		// Not forwarded: bubbles' textinput binds up/down to suggestion history.
 		m.moveEditCursorRow(msg.String() == "down")
 		return nil
+	case "ctrl+v":
+		// bubbles reads the clipboard through atotto alone, missing the Wayland
+		// fallback, and flattens every paste into one line.
+		return readClipboardForEditor(modes.ModeEdit)
 	}
 	var cmd tea.Cmd
 	m.ui.Edit.input, cmd = m.ui.Edit.input.Update(msg)
@@ -339,9 +344,6 @@ func (m model) forwardToInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	if m.ui.Modes.IsEdit() {
-		if paste, ok := msg.(tea.PasteMsg); ok && m.pasteLinesInEdit(paste.Content) {
-			return m, nil
-		}
 		var cmd tea.Cmd
 		m.ui.Edit.input, cmd = m.ui.Edit.input.Update(msg)
 		sanitizeInput(&m.ui.Edit.input)
@@ -382,5 +384,63 @@ func (m *model) removeNewTask() {
 		}
 	}
 	m.rebuildPositions()
+	m.ensureVisible()
+}
+
+// handlePaste routes a paste to whatever takes text in the current mode. A
+// one-line input gets it on one line; nowhere drops it without a word.
+func (m *model) handlePaste(text string) tea.Cmd {
+	flat := tea.PasteMsg{Content: flattenPaste(text)}
+	var cmd tea.Cmd
+	switch m.ui.Modes.Current() {
+	case modes.ModeNormal:
+		m.pasteText(text)
+	case modes.ModeEdit:
+		m.pasteIntoEditor(text)
+	case modes.ModeDescriptionEdit:
+		m.ui.DescriptionEdit.textarea, cmd = m.ui.DescriptionEdit.textarea.Update(tea.PasteMsg{Content: text})
+	case modes.ModeSearch:
+		m.ui.Search.input, cmd = m.ui.Search.input.Update(flat)
+		sanitizeInput(&m.ui.Search.input)
+		m.previewSearch()
+	case modes.ModeCommandPrompt:
+		m.ui.TaskCommand.input, cmd = m.ui.TaskCommand.input.Update(flat)
+		sanitizeInput(&m.ui.TaskCommand.input)
+	case modes.ModeTagEdit:
+		m.ui.TagEdit.field = tagFieldLabel
+		cmd = m.updateTagLabel(flat)
+	case modes.ModeHelp:
+		if !m.ui.Help.Filtering {
+			cmd = m.startHelpFilter()
+		}
+		cmd = tea.Batch(cmd, m.updateHelpFilter(flat))
+	case modes.ModeProjectPicker:
+		switch {
+		case m.ui.Picker.isAdding:
+			m.ui.Picker.input, cmd = m.ui.Picker.input.Update(flat)
+			sanitizeInput(&m.ui.Picker.input)
+		case m.ui.Picker.filtering:
+			cmd = m.updatePickerFilter(flat)
+		default:
+			m.ui.Screen.StatusMsg = "Press / to filter, then paste"
+		}
+	case modes.ModeVisual:
+		m.ui.Screen.StatusMsg = "Leave visual mode to paste"
+	default:
+		m.ui.Screen.StatusMsg = "Nothing here takes a paste"
+	}
+	return cmd
+}
+
+// pasteIntoEditor asks how a paste of several lines lands in a task title;
+// anything else goes in at the caret, on one line.
+func (m *model) pasteIntoEditor(text string) {
+	if m.ui.Edit.itemType == selection.FocusTask {
+		if rows := parsePastedRows(text); pasteNeedsChooser(rows) {
+			m.openPasteChooser(text, rows)
+			return
+		}
+	}
+	m.insertAtEditCaret(flattenPaste(text))
 	m.ensureVisible()
 }

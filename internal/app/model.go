@@ -138,6 +138,7 @@ type UIState struct {
 	DescriptionEdit DescriptionEditState
 	TagEdit         TagEditState
 	TaskCommand     TaskCommandState
+	PasteChooser    PasteChooserState
 	History         HistoryState
 	Search          SearchState
 	Cursor          cursorTracker

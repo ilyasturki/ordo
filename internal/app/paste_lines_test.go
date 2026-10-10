@@ -121,6 +121,8 @@ func TestPasteClipboardLines_KeepsFoldedDescriptions(t *testing.T) {
 	require.True(t, m.selectTaskIdx(0, 0))
 
 	m.pasteClipboardLines(clipboardLinesMsg{text: "- [ ] handlers\n    GET and PUT\n- auth"})
+	require.True(t, m.ui.Modes.IsPasteChooser())
+	send(t, m, key("enter"))
 
 	tasks := m.project.Categories[0].Tasks
 	require.Len(t, tasks, 5)
@@ -272,6 +274,8 @@ func TestPasteClipboardLines_InsertsBelowSelection(t *testing.T) {
 	require.True(t, m.selectTaskIdx(0, 0))
 
 	m.pasteClipboardLines(clipboardLinesMsg{text: "## Backend\n- [x] handlers\n- auth"})
+	require.True(t, m.ui.Modes.IsPasteChooser(), "several rows ask how to paste")
+	send(t, m, key("enter"))
 
 	tasks := m.project.Categories[0].Tasks
 	require.Len(t, tasks, 6)
@@ -304,7 +308,7 @@ func TestPasteClipboardLines_EmptyOrFailedClipboard(t *testing.T) {
 	assert.Equal(t, "Nothing to paste", m.ui.Screen.StatusMsg)
 
 	m.pasteClipboardLines(clipboardLinesMsg{err: assert.AnError})
-	assert.Equal(t, "Nothing to paste", m.ui.Screen.StatusMsg)
+	assert.Equal(t, "Can't read the clipboard: paste with the terminal instead", m.ui.Screen.StatusMsg)
 
 	assert.Len(t, m.project.Categories[0].Tasks, 3, "nothing was inserted")
 }

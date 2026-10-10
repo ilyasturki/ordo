@@ -298,11 +298,7 @@ func (m *model) cutSelectedTask() tea.Cmd {
 	m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{task}, TaskIDs: []string{task.ID}, IsCut: true, Text: text, Written: true}
 	m.ui.TagCopiedLast = false
 
-	title := task.Title
-	if len([]rune(title)) > 30 {
-		title = string([]rune(title)[:30]) + "..."
-	}
-	status := "Cut: " + title + ", p moves it here, esc cancels"
+	status := "Cut: " + truncateRunes(task.Title, 30) + ", p moves it here, esc cancels"
 	m.ui.Screen.StatusMsg = status
 	return writeClipboard(clipboardResultMsg{text: text, status: status})
 }

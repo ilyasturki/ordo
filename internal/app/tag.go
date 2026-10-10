@@ -124,6 +124,11 @@ func (m *model) handleTagEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		s.field = tagFieldColor
 		return m, nil
 	}
+	return m, m.updateTagLabel(msg)
+}
+
+func (m *model) updateTagLabel(msg tea.Msg) tea.Cmd {
+	s := &m.ui.TagEdit
 	var cmd tea.Cmd
 	s.input, cmd = s.input.Update(msg)
 	sanitizeInput(&s.input)
@@ -132,7 +137,7 @@ func (m *model) handleTagEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if strings.TrimSpace(s.input.Value()) != "" && s.colorIdx == 0 {
 		s.colorIdx = tagColorIndex(domain.TagGreen)
 	}
-	return m, cmd
+	return cmd
 }
 
 func otherTagField(f tagEditField) tagEditField {

@@ -156,6 +156,10 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.handleClipboardResult(msg)
 	case clipboardLinesMsg:
 		m.resolvePaste(msg)
+	case editorClipboardMsg:
+		return m, m.handleEditorClipboard(msg)
+	case tea.PasteMsg:
+		return m, m.handlePaste(msg.Content)
 	case openURLResultMsg:
 		m.handleOpenURLResult(msg)
 	case taskCommandResultMsg:
@@ -288,6 +292,8 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handleTagEditKey(msg)
 	case modes.ModeCommandPrompt:
 		return m.handleCommandPromptKey(msg)
+	case modes.ModePasteChooser:
+		return m.handlePasteChooserKey(msg)
 	case modes.ModeExternalEdit:
 		return m, nil
 	default:
@@ -357,13 +363,17 @@ func (m model) handleHelpFilterKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.moveHelpFocus(-m.helpBodyHeight() / 2)
 		return m, nil
 	}
+	return m, m.updateHelpFilter(msg)
+}
+
+func (m *model) updateHelpFilter(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	m.ui.Help.Filter, cmd = m.ui.Help.Filter.Update(msg)
 	sanitizeInput(&m.ui.Help.Filter)
 	m.ui.Help.Focused = 0
 	m.ui.Help.ScrollOffset = 0
 	m.ensureHelpVisible()
-	return m, cmd
+	return cmd
 }
 
 // startHelpFilter enters the `/` filter sub-mode with a fresh, focused input.
@@ -724,6 +734,8 @@ func (m model) renderView() string {
 		return modal.Render(content, m.descriptionEditView())
 	case modes.ModeTagEdit:
 		return modal.Render(content, m.tagEditView())
+	case modes.ModePasteChooser:
+		return modal.Render(content, m.pasteChooserView())
 	}
 	return content
 }
@@ -744,14 +756,14 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 
 	switch item.Kind {
 	case LayoutProject:
-		if m.ui.Modes.IsEdit() && isCursor {
+		if m.editorOpen() && isCursor {
 			return m.renderEditProjectLine()
 		}
 		return renderProjectLine(m.project.Name, isSelected, focused, m.ui.Filter.HasActiveFilter(), visualMode, m.statusText(), m.ui.Screen.Width)
 
 	case LayoutCategory:
 		category := m.project.Categories[item.CategoryIndex]
-		if m.ui.Modes.IsEdit() && isCursor {
+		if m.editorOpen() && isCursor {
 			return m.renderEditCategoryLine()
 		}
 		folded := m.ui.Fold.IsFolded(category.ID)
@@ -760,14 +772,14 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 
 	case LayoutTask:
 		task := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
-		if m.ui.Modes.IsEdit() && isCursor {
+		if m.editorOpen() && isCursor {
 			return m.renderEditTaskLine(task)
 		}
 		cut := m.isTaskCut(task.ID)
 		return m.renderTaskLine(task, isSelected, m.ui.Screen.Width, focused, inVisualRange, isCursor, cut)
 
 	case LayoutSeparator:
-		if m.ui.Modes.IsEdit() && isCursor {
+		if m.editorOpen() && isCursor {
 			return m.renderEditSeparatorLine()
 		}
 		sep := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]

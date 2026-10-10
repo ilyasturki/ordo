@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"phasionary/internal/app/modes"
 	"phasionary/internal/app/selection"
 	"phasionary/internal/domain"
 	"phasionary/internal/ui"
@@ -124,6 +125,8 @@ func (m *model) handleDescriptionEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 	case "enter", "ctrl+s", "ctrl+enter":
 		m.finishDescriptionEdit()
 		return m, nil
+	case "ctrl+v":
+		return m, readClipboardForEditor(modes.ModeDescriptionEdit)
 	case "shift+enter", "alt+enter":
 		// Shift+Enter inserts a newline. Terminals disagree on its wire
 		// encoding: kitty/ghostty send ESC+CR ("alt+enter"), Kitty-protocol
