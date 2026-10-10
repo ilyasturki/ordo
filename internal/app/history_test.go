@@ -53,7 +53,7 @@ func TestUndo_Priority(t *testing.T) {
 func TestUndo_DeleteTask(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(2) // t1
-	m.deleteTask(selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0})
+	m.deleteTask(selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0}, false)
 	require.Len(t, m.project.Categories[0].Tasks, 2)
 
 	m.undo()
@@ -68,7 +68,7 @@ func TestUndo_DeleteTask(t *testing.T) {
 func TestUndo_DeleteCategory(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(1) // Cat A
-	m.deleteCategory(selection.Position{Kind: selection.FocusCategory, CategoryIndex: 0})
+	m.deleteCategory(selection.Position{Kind: selection.FocusCategory, CategoryIndex: 0}, false)
 	require.Len(t, m.project.Categories, 1)
 	assert.Equal(t, "c2", m.project.Categories[0].ID)
 
@@ -388,7 +388,7 @@ func TestDiscardLastHistory_PreservesRedoStack(t *testing.T) {
 func TestUndo_DeleteThenPasteDoesNotDuplicate(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(2) // t1
-	m.deleteTask(selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0})
+	m.deleteTask(selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0}, false)
 	require.Len(t, m.project.Categories[0].Tasks, 2)
 	require.NotEmpty(t, m.ui.Clipboard.Tasks, "delete stages the task in clipboard")
 

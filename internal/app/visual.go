@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -498,53 +499,58 @@ func (m *model) visualMoveUp() {
 }
 
 func (m *model) visualShift(dir int) {
-	selPositions := m.visualSelectedPositions()
-	if len(selPositions) == 0 {
+	lo, hi, catIdx, ok := m.visualRun()
+	if !ok {
 		return
 	}
 	var reason string
-	switch m.ui.Visual.Kind {
-	case selection.FocusCategory:
-		reason = m.shiftCategories(selPositions[0].CategoryIndex, selPositions[len(selPositions)-1].CategoryIndex, dir)
-	case selection.FocusTask:
-		reason = m.visualShiftTaskBlock(visualRoundUpPositions(selPositions), dir)
+	if m.ui.Visual.Kind == selection.FocusCategory {
+		reason = m.shiftCategories(lo, hi, dir)
+	} else {
+		reason = m.shiftTasks(catIdx, lo, hi, dir)
 	}
 	if reason != "" {
 		m.ui.Screen.StatusMsg = reason
 	}
 }
 
-func (m *model) visualShiftTaskBlock(selPositions []selection.Position, dir int) string {
-	catIdx := selPositions[0].CategoryIndex
-	for _, p := range selPositions[1:] {
-		if p.CategoryIndex != catIdx {
-			return "Can't move: selection spans multiple categories"
+// visualRun is the run of whole sibling blocks the visual selection covers,
+// a selected parent bringing its children: categories[lo:hi], or the tasks
+// [lo:hi] of the category at catIdx. It reports a selection that isn't one
+// such run in the status line.
+func (m *model) visualRun() (lo, hi, catIdx int, ok bool) {
+	selPositions := visualRoundUpPositions(m.visualSelectedPositions())
+	if len(selPositions) == 0 {
+		return 0, 0, 0, false
+	}
+	catIdx = selPositions[0].CategoryIndex
+	idxs := make([]int, 0, len(selPositions))
+	for _, p := range selPositions {
+		if m.ui.Visual.Kind == selection.FocusCategory {
+			idxs = append(idxs, p.CategoryIndex)
+			continue
 		}
+		if p.CategoryIndex != catIdx {
+			m.ui.Screen.StatusMsg = "Can't: selection spans multiple categories"
+			return 0, 0, 0, false
+		}
+		idxs = append(idxs, p.TaskIndex)
 	}
-	taskLo := selPositions[0].TaskIndex
-	taskHi := selPositions[len(selPositions)-1].TaskIndex
-	if taskHi-taskLo+1 != len(selPositions) {
-		return "Can't move: selection isn't contiguous (rows hidden by filter)"
+	var err error
+	if m.ui.Visual.Kind == selection.FocusCategory {
+		lo, hi, err = domain.CoverBlocks(m.project.Categories, idxs)
+	} else {
+		lo, hi, err = domain.CoverBlocks(m.project.Categories[catIdx].Tasks, idxs)
 	}
-	return m.shiftTasks(catIdx, taskLo, taskHi, dir)
-}
-
-// visualCursorRowID captures the cursor's task ID and whether the cursor sits
-// on the task's description row, so the cursor can re-attach to the same row
-// after a structural change re-indexes the position list.
-func (m *model) visualCursorRowID() (string, bool) {
-	cur, ok := m.ui.Selection.SelectedPosition()
-	if !ok || !visualTaskLevel(cur.Kind) {
-		return "", false
+	switch {
+	case errors.Is(err, domain.ErrNotContiguous):
+		m.ui.Screen.StatusMsg = "Can't: selection isn't contiguous (rows hidden by filter)"
+		return 0, 0, 0, false
+	case err != nil:
+		m.ui.Screen.StatusMsg = "Can't: the selection mixes levels"
+		return 0, 0, 0, false
 	}
-	if cur.CategoryIndex < 0 || cur.CategoryIndex >= len(m.project.Categories) {
-		return "", false
-	}
-	cat := m.project.Categories[cur.CategoryIndex]
-	if cur.TaskIndex < 0 || cur.TaskIndex >= len(cat.Tasks) {
-		return "", false
-	}
-	return cat.Tasks[cur.TaskIndex].ID, cur.Kind == selection.FocusDescription
+	return lo, hi, catIdx, true
 }
 
 // selectTaskLevelRow moves the selection to the task-level row with the given
@@ -613,6 +619,12 @@ func (m model) handleVisualKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "J":
 		m.visualMoveDown()
+		return m, nil
+	case ">":
+		m.visualNest(true)
+		return m, nil
+	case "<":
+		m.visualNest(false)
 		return m, nil
 	case "K":
 		m.visualMoveUp()

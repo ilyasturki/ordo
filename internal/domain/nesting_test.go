@@ -121,6 +121,46 @@ func TestOutdentTask(t *testing.T) {
 	})
 }
 
+func TestNestingRuns(t *testing.T) {
+	t.Run("several tasks nest under the one above", func(t *testing.T) {
+		c := Category{Tasks: nestedTasks("a", "b", "c", "d")}
+		require.NoError(t, c.IndentTasks(1, 3))
+		assert.Equal(t, []string{"a", "b<a", "c<a", "d"}, taskShape(c.Tasks))
+	})
+	t.Run("several subtasks come out together, in order", func(t *testing.T) {
+		c := Category{Tasks: nestedTasks("a", "a1<a", "a2<a", "a3<a", "b")}
+		at, err := c.OutdentTasks(1, 3)
+		require.NoError(t, err)
+		assert.Equal(t, 2, at)
+		assert.Equal(t, []string{"a", "a3<a", "a1", "a2", "b"}, taskShape(c.Tasks))
+	})
+	t.Run("a run with a parent in it refuses to nest", func(t *testing.T) {
+		c := Category{Tasks: nestedTasks("a", "b", "c", "c1<c")}
+		assert.ErrorIs(t, c.IndentTasks(1, 4), ErrNestDepth)
+	})
+	t.Run("a run across two parents refuses to come out", func(t *testing.T) {
+		c := Category{Tasks: nestedTasks("a", "a1<a", "b", "b1<b")}
+		_, err := c.OutdentTasks(1, 4)
+		assert.ErrorIs(t, err, ErrMixedLevels)
+	})
+}
+
+func TestCoverBlocks(t *testing.T) {
+	tasks := nestedTasks("a", "a1<a", "a2<a", "b", "c", "c1<c")
+	lo, hi, err := CoverBlocks(tasks, []int{0, 3})
+	require.NoError(t, err)
+	assert.Equal(t, [2]int{0, 4}, [2]int{lo, hi}, "a parent brings its subtasks")
+
+	_, _, err = CoverBlocks(tasks, []int{1, 2})
+	assert.NoError(t, err, "subtasks of one parent")
+
+	_, _, err = CoverBlocks(tasks, []int{2, 3})
+	assert.ErrorIs(t, err, ErrMixedLevels)
+
+	_, _, err = CoverBlocks(tasks, []int{0, 4})
+	assert.ErrorIs(t, err, ErrNotContiguous)
+}
+
 func TestMoveTaskBlock(t *testing.T) {
 	t.Run("a parent hops the next sibling block with its subtasks", func(t *testing.T) {
 		c := Category{Tasks: nestedTasks("a", "a1<a", "b", "b1<b", "b2<b", "c")}

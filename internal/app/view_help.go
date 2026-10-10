@@ -90,6 +90,7 @@ var helpModeSections = []helpSection{
 		entries: []helpEntry{
 			{keys: "j / k", desc: "extend the selection"},
 			{keys: "J / K", desc: "move the selection down / up"},
+			{keys: "> / <", desc: "nest / un-nest the selection"},
 			{keys: "o", desc: "swap which end moves"},
 			{keys: "space", desc: "cycle status of every row"},
 			{keys: "y / Y", desc: "copy / copy as markdown"},

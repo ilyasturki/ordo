@@ -429,6 +429,10 @@ func (m model) handleConfirmDeleteKey(msg tea.KeyPressMsg) model {
 		default:
 			m.confirmDeleteAction()
 		}
+	case "k":
+		if pos, ok := m.selectedPosition(); ok && m.ui.ConfirmDelete.Kind == ConfirmDeleteSelection && m.deletedChildren(pos) > 0 {
+			m.confirmDeleteKeepingChildren()
+		}
 	case "n", "esc":
 		switch m.ui.ConfirmDelete.Kind {
 		case ConfirmDeleteProject:

@@ -88,7 +88,7 @@ func TestRebuildAfterAnEditElsewhereKeepsTheCursor(t *testing.T) {
 func TestDeletingTheCursorTaskKeepsItsRow(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	selectRow(t, m, selection.FocusTask, "t2")
-	m.deleteTask(selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 1})
+	m.deleteTask(selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 1}, false)
 	assert.Equal(t, "task:t3", cursorItem(t, m), "the row below takes the deleted task's place")
 }
 

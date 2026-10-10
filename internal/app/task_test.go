@@ -355,7 +355,7 @@ func TestDeleteTask_RemovesAndCopiesToClipboard(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	pos := selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0}
 	m.ui.Selection.MoveTo(2)
-	m.deleteTask(pos)
+	m.deleteTask(pos, false)
 	assert.Len(t, m.project.Categories[0].Tasks, 2)
 	require.Len(t, m.ui.Clipboard.Tasks, 1)
 	assert.Equal(t, "Alpha", m.ui.Clipboard.Tasks[0].Title)
@@ -438,7 +438,7 @@ func TestDeleteCategory_RemovesEntireCategory(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	pos := selection.Position{Kind: selection.FocusCategory, CategoryIndex: 0}
 	m.ui.Selection.MoveTo(1)
-	m.deleteCategory(pos)
+	m.deleteCategory(pos, false)
 	require.Len(t, m.project.Categories, 1)
 	assert.Equal(t, "c2", m.project.Categories[0].ID)
 }

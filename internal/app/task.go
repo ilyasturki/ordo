@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"slices"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -69,6 +70,16 @@ func (m *model) clearDescription(pos selection.Position) {
 }
 
 func (m *model) confirmDeleteAction() {
+	m.confirmDelete(false)
+}
+
+// confirmDeleteKeepingChildren deletes the focused parent and leaves its
+// children in its place, top-level.
+func (m *model) confirmDeleteKeepingChildren() {
+	m.confirmDelete(true)
+}
+
+func (m *model) confirmDelete(keepChildren bool) {
 	m.ui.ConfirmDelete.reset()
 	m.ui.Modes.ToNormal()
 	position, ok := m.selectedPosition()
@@ -77,14 +88,28 @@ func (m *model) confirmDeleteAction() {
 	}
 	switch position.Kind {
 	case selection.FocusTask:
-		m.deleteTask(position)
+		m.deleteTask(position, keepChildren)
 	case selection.FocusCategory:
-		m.deleteCategory(position)
+		m.deleteCategory(position, keepChildren)
 	}
 }
 
-func (m *model) deleteTask(position selection.Position) {
-	catIndex := position.CategoryIndex
+// deletedChildren counts the subtasks or sub-categories that deleting the item
+// at pos takes along unless they are kept.
+func (m model) deletedChildren(pos selection.Position) int {
+	switch pos.Kind {
+	case selection.FocusTask:
+		return domain.BlockEnd(m.project.Categories[pos.CategoryIndex].Tasks, pos.TaskIndex) - pos.TaskIndex - 1
+	case selection.FocusCategory:
+		return domain.BlockEnd(m.project.Categories, pos.CategoryIndex) - pos.CategoryIndex - 1
+	}
+	return 0
+}
+
+// deleteTask removes the task at position with its subtasks, or alone with
+// keepChildren, and stashes what it removed in the clipboard.
+func (m *model) deleteTask(position selection.Position, keepChildren bool) {
+	cat := &m.project.Categories[position.CategoryIndex]
 	taskIndex := position.TaskIndex
 
 	// Snapshot BEFORE stashing the task in the clipboard, so that undo
@@ -93,19 +118,36 @@ func (m *model) deleteTask(position selection.Position) {
 	// the just-restored task.
 	m.recordHistory()
 
-	task := m.project.Categories[catIndex].Tasks[taskIndex]
-	m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{task}, TaskIDs: []string{task.ID}}
+	if keepChildren {
+		cat.ReleaseSubtasks(taskIndex)
+	}
+	end := domain.BlockEnd(cat.Tasks, taskIndex)
+	removed := slices.Clone(cat.Tasks[taskIndex:end])
+	ids := make([]string, len(removed))
+	for i, t := range removed {
+		ids[i] = t.ID
+	}
+	m.ui.Clipboard = ClipboardState{Tasks: removed, TaskIDs: ids}
 	m.ui.TagCopiedLast = false
 
-	_ = m.project.Categories[catIndex].RemoveTask(taskIndex)
+	cat.RemoveTaskBlock(taskIndex)
 	m.rebuildAndClamp()
 	m.storeTaskUpdate()
 }
 
-func (m *model) deleteCategory(position selection.Position) {
+// deleteCategory removes the category at position with its sub-categories, or
+// alone with keepChildren, which the sub-categories survive top-level.
+func (m *model) deleteCategory(position selection.Position, keepChildren bool) {
 	catIndex := position.CategoryIndex
 	m.recordHistory()
-	_ = m.project.RemoveCategory(catIndex)
+	if keepChildren {
+		if err := m.project.ReleaseSubCategories(catIndex); err != nil {
+			m.discardLastHistory()
+			m.ui.Screen.StatusMsg = "Can't keep the sub-categories: a top-level category has one of their names"
+			return
+		}
+	}
+	m.project.RemoveCategoryBlock(catIndex)
 	m.rebuildAndClamp()
 	m.storeTaskUpdate()
 }

@@ -205,7 +205,7 @@ func TestPaste_UnreadableClipboardFallsBackToTheCopy(t *testing.T) {
 func TestPaste_DeletedTaskSkipsTheClipboard(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))
-	m.deleteTask(selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0})
+	m.deleteTask(selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0}, false)
 	assert.False(t, m.ui.Clipboard.Written, "d writes nothing to the system clipboard")
 
 	require.True(t, m.selectTaskIdx(1, 0))

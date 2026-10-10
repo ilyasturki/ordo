@@ -21,17 +21,28 @@ func (m model) confirmDeleteView() string {
 		return ""
 	}
 	var message string
+	hints := []ui.Hint{{Key: "y/enter", Label: "confirm"}, {Key: "n/esc", Label: "cancel"}}
+	children := m.deletedChildren(position)
 	if position.Kind == selection.FocusTask {
 		task := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
 		message = fmt.Sprintf("Delete task %q?", truncateText(task.Title, 30))
+		if children > 0 {
+			message = fmt.Sprintf("Delete task %q and its %d subtask%s?", truncateText(task.Title, 30), children, plural(children, "", "s"))
+			hints = []ui.Hint{{Key: "y/enter", Label: "delete all"}, {Key: "k", Label: "keep the subtasks"}, {Key: "n/esc", Label: "cancel"}}
+		}
 	} else {
 		cat := m.project.Categories[position.CategoryIndex]
-		message = fmt.Sprintf("Delete category %q and %d tasks?", truncateText(cat.Name, 30), len(cat.Tasks))
+		tasks := m.project.TreeStatusCounts(position.CategoryIndex).Total()
+		message = fmt.Sprintf("Delete category %q and %d tasks?", truncateText(cat.Name, 30), tasks)
+		if children > 0 {
+			message = fmt.Sprintf("Delete category %q, its %d sub-categor%s and %d tasks?", truncateText(cat.Name, 30), children, plural(children, "y", "ies"), tasks)
+			hints = []ui.Hint{{Key: "y/enter", Label: "delete all"}, {Key: "k", Label: "keep the sub-categories"}, {Key: "n/esc", Label: "cancel"}}
+		}
 	}
 	lines := []string{
 		message,
 		"",
-		ui.RenderHints([]ui.Hint{{Key: "y/enter", Label: "confirm"}, {Key: "n/esc", Label: "cancel"}}),
+		ui.RenderHints(hints),
 	}
 	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
 }

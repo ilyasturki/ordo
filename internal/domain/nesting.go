@@ -19,6 +19,8 @@ var (
 	ErrNothingToNest = errors.New("nothing above to nest under")
 	ErrNotNested     = errors.New("not nested")
 	ErrSeparatorNest = errors.New("a separator can't nest")
+	ErrNotContiguous = errors.New("not contiguous")
+	ErrMixedLevels   = errors.New("mixes levels")
 )
 
 // CategoryPathSep joins a sub-category's name to its parent's in a category
@@ -81,43 +83,97 @@ func BlockStart[T any, P outline[T]](items []T, i int) int {
 	return i
 }
 
+// LastBlockStart returns the index of the first item of the last block in the
+// run of sibling blocks items[lo:hi].
+func LastBlockStart[T any, P outline[T]](items []T, lo, hi int) int {
+	if _, parent := P(&items[lo]).links(); parent != "" {
+		return hi - 1
+	}
+	return BlockStart[T, P](items, hi-1)
+}
+
+// CoverBlocks returns the run items[lo:hi] that the items at idxs cover once
+// each parent brings its children along. It fails with ErrNotContiguous when
+// the run has a gap, and with ErrMixedLevels unless it is made of whole sibling
+// blocks: top-level blocks, or children of one parent.
+func CoverBlocks[T any, P outline[T]](items []T, idxs []int) (int, int, error) {
+	if len(idxs) == 0 {
+		return 0, 0, ErrNotContiguous
+	}
+	covered := make(map[int]bool)
+	lo, hi := len(items), 0
+	for _, i := range idxs {
+		end := BlockEnd[T, P](items, i)
+		for j := i; j < end; j++ {
+			covered[j] = true
+		}
+		lo, hi = min(lo, i), max(hi, end)
+	}
+	if len(covered) != hi-lo {
+		return lo, hi, ErrNotContiguous
+	}
+	_, parent := P(&items[lo]).links()
+	if parent == "" {
+		if BlockEnd[T, P](items, BlockStart[T, P](items, hi-1)) != hi {
+			return lo, hi, ErrMixedLevels
+		}
+		return lo, hi, nil
+	}
+	for i := lo; i < hi; i++ {
+		if _, p := P(&items[i]).links(); p != parent {
+			return lo, hi, ErrMixedLevels
+		}
+	}
+	return lo, hi, nil
+}
+
 // HasChildren reports whether items[i] is a parent.
 func HasChildren[T any, P outline[T]](items []T, i int) bool {
 	return BlockEnd[T, P](items, i) > i+1
 }
 
-// indentTarget returns the index of the item items[i] would nest under.
-func indentTarget[T any, P outline[T]](items []T, i int) (int, error) {
-	if i <= 0 || i >= len(items) {
+// nestTarget returns the index of the top-level item that the run
+// items[lo:hi] would nest under: the one above it. Every item of the run must
+// be a top-level item without children.
+func nestTarget[T any, P outline[T]](items []T, lo, hi int) (int, error) {
+	if lo <= 0 || hi > len(items) || lo >= hi {
 		return -1, ErrNothingToNest
 	}
-	item := P(&items[i])
-	if !item.nests() {
-		return -1, ErrSeparatorNest
+	for i := lo; i < hi; i++ {
+		item := P(&items[i])
+		if !item.nests() {
+			return -1, ErrSeparatorNest
+		}
+		if _, parent := item.links(); parent != "" || HasChildren[T, P](items, i) {
+			return -1, ErrNestDepth
+		}
 	}
-	if _, parent := item.links(); parent != "" || HasChildren[T, P](items, i) {
-		return -1, ErrNestDepth
-	}
-	head := BlockStart[T, P](items, i-1)
+	head := BlockStart[T, P](items, lo-1)
 	if !P(&items[head]).nests() {
 		return -1, ErrNothingToNest
 	}
 	return head, nil
 }
 
-// outdent makes the child items[i] top-level, right after its parent's block,
-// and returns its new index.
-func outdent[T any, P outline[T]](items []T, i int) (int, error) {
-	parent := ParentIndex[T, P](items, i)
+// unnest makes the run items[lo:hi], children of one parent, top-level right
+// after the parent's block, in their order, and returns the run's new start.
+func unnest[T any, P outline[T]](items []T, lo, hi int) (int, error) {
+	parent := ParentIndex[T, P](items, lo)
 	if parent < 0 {
-		return i, ErrNotNested
+		return lo, ErrNotNested
+	}
+	parentID, _ := P(&items[parent]).links()
+	for i := lo; i < hi; i++ {
+		if _, p := P(&items[i]).links(); p != parentID {
+			return lo, ErrMixedLevels
+		}
 	}
 	end := BlockEnd[T, P](items, parent)
-	P(&items[i]).setParent("")
-	moved := items[i]
-	copy(items[i:end-1], items[i+1:end])
-	items[end-1] = moved
-	return end - 1, nil
+	for i := lo; i < hi; i++ {
+		P(&items[i]).setParent("")
+	}
+	SwapRanges(items, lo, hi, end)
+	return lo + end - hi, nil
 }
 
 // SiblingBlock returns the block next to items[i]'s own among its siblings in
@@ -155,15 +211,15 @@ func moveBlock[T any, P outline[T]](items []T, i, dir int) (int, bool) {
 	}
 	end := BlockEnd[T, P](items, i)
 	if dir > 0 {
-		rotateBlocks(items, i, lo, hi)
+		SwapRanges(items, i, lo, hi)
 		return i + hi - lo, true
 	}
-	rotateBlocks(items, lo, i, end)
+	SwapRanges(items, lo, i, end)
 	return lo, true
 }
 
-// rotateBlocks swaps the adjacent ranges [a, b) and [b, c).
-func rotateBlocks[T any](items []T, a, b, c int) {
+// SwapRanges swaps the adjacent ranges [a, b) and [b, c) of items.
+func SwapRanges[T any](items []T, a, b, c int) {
 	slices.Reverse(items[a:b])
 	slices.Reverse(items[b:c])
 	slices.Reverse(items[a:c])
@@ -246,63 +302,105 @@ func RequiredSchema(p Project) int {
 	return 1
 }
 
-// IndentTask nests the task at i under the task above it, as its last subtask.
-func (c *Category) IndentTask(i int) error {
-	parent, err := indentTarget(c.Tasks, i)
+// IndentTasks nests the top-level tasks lo to hi-1, none of them a parent,
+// under the task above them, as its last subtasks.
+func (c *Category) IndentTasks(lo, hi int) error {
+	parent, err := nestTarget(c.Tasks, lo, hi)
 	if err != nil {
 		return err
 	}
-	c.Tasks[i].ParentID = c.Tasks[parent].ID
-	c.Tasks[i].UpdatedAt = NowTimestamp()
-	c.UpdatedAt = NowTimestamp()
+	now := NowTimestamp()
+	for i := lo; i < hi; i++ {
+		c.Tasks[i].ParentID = c.Tasks[parent].ID
+		c.Tasks[i].UpdatedAt = now
+	}
+	c.UpdatedAt = now
 	return nil
+}
+
+// IndentTask nests the task at i under the task above it, as its last subtask.
+func (c *Category) IndentTask(i int) error {
+	return c.IndentTasks(i, i+1)
+}
+
+// OutdentTasks makes the subtasks lo to hi-1 of one parent top-level, right
+// after the parent's block, and returns where the first of them lands.
+func (c *Category) OutdentTasks(lo, hi int) (int, error) {
+	at, err := unnest(c.Tasks, lo, hi)
+	if err != nil {
+		return lo, err
+	}
+	now := NowTimestamp()
+	for i := at; i < at+hi-lo; i++ {
+		c.Tasks[i].UpdatedAt = now
+	}
+	c.UpdatedAt = now
+	return at, nil
 }
 
 // OutdentTask makes the subtask at i top-level, right after its parent's
 // block, and returns its new index.
 func (c *Category) OutdentTask(i int) (int, error) {
-	at, err := outdent(c.Tasks, i)
+	return c.OutdentTasks(i, i+1)
+}
+
+// IndentCategories nests the top-level categories lo to hi-1, none of them a
+// parent, under the top-level category above them, as its last
+// sub-categories. It refuses a name the parent's sub-categories carry.
+func (p *Project) IndentCategories(lo, hi int) error {
+	parent, err := nestTarget(p.Categories, lo, hi)
 	if err != nil {
-		return i, err
+		return err
 	}
-	c.Tasks[at].UpdatedAt = NowTimestamp()
-	c.UpdatedAt = NowTimestamp()
-	return at, nil
+	parentID := p.Categories[parent].ID
+	for i := lo; i < hi; i++ {
+		if CategoryNameConflict(p.Categories, parentID, p.Categories[i].Name, i) >= 0 {
+			return ErrDuplicateCategoryName
+		}
+	}
+	now := NowTimestamp()
+	for i := lo; i < hi; i++ {
+		p.Categories[i].ParentID = parentID
+		p.Categories[i].UpdatedAt = now
+	}
+	p.UpdatedAt = now
+	return nil
 }
 
 // IndentCategory nests the category at i under the top-level category above
 // it, as its last sub-category.
 func (p *Project) IndentCategory(i int) error {
-	parent, err := indentTarget(p.Categories, i)
+	return p.IndentCategories(i, i+1)
+}
+
+// OutdentCategories makes the sub-categories lo to hi-1 of one parent
+// top-level, right after the parent's block, and returns where the first of
+// them lands. It refuses a name another top-level category carries.
+func (p *Project) OutdentCategories(lo, hi int) (int, error) {
+	if p.Categories[lo].ParentID == "" {
+		return lo, ErrNotNested
+	}
+	for i := lo; i < hi; i++ {
+		if CategoryNameConflict(p.Categories, "", p.Categories[i].Name, i) >= 0 {
+			return lo, ErrDuplicateCategoryName
+		}
+	}
+	at, err := unnest(p.Categories, lo, hi)
 	if err != nil {
-		return err
+		return lo, err
 	}
-	parentID := p.Categories[parent].ID
-	if CategoryNameConflict(p.Categories, parentID, p.Categories[i].Name, i) >= 0 {
-		return ErrDuplicateCategoryName
+	now := NowTimestamp()
+	for i := at; i < at+hi-lo; i++ {
+		p.Categories[i].UpdatedAt = now
 	}
-	p.Categories[i].ParentID = parentID
-	p.Categories[i].UpdatedAt = NowTimestamp()
-	p.UpdatedAt = NowTimestamp()
-	return nil
+	p.UpdatedAt = now
+	return at, nil
 }
 
 // OutdentCategory makes the sub-category at i top-level, right after its
 // parent's block, and returns its new index.
 func (p *Project) OutdentCategory(i int) (int, error) {
-	if p.Categories[i].ParentID == "" {
-		return i, ErrNotNested
-	}
-	if CategoryNameConflict(p.Categories, "", p.Categories[i].Name, i) >= 0 {
-		return i, ErrDuplicateCategoryName
-	}
-	at, err := outdent(p.Categories, i)
-	if err != nil {
-		return i, err
-	}
-	p.Categories[at].UpdatedAt = NowTimestamp()
-	p.UpdatedAt = NowTimestamp()
-	return at, nil
+	return p.OutdentCategories(i, i+1)
 }
 
 // CategoryNameConflict is the one category uniqueness rule: names are unique

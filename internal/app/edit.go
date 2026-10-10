@@ -88,23 +88,21 @@ func (m *model) startAddingTask() {
 		return
 	}
 
-	// Insert directly below the current row when it shares the category's
-	// Tasks addressing (a task, its description line, or a separator); otherwise
-	// (e.g. focus on the category header) land at the top of the category.
-	var taskIndex int
+	// Below the current row at its depth, after a parent's subtasks: a
+	// subtask's sibling is a subtask. From the category header, the new task
+	// opens the category.
+	cat := &m.project.Categories[catIndex]
+	taskIndex := 0
 	switch position.Kind {
 	case selection.FocusTask, selection.FocusDescription, selection.FocusSeparator:
-		taskIndex = position.TaskIndex + 1
-	default:
-		taskIndex = 0
+		taskIndex = domain.BlockEnd(cat.Tasks, position.TaskIndex)
+		newTask.ParentID = cat.Tasks[position.TaskIndex].ParentID
 	}
 	m.recordHistory()
-	m.project.Categories[catIndex].InsertTask(taskIndex, newTask)
+	cat.InsertTask(taskIndex, newTask)
 
 	m.rebuildPositions()
-	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		return p.Kind == selection.FocusTask && p.CategoryIndex == catIndex && p.TaskIndex == taskIndex
-	})
+	m.selectItem(selection.FocusTask, newTask.ID)
 	m.ui.Modes.ToEdit()
 	m.ui.Edit = newEditState("", true, newTask.ID, selection.FocusTask)
 	m.ensureVisible()
@@ -132,21 +130,20 @@ func (m *model) startAddingSeparator() {
 		return
 	}
 
-	var taskIndex int
+	// A separator never nests, so below a subtask it lands after the parent's
+	// subtasks.
+	cat := &m.project.Categories[catIndex]
+	taskIndex := 0
 	switch position.Kind {
 	case selection.FocusTask, selection.FocusSeparator, selection.FocusDescription:
-		taskIndex = position.TaskIndex + 1
-	default:
-		taskIndex = 0
+		taskIndex = domain.BlockEnd(cat.Tasks, domain.BlockStart(cat.Tasks, position.TaskIndex))
 	}
 	m.recordHistory()
-	m.project.Categories[catIndex].InsertTask(taskIndex, sep)
+	cat.InsertTask(taskIndex, sep)
 	m.storeTaskUpdate()
 
 	m.rebuildPositions()
-	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		return p.Kind == selection.FocusSeparator && p.CategoryIndex == catIndex && p.TaskIndex == taskIndex
-	})
+	m.selectItem(selection.FocusSeparator, sep.ID)
 	m.ensureVisible()
 }
 
@@ -155,17 +152,20 @@ func (m *model) startAddingCategory() {
 	if !ok {
 		return
 	}
-	insertIndex := position.CategoryIndex + 1
 	newCat, err := domain.NewCategory("")
 	if err != nil {
 		return
 	}
+	// Below the current category at its depth, after its sub-categories.
+	insertIndex := 0
+	if ci := position.CategoryIndex; ci >= 0 && ci < len(m.project.Categories) {
+		insertIndex = domain.BlockEnd(m.project.Categories, ci)
+		newCat.ParentID = m.project.Categories[ci].ParentID
+	}
 	m.recordHistory()
 	m.project.InsertCategory(insertIndex, newCat)
 	m.rebuildPositions()
-	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		return p.Kind == selection.FocusCategory && p.CategoryIndex == insertIndex
-	})
+	m.selectItem(selection.FocusCategory, newCat.ID)
 	m.ui.Modes.ToEdit()
 	m.ui.Edit = newEditState("", true, newCat.ID, selection.FocusCategory)
 	m.ensureVisible()
