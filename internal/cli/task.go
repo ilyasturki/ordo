@@ -203,30 +203,28 @@ func newTaskEditCmd() *cobra.Command {
 					return fmt.Errorf("task %q not found", args[0])
 				}
 
-				task := &project.Categories[ref.CategoryIndex].Tasks[ref.TaskIndex]
+				var u operations.TaskUpdate
 				if title != "" {
-					task.Title = title
+					u.Title = &title
 				}
 				if priority != "" {
-					if err := task.SetPriority(priority); err != nil {
-						return err
-					}
+					u.Priority = &priority
 				}
 				if estimate != "" {
 					minutes, err := operations.ParseEstimate(estimate)
 					if err != nil {
 						return err
 					}
-					task.SetEstimate(minutes)
+					u.Estimate = &minutes
 				}
 				if cmd.Flags().Changed("description") {
-					_, err := operations.UpdateTask(project, project.Categories[ref.CategoryIndex].ID, task.ID,
-						operations.TaskUpdate{Description: &description})
-					if err != nil {
-						return err
-					}
+					u.Description = &description
 				}
-				updatedTitle = task.Title
+				updated, err := operations.UpdateTask(project, project.Categories[ref.CategoryIndex].ID, ref.Task.ID, u)
+				if err != nil && !errors.Is(err, operations.ErrNoChange) {
+					return err
+				}
+				updatedTitle = updated.Title
 				return nil
 			})
 			if err != nil {
