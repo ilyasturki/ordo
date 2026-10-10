@@ -139,37 +139,16 @@ type TaskRef struct {
 }
 
 func resolveTask(project domain.Project, selector string) (TaskRef, error) {
-	selector = strings.TrimSpace(selector)
-	if selector == "" {
+	cIdx, tIdx, err := project.FindTask(selector)
+	if err != nil {
 		return TaskRef{}, ErrNotFound
 	}
-
-	needle := domain.NormalizeName(selector)
-	const minPrefixLen = 4
-
-	for cIdx := range project.Categories {
-		for tIdx := range project.Categories[cIdx].Tasks {
-			task := &project.Categories[cIdx].Tasks[tIdx]
-			if task.IsSeparator() {
-				continue
-			}
-
-			matched := task.ID == selector ||
-				(len(selector) >= minPrefixLen && strings.HasPrefix(strings.ToLower(task.ID), strings.ToLower(selector))) ||
-				domain.NormalizeName(task.Title) == needle
-
-			if matched {
-				return TaskRef{
-					Task:          task,
-					CategoryName:  project.Categories[cIdx].Name,
-					CategoryIndex: cIdx,
-					TaskIndex:     tIdx,
-				}, nil
-			}
-		}
-	}
-
-	return TaskRef{}, ErrNotFound
+	return TaskRef{
+		Task:          &project.Categories[cIdx].Tasks[tIdx],
+		CategoryName:  project.Categories[cIdx].Name,
+		CategoryIndex: cIdx,
+		TaskIndex:     tIdx,
+	}, nil
 }
 
 func resolveCategory(project domain.Project, selector string) (*domain.Category, int, error) {

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+
 	tea "charm.land/bubbletea/v2"
 
 	"phasionary/internal/app/components"
@@ -424,4 +426,15 @@ func (m *model) selectTaskByID(id string) bool {
 		}
 		return m.project.Categories[p.CategoryIndex].Tasks[p.TaskIndex].ID == id
 	})
+}
+
+// focusTask puts the cursor on the task the selector names, unfolding its
+// category for this session if needed.
+func (m *model) focusTask(selector string) error {
+	catIdx, taskIdx, err := m.project.FindTask(selector)
+	if err != nil {
+		return fmt.Errorf("task %q not found in project %q", selector, m.project.Name)
+	}
+	m.landOnRow(selection.Position{Kind: selection.FocusTask, CategoryIndex: catIdx, TaskIndex: taskIdx})
+	return nil
 }

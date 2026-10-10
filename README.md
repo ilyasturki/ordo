@@ -44,6 +44,7 @@ go build -o phasionary-server ./cmd/phasionary-server   # optional, see Sync
 ```bash
 phasionary                # Launch TUI — opens the last project, or the picker
 phasionary -p "Life"      # Jump straight into a project by name
+phasionary -p "Life" --task <id>   # Open with the cursor on a task
 ```
 
 First run seeds a default project. Inside the TUI: `a` adds a task, `Space` cycles status, `i` opens task info, `?` shows every keybinding.

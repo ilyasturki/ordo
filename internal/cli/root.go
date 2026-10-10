@@ -17,6 +17,7 @@ func Execute() error {
 }
 
 func newRootCmd() *cobra.Command {
+	var task string
 	cmd := &cobra.Command{
 		Use:   "phasionary",
 		Short: "Terminal-first project planning tool",
@@ -38,7 +39,7 @@ func newRootCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return app.Run(dataDir, viper.GetString("project"), cfgManager, workingDir, false)
+			return app.Run(dataDir, viper.GetString("project"), task, cfgManager, workingDir, false)
 		},
 	}
 
@@ -48,6 +49,7 @@ func newRootCmd() *cobra.Command {
 	cmd.SilenceUsage = true
 
 	cmd.Flags().BoolP("version", "v", false, "Print version information")
+	cmd.Flags().StringVar(&task, "task", "", "open on this task (ID, 4+ char ID prefix or title)")
 
 	cmd.PersistentFlags().StringP("config", "c", "", "override config directory path")
 	cmd.PersistentFlags().StringP("data", "d", "", "override data directory path")

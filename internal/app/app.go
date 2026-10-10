@@ -804,7 +804,8 @@ func AttachSyncRecorder(store *data.Store) error {
 	return nil
 }
 
-func Run(dataDir string, projectSelector string, cfgManager config.Reader, workingDir string, forcePicker bool) error {
+// taskSelector, when set, opens on that task instead of the remembered row.
+func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader, workingDir string, forcePicker bool) error {
 	store := data.NewStore(dataDir)
 	if err := store.Ensure(); err != nil {
 		return err
@@ -905,6 +906,14 @@ func Run(dataDir string, projectSelector string, cfgManager config.Reader, worki
 	// can only be centered on it once the terminal size arrives.
 	m.applyStoredCursor()
 	m.ui.Screen.PendingCenter = true
+	if taskSelector != "" {
+		if startMode == modes.ModeProjectPicker {
+			return errors.New("--task needs a project: pass --project")
+		}
+		if err := m.focusTask(taskSelector); err != nil {
+			return err
+		}
+	}
 
 	if startMode == modes.ModeProjectPicker {
 		ordered := orderProjects(projects, stateManager.GetProjectOrder())

@@ -36,7 +36,7 @@ func newPickCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return app.Run(dataDir, viper.GetString("project"), cfgManager, workingDir, true)
+			return app.Run(dataDir, viper.GetString("project"), "", cfgManager, workingDir, true)
 		},
 	}
 	return cmd

@@ -664,6 +664,33 @@ func (c *Category) FindTaskByID(id string) (int, error) {
 	return -1, ErrTaskNotFound
 }
 
+// minTaskIDPrefix is the shortest ID prefix FindTask accepts.
+const minTaskIDPrefix = 4
+
+// FindTask resolves a selector — a full task ID, an ID prefix of at least four
+// characters, or a title — to the first matching task. Separators never match.
+func (p *Project) FindTask(selector string) (catIdx, taskIdx int, err error) {
+	selector = strings.TrimSpace(selector)
+	if selector == "" {
+		return -1, -1, ErrTaskNotFound
+	}
+	needle := NormalizeName(selector)
+	lower := strings.ToLower(selector)
+	for c := range p.Categories {
+		for t, task := range p.Categories[c].Tasks {
+			if task.IsSeparator() {
+				continue
+			}
+			if task.ID == selector ||
+				(len(selector) >= minTaskIDPrefix && strings.HasPrefix(strings.ToLower(task.ID), lower)) ||
+				NormalizeName(task.Title) == needle {
+				return c, t, nil
+			}
+		}
+	}
+	return -1, -1, ErrTaskNotFound
+}
+
 func (p *Project) MoveCategory(idx, delta int) error {
 	if idx < 0 || idx >= len(p.Categories) {
 		return errors.New("category index out of range")
