@@ -165,6 +165,7 @@ type layoutCache struct {
 	cursorTask int
 	editPos    int
 	editHeight int
+	cut        string
 	layout     *Layout
 }
 

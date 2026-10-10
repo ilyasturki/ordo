@@ -234,7 +234,6 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 	status := r.formatStatus(task.Status, false)
 	finished := task.Status == domain.StatusCompleted || task.Status == domain.StatusCancelled
 	iconStyled := ""
-	iconWidth := 0
 	if priorityIcon != "" {
 		iconStyle := ui.PriorityIconStyle(task.Priority, r.priorityColor)
 		if finished {
@@ -242,16 +241,13 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 		}
 		iconStyle = r.maybeCut(iconStyle)
 		iconStyled = iconStyle.Render(priorityIcon) + " "
-		iconWidth = ansi.StringWidth(priorityIcon + " ")
 	}
-	tagStyled, tagWidth := r.tagSegment(task, finished, false, priorityIcon != "")
+	tagStyled := r.tagSegment(task, finished, false, priorityIcon != "")
 	leading := tagStyled + iconStyled
-	leadingWidth := tagWidth + iconWidth
 	descMarker := r.formatDescriptionBadge(task.Description, false)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, false)
-	cutBadge, cutBadgeText := r.formatCutBadge(false)
+	cutBadge, _ := r.formatCutBadge(false)
 	suffix := cutBadge + descMarker + estimate
-	suffixText := cutBadgeText + r.descriptionBadgeText(task.Description) + r.estimateBadgeText(task.EstimateMinutes)
 	titleStyle := r.maybeCut(ui.TaskTitleStyle(task.Priority, task.Status, r.priorityColor))
 	prefixPart := fmt.Sprintf("%s[%s] ", prefix, status)
 
@@ -259,23 +255,22 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 		return prefixPart + leading + r.highlightLine(task.Title, titleStyle) + suffix
 	}
 
-	overhead := ansi.StringWidth(prefixPart)
-	return r.wrapContentWithSuffix(task.Title, prefixPart, leading, strings.Repeat(" ", overhead), overhead, leadingWidth, titleStyle, suffix, suffixText)
+	indent := strings.Repeat(" ", ansi.StringWidth(prefixPart))
+	return r.wrapContentWithSuffix(task, prefixPart, leading, indent, titleStyle, suffix)
 }
 
 // tagSegment renders the leading tag (a colored dot plus its optional label and
-// a trailing space) and its display width, or ("", 0) when untagged. On an
+// a trailing space), or "" when untagged. On an
 // unselected row the tag is its own colored foreground; on a highlighted row it
 // becomes a filled color block (reverse) so it shares the selection bar's look
 // instead of clashing as a colored foreground island. faint mirrors the priority
 // icon's completed/cancelled dimming (unselected rows only). priorityFollows
 // reports whether a priority icon block sits between the tag and the title.
-func (r *TaskLineRenderer) tagSegment(task domain.Task, finished, selected, priorityFollows bool) (string, int) {
+func (r *TaskLineRenderer) tagSegment(task domain.Task, finished, selected, priorityFollows bool) string {
 	seg := ui.TagSegmentText(task.TagColor, task.TagLabel)
 	if seg == "" {
-		return "", 0
+		return ""
 	}
-	width := ansi.StringWidth(seg)
 	if selected {
 		style, _ := ui.TagBlockStyle(task.TagColor)
 		// A labeled tag's segment ends with a separator space before the next
@@ -288,12 +283,12 @@ func (r *TaskLineRenderer) tagSegment(task domain.Task, finished, selected, prio
 		// so it always stays a whole block.
 		if task.TagLabel != "" && !priorityFollows {
 			core := strings.TrimSuffix(seg, " ")
-			return r.maybeCut(style).Render(core) + r.selectedStyle().Render(" "), width
+			return r.maybeCut(style).Render(core) + r.selectedStyle().Render(" ")
 		}
-		return r.maybeCut(style).Render(seg), width
+		return r.maybeCut(style).Render(seg)
 	}
 	style, _ := ui.TagDotStyle(task.TagColor, finished)
-	return r.maybeCut(style).Render(seg), width
+	return r.maybeCut(style).Render(seg)
 }
 
 func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon string) string {
@@ -303,7 +298,6 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 	statusStyle := selectedStyle
 
 	iconStyled := ""
-	iconWidth := 0
 	if priorityIcon != "" {
 		// Keep the priority color visible on the selection bar by rendering the
 		// icon as a reverse color block, the same treatment the tag dot gets in
@@ -314,18 +308,15 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 			iconStyle = selectedStyle
 		}
 		iconStyled = r.maybeCut(iconStyle).Render(priorityIcon + " ")
-		iconWidth = ansi.StringWidth(priorityIcon + " ")
 	}
 	finished := task.Status == domain.StatusCompleted || task.Status == domain.StatusCancelled
-	tagStyled, tagWidth := r.tagSegment(task, finished, true, priorityIcon != "")
+	tagStyled := r.tagSegment(task, finished, true, priorityIcon != "")
 	leading := tagStyled + iconStyled
-	leadingWidth := tagWidth + iconWidth
 
 	descMarker := r.formatDescriptionBadge(task.Description, true)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, true)
-	cutBadge, cutBadgeText := r.formatCutBadge(true)
+	cutBadge, _ := r.formatCutBadge(true)
 	suffix := cutBadge + descMarker + estimate
-	suffixText := cutBadgeText + r.descriptionBadgeText(task.Description) + r.estimateBadgeText(task.EstimateMinutes)
 
 	prefixPart := selectedStyle.Render(prefix+"[") +
 		statusStyle.Render(statusText) +
@@ -335,16 +326,36 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 		return prefixPart + leading + r.highlightLine(task.Title, priorityStyle) + suffix
 	}
 
-	overhead := ansi.StringWidth(prefix + "[" + statusText + "] ")
-	indent := r.selectedStyle().Render(strings.Repeat(" ", overhead))
-	return r.wrapContentWithSuffix(task.Title, prefixPart, leading, indent, overhead, leadingWidth, priorityStyle, suffix, suffixText)
+	indent := r.selectedStyle().Render(strings.Repeat(" ", ansi.StringWidth(prefix+"["+statusText+"] ")))
+	return r.wrapContentWithSuffix(task, prefixPart, leading, indent, priorityStyle, suffix)
 }
 
-// wrapContentWithSuffix lays title out behind prefixPart, continuation rows
+// titleWidth is the columns a task's title wraps to: the row less everything
+// drawn beside it, the trailing badges included although only the last row
+// carries them.
+func (r *TaskLineRenderer) titleWidth(task domain.Task) int {
+	lead := "  [" + r.statusLabel(task.Status) + "] " + ui.TagSegmentText(task.TagColor, task.TagLabel)
+	if icon := ui.PriorityIcon(task.Priority); icon != "" {
+		lead += icon + " "
+	}
+	_, cutText := r.formatCutBadge(false)
+	badges := cutText + r.descriptionBadgeText(task.Description) + r.estimateBadgeText(task.EstimateMinutes)
+	return safeWidth(r.width, ansi.StringWidth(lead+badges))
+}
+
+// TitleRows is how many rows Render draws for task, so the layout can reserve
+// exactly that.
+func (r *TaskLineRenderer) TitleRows(task domain.Task) int {
+	if r.width <= 0 {
+		return 1
+	}
+	return ui.CountClamped(task.Title, r.titleWidth(task), ui.MaxLineRows)
+}
+
+// wrapContentWithSuffix lays the title out behind prefixPart, continuation rows
 // behind indent, with suffix on the last row.
-func (r *TaskLineRenderer) wrapContentWithSuffix(title, prefixPart, leading, indent string, overhead, leadingWidth int, titleStyle lipgloss.Style, suffix, suffixText string) string {
-	available := safeWidth(r.width, overhead+leadingWidth+ansi.StringWidth(suffixText))
-	wrapLines := r.clampTitle(title, available)
+func (r *TaskLineRenderer) wrapContentWithSuffix(task domain.Task, prefixPart, leading, indent string, titleStyle lipgloss.Style, suffix string) string {
+	wrapLines := r.clampTitle(task.Title, r.titleWidth(task))
 	last := len(wrapLines) - 1
 
 	result := make([]string, len(wrapLines))

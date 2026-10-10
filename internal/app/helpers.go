@@ -132,15 +132,6 @@ func prefixLine(text string, width, overhead int, prefix string) string {
 	return prefix + ansi.Truncate(text, safeWidth(width, overhead), ui.Ellipsis)
 }
 
-// countWrappedLines sizes a single-line field's row under the same clamp the
-// renderers apply, so the height reserved here always matches the height drawn.
-func countWrappedLines(text string, width, overhead int) int {
-	if width <= 0 {
-		return 1
-	}
-	return ui.CountClamped(text, safeWidth(width, overhead), ui.MaxLineRows)
-}
-
 type cursorSplit struct {
 	left     string
 	cursorCh string

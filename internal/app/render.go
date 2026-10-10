@@ -140,11 +140,9 @@ func renderCategoryLine(name string, estimateMinutes int, aggregateStatus string
 		return style.Render(prefix+foldIndicator) + ui.HighlightMatches(name, searchQuery, style, searchMatch) + suffix
 	}
 
-	suffixWidth := len(statusBadgeText) + len(estimateBadgeText) + ansi.StringWidth(cutBadgeText)
-	foldWidth := 2
-	available := safeWidth(width, prefixWidth+foldWidth+suffixWidth)
+	available := categoryNameWidth(width, estimateMinutes, aggregateStatus, cut)
 	lines := ui.WrapClamped(name, available, ui.MaxLineRows, ui.FirstMatchIndex(name, searchQuery))
-	indent := strings.Repeat(" ", prefixWidth+foldWidth)
+	indent := strings.Repeat(" ", prefixWidth+categoryFoldWidth)
 
 	var result []string
 	for i, line := range lines {
@@ -161,6 +159,24 @@ func renderCategoryLine(name string, estimateMinutes int, aggregateStatus string
 		}
 	}
 	return strings.Join(result, "\n")
+}
+
+const categoryFoldWidth = 2 // "▼ "
+
+// categoryNameWidth is the columns a category name wraps to, shared by the
+// renderer and the layout so both count the same rows.
+func categoryNameWidth(width, estimateMinutes int, aggregateStatus string, cut bool) int {
+	badges := 0
+	if aggregateStatus != "" {
+		badges += ansi.StringWidth(" [" + statusIcon(aggregateStatus) + "]")
+	}
+	if estimateMinutes > 0 {
+		badges += ansi.StringWidth(" ~" + FormatEstimate(estimateMinutes))
+	}
+	if cut {
+		badges += ansi.StringWidth(ui.CutMark)
+	}
+	return safeWidth(width, prefixWidth+categoryFoldWidth+badges)
 }
 
 func (m model) renderTaskLine(task domain.Task, selected bool, width int, focused bool, visualMode bool, isCursor bool, cut bool) string {

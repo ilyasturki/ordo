@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/charmbracelet/x/ansi"
+	"strings"
 
 	"phasionary/internal/app/components"
 	"phasionary/internal/app/selection"
@@ -66,6 +66,9 @@ type LayoutBuilder struct {
 	// editHeight of 0 means no editor is open on editPos.
 	editPos    int
 	editHeight int
+	// A cut row carries a ✂ badge that narrows its title.
+	taskCut     func(taskID string) bool
+	categoryCut func(categoryID string) bool
 }
 
 func NewLayoutBuilder(config LayoutConfig, width int, statusDisplay string, filter *FilterState, fold *FoldState) *LayoutBuilder {
@@ -88,6 +91,11 @@ func (b *LayoutBuilder) WithExpandedDescriptions(v bool) *LayoutBuilder {
 func (b *LayoutBuilder) WithCursorDescription(catIdx, taskIdx int) *LayoutBuilder {
 	b.cursorCat = catIdx
 	b.cursorTask = taskIdx
+	return b
+}
+
+func (b *LayoutBuilder) WithCutMarks(taskCut, categoryCut func(string) bool) *LayoutBuilder {
+	b.taskCut, b.categoryCut = taskCut, categoryCut
 	return b
 }
 
@@ -146,12 +154,7 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 			totalHeight += b.config.BlankBetweenCats
 		}
 
-		// Category header (add extra width for fold indicator + status badge)
-		catSuffixWidth := 0
-		if category.AggregateStatus() != "" {
-			catSuffixWidth += 4 // " [x]"
-		}
-		catHeight := b.rowHeight(posIndex, countWrappedLines(category.Name, b.width, prefixWidth+2+catSuffixWidth))
+		catHeight := b.rowHeight(posIndex, b.countCategoryLines(category))
 		items = append(items, LayoutItem{
 			Kind:          LayoutCategory,
 			Height:        catHeight,
@@ -259,18 +262,19 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 }
 
 func (b *LayoutBuilder) countTaskLines(task domain.Task) int {
+	return components.NewTaskLineRenderer(b.width, b.statusDisplay, "", false).
+		WithDescriptionExpanded(b.expandDescriptions).
+		WithCut(b.taskCut != nil && b.taskCut(task.ID)).
+		TitleRows(task)
+}
+
+func (b *LayoutBuilder) countCategoryLines(category domain.Category) int {
 	if b.width <= 0 {
 		return 1
 	}
-	prefix := "  "
-	priorityIcon := ui.PriorityIcon(task.Priority)
-	statusText := statusLabel(task.Status, b.statusDisplay)
-	iconText := ""
-	if priorityIcon != "" {
-		iconText = priorityIcon + " "
-	}
-	overhead := ansi.StringWidth(prefix + "[" + statusText + "] " + iconText)
-	return countWrappedLines(task.Title, b.width, overhead)
+	cut := b.categoryCut != nil && b.categoryCut(category.ID)
+	available := categoryNameWidth(b.width, category.EstimateMinutes, category.AggregateStatus(), cut)
+	return ui.CountClamped(category.Name, available, ui.MaxLineRows)
 }
 
 func (m *model) buildLayout() *Layout {
@@ -280,18 +284,30 @@ func (m *model) buildLayout() *Layout {
 		cursorCat, cursorTask = pos.CategoryIndex, pos.TaskIndex
 	}
 	editPos, editHeight := m.editOverlay()
+	cut := m.cutKey()
 	c := m.ui.layout
 	if c.layout != nil && c.width == w && c.cursorCat == cursorCat && c.cursorTask == cursorTask &&
-		c.editPos == editPos && c.editHeight == editHeight {
+		c.editPos == editPos && c.editHeight == editHeight && c.cut == cut {
 		return c.layout
 	}
 	builder := NewLayoutBuilder(m.layoutConfig(), w, m.deps.CfgManager.Get().StatusDisplay, &m.ui.Filter, &m.ui.Fold).
 		WithExpandedDescriptions(m.ui.Screen.ExpandDescriptions).
 		WithCursorDescription(cursorCat, cursorTask).
-		WithEditOverlay(editPos, editHeight)
+		WithEditOverlay(editPos, editHeight).
+		WithCutMarks(m.isTaskCut, m.isCategoryCut)
 	layout := builder.Build(m.project, m.positions())
-	m.ui.layout = layoutCache{width: w, cursorCat: cursorCat, cursorTask: cursorTask, editPos: editPos, editHeight: editHeight, layout: &layout}
+	m.ui.layout = layoutCache{width: w, cursorCat: cursorCat, cursorTask: cursorTask, editPos: editPos, editHeight: editHeight, cut: cut, layout: &layout}
 	return &layout
+}
+
+// cutKey names the rows marked cut, so the layout cache can tell when a ✂ badge
+// came or went: the clipboard changes without touching the project.
+func (m *model) cutKey() string {
+	c := m.ui.Clipboard
+	if !c.IsCut {
+		return ""
+	}
+	return c.SourceID + "|" + strings.Join(c.TaskIDs, ",") + "|" + strings.Join(c.CategoryIDs, ",")
 }
 
 // editOverlay is the row an editor is open on and the rows its live buffer
