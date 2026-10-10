@@ -234,8 +234,6 @@ func (m model) handlePickerAddKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 func (m model) handlePickerFilterKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	visible := m.pickerVisibleCount()
 	switch msg.String() {
-	case "ctrl+c":
-		return m, tea.Quit
 	case "esc":
 		m.ui.Picker.cancelFiltering(visible)
 		return m, nil

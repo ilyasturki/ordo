@@ -65,8 +65,6 @@ func (m model) handleSearchKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		m.commitSearch()
 		return m, nil
-	case "ctrl+c":
-		return m, tea.Quit
 	}
 	var cmd tea.Cmd
 	m.ui.Search.input, cmd = m.ui.Search.input.Update(msg)

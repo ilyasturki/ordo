@@ -23,10 +23,11 @@ Screenshot "/tmp/phas-vt/vhs-out/15_pick_delete_confirm.png"
 Type "y"
 Sleep 500ms
 Screenshot "/tmp/phas-vt/vhs-out/15_pick_deleted.png"
-# Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
-Hide
-Escape
-Sleep 300ms
-Type "q"
+# ctrl+c on the list quits straight back to the shell.
+Ctrl+C
+Sleep 600ms
+Screenshot "/tmp/phas-vt/vhs-out/15_pick_ctrl_c_quits.png"
+# Let the final capture land before quitting (see run.sh).
+Sleep 500ms

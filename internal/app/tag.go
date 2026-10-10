@@ -98,8 +98,6 @@ func (m *model) handleTagEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		m.finishTagEdit()
 		return m, nil
-	case "ctrl+c":
-		return m, tea.Quit
 	case "tab", "shift+tab":
 		s.field = otherTagField(s.field)
 		return m, nil

@@ -167,7 +167,7 @@ var normalBindings = []keyBinding{
 			}
 			return nil
 		}},
-	{keys: []string{"q", "ctrl+c"}, display: "q", desc: "quit", section: sectionApp,
+	{keys: []string{"q"}, desc: "quit", section: sectionApp,
 		action: func(m *model) tea.Cmd { return tea.Quit }},
 }
 

@@ -230,6 +230,12 @@ func normalizeKey(msg tea.KeyPressMsg) tea.KeyPressMsg {
 
 func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	msg = normalizeKey(msg)
+	if msg.String() == "ctrl+c" && !m.ui.Modes.IsExternalEdit() {
+		if m.ui.Modes.IsDescriptionEdit() {
+			m.finishDescriptionEdit()
+		}
+		return m, tea.Quit
+	}
 	switch m.ui.Modes.Current() {
 	case modes.ModeHelp:
 		return m.handleHelpKey(msg)
@@ -318,8 +324,6 @@ func (m model) handleHelpFilterKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "enter":
 		return m.runFocusedHelpBinding()
-	case "ctrl+c":
-		return m, tea.Quit
 	case "down":
 		m.moveHelpFocus(1)
 		return m, nil
