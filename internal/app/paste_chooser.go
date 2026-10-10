@@ -83,6 +83,8 @@ func (m *model) appendTarget(fromEdit bool) (string, bool) {
 func (m model) handlePasteChooserKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	st := &m.ui.PasteChooser
 	switch key := msg.String(); key {
+	case "ctrl+c":
+		return m, tea.Quit
 	case "esc", "q":
 		m.closePasteChooser()
 		m.ui.Screen.StatusMsg = "Paste cancelled"
@@ -128,7 +130,12 @@ func (m *model) applyPaste(mode pasteMode) {
 	case pasteAsRows:
 		m.insertPastedRows(st.rows)
 	case pasteAsDescription:
-		m.insertPastedRows([]pastedRow{titleAndDescription(st.text)})
+		row := titleAndDescription(st.text)
+		if row.title == "" {
+			m.ui.Screen.StatusMsg = "Nothing to paste as a title"
+			return
+		}
+		m.insertPastedRows([]pastedRow{row})
 	case pasteAsOneLine:
 		m.insertPastedRows([]pastedRow{{title: flattenPaste(st.text), status: domain.StatusTodo}})
 	case pasteAppend:
@@ -139,7 +146,9 @@ func (m *model) applyPaste(mode pasteMode) {
 func (m *model) applyPasteInEditor(mode pasteMode, st PasteChooserState) {
 	switch mode {
 	case pasteAsRows:
-		m.pasteLinesInEdit(st.text)
+		if !m.pasteLinesInEdit(st.text) {
+			m.insertAtEditCaret(flattenPaste(st.text))
+		}
 	case pasteAsDescription:
 		m.pasteTitleAndDescriptionInEdit(st.text)
 	case pasteAsOneLine:
@@ -194,12 +203,17 @@ func (m *model) pasteTitleAndDescriptionInEdit(text string) {
 		return
 	}
 	row := titleAndDescription(text)
+	title := strings.TrimSpace(strings.TrimSpace(m.ui.Edit.input.Value()) + " " + row.title)
+	if title == "" {
+		m.ui.Screen.StatusMsg = "Nothing to paste as a title"
+		return
+	}
 	adding := m.ui.Edit.isAdding
 	if !adding {
 		m.recordHistory()
 	}
 	task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-	task.Title = strings.TrimSpace(strings.TrimSpace(m.ui.Edit.input.Value()) + " " + row.title)
+	task.Title = title
 	if adding {
 		_ = task.SetStatus(row.status)
 	}
@@ -235,6 +249,9 @@ func titleAndDescription(text string) pastedRow {
 			title = strings.TrimSpace(l[len(m):])
 		} else if body, s, marked := parseItem(l); marked && body != "" {
 			title, status = body, s
+		}
+		if title == "" {
+			continue
 		}
 		return pastedRow{
 			title:       title,

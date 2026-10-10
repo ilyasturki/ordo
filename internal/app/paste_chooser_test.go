@@ -351,6 +351,22 @@ func TestPaste_DescriptionEditorReadsThroughTheClipboardPackage(t *testing.T) {
 	assert.Equal(t, "line one\nline two", m.ui.DescriptionEdit.textarea.Value())
 }
 
+func TestPasteChooser_DescriptionModeNeverSavesAnEmptyTitle(t *testing.T) {
+	assert.Equal(t, "body", titleAndDescription("## \nbody").title, "a bare heading marker is no title")
+
+	m := newTestModel(t, sampleProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	m.startEditing()
+	m.ui.Edit.input.SetValue("")
+	send(t, m, tea.PasteMsg{Content: "## \n## "})
+	require.True(t, m.ui.Modes.IsPasteChooser())
+	send(t, m, key("d"))
+
+	assert.True(t, m.ui.Modes.IsEdit(), "the editor stays open")
+	assert.Equal(t, "Alpha", m.project.Categories[0].Tasks[0].Title)
+	assert.False(t, m.ui.History.CanUndo())
+}
+
 func TestPasteChooser_KeepsTheTaskFocused(t *testing.T) {
 	m := newTestModelWithDescription(t)
 	m.ui.Selection.MoveTo(3) // t1's description row
