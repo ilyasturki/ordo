@@ -640,10 +640,7 @@ func UniqueCategoryName(cats []Category, parentID, name string) string {
 	return candidate
 }
 
-// MergeCategory moves the category at src into the one at dst and removes src.
-// Its tasks land at the end of dst under a separator labelled with src's name;
-// an empty src just goes. Its sub-categories join dst's, merging the same way
-// into one that carries their name.
+// MergeCategory appends src's tasks under a separator named src; its subs join dst's by name.
 func (p *Project) MergeCategory(src, dst int) error {
 	if src < 0 || src >= len(p.Categories) || dst < 0 || dst >= len(p.Categories) {
 		return errors.New("category index out of range")
@@ -675,8 +672,6 @@ func (p *Project) MergeCategory(src, dst int) error {
 	return nil
 }
 
-// mergeTasks appends from's tasks to dst under a separator labelled with
-// from's name.
 func mergeTasks(dst *Category, from Category) error {
 	if len(from.Tasks) == 0 {
 		return nil
@@ -709,8 +704,6 @@ func (p *Project) AddCategoryNamed(name string) (*Category, error) {
 	return p.AddCategoryUnder("", name)
 }
 
-// AddCategoryUnder adds a category named name as the last sub-category of the
-// top-level category parentID, or at the end of the project for "".
 func (p *Project) AddCategoryUnder(parentID, name string) (*Category, error) {
 	at := len(p.Categories)
 	if parentID != "" {
@@ -778,10 +771,7 @@ func (p *Project) FindTask(selector string) (catIdx, taskIdx int, err error) {
 	return -1, -1, ErrTaskNotFound
 }
 
-// ReverseCategories flips the order of the top-level categories in place,
-// each keeping its sub-categories after it in their order. It is its own
-// inverse: invoking it twice restores the original order. Tasks within each
-// category keep their order.
+// ReverseCategories reverses the top-level blocks, children kept in order; it is its own inverse.
 func (p *Project) ReverseCategories() {
 	var blocks [][]Category
 	for i := 0; i < len(p.Categories); {
@@ -797,8 +787,6 @@ func (p *Project) ReverseCategories() {
 	p.UpdatedAt = NowTimestamp()
 }
 
-// MoveTask moves the task at taskIdx, with its subtasks, to the end of the
-// destination category. A subtask moved on its own becomes top-level there.
 func (p *Project) MoveTask(srcCatIdx, taskIdx, dstCatIdx int) error {
 	if srcCatIdx < 0 || srcCatIdx >= len(p.Categories) {
 		return errors.New("source category index out of range")

@@ -17,8 +17,7 @@ type Position struct {
 	Kind          FocusKind
 	CategoryIndex int
 	TaskIndex     int
-	// ID names the category or task on the row, which outlives a rebuild that
-	// shifts the indexes. Empty on the project row.
+	// ID is the row's category or task ID, stable across rebuilds; "" on the project row.
 	ID string
 }
 

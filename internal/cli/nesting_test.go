@@ -10,8 +10,7 @@ import (
 	"phasionary/internal/domain"
 )
 
-// versionsDir seeds a project "Nested" with v0.2.0 › ui (a parent task with a
-// subtask) and v0.1.0 › ui, so names repeat across parents.
+// versionsDir seeds v0.2.0 › ui and v0.1.0 › ui so a sub-category name repeats across parents.
 func versionsDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()

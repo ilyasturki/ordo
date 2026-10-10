@@ -128,10 +128,7 @@ type itemRef struct {
 	id   string
 }
 
-// selectItem moves the cursor onto the row showing an item, or onto its
-// nearest shown ancestor when a fold or the filter hides that row: the parent
-// task, then the category, then its parent category. Reports whether it
-// landed.
+// selectItem falls back to the nearest shown ancestor when a fold or the filter hides the item.
 func (m *model) selectItem(kind selection.FocusKind, id string) bool {
 	for _, ref := range m.itemAnchors(kind, id) {
 		if m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
@@ -143,8 +140,6 @@ func (m *model) selectItem(kind selection.FocusKind, id string) bool {
 	return false
 }
 
-// itemAnchors lists the rows that can stand for an item, nearest first. A
-// description row stands for its task too.
 func (m *model) itemAnchors(kind selection.FocusKind, id string) []itemRef {
 	refs := []itemRef{{kind, id}}
 	switch kind {

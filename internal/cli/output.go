@@ -170,8 +170,6 @@ type TaskListItem struct {
 	TagColor        string `json:"tag_color,omitempty"`
 }
 
-// listTitle marks a subtask in a human listing, which may show it apart from
-// its parent.
 func listTitle(t TaskListItem) string {
 	if t.ParentID != "" {
 		return "↳ " + t.Title

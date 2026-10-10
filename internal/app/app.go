@@ -826,7 +826,6 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 	return ""
 }
 
-// placeholderIndent lines a category's placeholder up under its name.
 func placeholderIndent(indent int) string {
 	return strings.Repeat(" ", prefixWidth+categoryFoldWidth+indent)
 }

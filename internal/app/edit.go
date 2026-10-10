@@ -88,9 +88,6 @@ func (m *model) startAddingTask() {
 		return
 	}
 
-	// Below the current row at its depth, after a parent's subtasks: a
-	// subtask's sibling is a subtask. From the category header, the new task
-	// opens the category.
 	cat := &m.project.Categories[catIndex]
 	taskIndex := 0
 	switch position.Kind {
@@ -136,8 +133,7 @@ func (m *model) startAddingSeparator() {
 		return
 	}
 
-	// A separator never nests, so below a subtask it lands after the parent's
-	// subtasks.
+	// A separator never nests, so below a subtask it goes after the parent's block.
 	cat := &m.project.Categories[catIndex]
 	taskIndex := 0
 	switch position.Kind {
@@ -163,7 +159,6 @@ func (m *model) startAddingCategory() {
 	if err != nil {
 		return
 	}
-	// Below the current category at its depth, after its sub-categories.
 	insertIndex := 0
 	if ci := position.CategoryIndex; ci >= 0 && ci < len(m.project.Categories) {
 		insertIndex = domain.BlockEnd(m.project.Categories, ci)

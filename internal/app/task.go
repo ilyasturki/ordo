@@ -73,8 +73,6 @@ func (m *model) confirmDeleteAction() {
 	m.confirmDelete(false)
 }
 
-// confirmDeleteKeepingChildren deletes the focused parent and leaves its
-// children in its place, top-level.
 func (m *model) confirmDeleteKeepingChildren() {
 	m.confirmDelete(true)
 }
@@ -94,8 +92,6 @@ func (m *model) confirmDelete(keepChildren bool) {
 	}
 }
 
-// deletedChildren counts the subtasks or sub-categories that deleting the item
-// at pos takes along unless they are kept.
 func (m model) deletedChildren(pos selection.Position) int {
 	switch pos.Kind {
 	case selection.FocusTask:
@@ -106,8 +102,6 @@ func (m model) deletedChildren(pos selection.Position) int {
 	return 0
 }
 
-// deleteTask removes the task at position with its subtasks, or alone with
-// keepChildren, and stashes what it removed in the clipboard.
 func (m *model) deleteTask(position selection.Position, keepChildren bool) {
 	cat := &m.project.Categories[position.CategoryIndex]
 	taskIndex := position.TaskIndex
@@ -135,8 +129,6 @@ func (m *model) deleteTask(position selection.Position, keepChildren bool) {
 	m.storeTaskUpdate()
 }
 
-// deleteCategory removes the category at position with its sub-categories, or
-// alone with keepChildren, which the sub-categories survive top-level.
 func (m *model) deleteCategory(position selection.Position, keepChildren bool) {
 	catIndex := position.CategoryIndex
 	m.recordHistory()
@@ -308,7 +300,6 @@ func (m *model) cutSelectedTask() tea.Cmd {
 	return m.writeClipboard(clipboardResultMsg{text: text, status: status})
 }
 
-// taskBlock is the task at pos with its subtasks, and their IDs.
 func (m *model) taskBlock(pos selection.Position) ([]domain.Task, []string) {
 	cat := m.project.Categories[pos.CategoryIndex]
 	tasks := slices.Clone(cat.Tasks[pos.TaskIndex:domain.BlockEnd(cat.Tasks, pos.TaskIndex)])

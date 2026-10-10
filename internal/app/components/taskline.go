@@ -49,8 +49,6 @@ func (r *TaskLineRenderer) WithRowLimits(title, description int) *TaskLineRender
 	return r
 }
 
-// WithNesting shifts the row right by indent columns and adds a progress badge
-// after the title, "" for none.
 func (r *TaskLineRenderer) WithNesting(indent int, progress string) *TaskLineRenderer {
 	r.indent, r.progress = strings.Repeat(" ", indent), progress
 	return r

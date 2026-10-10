@@ -348,9 +348,6 @@ func markdownItem(task domain.Task, checkboxes bool) string {
 	return fmt.Sprintf("- [%s] %s", mark, task.Title)
 }
 
-// visualCategoryText lists the selected categories, each parent with its
-// sub-categories: as headings carrying their path with checkboxes, else as
-// bullets.
 func (m model) visualCategoryText(selPositions []selection.Position, checkboxes bool) string {
 	cats := m.visualCategoryRows(selPositions)
 	picked := make(map[string]bool, len(cats))
@@ -372,9 +369,6 @@ func (m model) visualCategoryText(selPositions []selection.Position, checkboxes 
 	return strings.Join(lines, "\n")
 }
 
-// visualTaskRows lists the rows a task-level selection acts on, in order: a
-// description stands for its task, and a parent brings its subtasks, shown or
-// folded away.
 func (m model) visualTaskRows(selPositions []selection.Position) []domain.Task {
 	seen := make(map[string]bool)
 	var rows []domain.Task
@@ -390,8 +384,6 @@ func (m model) visualTaskRows(selPositions []selection.Position) []domain.Task {
 	return rows
 }
 
-// visualCategoryRows lists the categories a category selection acts on, in
-// order, each parent bringing its sub-categories.
 func (m model) visualCategoryRows(selPositions []selection.Position) []domain.Category {
 	cats := m.project.Categories
 	seen := make(map[string]bool)
@@ -582,10 +574,7 @@ func (m *model) visualShift(dir int) {
 	}
 }
 
-// visualRun is the run of whole sibling blocks the visual selection covers,
-// a selected parent bringing its children: categories[lo:hi], or the tasks
-// [lo:hi] of the category at catIdx. It reports a selection that isn't one
-// such run in the status line.
+// visualRun returns the selection's sibling blocks as [lo, hi); refusals go to the status line.
 func (m *model) visualRun() (lo, hi, catIdx int, ok bool) {
 	selPositions := visualRoundUpPositions(m.visualSelectedPositions())
 	if len(selPositions) == 0 {

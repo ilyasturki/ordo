@@ -7,12 +7,7 @@ import (
 	"strings"
 )
 
-// Categories and tasks nest the same way, one level deep. Each kind stays in
-// one flat slice (Project.Categories, Category.Tasks) in display order, and an
-// item with a ParentID is a child: it sits right after its parent, among the
-// parent's other children. A child has no children, and a separator never
-// nests. Positions therefore stay (category index, task index), and depth is
-// read off ParentID.
+// A child sits right after its parent, among its siblings; one level deep, separators never nest.
 
 var (
 	ErrNestDepth     = errors.New("nesting goes one level deep")
@@ -23,8 +18,7 @@ var (
 	ErrMixedLevels   = errors.New("mixes levels")
 )
 
-// CategoryPathSep joins a sub-category's name to its parent's in a category
-// path, the form the CLI resolves and markdown headings carry.
+// CategoryPathSep separates parent and name in CLI category paths and markdown headings.
 const CategoryPathSep = "/"
 
 type outline[T any] interface {
@@ -42,8 +36,7 @@ func (t *Task) links() (string, string) { return t.ID, t.ParentID }
 func (t *Task) setParent(id string)     { t.ParentID = id }
 func (t *Task) nests() bool             { return !t.IsSeparator() }
 
-// BlockEnd returns one past the last child of items[i]. A child, or an item
-// without children, is a block of its own.
+// BlockEnd is one past items[i]'s last child, or i+1 for a child or an item with none.
 func BlockEnd[T any, P outline[T]](items []T, i int) int {
 	id, parent := P(&items[i]).links()
 	end := i + 1
@@ -60,8 +53,7 @@ func BlockEnd[T any, P outline[T]](items []T, i int) int {
 	return end
 }
 
-// ParentIndex returns the index of items[i]'s parent, or -1 when it is
-// top-level.
+// ParentIndex returns the index of items[i]'s parent, or -1 when it is top-level.
 func ParentIndex[T any, P outline[T]](items []T, i int) int {
 	_, parent := P(&items[i]).links()
 	if parent == "" {
@@ -75,8 +67,6 @@ func ParentIndex[T any, P outline[T]](items []T, i int) int {
 	return -1
 }
 
-// BlockStart returns the index of the top-level item whose block holds
-// items[i].
 func BlockStart[T any, P outline[T]](items []T, i int) int {
 	if p := ParentIndex[T, P](items, i); p >= 0 {
 		return p
@@ -84,8 +74,7 @@ func BlockStart[T any, P outline[T]](items []T, i int) int {
 	return i
 }
 
-// LastBlockStart returns the index of the first item of the last block in the
-// run of sibling blocks items[lo:hi].
+// LastBlockStart expects items[lo:hi] to be a run of whole sibling blocks.
 func LastBlockStart[T any, P outline[T]](items []T, lo, hi int) int {
 	if _, parent := P(&items[lo]).links(); parent != "" {
 		return hi - 1
@@ -93,10 +82,7 @@ func LastBlockStart[T any, P outline[T]](items []T, lo, hi int) int {
 	return BlockStart[T, P](items, hi-1)
 }
 
-// CoverBlocks returns the run items[lo:hi] that the items at idxs cover once
-// each parent brings its children along. It fails with ErrNotContiguous when
-// the run has a gap, and with ErrMixedLevels unless it is made of whole sibling
-// blocks: top-level blocks, or children of one parent.
+// CoverBlocks returns the run [lo, hi) idxs cover once each parent brings its children.
 func CoverBlocks[T any, P outline[T]](items []T, idxs []int) (int, int, error) {
 	if len(idxs) == 0 {
 		return 0, 0, ErrNotContiguous
@@ -128,10 +114,7 @@ func CoverBlocks[T any, P outline[T]](items []T, idxs []int) (int, int, error) {
 	return lo, hi, nil
 }
 
-// SettleParents decides the parents of rows pasted among the children of
-// parentID, or at the top level for "". They all nest under parentID when
-// every one can be a child there; otherwise each keeps a parent pasted along
-// with it and drops any other. Reports whether they nest under parentID.
+// SettleParents: all rows nest under parentID (true), or each keeps only a parent pasted with it.
 func SettleParents[T any, P outline[T]](rows []T, parentID string) bool {
 	pasted := make(map[string]bool, len(rows))
 	nest := parentID != ""
@@ -174,14 +157,10 @@ func PickBlocks[T any, P outline[T]](items []T, picked map[string]bool) []T {
 	return out
 }
 
-// HasChildren reports whether items[i] is a parent.
 func HasChildren[T any, P outline[T]](items []T, i int) bool {
 	return BlockEnd[T, P](items, i) > i+1
 }
 
-// nestTarget returns the index of the top-level item that the run
-// items[lo:hi] would nest under: the one above it. Every item of the run must
-// be a top-level item without children.
 func nestTarget[T any, P outline[T]](items []T, lo, hi int) (int, error) {
 	if lo <= 0 || hi > len(items) || lo >= hi {
 		return -1, ErrNothingToNest
@@ -202,8 +181,7 @@ func nestTarget[T any, P outline[T]](items []T, lo, hi int) (int, error) {
 	return head, nil
 }
 
-// unnest makes the run items[lo:hi], children of one parent, top-level right
-// after the parent's block, in their order, and returns the run's new start.
+// unnest makes items[lo:hi] top-level after their parent's block and returns their new start.
 func unnest[T any, P outline[T]](items []T, lo, hi int) (int, error) {
 	parent := ParentIndex[T, P](items, lo)
 	if parent < 0 {
@@ -223,8 +201,7 @@ func unnest[T any, P outline[T]](items []T, lo, hi int) (int, error) {
 	return lo + end - hi, nil
 }
 
-// SiblingBlock returns the block next to items[i]'s own among its siblings in
-// direction dir, as [lo, hi), or false at the edge of the siblings.
+// SiblingBlock returns the sibling block [lo, hi) next to items[i]'s own in direction dir.
 func SiblingBlock[T any, P outline[T]](items []T, i, dir int) (int, int, bool) {
 	_, parent := P(&items[i]).links()
 	if dir > 0 {
@@ -249,8 +226,7 @@ func SiblingBlock[T any, P outline[T]](items []T, i, dir int) (int, int, bool) {
 	return prev, i, true
 }
 
-// moveBlock swaps items[i]'s block with the sibling block in direction dir and
-// returns the item's new index, or false at the edge of its siblings.
+// moveBlock swaps items[i]'s block with the next sibling block in dir; returns i's new index.
 func moveBlock[T any, P outline[T]](items []T, i, dir int) (int, bool) {
 	lo, hi, ok := SiblingBlock[T, P](items, i, dir)
 	if !ok {
@@ -272,10 +248,7 @@ func SwapRanges[T any](items []T, a, b, c int) {
 	slices.Reverse(items[a:c])
 }
 
-// normalizeOutline repairs what a hand-edited or foreign file may get wrong. A
-// child whose parent is missing, is itself a child, or is a separator becomes
-// top-level, and so does a separator with a parent. Every remaining child is
-// then regrouped right after its parent, keeping the order of both.
+// normalizeOutline implements the repair docs/file-format.md promises; change them together.
 func normalizeOutline[T any, P outline[T]](items []T) []T {
 	first := make(map[string]int, len(items))
 	for i := range items {
@@ -323,8 +296,6 @@ func normalizeOutline[T any, P outline[T]](items []T) []T {
 	return out
 }
 
-// NormalizeNesting restores the nesting rules on a decoded project; see
-// normalizeOutline.
 func NormalizeNesting(p *Project) {
 	p.Categories = normalizeOutline(p.Categories)
 	for i := range p.Categories {
@@ -332,9 +303,7 @@ func NormalizeNesting(p *Project) {
 	}
 }
 
-// RequiredSchema is the lowest schema version that holds p: a file gains
-// version 2 with its first nested item and drops back to 1 without one, so
-// an older phasionary keeps opening every file it can read whole.
+// RequiredSchema is 2 only while something nests, so older binaries keep opening flat files.
 func RequiredSchema(p Project) int {
 	for _, c := range p.Categories {
 		if c.ParentID != "" {
@@ -349,8 +318,6 @@ func RequiredSchema(p Project) int {
 	return 1
 }
 
-// IndentTasks nests the top-level tasks lo to hi-1, none of them a parent,
-// under the task above them, as its last subtasks.
 func (c *Category) IndentTasks(lo, hi int) error {
 	parent, err := nestTarget(c.Tasks, lo, hi)
 	if err != nil {
@@ -365,13 +332,10 @@ func (c *Category) IndentTasks(lo, hi int) error {
 	return nil
 }
 
-// IndentTask nests the task at i under the task above it, as its last subtask.
 func (c *Category) IndentTask(i int) error {
 	return c.IndentTasks(i, i+1)
 }
 
-// OutdentTasks makes the subtasks lo to hi-1 of one parent top-level, right
-// after the parent's block, and returns where the first of them lands.
 func (c *Category) OutdentTasks(lo, hi int) (int, error) {
 	at, err := unnest(c.Tasks, lo, hi)
 	if err != nil {
@@ -385,15 +349,10 @@ func (c *Category) OutdentTasks(lo, hi int) (int, error) {
 	return at, nil
 }
 
-// OutdentTask makes the subtask at i top-level, right after its parent's
-// block, and returns its new index.
 func (c *Category) OutdentTask(i int) (int, error) {
 	return c.OutdentTasks(i, i+1)
 }
 
-// IndentCategories nests the top-level categories lo to hi-1, none of them a
-// parent, under the top-level category above them, as its last
-// sub-categories. It refuses a name the parent's sub-categories carry.
 func (p *Project) IndentCategories(lo, hi int) error {
 	parent, err := nestTarget(p.Categories, lo, hi)
 	if err != nil {
@@ -414,15 +373,10 @@ func (p *Project) IndentCategories(lo, hi int) error {
 	return nil
 }
 
-// IndentCategory nests the category at i under the top-level category above
-// it, as its last sub-category.
 func (p *Project) IndentCategory(i int) error {
 	return p.IndentCategories(i, i+1)
 }
 
-// OutdentCategories makes the sub-categories lo to hi-1 of one parent
-// top-level, right after the parent's block, and returns where the first of
-// them lands. It refuses a name another top-level category carries.
 func (p *Project) OutdentCategories(lo, hi int) (int, error) {
 	if p.Categories[lo].ParentID == "" {
 		return lo, ErrNotNested
@@ -444,16 +398,11 @@ func (p *Project) OutdentCategories(lo, hi int) (int, error) {
 	return at, nil
 }
 
-// OutdentCategory makes the sub-category at i top-level, right after its
-// parent's block, and returns its new index.
 func (p *Project) OutdentCategory(i int) (int, error) {
 	return p.OutdentCategories(i, i+1)
 }
 
-// CategoryNameConflict is the one category uniqueness rule: names are unique
-// among siblings, compared trimmed and case-insensitively. It returns the
-// index of the category under parentID, other than except, that already
-// carries name, or -1. Pass except -1 to check a new name.
+// CategoryNameConflict is the one name rule, unique among siblings: a clash's index, or -1.
 func CategoryNameConflict(cats []Category, parentID, name string, except int) int {
 	normalized := NormalizeName(name)
 	for i, cat := range cats {
@@ -467,8 +416,7 @@ func CategoryNameConflict(cats []Category, parentID, name string, except int) in
 // categoryHeadingSep is the spaced form CategoryPath writes, which a "/" inside a name lacks.
 const categoryHeadingSep = " " + CategoryPathSep + " "
 
-// CategoryPath names the category at i the way the TUI shows it and markdown
-// headings carry it: its own name, behind its parent's for a sub-category.
+// CategoryPath is the "parent / name" form the TUI shows and markdown headings carry.
 func (p *Project) CategoryPath(i int) string {
 	if parent := ParentIndex(p.Categories, i); parent >= 0 {
 		return p.Categories[parent].Name + categoryHeadingSep + p.Categories[i].Name
@@ -476,8 +424,7 @@ func (p *Project) CategoryPath(i int) string {
 	return p.Categories[i].Name
 }
 
-// SplitCategoryPath lists the ways path splits into a parent name and a
-// sub-category name, trimmed, one per separator in it.
+// SplitCategoryPath tries every separator: a name may hold one too ("ui/ux").
 func SplitCategoryPath(path string) [][2]string {
 	return splitCategoryPath(path, CategoryPathSep)
 }
@@ -501,7 +448,6 @@ func splitCategoryPath(path, sep string) [][2]string {
 	return out
 }
 
-// treeTasks yields the tasks of the category at i and of its sub-categories.
 func (p *Project) treeTasks(i int) iter.Seq[Task] {
 	return func(yield func(Task) bool) {
 		for c := i; c < BlockEnd(p.Categories, i); c++ {
@@ -522,20 +468,14 @@ func (p *Project) TreeTaskCount(i int) int {
 	return n
 }
 
-// TreeStatusCounts counts the tasks of the category at i together with those
-// of its sub-categories.
 func (p *Project) TreeStatusCounts(i int) StatusCounts {
 	return statusCounts(p.treeTasks(i))
 }
 
-// TreeAggregateStatus is AggregateStatus over the category at i and its
-// sub-categories.
 func (p *Project) TreeAggregateStatus(i int) string {
 	return aggregateStatus(p.treeTasks(i))
 }
 
-// ChildProgress reports how many of the task at i's subtasks are finished
-// (completed or cancelled), out of how many it has.
 func (c *Category) ChildProgress(i int) (done, total int) {
 	for _, t := range c.Tasks[i+1 : BlockEnd(c.Tasks, i)] {
 		total++
@@ -546,9 +486,6 @@ func (c *Category) ChildProgress(i int) (done, total int) {
 	return done, total
 }
 
-// MoveTaskBlock swaps the task at i, with its subtasks, and the sibling block
-// next to it in direction dir. It returns the task's new index, or false at
-// the edge of its siblings.
 func (c *Category) MoveTaskBlock(i, dir int) (int, bool) {
 	at, ok := moveBlock(c.Tasks, i, dir)
 	if ok {
@@ -557,9 +494,6 @@ func (c *Category) MoveTaskBlock(i, dir int) (int, bool) {
 	return at, ok
 }
 
-// MoveCategoryBlock swaps the category at i, with its sub-categories, and the
-// sibling block next to it in direction dir. It returns the category's new
-// index, or false at the edge of its siblings.
 func (p *Project) MoveCategoryBlock(i, dir int) (int, bool) {
 	at, ok := moveBlock(p.Categories, i, dir)
 	if ok {
@@ -568,21 +502,16 @@ func (p *Project) MoveCategoryBlock(i, dir int) (int, bool) {
 	return at, ok
 }
 
-// RemoveTaskBlock removes the task at i together with its subtasks.
 func (c *Category) RemoveTaskBlock(i int) {
 	c.Tasks = slices.Delete(c.Tasks, i, BlockEnd(c.Tasks, i))
 	c.UpdatedAt = NowTimestamp()
 }
 
-// RemoveCategoryBlock removes the category at i together with its
-// sub-categories.
 func (p *Project) RemoveCategoryBlock(i int) {
 	p.Categories = slices.Delete(p.Categories, i, BlockEnd(p.Categories, i))
 	p.UpdatedAt = NowTimestamp()
 }
 
-// ReleaseSubtasks makes the subtasks of the task at i top-level where they
-// stand, so the task can go without them.
 func (c *Category) ReleaseSubtasks(i int) {
 	now := NowTimestamp()
 	for j, end := i+1, BlockEnd(c.Tasks, i); j < end; j++ {
@@ -591,9 +520,6 @@ func (c *Category) ReleaseSubtasks(i int) {
 	}
 }
 
-// ReleaseSubCategories makes the sub-categories of the category at i
-// top-level where they stand, so the category can go without them. It refuses
-// when one would take the name of another top-level category.
 func (p *Project) ReleaseSubCategories(i int) error {
 	end := BlockEnd(p.Categories, i)
 	for j := i + 1; j < end; j++ {

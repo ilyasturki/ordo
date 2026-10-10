@@ -14,8 +14,7 @@ var (
 	projectHeaderRe  = regexp.MustCompile(`^#\s+(.+)$`)
 	categoryHeaderRe = regexp.MustCompile(`^##\s+(.+)$`)
 	taskLineRe       = regexp.MustCompile(`^-\s+\[([ x\-~])\]\s+(.+)$`)
-	// A subtask sits under its parent's line, indented less than a
-	// description so the two never mix.
+	// 1-3 spaces, less than a description's 4, so subtask and description lines never mix.
 	subtaskLineRe    = regexp.MustCompile(`^ {1,3}-\s+\[([ x\-~])\]\s+(.+)$`)
 	prioritySuffixRe = regexp.MustCompile(`\s+\((critical|high|medium|low|trivial)\)\s*$`)
 	// A labeled separator is a level-3 heading (### label); a bare one is a
@@ -56,8 +55,6 @@ const (
 	subtaskIndent     = "  "
 )
 
-// CategoryMarkdown renders the category at i, then its sub-categories, each
-// under a heading that carries its path.
 func CategoryMarkdown(project domain.Project, i int) string {
 	var sb strings.Builder
 	for c := i; c < domain.BlockEnd(project.Categories, i); c++ {
@@ -287,9 +284,6 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 	return project, nil
 }
 
-// headingParent reads a category heading: "parent / name" makes name a
-// sub-category of a top-level category already in project, and anything else
-// names a top-level category.
 func headingParent(project domain.Project, heading string) (parentID, name string) {
 	for _, split := range domain.SplitCategoryHeading(heading) {
 		if i := domain.CategoryNameConflict(project.Categories, "", split[0], -1); i >= 0 {
@@ -299,9 +293,6 @@ func headingParent(project domain.Project, heading string) (parentID, name strin
 	return "", heading
 }
 
-// dedentDescription strips the indent the export puts before a description
-// line, keeping any indent of the line's own; a line indented less loses all
-// of it.
 func dedentDescription(line string, subtask bool) string {
 	indent := descriptionIndent
 	if subtask {
@@ -318,8 +309,6 @@ type categoryData struct {
 	tasks []taskData
 }
 
-// hasParent reports whether a subtask line read now has a task to belong to;
-// one without stays a task of its own.
 func (c *categoryData) hasParent() bool {
 	return len(c.tasks) > 0 && c.tasks[len(c.tasks)-1].kind != domain.KindSeparator
 }

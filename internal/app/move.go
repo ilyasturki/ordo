@@ -8,10 +8,6 @@ import (
 	"phasionary/internal/domain"
 )
 
-// moveSelectedRow is the normal-mode J/K entry: it moves the focused row (a
-// category, task, separator — or, via its parent task, a description row) one
-// visible step in direction dir. A parent moves with its children, and a
-// child moves among its siblings.
 func (m *model) moveSelectedRow(dir int) {
 	if !m.ui.Modes.CanPerformAction(modes.ActionMoveItem) {
 		return
@@ -35,7 +31,6 @@ func (m *model) moveSelectedRow(dir int) {
 	}
 }
 
-// edgeReason refuses a move off the end of the siblings in direction dir.
 func edgeReason(dir int, nested bool) string {
 	switch {
 	case dir > 0 && nested:
@@ -48,10 +43,7 @@ func edgeReason(dir int, nested bool) string {
 	return "Already at the top"
 }
 
-// shiftCategories moves categories[lo:hi], whole sibling blocks, past the
-// sibling block next to them in direction dir. A sub-category stays among its
-// siblings. The cursor stays on its row. Returns a refusal reason, or "" when
-// the move happened.
+// shiftCategories expects categories[lo:hi] to be whole sibling blocks.
 func (m *model) shiftCategories(lo, hi, dir int) string {
 	cats := m.project.Categories
 	nested := cats[lo].ParentID != ""
@@ -76,13 +68,7 @@ func (m *model) shiftCategories(lo, hi, dir int) string {
 	return ""
 }
 
-// shiftTasks moves cat.Tasks[lo:hi], whole sibling blocks, one visible step in
-// direction dir: past the next sibling block the list shows, crossing the
-// blocks the filter hides on the way, so the visible order always changes.
-// Top-level blocks with no such neighbor left cross into the adjacent category
-// (top when moving down, bottom when moving up), refused when that category is
-// folded away or the filter would hide them there; subtasks stay with their
-// parent. Returns a refusal reason, or "" when the move happened.
+// shiftTasks expects cat.Tasks[lo:hi] to be whole sibling blocks.
 func (m *model) shiftTasks(catIdx, lo, hi, dir int) string {
 	cat := &m.project.Categories[catIdx]
 	nested := cat.Tasks[lo].ParentID != ""
@@ -107,8 +93,7 @@ func (m *model) shiftTasks(catIdx, lo, hi, dir int) string {
 	return ""
 }
 
-// nextShownBlocks returns the sibling blocks beside cat.Tasks[lo:hi] in
-// direction dir, up to and including the first one the list shows, as [a, b).
+// nextShownBlocks spans [a, b) from the run through the first shown sibling block in dir.
 func (m *model) nextShownBlocks(cat domain.Category, lo, hi, dir int) (int, int, bool) {
 	shown := shownRows(cat, &m.ui.Filter, &m.ui.Fold)
 	if dir > 0 {
@@ -137,8 +122,7 @@ func (m *model) nextShownBlocks(cat domain.Category, lo, hi, dir int) (int, int,
 	}
 }
 
-// shiftTasksAcross moves top-level blocks into the adjacent category in
-// direction dir.
+// shiftTasksAcross expects tasks [lo, hi) of category catIdx to be top-level blocks.
 func (m *model) shiftTasksAcross(catIdx, lo, hi, dir int) string {
 	dstIdx := catIdx + dir
 	if dstIdx < 0 {

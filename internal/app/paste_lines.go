@@ -15,8 +15,7 @@ import (
 	"phasionary/internal/domain"
 )
 
-// A separator with an empty title renders as a bare rule. A subtask belongs
-// to the nearest row above it that isn't one.
+// An untitled separator is a bare rule; a subtask joins the nearest non-subtask row above.
 type pastedRow struct {
 	title       string
 	status      string
@@ -46,8 +45,7 @@ func indentOf(line string) int {
 	return len(line) - len(strings.TrimLeft(line, " \t"))
 }
 
-// An indented list item stays a row of its own, never description text: under
-// a task it is a subtask, however deep it sits.
+// An indented list item stays a row of its own, never description text.
 func continuesDescription(line string, parentIndent int) bool {
 	return indentOf(line) > parentIndent && !isListItem(line)
 }
@@ -70,8 +68,7 @@ func parsePastedRows(text string) []pastedRow {
 	var rows []pastedRow
 	var desc []string
 	parentIndent := -1
-	// The indent of the last top-level task, which an item indented past it
-	// is a subtask of; -1 after a separator, which takes none.
+	// Last top-level task's indent, -1 after a separator: a deeper item is its subtask.
 	topIndent := -1
 	flush := func() {
 		if len(desc) > 0 {
@@ -183,9 +180,7 @@ func newTaskForRow(row pastedRow) (domain.Task, error) {
 	return task, nil
 }
 
-// linkSubtasks points each subtask among tasks, built row for row from rows,
-// at the task of the nearest row above it that isn't one; parentID stands for
-// the row before the first.
+// tasks[i] is built from rows[i]; parentID is the parent of any leading subtasks.
 func linkSubtasks(tasks []domain.Task, rows []pastedRow, parentID string) {
 	for i := range tasks {
 		switch {

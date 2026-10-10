@@ -180,9 +180,6 @@ func TestSchemaStampedOnSave(t *testing.T) {
 	assert.Equal(t, 1, loaded.Schema, "a project without nesting stays readable by older builds")
 }
 
-// The schema follows the content: a file is stamped 2 only while it holds a
-// nested category or task, so an older phasionary keeps opening every file it
-// can read whole.
 func TestSchemaFollowsNesting(t *testing.T) {
 	store := NewStore(t.TempDir())
 	project, err := store.CreateProject("Nested")
@@ -211,8 +208,6 @@ func TestSchemaFollowsNesting(t *testing.T) {
 	assert.Equal(t, 2, schemaOnDisk(), "a sub-category needs schema 2")
 }
 
-// Load repairs a file whose nesting breaks the rules: a stray child rejoins
-// its parent and a child of a missing parent becomes top-level.
 func TestLoadRepairsNesting(t *testing.T) {
 	tmpDir := t.TempDir()
 	store := NewStore(tmpDir)

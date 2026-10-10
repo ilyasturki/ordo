@@ -235,9 +235,7 @@ func (m model) renderTaskDescription(catIdx, taskIdx int, descriptionRows int, s
 	return renderer.RenderDescription(task, indent, selected)
 }
 
-// taskTitleColumn returns the column where the task title begins on its row,
-// shifted right by indent, so the description's blockquote bar can sit flush
-// with the title.
+// taskTitleColumn is where the title starts, so the description's bar can sit flush with it.
 func taskTitleColumn(task domain.Task, statusDisplay string, indent int) int {
 	prefix := "  " + strings.Repeat(" ", indent)
 	dotText := ui.TagSegmentText(task.TagColor)

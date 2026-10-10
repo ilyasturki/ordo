@@ -116,11 +116,7 @@ func (m *model) restoreSelection(kind selection.FocusKind, catID, taskID string)
 		(catID != "" && m.selectItem(selection.FocusCategory, catID))
 }
 
-// taskRowVisible is the single source of truth for whether the filter keeps a
-// row in a category's Tasks slice, before nesting widens or folds narrow it
-// (see shownRows). Separators are hidden whenever any filter is active (they
-// carry no status/priority to match against); ordinary tasks defer to the
-// filter's per-task rule. parentCategoryID is the category's parent, or "".
+// taskRowVisible is the filter's verdict alone; shownRows adds nesting and folds on top.
 func taskRowVisible(filter *FilterState, task domain.Task, categoryID, parentCategoryID string) bool {
 	if task.IsSeparator() {
 		return filter == nil || !filter.HasActiveFilter()
@@ -128,9 +124,6 @@ func taskRowVisible(filter *FilterState, task domain.Task, categoryID, parentCat
 	return filter == nil || filter.TaskVisible(task, categoryID, parentCategoryID)
 }
 
-// shownRows reports, row by row, whether the list shows cat's tasks: what the
-// filter keeps, plus a parent whose subtask it keeps, so the subtask shows in
-// context, minus the subtasks of a folded parent.
 func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool {
 	shown := make([]bool, len(cat.Tasks))
 	for i, task := range cat.Tasks {
@@ -148,9 +141,7 @@ func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool
 	return shown
 }
 
-// rebuildPositions lists the rows the list shows. A folded category hides its
-// rows and its sub-categories; expandedTaskID's description row shows even
-// while descriptions are hidden.
+// expandedTaskID's description row shows even while descriptions are hidden.
 func rebuildPositions(categories []domain.Category, filter *FilterState, fold *FoldState, expandDescriptions bool, expandedTaskID string) []selection.Position {
 	positions := make([]selection.Position, 0)
 	positions = append(positions, selection.Position{

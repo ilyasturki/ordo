@@ -5,9 +5,6 @@ import (
 	"phasionary/internal/domain"
 )
 
-// toggleFold folds or unfolds the innermost fold around the cursor: a
-// category's header folds that category, a parent task or its subtask folds
-// the parent, and any other task folds its category.
 func (m *model) toggleFold() {
 	pos, ok := m.selectedPosition()
 	if !ok {

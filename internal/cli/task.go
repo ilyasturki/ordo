@@ -194,8 +194,6 @@ func newTaskAddCmd() *cobra.Command {
 	return cmd
 }
 
-// taskDestination resolves where task add puts a task: the category -C names,
-// or the parent task's, which -C then narrows the search for.
 func taskDestination(project domain.Project, categoryName, parent string) (catID, parentID string, err error) {
 	if parent == "" {
 		cat, _, err := resolveCategory(project, categoryName)

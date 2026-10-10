@@ -291,9 +291,6 @@ func (m *model) landOnRow(r selection.Position) {
 	m.ensureVisible()
 }
 
-// hidingFolds lists the folds that can hide a row: its parent task's, its
-// category's and that category's parent's. A category header hides behind its
-// parent's fold only.
 func (m *model) hidingFolds(r selection.Position) []string {
 	cat := m.project.Categories[r.CategoryIndex]
 	var ids []string

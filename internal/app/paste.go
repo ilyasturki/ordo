@@ -60,9 +60,6 @@ func (m *model) pasteInternal() {
 	}
 }
 
-// pasteDestination is where pasted rows land: the category, the index among
-// its tasks, and the parent task whose subtasks they join, "" at the top level.
-// They go below the focused row at its depth, after a parent's subtasks.
 func (m *model) pasteDestination() (catIndex, index int, parentID string, ok bool) {
 	pos, found := m.selectedPosition()
 	if !found || len(m.project.Categories) == 0 {
@@ -78,9 +75,6 @@ func (m *model) pasteDestination() (catIndex, index int, parentID string, ok boo
 	return pos.CategoryIndex, 0, "", true
 }
 
-// settleTasks sets the parents of rows pasted at index among the subtasks of
-// parentID (see domain.SettleParents) and returns where they go: rows that
-// can't all be subtasks there land after the parent's block instead.
 func settleTasks(tasks, rows []domain.Task, index int, parentID string) int {
 	if domain.SettleParents(rows, parentID) || parentID == "" {
 		return index
@@ -152,10 +146,7 @@ func (m *model) pasteTasks() {
 	m.ui.Screen.StatusMsg = pastedRowsStatus(rows, clip.IsCut)
 }
 
-// moveRows moves the live rows ids name, each parent with its subtasks, to
-// index in the category at catIndex, among the subtasks of parentID when they
-// can all be subtasks. index is counted before the lift; an ID no longer in the
-// project is skipped.
+// moveRows counts index before the lift and skips an ID no longer in the project.
 func (m *model) moveRows(ids []string, catIndex, index int, parentID string) []domain.Task {
 	picked := make(map[string]bool, len(ids))
 	for _, id := range ids {
@@ -227,8 +218,6 @@ func pastedRowsStatus(rows []domain.Task, moved bool) string {
 	return verb + rowCountLabel(tasks, len(rows)-tasks)
 }
 
-// categoryDestination is where pasted categories land: before the focused
-// category, at its depth, so among its parent's sub-categories when it is one.
 func (m *model) categoryDestination() (index int, parentID string, ok bool) {
 	pos, found := m.selectedPosition()
 	if !found {
@@ -240,10 +229,6 @@ func (m *model) categoryDestination() (index int, parentID string, ok bool) {
 	return pos.CategoryIndex, m.project.Categories[pos.CategoryIndex].ParentID, true
 }
 
-// settleCategories sets the parents of categories pasted at index among the
-// sub-categories of parentID (see domain.SettleParents) and returns where they
-// go: categories that can't all be sub-categories there land before the parent
-// instead. Each takes a free name among its new siblings.
 func settleCategories(cats, rows []domain.Category, index int, parentID string) int {
 	if !domain.SettleParents(rows, parentID) && parentID != "" {
 		for i, c := range cats {
@@ -327,10 +312,7 @@ func (m *model) pasteCategories() {
 	m.ui.Screen.StatusMsg = fmt.Sprintf("%s %d categor%s", verb, len(cats), plural(len(cats), "y", "ies"))
 }
 
-// moveCategories moves the live categories ids name, each parent with its
-// sub-categories, to index, among the sub-categories of parentID when they can
-// all be sub-categories, else before that parent. index is counted before the
-// lift; an ID no longer in the project is skipped.
+// moveCategories counts index before the lift and skips an ID no longer in the project.
 func (m *model) moveCategories(ids []string, index int, parentID string) []domain.Category {
 	cats := m.project.Categories
 	picked := make(map[string]bool, len(ids))

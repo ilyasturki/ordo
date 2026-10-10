@@ -33,7 +33,6 @@ func nestedFixture() domain.Project {
 	}
 }
 
-// outline renders a project's structure, IDs aside, for comparing round trips.
 func outline(p domain.Project) []string {
 	var out []string
 	for i, c := range p.Categories {

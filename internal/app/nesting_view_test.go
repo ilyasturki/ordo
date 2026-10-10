@@ -12,8 +12,6 @@ import (
 	"phasionary/internal/domain"
 )
 
-// nestedProject is a version with a loose task and two areas, one holding a
-// parent task with two subtasks, followed by an older version.
 func nestedProject() domain.Project {
 	todo, done, doing := domain.StatusTodo, domain.StatusCompleted, domain.StatusInProgress
 	return domain.Project{
@@ -155,7 +153,6 @@ func TestSearchRevealsAFoldedSubtask(t *testing.T) {
 	assert.False(t, m.ui.Fold.IsFolded("v2"))
 }
 
-// screen renders the list and returns its plain lines.
 func screen(m *model) []string {
 	return strings.Split(ansi.Strip(m.renderView()), "\n")
 }

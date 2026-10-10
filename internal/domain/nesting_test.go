@@ -7,8 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nestedTasks builds a task list from "id" and "id<parent" specs; "-" is a
-// separator.
+// nestedTasks specs: "id", "id<parent", or "-" for a separator.
 func nestedTasks(specs ...string) []Task {
 	tasks := make([]Task, len(specs))
 	for i, s := range specs {

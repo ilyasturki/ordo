@@ -30,7 +30,6 @@ func nestedStoreProject(t *testing.T, dataDir string) domain.Project {
 	return saved
 }
 
-// structure renders a project's nesting by position, IDs aside.
 func structure(p domain.Project) []string {
 	var out []string
 	for ci, c := range p.Categories {

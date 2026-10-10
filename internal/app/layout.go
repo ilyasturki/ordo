@@ -105,8 +105,6 @@ func (b *LayoutBuilder) rowHeight(posIndex, fallback int) int {
 	return b.editHeight
 }
 
-// Build lays out the rows positions lists, adding the blank lines and the
-// placeholders between them.
 func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Position) Layout {
 	var layout Layout
 	add := func(item LayoutItem) {
@@ -170,15 +168,11 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 	return layout
 }
 
-// subCategoryOf reports whether positions[i] is the header of a sub-category
-// of the category parentID.
 func subCategoryOf(project domain.Project, positions []selection.Position, i int, parentID string) bool {
 	return i < len(positions) && positions[i].Kind == selection.FocusCategory &&
 		project.Categories[positions[i].CategoryIndex].ParentID == parentID
 }
 
-// rowOfCategory reports whether positions[i] is a row inside the category at
-// catIdx.
 func rowOfCategory(positions []selection.Position, i, catIdx int) bool {
 	return i < len(positions) && positions[i].Kind != selection.FocusCategory &&
 		positions[i].Kind != selection.FocusProject && positions[i].CategoryIndex == catIdx

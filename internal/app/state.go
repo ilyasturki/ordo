@@ -190,16 +190,11 @@ func (f *FilterState) HasActiveFilter() bool {
 	return len(f.statuses) > 0 || len(f.priorities) > 0 || len(f.categories) > 0 || len(f.tags) > 0
 }
 
-// CategoryVisible reports whether the category filter keeps the category
-// categoryID, whose parent category is parentCategoryID or "".
 func (f *FilterState) CategoryVisible(categoryID, parentCategoryID string) bool {
 	return len(f.categories) == 0 || f.categories[categoryID] ||
 		(parentCategoryID != "" && f.categories[parentCategoryID])
 }
 
-// TaskVisible judges a task of the category categoryID, whose parent category
-// is parentCategoryID or "": picking a category in the filter picks its
-// sub-categories too.
 func (f *FilterState) TaskVisible(task domain.Task, categoryID, parentCategoryID string) bool {
 	if !f.HasActiveFilter() {
 		return true

@@ -47,15 +47,6 @@ func CreateTask(p *domain.Project, categoryID string, f TaskFields) (domain.Task
 	return CreateTaskAfter(p, categoryID, f, "")
 }
 
-// CreateTaskAfter is CreateTask with a position: the new row lands below the
-// task identified by afterTaskID and its subtasks, at that task's depth, or at
-// the end of the category when afterTaskID is empty. A separator never nests,
-// so below a subtask it lands after the parent's block. With f.ParentID the
-// task lands last among that parent's subtasks instead.
-//
-// Returns domain.ErrTaskNotFound when afterTaskID or f.ParentID doesn't
-// resolve within the category, domain.ErrNestDepth or domain.ErrSeparatorNest
-// for a parent that can't take subtasks, plus everything CreateTask returns.
 // validateTaskText screens the free-text fields of a write.
 //
 // This is the single gate every writer shares — the TUI and the CLI both
@@ -369,10 +360,7 @@ func SetTaskEstimate(p *domain.Project, categoryID, taskID string, minutes int) 
 	return *task, nil
 }
 
-// MoveTaskWithinCategory shifts the identified task, with its subtasks, by
-// delta sibling blocks inside its category. A move that would fall off either
-// end of its siblings changes nothing and returns ErrNoChange, so a boundary
-// tap doesn't trigger a save.
+// MoveTaskWithinCategory moves by delta sibling blocks; off the end is ErrNoChange, so no save.
 func MoveTaskWithinCategory(p *domain.Project, categoryID, taskID string, delta int) (domain.Task, error) {
 	cidx, err := p.FindCategoryByID(categoryID)
 	if err != nil {

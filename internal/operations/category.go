@@ -14,10 +14,7 @@ func CreateCategory(p *domain.Project, name string) (domain.Category, error) {
 	return CreateCategoryUnder(p, "", name)
 }
 
-// CreateCategoryUnder is CreateCategory for a sub-category of the top-level
-// category parentID, landing after its other sub-categories. It also returns
-// domain.ErrCategoryNotFound or domain.ErrNestDepth for a parent that can't
-// take one.
+// CreateCategoryUnder fails with domain.ErrCategoryNotFound or domain.ErrNestDepth on a bad parent.
 func CreateCategoryUnder(p *domain.Project, parentID, name string) (domain.Category, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -54,9 +51,7 @@ func RenameCategory(p *domain.Project, categoryID, name string) (domain.Category
 	return p.Categories[idx], nil
 }
 
-// MoveCategory shifts the identified category, with its sub-categories, by
-// delta sibling blocks. A move that would fall off either end of its siblings
-// changes nothing and returns ErrNoChange.
+// MoveCategory moves by delta sibling blocks; running off the end returns ErrNoChange.
 func MoveCategory(p *domain.Project, categoryID string, delta int) (domain.Category, error) {
 	idx, err := p.FindCategoryByID(categoryID)
 	if err != nil {

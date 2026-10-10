@@ -152,8 +152,6 @@ func newCategoryEditCmd() *cobra.Command {
 	return cmd
 }
 
-// categoryLoad counts what deleting the category at i takes along: its tasks
-// and its sub-categories' ones, and the sub-categories.
 func categoryLoad(project domain.Project, i int) (tasks, subs int) {
 	end := domain.BlockEnd(project.Categories, i)
 	for _, c := range project.Categories[i:end] {

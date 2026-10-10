@@ -10,7 +10,6 @@ import (
 	"phasionary/internal/domain"
 )
 
-// assertNestingValid checks the nesting rules hold across the project.
 func assertNestingValid(t *testing.T, p domain.Project) {
 	t.Helper()
 	want := domain.Project{Categories: make([]domain.Category, len(p.Categories))}

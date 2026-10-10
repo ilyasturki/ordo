@@ -9,8 +9,6 @@ import (
 	"phasionary/internal/domain"
 )
 
-// nestSelected moves the focused task or category a level in, under the one
-// above it, or out, after its parent.
 func (m *model) nestSelected(in bool) {
 	if !m.ui.Modes.CanPerformAction(modes.ActionMoveItem) {
 		return
@@ -29,7 +27,6 @@ func (m *model) nestSelected(in bool) {
 	}
 }
 
-// visualNest nests or un-nests the rows of the visual selection together.
 func (m *model) visualNest(in bool) {
 	lo, hi, catIdx, ok := m.visualRun()
 	if !ok {
@@ -42,8 +39,6 @@ func (m *model) visualNest(in bool) {
 	m.nestTasks(catIdx, lo, hi, in)
 }
 
-// nestTasks nests the tasks lo to hi-1 of a category under the task above
-// them, or un-nests them after their parent.
 func (m *model) nestTasks(catIdx, lo, hi int, in bool) {
 	cat := &m.project.Categories[catIdx]
 	if in && lo > 0 && m.ui.Filter.HasActiveFilter() &&
@@ -72,8 +67,6 @@ func (m *model) nestTasks(catIdx, lo, hi int, in bool) {
 	m.storeTaskUpdate()
 }
 
-// nestCategories nests the categories lo to hi-1 under the top-level category
-// above them, or un-nests them after their parent.
 func (m *model) nestCategories(lo, hi int, in bool) {
 	m.recordHistory()
 	var err error
@@ -95,8 +88,6 @@ func (m *model) nestCategories(lo, hi int, in bool) {
 	m.storeTaskUpdate()
 }
 
-// revealChildrenOf unfolds a parent that just took children, which would
-// otherwise vanish into its fold.
 func (m *model) revealChildrenOf(parentID string) {
 	if m.ui.Fold.IsFolded(parentID) {
 		m.ui.Fold.Toggle(parentID)
