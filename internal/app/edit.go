@@ -215,7 +215,6 @@ func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.moveEditCursorRow(msg.String() == "down")
 		return nil
 	case "ctrl+v":
-		// bubbles' own paste reads through atotto alone, missing the Wayland fallback.
 		return readClipboardForEditor(modes.ModeEdit)
 	}
 	before := m.ui.Edit.input.Value()

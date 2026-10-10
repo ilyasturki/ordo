@@ -1,129 +1,76 @@
-// Package clipboard puts text on the system clipboard, working in terminal
-// sessions where the usual autodetection gives up.
-//
-// github.com/atotto/clipboard picks its backend in an init() that only looks at
-// wl-copy when WAYLAND_DISPLAY is non-empty. A tmux server first started from a
-// TTY has an empty WAYLAND_DISPLAY, so on a Wayland box with no xclip or xsel
-// installed the library reports "No clipboard utilities available" even though
-// wl-copy is right there on PATH. Nothing the app does at startup can undo that
-// decision: atotto's init() runs before ours. So instead of trying to repair the
-// environment for the library, we run wl-copy ourselves with a WAYLAND_DISPLAY
-// pointing at whatever socket the compositor actually left in XDG_RUNTIME_DIR.
+// Package clipboard reads and writes the Wayland clipboard through
+// wl-clipboard, and never leaves one of its processes running past the call.
 package clipboard
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
-
-	atotto "github.com/atotto/clipboard"
 )
 
-// ErrNoBackend reports that no clipboard utility could be reached. Callers that
-// have another way to hand text to the user — a TUI can emit OSC 52 and let the
-// terminal do it — should treat this as "try that" rather than as a failure.
+// ErrNoBackend reports that no clipboard utility could be reached.
 var ErrNoBackend = errors.New("no clipboard utility available")
 
-var ErrTimeout = errors.New("clipboard read timed out")
+var ErrTimeout = errors.New("clipboard utility timed out")
 
-// wl-paste on GNOME (no data-control protocol) waits for a focus an unfocused session never gets.
-var readTimeout = 2 * time.Second
+// On GNOME (no data-control protocol) wl-copy and wl-paste wait for a focus an unfocused session never gets.
+var timeout = 2 * time.Second
 
-// Write puts text on the system clipboard.
+// Write puts text on the clipboard with wl-copy.
 func Write(text string) error {
-	if !atotto.Unsupported {
-		if err := atotto.WriteAll(text); err == nil {
-			return nil
-		}
-	}
-	return wlWrite(text)
+	// wl-copy forks the process serving the selection only once the selection is set, so killing a hung one leaves nothing behind.
+	return run(strings.NewReader(text), nil, "wl-copy")
 }
 
-// A hung atotto read can't be killed: its goroutine outlives the ErrTimeout.
+// Read returns the clipboard's text. ErrNoBackend only when no tool ran: one
+// that ran and failed most likely found the clipboard empty.
 func Read() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), readTimeout)
-	defer cancel()
-	type result struct {
-		text string
-		err  error
-	}
-	done := make(chan result, 1)
-	go func() {
-		text, err := read(ctx)
-		done <- result{text, err}
-	}()
-	select {
-	case r := <-done:
-		if r.err != nil && ctx.Err() != nil {
-			return "", ErrTimeout
-		}
-		return r.text, r.err
-	case <-ctx.Done():
-		return "", ErrTimeout
-	}
-}
-
-// ErrNoBackend only when no tool ran: one that ran and failed most likely found
-// the clipboard empty.
-func read(ctx context.Context) (string, error) {
-	if atotto.Unsupported {
-		return wlRead(ctx)
-	}
-	text, err := atotto.ReadAll()
-	if err == nil {
-		return text, nil
-	}
-	if text, wlErr := wlRead(ctx); !errors.Is(wlErr, ErrNoBackend) {
-		return text, wlErr
-	}
-	return "", err
-}
-
-func wlWrite(text string) error {
-	cmd, err := wlCommand(context.Background(), "wl-copy")
-	if err != nil {
-		return err
-	}
-	cmd.Stdin = strings.NewReader(text)
-	return cmd.Run()
-}
-
-func wlRead(ctx context.Context) (string, error) {
+	var out bytes.Buffer
 	// --no-newline: wl-paste otherwise appends one that was never copied.
-	cmd, err := wlCommand(ctx, "wl-paste", "--no-newline")
-	if err != nil {
+	if err := run(nil, &out, "wl-paste", "--no-newline"); err != nil {
 		return "", err
 	}
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
+	return out.String(), nil
 }
 
-// wlCommand builds a wl-clipboard invocation aimed at the running compositor,
-// or reports ErrNoBackend when either the tool or the socket is missing.
-func wlCommand(ctx context.Context, name string, args ...string) (*exec.Cmd, error) {
+// run kills the tool's whole process group once the timeout passes.
+func run(stdin io.Reader, stdout io.Writer, name string, args ...string) error {
 	path, err := exec.LookPath(name)
 	if err != nil {
-		return nil, ErrNoBackend
+		return ErrNoBackend
 	}
 	display, ok := waylandDisplay()
 	if !ok {
-		return nil, ErrNoBackend
+		return ErrNoBackend
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Env = append(os.Environ(), "WAYLAND_DISPLAY="+display)
-	return cmd, nil
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	// A child that escaped the group could hold stdout open forever.
+	cmd.WaitDelay = 100 * time.Millisecond
+	err = cmd.Run()
+	if ctx.Err() != nil {
+		return ErrTimeout
+	}
+	return err
 }
 
 // waylandDisplay names the compositor's socket: the environment's answer when
-// it has one, otherwise the first socket sitting in the runtime dir.
+// it has one, otherwise the first socket sitting in the runtime dir. A tmux
+// server first started from a TTY has an empty WAYLAND_DISPLAY.
 func waylandDisplay() (string, bool) {
 	if d := os.Getenv("WAYLAND_DISPLAY"); d != "" {
 		return d, true

@@ -306,7 +306,7 @@ func (p *ProjectPickerState) setVirtual(v int) {
 
 func (p *ProjectPickerState) startAdding() {
 	p.isAdding = true
-	p.input = textinput.New()
+	p.input = newTextInput()
 	p.input.Focus()
 }
 
@@ -322,7 +322,7 @@ func (p *ProjectPickerState) startFiltering() {
 	p.filtering = true
 	p.allProjects = p.projects
 	p.query = ""
-	p.filter = textinput.New()
+	p.filter = newTextInput()
 	p.filter.Focus()
 	p.onNew = false
 	p.selected = 0
@@ -434,7 +434,7 @@ func (e *EditState) wrapFor(value string, available int) []ui.LineSpan {
 }
 
 func (e *EditState) reset() {
-	e.input = textinput.New()
+	e.input = newTextInput()
 	e.isAdding = false
 	e.newItemID = ""
 	e.itemType = selection.FocusProject
@@ -444,7 +444,7 @@ func (e *EditState) reset() {
 }
 
 func newEditState(value string, isAdding bool, newID string, kind selection.FocusKind) EditState {
-	ti := textinput.New()
+	ti := newTextInput()
 	// No CharLimit: a title may be any length; the row it renders into is what
 	// stays bounded.
 	ti.SetValue(value)

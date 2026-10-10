@@ -46,7 +46,7 @@ func (m *model) startSearch() tea.Cmd {
 	if m.ui.Selection.IsEmpty() {
 		return nil
 	}
-	ti := textinput.New()
+	ti := newTextInput()
 	cmd := ti.Focus()
 	m.ui.Search = SearchState{
 		input:          ti,

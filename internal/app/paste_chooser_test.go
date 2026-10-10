@@ -400,3 +400,15 @@ func TestPasteChooser_KeepsTheTaskFocused(t *testing.T) {
 	assert.Equal(t, selection.FocusDescription, pos.Kind)
 	assert.Equal(t, "alpha details\nGroceries\n- milk\n- [x] bread", m.project.Categories[0].Tasks[0].Description)
 }
+
+// bubbles' own clipboard keys run atotto, whose tools can't be killed.
+func TestInputs_LeaveTheClipboardKeysUnbound(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	m.startSearch()
+	assert.False(t, m.ui.Search.input.KeyMap.Paste.Enabled())
+
+	m.startDescriptionInlineEdit(0, 0)
+	km := m.ui.DescriptionEdit.textarea.KeyMap
+	assert.False(t, km.Paste.Enabled())
+	assert.False(t, km.CopySelection.Enabled())
+}

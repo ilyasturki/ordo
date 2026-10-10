@@ -36,6 +36,9 @@ func (m *model) startDescriptionInlineEdit(catIdx, taskIdx int) tea.Cmd {
 	km.WordBackward.SetKeys("alt+left", "alt+b", "ctrl+left")
 	km.DeleteWordForward.SetKeys("alt+delete", "alt+d", "ctrl+delete")
 	km.DeleteWordBackward.SetKeys("alt+backspace", "ctrl+w", "ctrl+backspace")
+	// Both run atotto, whose clipboard tools can't be killed.
+	km.Paste.SetEnabled(false)
+	km.CopySelection.SetEnabled(false)
 	ta.KeyMap = km
 	// No current-line highlight: the block cursor alone marks the position.
 	// Instead a ">" gutter (via the prompt func below) points at the cursor's row.

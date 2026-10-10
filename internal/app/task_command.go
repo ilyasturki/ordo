@@ -132,7 +132,7 @@ func (m *model) startTaskCommand(c taskCommand) tea.Cmd {
 		m.ui.Screen.StatusMsg = c.Label + "…"
 		return runTaskCommand(c.TaskCommand, taskCommandEnv(m.project, ci, task, ""))
 	}
-	ti := textinput.New()
+	ti := newTextInput()
 	ti.Prompt = ""
 	cmd := ti.Focus()
 	m.ui.TaskCommand = TaskCommandState{input: ti, command: c, taskID: task.ID}

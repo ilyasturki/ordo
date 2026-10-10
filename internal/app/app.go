@@ -388,7 +388,7 @@ func (m *model) updateHelpFilter(msg tea.Msg) tea.Cmd {
 
 // startHelpFilter enters the `/` filter sub-mode with a fresh, focused input.
 func (m *model) startHelpFilter() tea.Cmd {
-	ti := textinput.New()
+	ti := newTextInput()
 	cmd := ti.Focus()
 	m.ui.Help.Filter = ti
 	m.ui.Help.Filtering = true

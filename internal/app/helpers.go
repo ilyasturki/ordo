@@ -107,6 +107,14 @@ func (m model) layoutConfig() LayoutConfig {
 	return cfg
 }
 
+// bubbles' own ctrl+v reads through atotto, whose wl-paste can't be killed;
+// the terminal's paste still arrives as a tea.PasteMsg.
+func newTextInput() textinput.Model {
+	ti := textinput.New()
+	ti.KeyMap.Paste.SetEnabled(false)
+	return ti
+}
+
 func sanitizeInput(input *textinput.Model) {
 	val := input.Value()
 	cleaned := strings.Map(func(r rune) rune {
