@@ -61,9 +61,28 @@ func CategoryMarkdown(project domain.Project, i int) string {
 		if c > i {
 			sb.WriteByte('\n')
 		}
-		writeCategory(&sb, project.CategoryPath(c), project.Categories[c])
+		writeCategory(&sb, CategoryHeading(project, c), project.Categories[c])
 	}
 	return sb.String()
+}
+
+// headingSep splits a heading's path; a "/" inside a name is written `\/`, so it never reads as one.
+const headingSep = " " + domain.CategoryPathSep + " "
+
+func CategoryHeading(project domain.Project, i int) string {
+	heading := escapeSlashes(project.Categories[i].Name)
+	if parent := domain.ParentIndex(project.Categories, i); parent >= 0 {
+		heading = escapeSlashes(project.Categories[parent].Name) + headingSep + heading
+	}
+	return heading
+}
+
+func escapeSlashes(name string) string {
+	return strings.ReplaceAll(name, "/", `\/`)
+}
+
+func unescapeSlashes(s string) string {
+	return strings.TrimSpace(strings.ReplaceAll(s, `\/`, "/"))
 }
 
 func writeCategory(sb *strings.Builder, heading string, cat domain.Category) {
@@ -285,12 +304,20 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 }
 
 func headingParent(project domain.Project, heading string) (parentID, name string) {
-	for _, split := range domain.SplitCategoryHeading(heading) {
-		if i := domain.CategoryNameConflict(project.Categories, "", split[0], -1); i >= 0 {
-			return project.Categories[i].ID, split[1]
+	for i := 0; i < len(heading); i++ {
+		if strings.HasPrefix(heading[i:], `\/`) {
+			i++
+			continue
+		}
+		if !strings.HasPrefix(heading[i:], headingSep) {
+			continue
+		}
+		parent, child := unescapeSlashes(heading[:i]), unescapeSlashes(heading[i+len(headingSep):])
+		if p := domain.CategoryNameConflict(project.Categories, "", parent, -1); p >= 0 && child != "" {
+			return project.Categories[p].ID, child
 		}
 	}
-	return "", heading
+	return "", unescapeSlashes(heading)
 }
 
 func dedentDescription(line string, subtask bool) string {

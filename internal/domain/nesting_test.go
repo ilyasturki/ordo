@@ -375,9 +375,6 @@ func TestCategoryPath(t *testing.T) {
 	assert.Equal(t, [][2]string{{"v0.2", "ui/ux"}, {"v0.2 / ui", "ux"}}, SplitCategoryPath("v0.2 / ui/ux"))
 	assert.Empty(t, SplitCategoryPath("plain"))
 	assert.Empty(t, SplitCategoryPath("/edge/"))
-
-	assert.Equal(t, [][2]string{{"v0.2", "ui/ux"}}, SplitCategoryHeading("v0.2 / ui/ux"))
-	assert.Empty(t, SplitCategoryHeading("CI/CD"))
 }
 
 func TestAnIDLessItemHasNoChildren(t *testing.T) {

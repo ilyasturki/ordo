@@ -35,8 +35,12 @@ func nestedFixture() domain.Project {
 
 func outline(p domain.Project) []string {
 	var out []string
-	for i, c := range p.Categories {
-		out = append(out, "## "+p.CategoryPath(i))
+	for _, c := range p.Categories {
+		line := "## " + c.Name
+		if c.ParentID != "" {
+			line = "  " + line
+		}
+		out = append(out, line)
 		for _, t := range c.Tasks {
 			line := "- " + t.Status + " " + t.Title + " (" + t.Priority + ") " + strings.ReplaceAll(t.Description, "\n", "|")
 			if t.IsSeparator() {
@@ -57,7 +61,7 @@ func TestExportNesting(t *testing.T) {
 	out := buf.String()
 
 	assert.Contains(t, out, "## v0.2.0\n")
-	assert.Contains(t, out, "## v0.2.0 / ui/ux\n", "a sub-category's heading carries its path")
+	assert.Contains(t, out, "## v0.2.0 / ui\\/ux\n", "a sub-category's heading carries its path, a slash in a name escaped")
 	assert.Contains(t, out, "- [~] Rest timer (high)\n    why\n      - keep this indent\n  - [x] Pick a default\n      first line\n\n      after a gap\n  - [ ] Add a sound\n### later\n")
 	assert.Contains(t, out, "## v0.1.0 / api\n")
 }
@@ -77,9 +81,9 @@ func TestCategoryMarkdownTakesTheAreas(t *testing.T) {
 	project := nestedFixture()
 	out := CategoryMarkdown(project, 0)
 	assert.True(t, strings.HasPrefix(out, "## v0.2.0\n"))
-	assert.Contains(t, out, "## v0.2.0 / ui/ux")
+	assert.Contains(t, out, "## v0.2.0 / ui\\/ux")
 	assert.NotContains(t, out, "v0.1.0")
-	assert.True(t, strings.HasPrefix(CategoryMarkdown(project, 1), "## v0.2.0 / ui/ux\n"))
+	assert.True(t, strings.HasPrefix(CategoryMarkdown(project, 1), "## v0.2.0 / ui\\/ux\n"))
 }
 
 func TestImportNestingRules(t *testing.T) {
@@ -123,6 +127,30 @@ func TestImportNestingRules(t *testing.T) {
 		back, err := ImportMarkdown(&buf, "")
 		require.NoError(t, err)
 		assert.Equal(t, outline(project), outline(back))
+	})
+	t.Run("a name that reads like a path stays one", func(t *testing.T) {
+		project := domain.Project{Name: "P", Categories: []domain.Category{
+			{ID: "a", Name: "A", Tasks: []domain.Task{{ID: "a1", Title: "a", Status: domain.StatusTodo}}},
+			{ID: "b", Name: "B", ParentID: "a", Tasks: []domain.Task{{ID: "b1", Title: "b", Status: domain.StatusTodo}}},
+			{ID: "ab", Name: "A / B", Tasks: []domain.Task{{ID: "c1", Title: "c", Status: domain.StatusTodo}}},
+			{ID: "odd", Name: `back\/slash`, Tasks: []domain.Task{{ID: "d1", Title: "d", Status: domain.StatusTodo}}},
+		}}
+		var buf bytes.Buffer
+		require.NoError(t, ExportMarkdown(project, &buf))
+		assert.Contains(t, buf.String(), "## A \\/ B\n")
+		back, err := ImportMarkdown(&buf, "")
+		require.NoError(t, err)
+		assert.Equal(t, outline(project), outline(back))
+	})
+	t.Run("a hand-written path nests only under a known category", func(t *testing.T) {
+		md := "## A\n- [ ] a\n## A / B\n- [ ] b\n## X / Y\n- [ ] c\n"
+		p, err := ImportMarkdown(strings.NewReader(md), "")
+		require.NoError(t, err)
+		require.Len(t, p.Categories, 3)
+		assert.Equal(t, p.Categories[0].ID, p.Categories[1].ParentID)
+		assert.Equal(t, "B", p.Categories[1].Name)
+		assert.Equal(t, "X / Y", p.Categories[2].Name)
+		assert.Empty(t, p.Categories[2].ParentID)
 	})
 	t.Run("a checkbox inside a description stays description", func(t *testing.T) {
 		md := "## A\n- [ ] parent\n    - [ ] not a subtask\n"

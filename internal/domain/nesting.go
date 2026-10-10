@@ -401,33 +401,21 @@ func CategoryNameConflict(cats []Category, parentID, name string, except int) in
 	return -1
 }
 
-// categoryHeadingSep is the spaced form CategoryPath writes, which a "/" inside a name lacks.
-const categoryHeadingSep = " " + CategoryPathSep + " "
-
-// CategoryPath is the "parent / name" form the TUI shows and markdown headings carry.
+// CategoryPath is the "parent / name" form the TUI shows.
 func (p *Project) CategoryPath(i int) string {
 	if parent := ParentIndex(p.Categories, i); parent >= 0 {
-		return p.Categories[parent].Name + categoryHeadingSep + p.Categories[i].Name
+		return p.Categories[parent].Name + " " + CategoryPathSep + " " + p.Categories[i].Name
 	}
 	return p.Categories[i].Name
 }
 
 // SplitCategoryPath tries every separator: a name may hold one too ("ui/ux").
 func SplitCategoryPath(path string) [][2]string {
-	return splitCategoryPath(path, CategoryPathSep)
-}
-
-// SplitCategoryHeading is SplitCategoryPath for a heading CategoryPath wrote.
-func SplitCategoryHeading(heading string) [][2]string {
-	return splitCategoryPath(heading, categoryHeadingSep)
-}
-
-func splitCategoryPath(path, sep string) [][2]string {
 	var out [][2]string
 	for i := 0; i < len(path); i++ {
-		if strings.HasPrefix(path[i:], sep) {
+		if strings.HasPrefix(path[i:], CategoryPathSep) {
 			parent := strings.TrimSpace(path[:i])
-			child := strings.TrimSpace(path[i+len(sep):])
+			child := strings.TrimSpace(path[i+len(CategoryPathSep):])
 			if parent != "" && child != "" {
 				out = append(out, [2]string{parent, child})
 			}

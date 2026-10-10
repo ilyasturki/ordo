@@ -9,6 +9,7 @@ import (
 
 	"phasionary/internal/app/selection"
 	"phasionary/internal/domain"
+	"phasionary/internal/export"
 )
 
 // visualTaskLevel reports whether kind is a row that belongs to the unified
@@ -359,7 +360,7 @@ func (m model) visualCategoryText(selPositions []selection.Position, checkboxes 
 		i, _ := m.project.FindCategoryByID(c.ID)
 		switch {
 		case checkboxes:
-			lines = append(lines, "## "+m.project.CategoryPath(i))
+			lines = append(lines, "## "+export.CategoryHeading(m.project, i))
 		case c.ParentID != "" && picked[c.ParentID]:
 			lines = append(lines, "  - "+c.Name)
 		default:
