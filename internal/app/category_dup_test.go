@@ -61,6 +61,23 @@ func pressKey(m *model, code rune) {
 	m.handleEditKey(tea.KeyPressMsg{Code: code})
 }
 
+func TestAddCategory_PasteIgnoredUnderMergeOfferAndClearsError(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	m.ui.Selection.MoveTo(1) // Cat A
+	m.startAddingCategory()
+	typeText(m, "cat b")
+	pressKey(m, tea.KeyEnter)
+	require.NotEmpty(t, m.ui.Edit.mergeInto)
+
+	m.handlePaste("x")
+	assert.Equal(t, "cat b", m.ui.Edit.input.Value(), "a paste cannot edit the name under the offer")
+
+	pressKey(m, tea.KeyEscape)
+	m.handlePaste("x")
+	assert.Equal(t, "cat bx", m.ui.Edit.input.Value())
+	assert.Empty(t, m.ui.Edit.err, "changing the text by paste clears the error")
+}
+
 func TestAddCategory_DuplicateKeepsTheEditorAndOffersMerge(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(1) // Cat A

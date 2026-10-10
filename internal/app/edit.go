@@ -351,19 +351,18 @@ func (m *model) finishCategoryEditing(position selection.Position, name string) 
 // category was only ever a name, so it is dropped and the cursor moves to the
 // existing one.
 func (m *model) mergeEditedCategory() {
-	position, ok := m.selectedPosition()
-	dst, err := m.project.FindCategoryByID(m.ui.Edit.mergeInto)
-	if !ok || err != nil {
+	srcIdx, dst, ok := m.mergeOffer()
+	if !ok {
 		m.cancelEditing()
 		return
 	}
 	target := m.project.Categories[dst]
-	src := m.project.Categories[position.CategoryIndex]
+	src := m.project.Categories[srcIdx]
 	if m.ui.Edit.isAdding {
 		m.cancelEditing()
 	} else {
 		m.recordHistory()
-		if err := m.project.MergeCategory(position.CategoryIndex, dst); err != nil {
+		if err := m.project.MergeCategory(srcIdx, dst); err != nil {
 			m.discardLastHistory()
 			m.ui.Screen.StatusMsg = fmt.Sprintf("Merge failed: %v", err)
 		} else {
@@ -387,6 +386,20 @@ func (m *model) mergeEditedCategory() {
 		})
 	}
 	m.ensureVisible()
+}
+
+// mergeOffer returns the edited category and the one the open merge offer
+// would merge it into.
+func (m model) mergeOffer() (src, dst int, ok bool) {
+	pos, ok := m.selectedPosition()
+	if !ok || pos.Kind != selection.FocusCategory {
+		return 0, 0, false
+	}
+	dst, err := m.project.FindCategoryByID(m.ui.Edit.mergeInto)
+	if err != nil {
+		return 0, 0, false
+	}
+	return pos.CategoryIndex, dst, true
 }
 
 // renameProject applies a new project name through the store, which checks it
@@ -426,9 +439,16 @@ func (m model) forwardToInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	if m.ui.Modes.IsEdit() {
+		if m.ui.Edit.mergeInto != "" {
+			return m, nil
+		}
+		before := m.ui.Edit.input.Value()
 		var cmd tea.Cmd
 		m.ui.Edit.input, cmd = m.ui.Edit.input.Update(msg)
 		sanitizeInput(&m.ui.Edit.input)
+		if m.ui.Edit.input.Value() != before {
+			m.ui.Edit.err = ""
+		}
 		m.ensureVisible()
 		return m, cmd
 	}
@@ -510,6 +530,9 @@ func (m *model) handlePaste(text string) tea.Cmd {
 }
 
 func (m *model) pasteIntoEditor(text string) {
+	if m.ui.Edit.mergeInto != "" {
+		return
+	}
 	if m.ui.Edit.itemType == selection.FocusTask {
 		if rows := parsePastedRows(text); pasteNeedsChooser(rows) {
 			m.openPasteChooser(text, rows, false)
@@ -517,5 +540,6 @@ func (m *model) pasteIntoEditor(text string) {
 		}
 	}
 	m.insertAtEditCaret(flattenPaste(text))
+	m.ui.Edit.err = ""
 	m.ensureVisible()
 }

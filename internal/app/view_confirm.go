@@ -63,15 +63,19 @@ func (m model) confirmDeleteVisualRangeView() string {
 }
 
 func (m model) confirmMergeView() string {
-	pos, ok := m.selectedPosition()
-	dst, err := m.project.FindCategoryByID(m.ui.Edit.mergeInto)
-	if !ok || err != nil || pos.Kind != selection.FocusCategory {
+	srcIdx, dst, ok := m.mergeOffer()
+	if !ok {
 		return ""
 	}
 	target := truncateText(m.project.Categories[dst].Name, 30)
-	src := m.project.Categories[pos.CategoryIndex]
+	src := m.project.Categories[srcIdx]
+	srcName := truncateText(src.Name, 30)
+	moved := fmt.Sprintf("Its %d task(s) move", src.TaskCount())
+	if src.TaskCount() == 0 {
+		moved = "Its separators move"
+	}
 	var lines []string
-	switch n := src.TaskCount(); {
+	switch {
 	case m.ui.Edit.isAdding:
 		lines = []string{
 			fmt.Sprintf("Merge into %q?", target),
@@ -79,13 +83,13 @@ func (m model) confirmMergeView() string {
 		}
 	case len(src.Tasks) == 0:
 		lines = []string{
-			fmt.Sprintf("Merge %q into %q?", truncateText(src.Name, 30), target),
-			fmt.Sprintf("%q is empty, so it is deleted.", truncateText(src.Name, 30)),
+			fmt.Sprintf("Merge %q into %q?", srcName, target),
+			fmt.Sprintf("%q is empty, so it is deleted.", srcName),
 		}
 	default:
 		lines = []string{
-			fmt.Sprintf("Merge %q into %q?", truncateText(src.Name, 30), target),
-			fmt.Sprintf("Its %d task(s) move to the end of %q under a %q separator,", n, target, truncateText(src.Name, 30)),
+			fmt.Sprintf("Merge %q into %q?", srcName, target),
+			fmt.Sprintf("%s to the end of %q under a %q separator,", moved, target, srcName),
 			"then the category is deleted. u undoes it.",
 		}
 	}
