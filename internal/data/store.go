@@ -28,7 +28,7 @@ type ProjectRepository interface {
 	SaveProjectLocked(project domain.Project) error
 	WithProjectLocked(id string, fn func(*domain.Project) error) (domain.Project, error)
 	CreateProject(name string) (domain.Project, error)
-	RenameProject(id, newName string) (domain.Project, error)
+	CheckProjectName(name, excludeID string) error
 	DeleteProject(id string) error
 	ConflictFiles(id string) []string
 }
@@ -302,6 +302,21 @@ func (s *Store) RenameProject(id, newName string) (domain.Project, error) {
 		return domain.Project{}, err
 	}
 	return project, nil
+}
+
+// CheckProjectName returns ErrDuplicateProjectName when a project other than
+// excludeID already holds name, without writing anything. A caller that keeps
+// the project in memory checks here, then saves the rename the usual way.
+func (s *Store) CheckProjectName(name, excludeID string) error {
+	if err := domain.ValidateLine(name); err != nil {
+		return err
+	}
+	g, err := s.acquireGlobalLock()
+	if err != nil {
+		return err
+	}
+	defer g.Close()
+	return s.checkProjectNameAvailableLocked(name, excludeID)
 }
 
 // checkProjectNameAvailableLocked returns ErrDuplicateProjectName if any

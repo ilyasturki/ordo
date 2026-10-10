@@ -402,17 +402,16 @@ func (m model) mergeOffer() (src, dst int, ok bool) {
 	return pos.CategoryIndex, dst, true
 }
 
-// renameProject applies a new project name through the store, which checks it
-// against every other project under the global lock.
+// renameProject checks the name against every other project, then renames the
+// in-memory project and saves it like any other edit, so unsaved edits survive.
 func (m *model) renameProject(name string) error {
-	m.recordHistory()
-	updated, err := m.deps.Store.RenameProject(m.project.ID, name)
-	if err != nil {
-		m.discardLastHistory()
+	if err := m.deps.Store.CheckProjectName(name, m.project.ID); err != nil {
 		return err
 	}
-	m.project = updated
-	m.invalidateLayout()
+	m.recordHistory()
+	m.project.Name = name
+	m.project.UpdatedAt = domain.NowTimestamp()
+	m.storeTaskUpdate()
 	return nil
 }
 
