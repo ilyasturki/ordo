@@ -167,6 +167,9 @@ func importJSON(r io.Reader, overrideName string) (domain.Project, error) {
 	if overrideName != "" {
 		p.Name = overrideName
 	}
+	for i := range p.Categories {
+		p.Categories[i].Name = domain.UniqueCategoryName(p.Categories[:i], p.Categories[i].Name)
+	}
 
 	return p, nil
 }

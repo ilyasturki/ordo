@@ -54,6 +54,24 @@ func TestCategoryEdit_RefusesDuplicate(t *testing.T) {
 	}
 }
 
+func TestImportJSON_SuffixesDuplicateCategoryNames(t *testing.T) {
+	in := `{"id":"p1","name":"P","categories":[
+		{"id":"a","name":"Todo","tasks":[]},
+		{"id":"b","name":" todo","tasks":[]},
+		{"id":"c","name":"Later","tasks":[]}]}`
+	p, err := importJSON(strings.NewReader(in), "")
+	if err != nil {
+		t.Fatalf("importJSON: %v", err)
+	}
+	got := categoryNames(p)
+	want := []string{"Todo", " todo (2)", "Later"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("names = %q, want %q", got, want)
+		}
+	}
+}
+
 func TestResolveCategory_RefusesAmbiguousName(t *testing.T) {
 	p := domain.Project{Categories: []domain.Category{
 		{ID: "aaaa-1111", Name: "v0.2.0"},
