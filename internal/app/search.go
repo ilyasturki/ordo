@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"slices"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -229,10 +230,13 @@ func (m model) currentLogicalIndex(rows []selection.Position) int {
 	if !ok {
 		return -1
 	}
-	for i, r := range rows {
-		if r == pos {
-			return i
-		}
+	if i := slices.Index(rows, pos); i >= 0 {
+		return i
+	}
+	// An expanded task's description row exists only in the main list.
+	if pos.Kind == selection.FocusDescription {
+		pos.Kind = selection.FocusTask
+		return slices.Index(rows, pos)
 	}
 	return -1
 }

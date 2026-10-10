@@ -6,13 +6,10 @@ import (
 	"phasionary/internal/ui"
 )
 
-// maxFocusedDescriptionRows caps the description under the cursor, so one long
-// body never takes the whole screen.
+// maxFocusedDescriptionRows keeps one long body from taking the whole screen.
 const maxFocusedDescriptionRows = 10
 
-// rowLimits decides how many rows each list row may take. The layout reserves
-// and the renderer draws from the same value, which is also the layout cache's
-// key: any input that changes a row's height belongs here.
+// rowLimits is the layout cache's key: any input that changes a row's height belongs here.
 type rowLimits struct {
 	// cursorCat/cursorTask address the description row under the cursor, -1/-1
 	// when the cursor is elsewhere.
@@ -33,9 +30,7 @@ func (m *model) rowLimits() rowLimits {
 		l.cursorCat, l.cursorTask = pos.CategoryIndex, pos.TaskIndex
 	}
 	l.focusedDescription = max(components.DescriptionPreviewLines, min(maxFocusedDescriptionRows, m.availableHeight()/2))
-	if id := m.ui.Screen.ExpandedTaskID; id != "" && id == m.cursorTaskID() {
-		l.expandedTask = id
-	}
+	l.expandedTask = m.ui.Screen.ExpandedTaskID
 	return l
 }
 
@@ -60,8 +55,7 @@ func (l rowLimits) descriptionRows(catIdx, taskIdx int, taskID string) int {
 	return components.DescriptionPreviewLines
 }
 
-// cursorTaskID is the task under the cursor, on its title or its description
-// row, or "" elsewhere.
+// cursorTaskID is "" unless the cursor is on a task's title or description row.
 func (m *model) cursorTaskID() string {
 	pos, ok := m.selectedPosition()
 	if !ok || (pos.Kind != selection.FocusTask && pos.Kind != selection.FocusDescription) {
@@ -77,8 +71,7 @@ func (m *model) cursorTaskID() string {
 	return tasks[pos.TaskIndex].ID
 }
 
-// toggleExpandRow shows the focused task in full, its description included even
-// while descriptions are hidden, or folds it back.
+// toggleExpandRow shows the description too, even while descriptions are hidden.
 func (m *model) toggleExpandRow() {
 	id := m.cursorTaskID()
 	if id == "" {
@@ -91,15 +84,17 @@ func (m *model) toggleExpandRow() {
 	m.setExpandedTask(id)
 }
 
-// collapseLeftRow folds the expanded task once the cursor is off it.
+// Search restores its origin by index and a visual anchor may sit on the row, so both keep it.
 func (m *model) collapseLeftRow() {
+	if m.ui.Modes.IsSearch() || m.ui.Modes.IsVisual() {
+		return
+	}
 	if id := m.ui.Screen.ExpandedTaskID; id != "" && id != m.cursorTaskID() {
 		m.setExpandedTask("")
 	}
 }
 
-// setExpandedTask rebuilds the rows around the cursor, since the expanded task
-// may own a description row that exists only while it is expanded.
+// The expanded task may own a description row that exists only while it is expanded.
 func (m *model) setExpandedTask(id string) {
 	cursor, ok := m.currentCursor()
 	m.ui.Screen.ExpandedTaskID = id
@@ -110,8 +105,7 @@ func (m *model) setExpandedTask(id string) {
 	m.ensureVisible()
 }
 
-// stepCursor is j/k: it moves one row, except on an expanded row reaching past
-// the screen edge, which scrolls one row at a time until its end shows.
+// stepCursor scrolls an expanded row reaching past the screen edge before moving off it.
 func (m *model) stepCursor(delta int) {
 	if !m.scrollExpandedRow(delta) {
 		m.moveSelection(delta)

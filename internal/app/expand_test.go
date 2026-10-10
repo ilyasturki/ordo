@@ -176,3 +176,47 @@ func TestExpandRow_OnlyTasks(t *testing.T) {
 	assert.Empty(t, am.ui.Screen.ExpandedTaskID)
 	assert.Equal(t, "Only a task expands", am.ui.Screen.StatusMsg)
 }
+
+func TestExpandRow_SearchEscReturnsToTheExpandedDescription(t *testing.T) {
+	m := newTestModel(t, expandProject("short", numberedLines(5)))
+	require.True(t, m.selectTaskIdx(0, 0))
+	am := press(t, *m, "z", "e", "j", "/", "a", "f", "t")
+	pos, _ := am.selectedPosition()
+	require.Equal(t, 1, pos.TaskIndex, "the preview lands on the hit")
+
+	next, _ := am.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	am = next.(model)
+
+	pos, _ = am.selectedPosition()
+	assert.Equal(t, selection.FocusDescription, pos.Kind)
+	assert.Equal(t, 0, pos.TaskIndex)
+	assert.Equal(t, "t1", am.ui.Screen.ExpandedTaskID)
+}
+
+func TestExpandRow_NextMatchFromTheExpandedDescription(t *testing.T) {
+	p := expandProject("hit one", numberedLines(5))
+	p.Categories[0].Tasks = append(p.Categories[0].Tasks, domain.Task{ID: "t3", Title: "hit two", Status: domain.StatusTodo})
+	m := newTestModel(t, p)
+	withStubStateManager(m)
+	m.ui.Search.query = "hit"
+	require.True(t, m.selectTaskIdx(0, 0))
+
+	am := press(t, *m, "z", "e", "j", "n")
+
+	pos, _ := am.selectedPosition()
+	assert.Equal(t, 2, pos.TaskIndex, "n steps past the expanded task, not back to the first hit")
+}
+
+func TestExpandRow_ResizeKeepsTheScrollInsideATallRow(t *testing.T) {
+	m := newTestModel(t, expandProject("short", numberedLines(60)))
+	m.ui.Screen.Height = 20
+	require.True(t, m.selectTaskIdx(0, 0))
+	am := press(t, *m, "z", "e", "j", "j", "j")
+	scrolled := am.ui.Screen.TopRow
+	require.Positive(t, scrolled)
+
+	next, _ := am.Update(tea.WindowSizeMsg{Width: am.ui.Screen.Width, Height: 20})
+	am = next.(model)
+
+	assert.Equal(t, scrolled, am.ui.Screen.TopRow)
+}
