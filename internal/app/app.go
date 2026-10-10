@@ -891,6 +891,9 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	}
 	m.ui.Fold = foldState
 	m.ui.Screen.ExpandDescriptions = expandDescriptions
+	if startMode == modes.ModeNormal {
+		m.ui.Screen.StatusMsg = conflictNotice(store, project.ID)
+	}
 	// Reopen on the row this project was last left on. Runs after the fold state
 	// is in place so a cursor inside a folded category resolves to that
 	// category's header rather than to a row that isn't rendered. The viewport

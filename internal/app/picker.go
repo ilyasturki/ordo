@@ -338,6 +338,9 @@ func (m *model) selectProject() {
 	m.centerOnSelected()
 
 	m.ui.Screen.StatusMsg = fmt.Sprintf("Switched to: %s", project.Name)
+	if notice := conflictNotice(m.deps.Store, project.ID); notice != "" {
+		m.ui.Screen.StatusMsg = notice
+	}
 	m.ui.Picker.reset()
 	m.ui.Modes.ToNormal()
 }

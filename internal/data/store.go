@@ -30,6 +30,7 @@ type ProjectRepository interface {
 	CreateProject(name string) (domain.Project, error)
 	RenameProject(id, newName string) (domain.Project, error)
 	DeleteProject(id string) error
+	ConflictFiles(id string) []string
 }
 
 // Store manages JSON persistence in a directory.
@@ -395,6 +396,19 @@ func (s *Store) projectPath(id string) string {
 func (s *Store) projectExists(id string) bool {
 	_, err := os.Stat(s.projectPath(id))
 	return err == nil
+}
+
+// Syncthing names the losing copy of a conflict "<id>.sync-conflict-<date>-<time>-<device>.json".
+func (s *Store) ConflictFiles(id string) []string {
+	if domain.ValidateID(id) != nil {
+		return nil
+	}
+	paths, _ := filepath.Glob(filepath.Join(s.Dir, id+".sync-conflict-*.json"))
+	names := make([]string, len(paths))
+	for i, p := range paths {
+		names[i] = filepath.Base(p)
+	}
+	return names
 }
 
 func (s *Store) lockPath(id string) string { return s.projectPath(id) + ".lock" }

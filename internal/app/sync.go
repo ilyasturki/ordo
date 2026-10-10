@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 
 	"phasionary/internal/app/selection"
 	"phasionary/internal/data"
@@ -33,6 +34,17 @@ func saveFailedMessage(err error) string {
 		return "Project changed on disk; press r to reload (unsaved edits are dropped)"
 	}
 	return "Save failed: " + err.Error()
+}
+
+func conflictNotice(store data.ProjectRepository, projectID string) string {
+	names := store.ConflictFiles(projectID)
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return "Conflict: " + names[0]
+	}
+	return fmt.Sprintf("Conflict: %s (+%d more)", names[0], len(names)-1)
 }
 
 // invalidateLayout drops the memoized layout so the next render/scroll rebuilds
