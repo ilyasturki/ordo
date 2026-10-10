@@ -42,9 +42,7 @@ func indentOf(line string) int {
 	return len(line) - len(strings.TrimLeft(line, " \t"))
 }
 
-// continuesDescription reports whether a line belongs to the description of
-// the task above it. An indented list item stays a row of its own: this is the
-// one place that decides what nesting means.
+// An indented list item stays a row of its own, never description text.
 func continuesDescription(line string, parentIndent int) bool {
 	return indentOf(line) > parentIndent && !isListItem(line)
 }
@@ -135,8 +133,6 @@ func parseItem(raw string) (body, status string, marked bool) {
 	return strings.TrimSpace(body), status, marked
 }
 
-// dedentLines strips the indent the lines share and the blank lines that trail
-// them.
 func dedentLines(lines []string) string {
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
@@ -171,7 +167,6 @@ func newTaskForRow(row pastedRow) (domain.Task, error) {
 	return task, nil
 }
 
-// appendDescription puts text on the line below what the description holds.
 func appendDescription(existing, text string) string {
 	existing = strings.TrimRight(existing, "\n")
 	if existing == "" || text == "" {
@@ -180,7 +175,6 @@ func appendDescription(existing, text string) string {
 	return existing + "\n" + text
 }
 
-// describeRows counts what a paste holds, e.g. "4 tasks, 2 separators".
 func describeRows(rows []pastedRow, withDescriptions bool) string {
 	tasks, seps, descs := 0, 0, 0
 	for _, r := range rows {
@@ -346,8 +340,6 @@ func (m *model) pasteClipboardLines(msg clipboardLinesMsg) {
 	m.pasteText(msg.text)
 }
 
-// pasteText lands text from the clipboard or the terminal below the cursor,
-// asking how first when it spans several lines.
 func (m *model) pasteText(text string) {
 	rows := parsePastedRows(text)
 	if len(rows) == 0 {

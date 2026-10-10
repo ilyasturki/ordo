@@ -281,8 +281,6 @@ func (m *model) selectTaskOrCategory(catIndex, taskIndex int) {
 	})
 }
 
-// cutSelectedTask is y plus a mark: the task's text goes to the system
-// clipboard, and a p in the app moves the task itself.
 func (m *model) cutSelectedTask() tea.Cmd {
 	if !m.ui.Modes.CanPerformAction(modes.ActionDeleteItem) {
 		return nil
@@ -298,7 +296,7 @@ func (m *model) cutSelectedTask() tea.Cmd {
 	m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{task}, TaskIDs: []string{task.ID}, IsCut: true, Text: text, Written: true}
 	m.ui.TagCopiedLast = false
 
-	status := "Cut: " + truncateRunes(task.Title, 30) + ", p moves it here, esc cancels"
+	status := "Cut: " + truncateText(task.Title, 30) + ", p moves it here, esc cancels"
 	m.ui.Screen.StatusMsg = status
 	return m.writeClipboard(clipboardResultMsg{text: text, status: status})
 }

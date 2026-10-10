@@ -201,8 +201,7 @@ func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.moveEditCursorRow(msg.String() == "down")
 		return nil
 	case "ctrl+v":
-		// bubbles reads the clipboard through atotto alone, missing the Wayland
-		// fallback, and flattens every paste into one line.
+		// bubbles' own paste reads through atotto alone, missing the Wayland fallback.
 		return readClipboardForEditor(modes.ModeEdit)
 	}
 	var cmd tea.Cmd
@@ -336,9 +335,6 @@ func (m *model) cancelEditing() {
 
 func (m model) forwardToInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.ui.Modes.IsDescriptionEdit() {
-		// Paste routing: ctrl+v issues the textarea's Paste command and terminals
-		// deliver bracketed paste as tea.PasteMsg — both arrive here (not as key
-		// presses), so the description textarea must see them or paste is a no-op.
 		var cmd tea.Cmd
 		m.ui.DescriptionEdit.textarea, cmd = m.ui.DescriptionEdit.textarea.Update(msg)
 		return m, cmd
@@ -387,8 +383,6 @@ func (m *model) removeNewTask() {
 	m.ensureVisible()
 }
 
-// handlePaste routes a paste to whatever takes text in the current mode. A
-// one-line input gets it on one line; nowhere drops it without a word.
 func (m *model) handlePaste(text string) tea.Cmd {
 	flat := tea.PasteMsg{Content: flattenPaste(text)}
 	var cmd tea.Cmd
@@ -432,8 +426,6 @@ func (m *model) handlePaste(text string) tea.Cmd {
 	return cmd
 }
 
-// pasteIntoEditor asks how a paste of several lines lands in a task title;
-// anything else goes in at the caret, on one line.
 func (m *model) pasteIntoEditor(text string) {
 	if m.ui.Edit.itemType == selection.FocusTask {
 		if rows := parsePastedRows(text); pasteNeedsChooser(rows) {

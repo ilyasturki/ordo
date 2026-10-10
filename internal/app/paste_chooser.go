@@ -27,18 +27,15 @@ type pasteOption struct {
 	label string
 }
 
-// PasteChooserState asks how a paste of several lines should land. fromEdit
-// marks one made in the title editor, which the chooser returns to.
 type PasteChooserState struct {
 	text     string
 	rows     []pastedRow
 	options  []pasteOption
 	selected int
+	// A paste made in the title editor, which the chooser returns to.
 	fromEdit bool
 }
 
-// pasteNeedsChooser reports whether a paste spans more than one line of
-// content: several rows, or one that carries a description.
 func pasteNeedsChooser(rows []pastedRow) bool {
 	return len(rows) > 1 || (len(rows) == 1 && rows[0].description != "")
 }
@@ -57,7 +54,7 @@ func (m *model) openPasteChooser(text string, rows []pastedRow) {
 	if title, ok := m.appendTarget(fromEdit); ok {
 		label := "append to this task's description"
 		if title != "" {
-			label = fmt.Sprintf("append to the description of “%s”", truncateRunes(title, 30))
+			label = fmt.Sprintf("append to the description of “%s”", truncateText(title, 30))
 		}
 		options = append(options, pasteOption{key: "a", mode: pasteAppend, label: label})
 	}
@@ -67,8 +64,6 @@ func (m *model) openPasteChooser(text string, rows []pastedRow) {
 	m.ui.PasteChooser = PasteChooserState{text: text, rows: rows, options: options, fromEdit: fromEdit}
 }
 
-// appendTarget names the task an append would land on: the focused task or
-// description, or the task being edited.
 func (m *model) appendTarget(fromEdit bool) (string, bool) {
 	if fromEdit {
 		return strings.TrimSpace(m.ui.Edit.input.Value()), true
@@ -174,8 +169,7 @@ func (m *model) appendToFocusedDescription(text string) {
 	m.ui.Screen.StatusMsg = "Appended to the description"
 }
 
-// appendToEditedDescription leaves the editor open: the title is still the
-// user's to finish. An add's own undo step already covers the new task.
+// An add's own undo step already covers the new task.
 func (m *model) appendToEditedDescription(text string) {
 	pos, ok := m.selectedPosition()
 	if !ok || pos.Kind != selection.FocusTask {
@@ -195,8 +189,6 @@ func (m *model) appendToEditedDescription(text string) {
 	m.ui.Screen.StatusMsg = "Appended to the description"
 }
 
-// pasteTitleAndDescriptionInEdit finishes the edit with the first line after
-// the typed title, as one task per line does, and the rest in the description.
 func (m *model) pasteTitleAndDescriptionInEdit(text string) {
 	pos, ok := m.selectedPosition()
 	if !ok || pos.Kind != selection.FocusTask {
@@ -236,8 +228,6 @@ func (m *model) insertAtEditCaret(text string) {
 	sanitizeInput(&m.ui.Edit.input)
 }
 
-// titleAndDescription reads the first line as a title, without its list or
-// heading marker, and the rest as its description, blank lines kept.
 func titleAndDescription(text string) pastedRow {
 	lines := splitPasteLines(text)
 	for i, l := range lines {
@@ -262,8 +252,6 @@ func titleAndDescription(text string) pastedRow {
 	return pastedRow{status: domain.StatusTodo}
 }
 
-// pasteBlock is text as a description takes it: no blank lines around it, and
-// no indent its lines all share.
 func pasteBlock(text string) string {
 	lines := splitPasteLines(text)
 	for i, l := range lines {
@@ -277,8 +265,6 @@ func pasteBlock(text string) string {
 	return dedentLines(lines)
 }
 
-// flattenPaste is text as a one-line input takes it: a single line verbatim,
-// several joined by a space.
 func flattenPaste(text string) string {
 	var parts []string
 	for _, l := range splitPasteLines(text) {
@@ -293,14 +279,6 @@ func flattenPaste(text string) string {
 		parts[i] = strings.TrimSpace(p)
 	}
 	return strings.Join(parts, " ")
-}
-
-func truncateRunes(s string, n int) string {
-	r := []rune(s)
-	if len(r) <= n {
-		return s
-	}
-	return string(r[:n]) + "..."
 }
 
 func (m model) pasteChooserView() string {

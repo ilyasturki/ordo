@@ -10,8 +10,6 @@ import (
 	"phasionary/internal/domain"
 )
 
-// pasteFromClipboard pastes whatever the system clipboard holds, at full
-// fidelity when that is the app's own copy.
 func (m *model) pasteFromClipboard() tea.Cmd {
 	if !m.ui.Clipboard.empty() && m.clipboardVouchedFor() {
 		m.pasteInternal()
@@ -36,8 +34,6 @@ func (m *model) resolvePaste(msg clipboardLinesMsg) {
 	m.pasteClipboardLines(msg)
 }
 
-// clipboardVouchedFor reports whether the copy wins without reading the
-// clipboard: nothing of it reached the clipboard, or a write is still on its way.
 func (m *model) clipboardVouchedFor() bool {
 	return !m.ui.Clipboard.Written || m.ui.ClipboardWrites > 0
 }
@@ -49,20 +45,15 @@ func sameClipboardText(a, b string) bool {
 	return normalize(a) == normalize(b)
 }
 
-func (m *model) pasteInternal() bool {
+func (m *model) pasteInternal() {
 	switch {
 	case len(m.ui.Clipboard.Tasks) > 0:
 		m.pasteTasks()
 	case len(m.ui.Clipboard.Categories) > 0:
 		m.pasteCategories()
-	default:
-		return false
 	}
-	return true
 }
 
-// pasteDestination is where task-level rows land: below the cursor's row, or at
-// the top of the focused category.
 func (m *model) pasteDestination() (catIndex, index int, ok bool) {
 	pos, found := m.selectedPosition()
 	if !found || len(m.project.Categories) == 0 {
@@ -129,10 +120,7 @@ func (m *model) pasteTasks() {
 	m.ui.Screen.StatusMsg = pastedRowsStatus(rows, clip.IsCut)
 }
 
-// moveRows lifts the live rows these IDs name and reinserts them, in order, at
-// index in the category at catIndex, index counted before the lift. A row that
-// no longer exists is skipped. Every cut's paste, one row or a range, moves
-// through here, so a moved row keeps its ID and every edit made since the cut.
+// index is counted before the lift; an ID no longer in the project is skipped.
 func (m *model) moveRows(ids []string, catIndex, index int) []domain.Task {
 	lifted := make(map[string]bool, len(ids))
 	for _, id := range ids {
@@ -181,8 +169,6 @@ func pastedRowsStatus(rows []domain.Task, moved bool) string {
 	return verb + rowCountLabel(tasks, len(rows)-tasks)
 }
 
-// pasteCategories lands the categories in the focused one's place, pushing it
-// down.
 func (m *model) pasteCategories() {
 	pos, ok := m.selectedPosition()
 	if !ok {
@@ -240,7 +226,6 @@ func (m *model) pasteCategories() {
 	m.ui.Screen.StatusMsg = fmt.Sprintf("%s %d categor%s", verb, len(cats), plural(len(cats), "y", "ies"))
 }
 
-// moveCategories is moveRows for whole categories.
 func (m *model) moveCategories(ids []string, index int) []domain.Category {
 	lifted := make(map[string]bool, len(ids))
 	for _, id := range ids {
@@ -274,8 +259,7 @@ func (m *model) moveCategories(ids []string, index int) []domain.Category {
 	return moved
 }
 
-// copyCategory gives the category and each of its tasks a fresh ID, so the
-// project never holds two of one.
+// Fresh IDs throughout: the project must never hold two of one.
 func copyCategory(src domain.Category) (domain.Category, error) {
 	id, err := domain.NewID()
 	if err != nil {

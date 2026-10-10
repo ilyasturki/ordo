@@ -209,8 +209,7 @@ func (m *model) editRows(overhead int) editLayout {
 	return locateEditCursor(value, m.ui.Edit.wrapFor(value, available), m.ui.Edit.input.Position(), available)
 }
 
-// editorOpen reports whether the inline editor is on screen, which it stays
-// while the paste chooser it opened is up.
+// The paste chooser keeps the editor it opened from on screen.
 func (m model) editorOpen() bool {
 	return m.ui.Modes.IsEdit() || (m.ui.Modes.IsPasteChooser() && m.ui.PasteChooser.fromEdit)
 }

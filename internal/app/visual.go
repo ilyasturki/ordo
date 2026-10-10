@@ -345,8 +345,7 @@ func (m *model) stashVisualClipboard(selPositions []selection.Position, isCut bo
 			cats = append(cats, c)
 			ids = append(ids, c.ID)
 		}
-		// Cloned: each category's Tasks would otherwise share the project's
-		// backing array, and an edit after the copy would rewrite the copy.
+		// Cloned: each category's Tasks would otherwise alias the project's backing array.
 		m.ui.Clipboard = cloneClipboard(ClipboardState{Categories: cats, CategoryIDs: ids, IsCut: isCut, Text: text, Written: true})
 	default:
 		// Task-level: stash the tasks and any interleaved separators so a paste
@@ -563,7 +562,6 @@ func (m *model) selectTaskLevelRow(id string, onDescription bool) {
 	})
 }
 
-// visualCut writes the range as visual y does and marks it for a move.
 func (m *model) visualCut() tea.Cmd {
 	raw := m.visualSelectedPositions()
 	selPositions := visualRoundUpPositions(raw)
