@@ -67,17 +67,18 @@ func TestManager(t *testing.T) {
 		// Should contain default config with status_display
 		data, err := os.ReadFile(configPath)
 		require.NoError(t, err)
-		assert.JSONEq(t, `{"status_display":"icons","priority_color":"full","show_shortcut_bar":true,"expand_descriptions_by_default":false}`, string(data))
+		assert.JSONEq(t, `{"status_display":"icons","priority_color":"full","copy_via":"osc52","show_shortcut_bar":true,"expand_descriptions_by_default":false}`, string(data))
 	})
 
 	t.Run("a hand-edited empty field loads as the default", func(t *testing.T) {
 		configPath := filepath.Join(t.TempDir(), "config.json")
-		require.NoError(t, os.WriteFile(configPath, []byte(`{"status_display":"","priority_color":""}`), 0o600))
+		require.NoError(t, os.WriteFile(configPath, []byte(`{"status_display":"","priority_color":"","copy_via":""}`), 0o600))
 
 		m := NewManager(configPath)
 		require.NoError(t, m.Load())
 		assert.Equal(t, StatusDisplayIcons, m.Get().StatusDisplay)
 		assert.Equal(t, PriorityColorFull, m.Get().PriorityColor)
+		assert.Equal(t, CopyViaOSC52, m.Get().CopyVia)
 	})
 
 	t.Run("loads existing config", func(t *testing.T) {
@@ -139,5 +140,5 @@ func TestManager(t *testing.T) {
 
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
-	assert.Equal(t, Config{StatusDisplay: StatusDisplayIcons, PriorityColor: PriorityColorFull, ShowShortcutBar: true}, cfg)
+	assert.Equal(t, Config{StatusDisplay: StatusDisplayIcons, PriorityColor: PriorityColorFull, CopyVia: CopyViaOSC52, ShowShortcutBar: true}, cfg)
 }

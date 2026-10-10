@@ -239,8 +239,8 @@ func TestCut_WritesWhatYWould(t *testing.T) {
 	assert.True(t, m.ui.Clipboard.Written)
 	assert.Equal(t, "Cut: Alpha, p moves it here, esc cancels", m.ui.Screen.StatusMsg)
 
-	m.handleClipboardResult(clipboardResultMsg{text: want, status: m.ui.Screen.StatusMsg, viaTerminal: true})
-	assert.Equal(t, "Cut: Alpha, p moves it here, esc cancels (via terminal)", m.ui.Screen.StatusMsg,
+	m.handleClipboardResult(clipboardResultMsg{text: want, status: m.ui.Screen.StatusMsg})
+	assert.Equal(t, "Cut: Alpha, p moves it here, esc cancels", m.ui.Screen.StatusMsg,
 		"the write's report keeps the cut's wording")
 }
 

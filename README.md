@@ -75,6 +75,7 @@ Config lives at `~/.config/phasionary/config.json`. Override with `phasionary co
 | `status_display` | `text`, `icons` | `icons` | How task status renders in the TUI |
 | `default_project` | project UUID | (none) | Project to open on launch |
 | `priority_color` | `full`, `icon`, `none` | `full` | How priority is colored — full row, icon only, or off |
+| `copy_via` | `osc52`, `wl-copy` | `osc52` | How copies reach the system clipboard — the terminal's OSC 52, or `wl-copy` |
 
 ### Task commands
 

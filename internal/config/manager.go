@@ -53,6 +53,7 @@ func (m *Manager) Load() error {
 	d := DefaultConfig()
 	m.cfg.StatusDisplay = cmp.Or(m.cfg.StatusDisplay, d.StatusDisplay)
 	m.cfg.PriorityColor = cmp.Or(m.cfg.PriorityColor, d.PriorityColor)
+	m.cfg.CopyVia = cmp.Or(m.cfg.CopyVia, d.CopyVia)
 	m.tightenPermissions()
 	return nil
 }

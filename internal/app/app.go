@@ -25,34 +25,16 @@ type clipboardResultMsg struct {
 	// label, when set, names what was copied (e.g. "UUID: 550e..."); empty
 	// falls back to a generic "Copied!".
 	label string
-	// viaTerminal marks a copy that went out as OSC 52 rather than through a
-	// clipboard utility. The escape sequence is write-only — the terminal never
-	// answers — so the status says where the text went instead of claiming a
-	// success we cannot confirm.
-	viaTerminal bool
-	text        string
+	text  string
 	// status, when set, replaces the "Copied …" report.
 	status string
 	ofCopy bool
 }
 
-// clipboardVia annotates a copy the terminal carried out, so a status message
-// never implies a clipboard utility confirmed the write when none did.
-func clipboardVia(msg clipboardResultMsg) string {
-	if msg.viaTerminal {
-		return " (via terminal)"
-	}
-	return ""
-}
-
-// copyToClipboard hands text to a clipboard utility, falling back to OSC 52 when
-// there is none. The escape sequence is how a copy still reaches the desktop
-// from a bare TTY or over SSH, and it is the terminal that owns the clipboard
-// there, so the fallback is worth more than the error it replaces.
+// copyToClipboard sends text out as OSC 52 for the terminal to put on the
+// clipboard, or through wl-copy when copy_via asks for it.
 //
-// tmux swallows OSC 52 unless `set-clipboard` is on (the default is `external`,
-// which forwards it); a terminal that ignores the sequence drops the copy
-// silently, which is the price of a write-only protocol.
+// tmux passes an application's OSC 52 on only with `set-clipboard on`.
 func (m *model) copyToClipboard(text, label string) tea.Cmd {
 	return m.writeClipboard(clipboardResultMsg{text: text, label: label})
 }
@@ -62,17 +44,17 @@ func (m *model) writeClipboard(result clipboardResultMsg) tea.Cmd {
 	if result.ofCopy {
 		m.ui.ClipboardWrites++
 	}
+	viaTerminal := tea.Sequence(tea.SetClipboard(result.text), func() tea.Msg { return result })
+	if m.deps.CfgManager.Get().CopyVia != config.CopyViaWlCopy {
+		return viaTerminal
+	}
 	return func() tea.Msg {
 		err := clipboard.Write(result.text)
-		if !errors.Is(err, clipboard.ErrNoBackend) {
-			result.err = err
-			return result
+		if errors.Is(err, clipboard.ErrNoBackend) {
+			return viaTerminal()
 		}
-		result.viaTerminal = true
-		return tea.Batch(
-			tea.SetClipboard(result.text),
-			func() tea.Msg { return result },
-		)()
+		result.err = err
+		return result
 	}
 }
 
@@ -93,11 +75,11 @@ func (m *model) handleClipboardResult(msg clipboardResultMsg) {
 	case msg.err != nil:
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Copy failed: %v", msg.err)
 	case msg.status != "":
-		m.ui.Screen.StatusMsg = msg.status + clipboardVia(msg)
+		m.ui.Screen.StatusMsg = msg.status
 	case msg.label != "":
-		m.ui.Screen.StatusMsg = "Copied " + msg.label + clipboardVia(msg)
+		m.ui.Screen.StatusMsg = "Copied " + msg.label
 	default:
-		m.ui.Screen.StatusMsg = "Copied!" + clipboardVia(msg)
+		m.ui.Screen.StatusMsg = "Copied!"
 	}
 }
 

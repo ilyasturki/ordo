@@ -1,11 +1,18 @@
 package app
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"reflect"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"phasionary/internal/app/selection"
+	"phasionary/internal/config"
 	"phasionary/internal/domain"
 )
 
@@ -71,19 +78,14 @@ func TestCopySelected_CopiesDescriptionBody(t *testing.T) {
 	assert.Empty(t, m.ui.Clipboard.Tasks)
 }
 
-// A copy that only reached the terminal via OSC 52 is unverifiable — the escape
-// sequence gets no answer — so the status must say so rather than claim a
-// confirmed write.
-func TestClipboardResultMsg_MarksTheTerminalFallback(t *testing.T) {
+func TestClipboardResultMsg_ReportsTheCopy(t *testing.T) {
 	cases := []struct {
 		name string
 		msg  clipboardResultMsg
 		want string
 	}{
-		{"utility", clipboardResultMsg{}, "Copied!"},
-		{"terminal", clipboardResultMsg{viaTerminal: true}, "Copied! (via terminal)"},
-		{"labelled utility", clipboardResultMsg{label: "URL: x"}, "Copied URL: x"},
-		{"labelled terminal", clipboardResultMsg{label: "URL: x", viaTerminal: true}, "Copied URL: x (via terminal)"},
+		{"plain", clipboardResultMsg{}, "Copied!"},
+		{"labelled", clipboardResultMsg{label: "URL: x"}, "Copied URL: x"},
 		{"failure", clipboardResultMsg{err: assert.AnError}, "Copy failed: " + assert.AnError.Error()},
 	}
 	for _, tc := range cases {
@@ -93,4 +95,67 @@ func TestClipboardResultMsg_MarksTheTerminalFallback(t *testing.T) {
 			assert.Equal(t, tc.want, updated.(model).ui.Screen.StatusMsg)
 		})
 	}
+}
+
+func TestCopy_GoesOutAsOSC52ByDefault(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	m := newTestModel(t, copyProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+
+	cmd := m.copySelected()
+
+	require.NotNil(t, cmd)
+	assert.Contains(t, runSequence(t, cmd()), tea.SetClipboard("Alpha\n\nthe body of alpha")())
+}
+
+func TestCopy_RunsWlCopyWhenAskedTo(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "copied")
+	fakeWlCopy(t, "cat > "+out)
+	m := newTestModel(t, copyProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	require.NoError(t, m.deps.CfgManager.Update(func(cfg *config.Config) { cfg.CopyVia = config.CopyViaWlCopy }))
+
+	msg := m.copySelected()()
+
+	assert.Equal(t, clipboardResultMsg{text: "Alpha\n\nthe body of alpha", ofCopy: true}, msg)
+	got, err := os.ReadFile(out)
+	require.NoError(t, err)
+	assert.Equal(t, "Alpha\n\nthe body of alpha", string(got))
+}
+
+func TestCopy_FallsBackToOSC52WithoutWlCopy(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	m := newTestModel(t, copyProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	require.NoError(t, m.deps.CfgManager.Update(func(cfg *config.Config) { cfg.CopyVia = config.CopyViaWlCopy }))
+
+	msg := m.copySelected()()
+
+	assert.Contains(t, runSequence(t, msg), tea.SetClipboard("Alpha\n\nthe body of alpha")())
+}
+
+// runSequence runs the commands a tea.Sequence message holds and collects what they send.
+func runSequence(t *testing.T, msg tea.Msg) []tea.Msg {
+	t.Helper()
+	v := reflect.ValueOf(msg)
+	require.Equal(t, reflect.Slice, v.Kind(), "got %T", msg)
+	var msgs []tea.Msg
+	for i := range v.Len() {
+		msgs = append(msgs, v.Index(i).Interface().(tea.Cmd)())
+	}
+	return msgs
+}
+
+// fakeWlCopy stands body in for wl-copy, behind a socket name no compositor answers to.
+func fakeWlCopy(t *testing.T, body string) {
+	t.Helper()
+	sh, err := exec.LookPath("sh")
+	require.NoError(t, err)
+	cat, err := exec.LookPath("cat")
+	require.NoError(t, err)
+	dir := t.TempDir()
+	script := "#!" + sh + "\nPATH=" + filepath.Dir(cat) + "\n" + body + "\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "wl-copy"), []byte(script), 0o755))
+	t.Setenv("PATH", dir)
+	t.Setenv("WAYLAND_DISPLAY", "wayland-test")
 }

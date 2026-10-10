@@ -20,12 +20,16 @@ const (
 	PriorityColorFull = "full"
 	PriorityColorIcon = "icon"
 	PriorityColorNone = "none"
+
+	CopyViaOSC52  = "osc52"
+	CopyViaWlCopy = "wl-copy"
 )
 
 // Config holds user preferences.
 type Config struct {
 	StatusDisplay               string `json:"status_display,omitempty"`
 	PriorityColor               string `json:"priority_color,omitempty"`
+	CopyVia                     string `json:"copy_via,omitempty"`
 	ShowShortcutBar             bool   `json:"show_shortcut_bar"`
 	ExpandDescriptionsByDefault bool   `json:"expand_descriptions_by_default"`
 
@@ -78,6 +82,7 @@ func DefaultConfig() Config {
 	return Config{
 		StatusDisplay:               StatusDisplayIcons,
 		PriorityColor:               PriorityColorFull,
+		CopyVia:                     CopyViaOSC52,
 		ShowShortcutBar:             true,
 		ExpandDescriptionsByDefault: false,
 	}

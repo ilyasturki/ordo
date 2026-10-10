@@ -25,7 +25,7 @@ func (m *model) resolvePaste(msg clipboardLinesMsg) {
 	}
 	retiresCopy := false
 	if !m.ui.Clipboard.empty() {
-		// An unreadable clipboard (OSC 52 only) can't contradict the copy.
+		// An unreadable clipboard can't contradict the copy.
 		if m.clipboardVouchedFor() || msg.err != nil || strings.TrimSpace(msg.text) == "" ||
 			sameClipboardText(msg.text, m.ui.Clipboard.Text) {
 			m.pasteInternal()
