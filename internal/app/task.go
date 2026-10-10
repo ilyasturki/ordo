@@ -300,7 +300,7 @@ func (m *model) cutSelectedTask() tea.Cmd {
 
 	status := "Cut: " + truncateRunes(task.Title, 30) + ", p moves it here, esc cancels"
 	m.ui.Screen.StatusMsg = status
-	return writeClipboard(clipboardResultMsg{text: text, status: status})
+	return m.writeClipboard(clipboardResultMsg{text: text, status: status})
 }
 
 func (m *model) removeTaskByID(id string) {

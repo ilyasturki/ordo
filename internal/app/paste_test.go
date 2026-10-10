@@ -129,6 +129,7 @@ func TestPaste_RepeatsTheCopyWhileTheClipboardHoldsIt(t *testing.T) {
 	require.True(t, m.selectTaskIdx(0, 0))
 	require.NotNil(t, m.copySelected())
 	require.Equal(t, "Alpha\n\nbody", m.ui.Clipboard.Text)
+	landWrite(m)
 
 	require.True(t, m.selectTaskIdx(1, 0))
 	require.NotNil(t, m.paste(), "a written copy is checked against the clipboard")
@@ -149,6 +150,7 @@ func TestPaste_ClipboardCopiedLaterWins(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))
 	m.copySelected()
+	landWrite(m)
 
 	require.True(t, m.selectTaskIdx(1, 0))
 	m.resolvePaste(clipboardLinesMsg{text: "from the browser"})
@@ -229,6 +231,7 @@ func TestCut_PasteMovesThenPasteCopies(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))
 	m.cutSelectedTask()
+	landWrite(m)
 	text := m.ui.Clipboard.Text
 
 	require.True(t, m.selectTaskIdx(1, 0))
@@ -241,6 +244,27 @@ func TestCut_PasteMovesThenPasteCopies(t *testing.T) {
 	assert.Equal(t, []string{"Delta", "Alpha", "Alpha", "Epsilon"}, taskTitles(m.project.Categories[1]))
 	assert.NotContains(t, []string{"t1", "t2", "t3"}, ids[2], "the second p pastes a copy")
 	assert.Equal(t, []string{"t2", "t3"}, taskIDs(m.project.Categories[0]))
+}
+
+func TestPaste_TrustsTheCopyWhileItsWriteIsOnItsWay(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	m.copySelected()
+
+	require.True(t, m.selectTaskIdx(1, 0))
+	assert.Nil(t, m.paste(), "a read now could still see what the clipboard held before")
+	m.resolvePaste(clipboardLinesMsg{text: "what was there before"})
+	assert.Equal(t, []string{"Delta", "Alpha", "Alpha", "Epsilon"}, taskTitles(m.project.Categories[1]))
+
+	landWrite(m)
+	assert.NotNil(t, m.paste(), "once the write lands, p checks the clipboard again")
+}
+
+// landWrite delivers the answers to every clipboard write still on its way.
+func landWrite(m *model) {
+	for m.ui.ClipboardWrites > 0 {
+		m.handleClipboardResult(clipboardResultMsg{text: m.ui.Clipboard.Text})
+	}
 }
 
 func taskTitles(cat domain.Category) []string {

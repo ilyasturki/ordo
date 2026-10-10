@@ -281,7 +281,7 @@ func (m *model) visualCopyBullets() tea.Cmd {
 	text := m.visualMarkdownText(selPositions, false)
 	m.stashVisualClipboard(selPositions, false, text)
 	m.exitVisualMode()
-	return copyToClipboard(text, "")
+	return m.copyToClipboard(text, "")
 }
 
 func (m *model) visualCopyChecklist() tea.Cmd {
@@ -293,7 +293,7 @@ func (m *model) visualCopyChecklist() tea.Cmd {
 	text := m.visualMarkdownText(selPositions, true)
 	m.stashVisualClipboard(selPositions, false, text)
 	m.exitVisualMode()
-	return copyToClipboard(text, "")
+	return m.copyToClipboard(text, "")
 }
 
 // visualMarkdownText renders the selection as a markdown list — a bullet per
@@ -584,7 +584,7 @@ func (m *model) visualCut() tea.Cmd {
 	status := "Cut: " + what + ", p moves them here, esc cancels"
 	m.ui.Screen.StatusMsg = status
 	m.exitVisualMode()
-	return writeClipboard(clipboardResultMsg{text: text, status: status})
+	return m.writeClipboard(clipboardResultMsg{text: text, status: status})
 }
 
 func plural(n int, singular, plural string) string {

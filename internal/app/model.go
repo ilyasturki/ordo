@@ -129,7 +129,10 @@ type UIState struct {
 	Help           HelpState
 	Info           InfoState
 	Clipboard      ClipboardState
-	TagClip        TagClipboard
+	// ClipboardWrites counts writes sent and not yet answered. Until they land
+	// the clipboard holds stale text, so p trusts the copy without reading it.
+	ClipboardWrites int
+	TagClip         TagClipboard
 	// TagCopiedLast records whether the most recent copy gesture was a tag copy
 	// (gt) rather than a task/category cut or copy. It routes the normal-mode `p`:
 	// true → paint the copied tag, false → paste the clipboard task/category.

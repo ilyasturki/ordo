@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
+	"time"
 
 	atotto "github.com/atotto/clipboard"
 )
@@ -28,14 +28,15 @@ import (
 // terminal do it — should treat this as "try that" rather than as a failure.
 var ErrNoBackend = errors.New("no clipboard utility available")
 
-// A read issued just after a write must see that write: the app decides what
-// to paste by comparing the clipboard with what it last wrote.
-var mu sync.Mutex
+// ErrTimeout reports a read that got no answer in time.
+var ErrTimeout = errors.New("clipboard read timed out")
+
+// On a compositor without a data-control protocol (GNOME), wl-paste waits for
+// keyboard focus, which a locked or unfocused session never grants.
+var readTimeout = 2 * time.Second
 
 // Write puts text on the system clipboard.
 func Write(text string) error {
-	mu.Lock()
-	defer mu.Unlock()
 	if !atotto.Unsupported {
 		if err := atotto.WriteAll(text); err == nil {
 			return nil
@@ -44,10 +45,27 @@ func Write(text string) error {
 	return wlWrite(text)
 }
 
-// Read returns the system clipboard's contents.
+// Read returns the system clipboard's contents. A read that hangs is left to
+// finish on its own, and reported as ErrTimeout.
 func Read() (string, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	type result struct {
+		text string
+		err  error
+	}
+	done := make(chan result, 1)
+	go func() {
+		text, err := read()
+		done <- result{text, err}
+	}()
+	select {
+	case r := <-done:
+		return r.text, r.err
+	case <-time.After(readTimeout):
+		return "", ErrTimeout
+	}
+}
+
+func read() (string, error) {
 	if !atotto.Unsupported {
 		if text, err := atotto.ReadAll(); err == nil {
 			return text, nil

@@ -198,6 +198,7 @@ func TestPaste_MovesTaskWhenCutIsFreshest(t *testing.T) {
 	m.copyTagFromSelected()
 	m.ui.Selection.SetSelected(3) // t2
 	m.cutSelectedTask()
+	landWrite(m)
 	require.False(t, m.ui.TagCopiedLast, "a cut resets the tag-copied-last flag")
 
 	m.ui.Selection.SetSelected(4) // t3

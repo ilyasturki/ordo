@@ -258,7 +258,7 @@ func (m *model) copyTagFromSelected() tea.Cmd {
 		m.ui.Screen.StatusMsg = "Copied tag: " + desc
 		return nil
 	}
-	return copyToClipboard(task.TagLabel, "tag: "+desc)
+	return m.copyToClipboard(task.TagLabel, "tag: "+desc)
 }
 
 // paste routes the normal-mode `p`: a tag copied last wins, then the clipboard.

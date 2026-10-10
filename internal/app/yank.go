@@ -109,7 +109,7 @@ func (m *model) yankPartForSelected() tea.Cmd {
 	case 0:
 		return nil
 	case 1:
-		return copyYankItem(items[0])
+		return m.copyYankItem(items[0])
 	default:
 		m.ui.YankPicker = components.NewYankPickerState(items)
 		m.ui.Modes.ToYankPicker()
@@ -117,8 +117,8 @@ func (m *model) yankPartForSelected() tea.Cmd {
 	}
 }
 
-func copyYankItem(it components.YankItem) tea.Cmd {
-	return copyToClipboard(it.Value, it.Label)
+func (m *model) copyYankItem(it components.YankItem) tea.Cmd {
+	return m.copyToClipboard(it.Value, it.Label)
 }
 
 func yankPreview(s string) string {

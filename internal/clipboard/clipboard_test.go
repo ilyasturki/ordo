@@ -2,9 +2,11 @@ package clipboard
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,6 +59,26 @@ func TestWlCommand_ReportsErrNoBackendWithoutTheTool(t *testing.T) {
 
 	_, err := wlCommand("wl-copy")
 	assert.ErrorIs(t, err, ErrNoBackend)
+}
+
+func TestRead_GivesUpOnAHungTool(t *testing.T) {
+	sleep, err := exec.LookPath("sleep")
+	require.NoError(t, err)
+	dir := t.TempDir()
+	script := "#!/bin/sh\nexec " + sleep + " 2\n"
+	for _, name := range []string{"wl-paste", "xclip", "xsel"} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755))
+	}
+	t.Setenv("PATH", dir)
+	t.Setenv("WAYLAND_DISPLAY", "wayland-0")
+	defer func(d time.Duration) { readTimeout = d }(readTimeout)
+	readTimeout = 50 * time.Millisecond
+
+	start := time.Now()
+	_, err = Read()
+
+	assert.ErrorIs(t, err, ErrTimeout)
+	assert.Less(t, time.Since(start), time.Second)
 }
 
 func TestRuntimeDir_FallsBackToTheLogindPath(t *testing.T) {

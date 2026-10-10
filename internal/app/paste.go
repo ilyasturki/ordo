@@ -13,7 +13,7 @@ import (
 // pasteFromClipboard pastes whatever the system clipboard holds, at full
 // fidelity when that is the app's own copy.
 func (m *model) pasteFromClipboard() tea.Cmd {
-	if !m.ui.Clipboard.empty() && !m.ui.Clipboard.Written {
+	if !m.ui.Clipboard.empty() && m.clipboardVouchedFor() {
 		m.pasteInternal()
 		return nil
 	}
@@ -26,7 +26,7 @@ func (m *model) resolvePaste(msg clipboardLinesMsg) {
 	}
 	if !m.ui.Clipboard.empty() {
 		// An unreadable clipboard (OSC 52 only) can't contradict the copy.
-		if !m.ui.Clipboard.Written || msg.err != nil || strings.TrimSpace(msg.text) == "" ||
+		if m.clipboardVouchedFor() || msg.err != nil || strings.TrimSpace(msg.text) == "" ||
 			sameClipboardText(msg.text, m.ui.Clipboard.Text) {
 			m.pasteInternal()
 			return
@@ -34,6 +34,12 @@ func (m *model) resolvePaste(msg clipboardLinesMsg) {
 		m.ui.Clipboard = ClipboardState{}
 	}
 	m.pasteClipboardLines(msg)
+}
+
+// clipboardVouchedFor reports whether the copy wins without reading the
+// clipboard: nothing of it reached the clipboard, or a write is still on its way.
+func (m *model) clipboardVouchedFor() bool {
+	return !m.ui.Clipboard.Written || m.ui.ClipboardWrites > 0
 }
 
 func sameClipboardText(a, b string) bool {

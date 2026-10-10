@@ -52,11 +52,12 @@ func clipboardVia(msg clipboardResultMsg) string {
 // tmux swallows OSC 52 unless `set-clipboard` is on (the default is `external`,
 // which forwards it); a terminal that ignores the sequence drops the copy
 // silently, which is the price of a write-only protocol.
-func copyToClipboard(text, label string) tea.Cmd {
-	return writeClipboard(clipboardResultMsg{text: text, label: label})
+func (m *model) copyToClipboard(text, label string) tea.Cmd {
+	return m.writeClipboard(clipboardResultMsg{text: text, label: label})
 }
 
-func writeClipboard(result clipboardResultMsg) tea.Cmd {
+func (m *model) writeClipboard(result clipboardResultMsg) tea.Cmd {
+	m.ui.ClipboardWrites++
 	return func() tea.Msg {
 		err := clipboard.Write(result.text)
 		if !errors.Is(err, clipboard.ErrNoBackend) {
@@ -72,6 +73,7 @@ func writeClipboard(result clipboardResultMsg) tea.Cmd {
 }
 
 func (m *model) handleClipboardResult(msg clipboardResultMsg) {
+	m.ui.ClipboardWrites = max(0, m.ui.ClipboardWrites-1)
 	// The copy's text never reached the clipboard, so a later read can't vouch
 	// for it: p must paste the copy without asking.
 	if msg.err != nil && m.ui.Clipboard.Text == msg.text {
@@ -579,7 +581,7 @@ func (m model) handleYankPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if !ok {
 			return m, nil
 		}
-		return m, copyYankItem(it)
+		return m, m.copyYankItem(it)
 	}
 	return m, nil
 }
@@ -624,7 +626,7 @@ func (m *model) copySelected() tea.Cmd {
 		m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{task}, TaskIDs: []string{task.ID}, Text: text, Written: true}
 		m.ui.TagCopiedLast = false
 	}
-	return copyToClipboard(text, "")
+	return m.copyToClipboard(text, "")
 }
 
 func (m *model) copyCategoryContent() tea.Cmd {
@@ -632,7 +634,7 @@ func (m *model) copyCategoryContent() tea.Cmd {
 	if !ok || pos.Kind == selection.FocusProject {
 		return nil
 	}
-	return copyToClipboard(export.ExportCategoryMarkdown(m.project.Categories[pos.CategoryIndex]), "")
+	return m.copyToClipboard(export.ExportCategoryMarkdown(m.project.Categories[pos.CategoryIndex]), "")
 }
 
 func (m model) View() tea.View {
