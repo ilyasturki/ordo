@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -49,7 +50,7 @@ func TestWlCommand_ReportsErrNoBackendWithoutASocket(t *testing.T) {
 	t.Setenv("WAYLAND_DISPLAY", "")
 	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
 
-	_, err := wlCommand("wl-copy")
+	_, err := wlCommand(context.Background(), "wl-copy")
 	assert.ErrorIs(t, err, ErrNoBackend)
 }
 
@@ -57,7 +58,7 @@ func TestWlCommand_ReportsErrNoBackendWithoutTheTool(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	t.Setenv("WAYLAND_DISPLAY", "wayland-0")
 
-	_, err := wlCommand("wl-copy")
+	_, err := wlCommand(context.Background(), "wl-copy")
 	assert.ErrorIs(t, err, ErrNoBackend)
 }
 

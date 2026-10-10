@@ -33,6 +33,7 @@ type clipboardResultMsg struct {
 	text        string
 	// status, when set, replaces the "Copied …" report.
 	status string
+	ofCopy bool
 }
 
 // clipboardVia annotates a copy the terminal carried out, so a status message
@@ -57,7 +58,10 @@ func (m *model) copyToClipboard(text, label string) tea.Cmd {
 }
 
 func (m *model) writeClipboard(result clipboardResultMsg) tea.Cmd {
-	m.ui.ClipboardWrites++
+	result.ofCopy = !m.ui.Clipboard.empty() && result.text == m.ui.Clipboard.Text
+	if result.ofCopy {
+		m.ui.ClipboardWrites++
+	}
 	return func() tea.Msg {
 		err := clipboard.Write(result.text)
 		if !errors.Is(err, clipboard.ErrNoBackend) {
@@ -73,14 +77,18 @@ func (m *model) writeClipboard(result clipboardResultMsg) tea.Cmd {
 }
 
 func (m *model) handleClipboardResult(msg clipboardResultMsg) {
-	m.ui.ClipboardWrites = max(0, m.ui.ClipboardWrites-1)
-	// The copy's text never reached the clipboard, so a later read can't vouch
-	// for it: p must paste the copy without asking.
+	if msg.ofCopy {
+		m.ui.ClipboardWrites = max(0, m.ui.ClipboardWrites-1)
+	}
+	// A clipboard that never got the copy can't vouch for it.
 	if msg.err != nil && m.ui.Clipboard.Text == msg.text {
 		m.ui.Clipboard.Written = false
 	}
+	// A cut moved or cancelled before its write answered no longer waits on p.
+	cutGone := msg.status != "" && !(m.ui.Clipboard.IsCut && m.ui.Clipboard.Text == msg.text)
 	switch {
-	case msg.err != nil && msg.status != "":
+	case cutGone && msg.err == nil:
+	case msg.err != nil && msg.status != "" && !cutGone:
 		m.ui.Screen.StatusMsg = fmt.Sprintf("%s (copy failed: %v)", msg.status, msg.err)
 	case msg.err != nil:
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Copy failed: %v", msg.err)

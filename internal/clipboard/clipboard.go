@@ -12,6 +12,7 @@
 package clipboard
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -28,11 +29,9 @@ import (
 // terminal do it — should treat this as "try that" rather than as a failure.
 var ErrNoBackend = errors.New("no clipboard utility available")
 
-// ErrTimeout reports a read that got no answer in time.
 var ErrTimeout = errors.New("clipboard read timed out")
 
-// On a compositor without a data-control protocol (GNOME), wl-paste waits for
-// keyboard focus, which a locked or unfocused session never grants.
+// wl-paste on GNOME (no data-control protocol) waits for a focus an unfocused session never gets.
 var readTimeout = 2 * time.Second
 
 // Write puts text on the system clipboard.
@@ -45,37 +44,41 @@ func Write(text string) error {
 	return wlWrite(text)
 }
 
-// Read returns the system clipboard's contents. A read that hangs is left to
-// finish on its own, and reported as ErrTimeout.
+// A hung atotto read can't be killed: its goroutine outlives the ErrTimeout.
 func Read() (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), readTimeout)
+	defer cancel()
 	type result struct {
 		text string
 		err  error
 	}
 	done := make(chan result, 1)
 	go func() {
-		text, err := read()
+		text, err := read(ctx)
 		done <- result{text, err}
 	}()
 	select {
 	case r := <-done:
+		if r.err != nil && ctx.Err() != nil {
+			return "", ErrTimeout
+		}
 		return r.text, r.err
-	case <-time.After(readTimeout):
+	case <-ctx.Done():
 		return "", ErrTimeout
 	}
 }
 
-func read() (string, error) {
+func read(ctx context.Context) (string, error) {
 	if !atotto.Unsupported {
 		if text, err := atotto.ReadAll(); err == nil {
 			return text, nil
 		}
 	}
-	return wlRead()
+	return wlRead(ctx)
 }
 
 func wlWrite(text string) error {
-	cmd, err := wlCommand("wl-copy")
+	cmd, err := wlCommand(context.Background(), "wl-copy")
 	if err != nil {
 		return err
 	}
@@ -83,9 +86,9 @@ func wlWrite(text string) error {
 	return cmd.Run()
 }
 
-func wlRead() (string, error) {
+func wlRead(ctx context.Context) (string, error) {
 	// --no-newline: wl-paste otherwise appends one that was never copied.
-	cmd, err := wlCommand("wl-paste", "--no-newline")
+	cmd, err := wlCommand(ctx, "wl-paste", "--no-newline")
 	if err != nil {
 		return "", err
 	}
@@ -98,7 +101,7 @@ func wlRead() (string, error) {
 
 // wlCommand builds a wl-clipboard invocation aimed at the running compositor,
 // or reports ErrNoBackend when either the tool or the socket is missing.
-func wlCommand(name string, args ...string) (*exec.Cmd, error) {
+func wlCommand(ctx context.Context, name string, args ...string) (*exec.Cmd, error) {
 	path, err := exec.LookPath(name)
 	if err != nil {
 		return nil, ErrNoBackend
@@ -107,7 +110,7 @@ func wlCommand(name string, args ...string) (*exec.Cmd, error) {
 	if !ok {
 		return nil, ErrNoBackend
 	}
-	cmd := exec.Command(path, args...)
+	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Env = append(os.Environ(), "WAYLAND_DISPLAY="+display)
 	return cmd, nil
 }

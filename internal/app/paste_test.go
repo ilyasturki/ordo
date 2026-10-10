@@ -306,10 +306,36 @@ func TestPaste_TrustsTheCopyWhileItsWriteIsOnItsWay(t *testing.T) {
 	assert.NotNil(t, m.paste(), "once the write lands, p checks the clipboard again")
 }
 
+func TestPaste_AnotherWriteOnItsWayDoesNotVouchForTheCopy(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	m.copySelected()
+	landWrite(m)
+
+	require.NotNil(t, m.copyCategoryContent())
+	assert.Zero(t, m.ui.ClipboardWrites, "Y writes text that isn't the copy's")
+	assert.NotNil(t, m.paste(), "p reads the clipboard rather than trusting the older copy")
+}
+
+func TestCut_LateWriteKeepsTheMoveReport(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	require.NotNil(t, m.cutSelectedTask())
+	text, status := m.ui.Clipboard.Text, m.ui.Screen.StatusMsg
+
+	require.True(t, m.selectTaskIdx(1, 0))
+	assert.Nil(t, m.paste(), "the cut's write is still on its way")
+	require.Equal(t, "Moved!", m.ui.Screen.StatusMsg)
+
+	m.handleClipboardResult(clipboardResultMsg{text: text, status: status, ofCopy: true})
+	assert.Equal(t, "Moved!", m.ui.Screen.StatusMsg, "the cut is used up: its instructions don't come back")
+	assert.Zero(t, m.ui.ClipboardWrites)
+}
+
 // landWrite delivers the answers to every clipboard write still on its way.
 func landWrite(m *model) {
 	for m.ui.ClipboardWrites > 0 {
-		m.handleClipboardResult(clipboardResultMsg{text: m.ui.Clipboard.Text})
+		m.handleClipboardResult(clipboardResultMsg{text: m.ui.Clipboard.Text, ofCopy: true})
 	}
 }
 

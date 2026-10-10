@@ -24,8 +24,7 @@ type DescriptionEditState struct {
 	cursorRow *int
 }
 
-// ClipboardState holds either task-level rows (tasks and separators) or whole
-// categories. A cut moves the live rows its IDs name, not the snapshots.
+// A cut moves the live rows its IDs name, not the snapshots.
 type ClipboardState struct {
 	IsCut bool
 
@@ -34,12 +33,9 @@ type ClipboardState struct {
 	Categories  []domain.Category
 	CategoryIDs []string
 
-	// Text is what this copy put on the system clipboard. While the clipboard
-	// still holds it, p pastes the copy itself; once it holds anything else, the
-	// user copied that later, and p pastes that instead. Written is false when
-	// nothing reached the clipboard (a delete, a failed write): p then pastes
-	// the copy without reading the clipboard.
-	Text    string
+	// While the system clipboard still holds Text, p pastes the copy itself.
+	Text string
+	// False when Text never reached the clipboard (a delete, a failed write).
 	Written bool
 }
 
@@ -129,8 +125,7 @@ type UIState struct {
 	Help           HelpState
 	Info           InfoState
 	Clipboard      ClipboardState
-	// ClipboardWrites counts writes sent and not yet answered. Until they land
-	// the clipboard holds stale text, so p trusts the copy without reading it.
+	// Writes of Clipboard.Text not yet answered: until they land, p trusts the copy unread.
 	ClipboardWrites int
 	TagClip         TagClipboard
 	// TagCopiedLast records whether the most recent copy gesture was a tag copy
