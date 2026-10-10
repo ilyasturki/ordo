@@ -49,21 +49,44 @@ func (m model) confirmDeleteView() string {
 
 func (m model) confirmDeleteVisualRangeView() string {
 	var message string
-	if n := len(m.ui.ConfirmDelete.CategoryIDs); n > 0 {
-		nested := 0
-		idSet := make(map[string]struct{}, n)
+	if len(m.ui.ConfirmDelete.CategoryIDs) > 0 {
+		drop := make(map[string]bool)
 		for _, id := range m.ui.ConfirmDelete.CategoryIDs {
-			idSet[id] = struct{}{}
+			drop[id] = true
 		}
+		cats, subs, tasks := 0, 0, 0
 		for _, c := range m.project.Categories {
-			if _, drop := idSet[c.ID]; drop {
-				nested += len(c.Tasks)
+			if !drop[c.ID] {
+				continue
+			}
+			if drop[c.ParentID] {
+				subs++
+			} else {
+				cats++
+			}
+			tasks += c.TaskCount()
+		}
+		message = fmt.Sprintf("Delete %d categor%s and %d task(s)?", cats, plural(cats, "y", "ies"), tasks)
+		if subs > 0 {
+			message = fmt.Sprintf("Delete %d categor%s, %d sub-categor%s and %d task(s)?", cats, plural(cats, "y", "ies"), subs, plural(subs, "y", "ies"), tasks)
+		}
+	} else {
+		drop := make(map[string]bool)
+		for _, id := range m.ui.ConfirmDelete.TaskIDs {
+			drop[id] = true
+		}
+		tasks, subtasks := 0, 0
+		for _, id := range m.ui.ConfirmDelete.TaskIDs {
+			if t := m.taskByID(id); t != nil && drop[t.ParentID] {
+				subtasks++
+			} else {
+				tasks++
 			}
 		}
-		message = fmt.Sprintf("Delete %d categor%s and %d task(s)?", n, plural(n, "y", "ies"), nested)
-	} else {
-		n := len(m.ui.ConfirmDelete.TaskIDs)
-		message = fmt.Sprintf("Delete %d task(s)?", n)
+		message = fmt.Sprintf("Delete %d task(s)?", tasks)
+		if subtasks > 0 {
+			message = fmt.Sprintf("Delete %d task(s) and %d subtask(s)?", tasks, subtasks)
+		}
 	}
 	lines := []string{
 		message,

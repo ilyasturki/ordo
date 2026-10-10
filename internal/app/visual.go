@@ -303,33 +303,108 @@ func (m *model) visualCopyChecklist() tea.Cmd {
 // task content, so they are omitted from the copied text (the internal
 // clipboard still keeps them for a faithful paste).
 func (m model) visualMarkdownText(selPositions []selection.Position, checkboxes bool) string {
-	lines := make([]string, 0, len(selPositions))
+	if m.ui.Visual.Kind == selection.FocusCategory {
+		return m.visualCategoryText(selPositions, checkboxes)
+	}
+	picked := make(map[string]bool)
+	described := make(map[string]bool)
 	for _, pos := range selPositions {
+		id := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID
 		switch pos.Kind {
 		case selection.FocusTask:
-			task := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-			if checkboxes {
-				mark := " "
-				if task.Status == domain.StatusCompleted {
-					mark = "x"
-				}
-				lines = append(lines, fmt.Sprintf("- [%s] %s", mark, task.Title))
-			} else {
-				lines = append(lines, "- "+task.Title)
-			}
+			picked[id] = true
 		case selection.FocusDescription:
-			desc := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].Description
-			lines = append(lines, "  "+strings.ReplaceAll(desc, "\n", "\n  "))
-		case selection.FocusCategory:
-			name := m.project.Categories[pos.CategoryIndex].Name
-			if checkboxes {
-				lines = append(lines, "## "+name)
-			} else {
-				lines = append(lines, "- "+name)
-			}
+			described[id] = true
+		}
+	}
+	var lines []string
+	for _, task := range m.visualTaskRows(selPositions) {
+		if task.IsSeparator() {
+			continue
+		}
+		indent := ""
+		if task.ParentID != "" && picked[task.ParentID] {
+			indent = "  "
+		}
+		if picked[task.ID] || indent != "" {
+			lines = append(lines, indent+markdownItem(task, checkboxes))
+		}
+		if described[task.ID] {
+			body := indent + "  "
+			lines = append(lines, body+strings.ReplaceAll(task.Description, "\n", "\n"+body))
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+func markdownItem(task domain.Task, checkboxes bool) string {
+	if !checkboxes {
+		return "- " + task.Title
+	}
+	mark := " "
+	if task.Status == domain.StatusCompleted {
+		mark = "x"
+	}
+	return fmt.Sprintf("- [%s] %s", mark, task.Title)
+}
+
+// visualCategoryText lists the selected categories, each parent with its
+// sub-categories: as headings carrying their path with checkboxes, else as
+// bullets.
+func (m model) visualCategoryText(selPositions []selection.Position, checkboxes bool) string {
+	cats := m.visualCategoryRows(selPositions)
+	picked := make(map[string]bool, len(cats))
+	for _, c := range cats {
+		picked[c.ID] = true
+	}
+	lines := make([]string, 0, len(cats))
+	for _, c := range cats {
+		i, _ := m.project.FindCategoryByID(c.ID)
+		switch {
+		case checkboxes:
+			lines = append(lines, "## "+m.project.CategoryPath(i))
+		case c.ParentID != "" && picked[c.ParentID]:
+			lines = append(lines, "  - "+c.Name)
+		default:
+			lines = append(lines, "- "+c.Name)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// visualTaskRows lists the rows a task-level selection acts on, in order: a
+// description stands for its task, and a parent brings its subtasks, shown or
+// folded away.
+func (m model) visualTaskRows(selPositions []selection.Position) []domain.Task {
+	seen := make(map[string]bool)
+	var rows []domain.Task
+	for _, pos := range visualRoundUpPositions(selPositions) {
+		tasks := m.project.Categories[pos.CategoryIndex].Tasks
+		for _, t := range tasks[pos.TaskIndex:domain.BlockEnd(tasks, pos.TaskIndex)] {
+			if !seen[t.ID] {
+				seen[t.ID] = true
+				rows = append(rows, t)
+			}
+		}
+	}
+	return rows
+}
+
+// visualCategoryRows lists the categories a category selection acts on, in
+// order, each parent bringing its sub-categories.
+func (m model) visualCategoryRows(selPositions []selection.Position) []domain.Category {
+	cats := m.project.Categories
+	seen := make(map[string]bool)
+	var rows []domain.Category
+	for _, pos := range selPositions {
+		for _, c := range cats[pos.CategoryIndex:domain.BlockEnd(cats, pos.CategoryIndex)] {
+			if !seen[c.ID] {
+				seen[c.ID] = true
+				rows = append(rows, c)
+			}
+		}
+	}
+	return rows
 }
 
 func (m *model) stashVisualClipboard(selPositions []selection.Position, isCut bool, text string) {
@@ -339,27 +414,20 @@ func (m *model) stashVisualClipboard(selPositions []selection.Position, isCut bo
 	m.ui.TagCopiedLast = false
 	switch m.ui.Visual.Kind {
 	case selection.FocusCategory:
-		cats := make([]domain.Category, 0, len(selPositions))
-		ids := make([]string, 0, len(selPositions))
-		for _, pos := range selPositions {
-			c := m.project.Categories[pos.CategoryIndex]
-			cats = append(cats, c)
-			ids = append(ids, c.ID)
+		cats := m.visualCategoryRows(selPositions)
+		ids := make([]string, len(cats))
+		for i, c := range cats {
+			ids[i] = c.ID
 		}
 		// Cloned: each category's Tasks would otherwise alias the project's backing array.
 		m.ui.Clipboard = cloneClipboard(ClipboardState{Categories: cats, CategoryIDs: ids, IsCut: isCut, Text: text, Written: true})
 	default:
 		// Task-level: stash the tasks and any interleaved separators so a paste
-		// reproduces the block, dividers and all. Description rows round up to
-		// their parent task (deduped) — a task is stashed once even when both
-		// its row and its description are in range.
-		selPositions = visualRoundUpPositions(selPositions)
-		tasks := make([]domain.Task, 0, len(selPositions))
-		ids := make([]string, 0, len(selPositions))
-		for _, pos := range selPositions {
-			t := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-			tasks = append(tasks, t)
-			ids = append(ids, t.ID)
+		// reproduces the block, dividers and all.
+		tasks := m.visualTaskRows(selPositions)
+		ids := make([]string, len(tasks))
+		for i, t := range tasks {
+			ids[i] = t.ID
 		}
 		m.ui.Clipboard = ClipboardState{Tasks: tasks, TaskIDs: ids, IsCut: isCut, Text: text, Written: true}
 	}
@@ -407,12 +475,12 @@ func (m *model) visualDelete() {
 	state := ConfirmDeleteState{Kind: ConfirmDeleteVisualRange}
 	switch m.ui.Visual.Kind {
 	case selection.FocusTask:
-		for _, pos := range visualRoundUpPositions(selPositions) {
-			state.TaskIDs = append(state.TaskIDs, m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID)
+		for _, t := range m.visualTaskRows(selPositions) {
+			state.TaskIDs = append(state.TaskIDs, t.ID)
 		}
 	case selection.FocusCategory:
-		for _, pos := range selPositions {
-			state.CategoryIDs = append(state.CategoryIDs, m.project.Categories[pos.CategoryIndex].ID)
+		for _, c := range m.visualCategoryRows(selPositions) {
+			state.CategoryIDs = append(state.CategoryIDs, c.ID)
 		}
 	}
 	m.exitVisualMode()

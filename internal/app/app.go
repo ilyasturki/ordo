@@ -634,8 +634,8 @@ func (m *model) copySelected() tea.Cmd {
 	// description, separator) only put text on the system clipboard.
 	text := m.copyTextForPosition(pos)
 	if pos.Kind == selection.FocusTask {
-		task := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-		m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{task}, TaskIDs: []string{task.ID}, Text: text, Written: true}
+		tasks, ids := m.taskBlock(pos)
+		m.ui.Clipboard = ClipboardState{Tasks: tasks, TaskIDs: ids, Text: text, Written: true}
 		m.ui.TagCopiedLast = false
 	}
 	return m.copyToClipboard(text, "")

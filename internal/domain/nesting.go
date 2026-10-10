@@ -127,6 +127,37 @@ func CoverBlocks[T any, P outline[T]](items []T, idxs []int) (int, int, error) {
 	return lo, hi, nil
 }
 
+// SettleParents decides the parents of rows pasted among the children of
+// parentID, or at the top level for "". They all nest under parentID when
+// every one can be a child there; otherwise each keeps a parent pasted along
+// with it and drops any other. Reports whether they nest under parentID.
+func SettleParents[T any, P outline[T]](rows []T, parentID string) bool {
+	pasted := make(map[string]bool, len(rows))
+	nest := parentID != ""
+	for i := range rows {
+		row := P(&rows[i])
+		id, _ := row.links()
+		pasted[id] = true
+		nest = nest && row.nests()
+	}
+	for i := range rows {
+		if _, parent := P(&rows[i]).links(); pasted[parent] {
+			nest = false
+		}
+	}
+	for i := range rows {
+		row := P(&rows[i])
+		_, parent := row.links()
+		switch {
+		case nest:
+			row.setParent(parentID)
+		case !pasted[parent]:
+			row.setParent("")
+		}
+	}
+	return nest
+}
+
 // HasChildren reports whether items[i] is a parent.
 func HasChildren[T any, P outline[T]](items []T, i int) bool {
 	return BlockEnd[T, P](items, i) > i+1

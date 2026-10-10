@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -260,6 +261,7 @@ func (m *model) pasteLinesInEdit(text string) bool {
 		if rows[0].separator {
 			edited.Kind = domain.KindSeparator
 			edited.Status = ""
+			edited.ParentID = ""
 		} else {
 			_ = edited.SetStatus(rows[0].status)
 		}
@@ -272,11 +274,12 @@ func (m *model) pasteLinesInEdit(text string) bool {
 		edited.Description = appendDescription(edited.Description, rows[0].description)
 	}
 	edited.UpdatedAt = domain.NowTimestamp()
-	for i, task := range newRows {
-		cat.InsertTask(pos.TaskIndex+1+i, task)
-	}
-
 	last := edited.ID
+	at := settleTasks(cat.Tasks, newRows, domain.BlockEnd(cat.Tasks, pos.TaskIndex), edited.ParentID)
+	cat.Tasks = slices.Insert(cat.Tasks, at, newRows...)
+	// A subtask turned separator leaves its parent's block, which this regroups.
+	domain.NormalizeNesting(&m.project)
+
 	if len(newRows) > 0 {
 		last = newRows[len(newRows)-1].ID
 	}
@@ -356,7 +359,7 @@ func (m *model) pasteText(text string, retiresCopy bool) {
 }
 
 func (m *model) insertPastedRows(rows []pastedRow, retiresCopy bool) {
-	catIndex, taskIndex, ok := m.pasteDestination()
+	catIndex, taskIndex, parentID, ok := m.pasteDestination()
 	if !ok {
 		m.ui.Screen.StatusMsg = "No category to paste into"
 		return
@@ -376,9 +379,10 @@ func (m *model) insertPastedRows(rows []pastedRow, retiresCopy bool) {
 	if retiresCopy {
 		m.ui.Clipboard = ClipboardState{}
 	}
-	for i, task := range newRows {
-		m.project.Categories[catIndex].InsertTask(taskIndex+i, task)
-	}
+	cat := &m.project.Categories[catIndex]
+	taskIndex = settleTasks(cat.Tasks, newRows, taskIndex, parentID)
+	cat.Tasks = slices.Insert(cat.Tasks, taskIndex, newRows...)
+	cat.UpdatedAt = domain.NowTimestamp()
 
 	m.rebuildPositions()
 	m.selectTaskLevelRow(newRows[len(newRows)-1].ID, false)

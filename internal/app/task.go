@@ -295,12 +295,27 @@ func (m *model) cutSelectedTask() tea.Cmd {
 
 	task := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
 	text := m.copyTextForPosition(position)
-	m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{task}, TaskIDs: []string{task.ID}, IsCut: true, Text: text, Written: true}
+	tasks, ids := m.taskBlock(position)
+	m.ui.Clipboard = ClipboardState{Tasks: tasks, TaskIDs: ids, IsCut: true, Text: text, Written: true}
 	m.ui.TagCopiedLast = false
 
 	status := "Cut: " + truncateText(task.Title, 30) + ", p moves it here, esc cancels"
+	if n := len(tasks) - 1; n > 0 {
+		status = fmt.Sprintf("Cut: %s and %d subtask%s, p moves them here, esc cancels", truncateText(task.Title, 30), n, plural(n, "", "s"))
+	}
 	m.ui.Screen.StatusMsg = status
 	return m.writeClipboard(clipboardResultMsg{text: text, status: status})
+}
+
+// taskBlock is the task at pos with its subtasks, and their IDs.
+func (m *model) taskBlock(pos selection.Position) ([]domain.Task, []string) {
+	cat := m.project.Categories[pos.CategoryIndex]
+	tasks := slices.Clone(cat.Tasks[pos.TaskIndex:domain.BlockEnd(cat.Tasks, pos.TaskIndex)])
+	ids := make([]string, len(tasks))
+	for i, t := range tasks {
+		ids[i] = t.ID
+	}
+	return tasks, ids
 }
 
 func (m *model) removeTaskByID(id string) {
