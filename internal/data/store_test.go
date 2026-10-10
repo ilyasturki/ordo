@@ -249,7 +249,7 @@ func TestLoadProjectByID_RejectsMismatchedID(t *testing.T) {
 }
 
 func TestConflictFiles(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmpDir := filepath.Join(t.TempDir(), "[sync]")
 	store := NewStore(tmpDir)
 	project, err := store.CreateProject("Live")
 	require.NoError(t, err)

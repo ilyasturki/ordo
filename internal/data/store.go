@@ -403,10 +403,13 @@ func (s *Store) ConflictFiles(id string) []string {
 	if domain.ValidateID(id) != nil {
 		return nil
 	}
-	paths, _ := filepath.Glob(filepath.Join(s.Dir, id+".sync-conflict-*.json"))
-	names := make([]string, len(paths))
-	for i, p := range paths {
-		names[i] = filepath.Base(p)
+	entries, _ := os.ReadDir(s.Dir)
+	prefix := id + ".sync-conflict-"
+	var names []string
+	for _, entry := range entries {
+		if name := entry.Name(); strings.HasPrefix(name, prefix) && strings.HasSuffix(name, ".json") {
+			names = append(names, name)
+		}
 	}
 	return names
 }
