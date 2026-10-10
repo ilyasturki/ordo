@@ -235,8 +235,11 @@ func (r *TaskLineRenderer) RenderDescription(task domain.Task, indent int, selec
 	for _, l := range shown {
 		out = append(out, r.styleDescriptionLine(indentStr, l, textStyle, barStyle, selected, shouldPad))
 	}
-	if hidden := len(lines) - len(shown); hidden > 0 {
-		tail := fmt.Sprintf("… +%d more lines", hidden)
+	if len(shown) < len(lines) {
+		tail := fmt.Sprintf("… +%d more lines", len(lines)-end)
+		if end == len(lines) {
+			tail = fmt.Sprintf("… %d lines above", start)
+		}
 		if r.isCursor {
 			tail += " · gi full view"
 		}

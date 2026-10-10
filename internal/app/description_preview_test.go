@@ -119,6 +119,21 @@ func TestDescriptionPreview_WindowFollowsSearchMatch(t *testing.T) {
 	assert.Contains(t, rendered, "line15")
 	assert.Contains(t, rendered, "…line14", "the first shown line marks the lines above")
 	assert.NotContains(t, rendered, "line01")
+	assert.Contains(t, rendered, "+7 more lines", "the tail counts the lines below")
+}
+
+func TestDescriptionPreview_WindowAtTheEndCountsLinesAbove(t *testing.T) {
+	p := longDescriptionProject()
+	p.Categories[0].Tasks[0].Description = numberedLines(30)
+	m := newTestModel(t, p)
+	focusDescription(t, m)
+	m.ui.Search.query = "line29"
+	m.invalidateLayout()
+
+	rendered := ansi.Strip(m.renderLayoutItem(findDescriptionItem(t, m.buildLayout(), 0, 0)))
+
+	assert.Contains(t, rendered, "line30")
+	assert.Contains(t, rendered, "… 20 lines above · gi full view")
 }
 
 func TestDescriptionPreview_ShortFocusedDescriptionShowsInFull(t *testing.T) {
