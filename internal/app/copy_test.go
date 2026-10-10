@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"phasionary/internal/app/selection"
+	"phasionary/internal/clipboard"
 	"phasionary/internal/config"
 	"phasionary/internal/domain"
 )
@@ -98,6 +99,7 @@ func TestClipboardResultMsg_ReportsTheCopy(t *testing.T) {
 }
 
 func TestCopy_GoesOutAsOSC52ByDefault(t *testing.T) {
+	t.Setenv(clipboard.EnvFile, "")
 	t.Setenv("PATH", t.TempDir())
 	m := newTestModel(t, copyProject())
 	require.True(t, m.selectTaskIdx(0, 0))
@@ -124,6 +126,7 @@ func TestCopy_RunsWlCopyWhenAskedTo(t *testing.T) {
 }
 
 func TestCopy_FallsBackToOSC52WithoutWlCopy(t *testing.T) {
+	t.Setenv(clipboard.EnvFile, "")
 	t.Setenv("PATH", t.TempDir())
 	m := newTestModel(t, copyProject())
 	require.True(t, m.selectTaskIdx(0, 0))
@@ -156,6 +159,24 @@ func fakeWlCopy(t *testing.T, body string) {
 	dir := t.TempDir()
 	script := "#!" + sh + "\nPATH=" + filepath.Dir(cat) + "\n" + body + "\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "wl-copy"), []byte(script), 0o755))
+	t.Setenv(clipboard.EnvFile, "")
 	t.Setenv("PATH", dir)
 	t.Setenv("WAYLAND_DISPLAY", "wayland-test")
+}
+
+func TestClipboardFile_CarriesCopiesBothWays(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "clipboard")
+	t.Setenv(clipboard.EnvFile, path)
+	m := newTestModel(t, copyProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+
+	send(t, m, m.copySelected()())
+	got, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "Alpha\n\nthe body of alpha", string(got))
+
+	require.NoError(t, os.WriteFile(path, []byte("from the browser"), 0o600))
+	require.True(t, m.selectTaskIdx(0, 2))
+	send(t, m, m.paste()())
+	assert.Equal(t, []string{"Alpha", "— divider —", "Bravo", "from the browser"}, taskTitles(m.project.Categories[0]))
 }

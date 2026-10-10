@@ -5,6 +5,7 @@ Set Height 700
 Set FontSize 16
 Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
 Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
+Env PHASIONARY_CLIPBOARD_FILE "/tmp/phas-vt/clipboard"
 
 Hide
 Type "clear && for n in Alpha Bravo Charlie Delta; do ./phasionary project add $n -q >/dev/null 2>&1; done && ./phasionary pick"

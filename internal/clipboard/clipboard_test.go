@@ -58,6 +58,7 @@ func TestRun_ReportsErrNoBackendWithoutASocket(t *testing.T) {
 }
 
 func TestRun_ReportsErrNoBackendWithoutTheTool(t *testing.T) {
+	t.Setenv(EnvFile, "")
 	t.Setenv("PATH", t.TempDir())
 	t.Setenv("WAYLAND_DISPLAY", "wayland-0")
 
@@ -135,6 +136,22 @@ func TestRead_AFailingToolIsNotAMissingOne(t *testing.T) {
 	assert.NotErrorIs(t, err, ErrTimeout)
 }
 
+func TestEnvFile_StandsInForTheClipboard(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "clipboard")
+	t.Setenv(EnvFile, path)
+	t.Setenv("PATH", t.TempDir())
+	assert.True(t, Redirected())
+
+	_, err := Read()
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ErrNoBackend, "a file never written is an empty clipboard")
+
+	require.NoError(t, Write("Alpha\n\nbody"))
+	got, err := Read()
+	require.NoError(t, err)
+	assert.Equal(t, "Alpha\n\nbody", got)
+}
+
 func TestRuntimeDir_FallsBackToTheLogindPath(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", "")
 
@@ -154,6 +171,7 @@ func fakeTools(t *testing.T, body string) {
 	for _, name := range []string{"wl-copy", "wl-paste"} {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755))
 	}
+	t.Setenv(EnvFile, "")
 	t.Setenv("PATH", dir)
 	t.Setenv("WAYLAND_DISPLAY", "wayland-test")
 }

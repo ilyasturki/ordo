@@ -5,12 +5,12 @@ Set Height 700
 Set FontSize 16
 Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
 Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
+Env PHASIONARY_CLIPBOARD_FILE "/tmp/phas-vt/clipboard"
 
-# Seeds the SYSTEM clipboard, which `p` reads. Your clipboard's text is saved
-# first and put back at the end. VHS cannot send a bracketed paste, so the
-# terminal-paste routes are covered by paste_chooser_test.go instead.
+# Seeds the clipboard file, which `p` reads. VHS cannot send a bracketed paste,
+# so the terminal-paste routes are covered by paste_chooser_test.go instead.
 Hide
-Type "clear && timeout 2 wl-paste -n > /tmp/phas-vt/clip.bak 2>/dev/null; printf '## Sprint 12\nDesign the API\n- [ ] write handlers\n- [~] review\n- [x] write tests\nShip it\n' | timeout 2 wl-copy"
+Type "clear && printf '## Sprint 12\nDesign the API\n- [ ] write handlers\n- [~] review\n- [x] write tests\nShip it\n' > /tmp/phas-vt/clipboard"
 Enter
 Sleep 500ms
 Type "clear && ./phasionary -p Default"
@@ -38,7 +38,3 @@ Sleep 500ms
 
 Hide
 Type "q"
-Sleep 300ms
-Type "clear && ([ -s /tmp/phas-vt/clip.bak ] && timeout 2 wl-copy < /tmp/phas-vt/clip.bak || timeout 2 wl-copy --clear)"
-Enter
-Sleep 300ms

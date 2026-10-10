@@ -21,6 +21,9 @@ cd "$root"
 DATA="/tmp/phas-vt/data"
 CFG="/tmp/phas-vt/cfg"
 OUT="/tmp/phas-vt/vhs-out"
+# Stands in for the desktop clipboard, which wl-copy and wl-paste can only
+# reach with keyboard focus on GNOME. Tapes seed it and read it back.
+export PHASIONARY_CLIPBOARD_FILE="/tmp/phas-vt/clipboard"
 
 rm -rf "$OUT" && mkdir -p "$OUT"
 go build -o phasionary ./cmd/phasionary
@@ -44,6 +47,7 @@ seed() {
         echo "seed failed for $DATA; aborting" >&2
         exit 1
     fi
+    rm -f "$PHASIONARY_CLIPBOARD_FILE"
 }
 
 for tape in "${TAPES[@]}"; do

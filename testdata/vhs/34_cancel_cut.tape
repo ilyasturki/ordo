@@ -5,11 +5,11 @@ Set Height 700
 Set FontSize 16
 Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
 Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
+Env PHASIONARY_CLIPBOARD_FILE "/tmp/phas-vt/clipboard"
 
-# x writes the system clipboard, as y does. Your clipboard's text is saved
-# first and put back at the end.
+# x writes the clipboard, as y does; here that is the file run.sh points at.
 Hide
-Type "clear && timeout 2 wl-paste -n > /tmp/phas-vt/clip.bak 2>/dev/null; ./phasionary -p Default"
+Type "clear && ./phasionary -p Default"
 Enter
 Sleep 800ms
 Show
@@ -66,7 +66,3 @@ Sleep 500ms
 
 Hide
 Type "q"
-Sleep 300ms
-Type "clear && ([ -s /tmp/phas-vt/clip.bak ] && timeout 2 wl-copy < /tmp/phas-vt/clip.bak || timeout 2 wl-copy --clear)"
-Enter
-Sleep 300ms

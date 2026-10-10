@@ -16,6 +16,10 @@ import (
 	"time"
 )
 
+// EnvFile names a file that stands in for the clipboard, so tests and tapes
+// never reach the desktop.
+const EnvFile = "PHASIONARY_CLIPBOARD_FILE"
+
 // ErrNoBackend reports that no clipboard utility could be reached.
 var ErrNoBackend = errors.New("no clipboard utility available")
 
@@ -24,8 +28,16 @@ var ErrTimeout = errors.New("clipboard utility timed out")
 // On GNOME (no data-control protocol) wl-copy and wl-paste wait for a focus an unfocused session never gets.
 var timeout = 2 * time.Second
 
+// Redirected reports whether EnvFile stands in for the clipboard.
+func Redirected() bool {
+	return os.Getenv(EnvFile) != ""
+}
+
 // Write puts text on the clipboard with wl-copy.
 func Write(text string) error {
+	if path := os.Getenv(EnvFile); path != "" {
+		return os.WriteFile(path, []byte(text), 0o600)
+	}
 	// wl-copy forks the process serving the selection only once the selection is set, so killing a hung one leaves nothing behind.
 	return run(strings.NewReader(text), nil, "wl-copy")
 }
@@ -33,6 +45,10 @@ func Write(text string) error {
 // Read returns the clipboard's text. ErrNoBackend only when no tool ran: one
 // that ran and failed most likely found the clipboard empty.
 func Read() (string, error) {
+	if path := os.Getenv(EnvFile); path != "" {
+		data, err := os.ReadFile(path)
+		return string(data), err
+	}
 	var out bytes.Buffer
 	// --no-newline: wl-paste otherwise appends one that was never copied.
 	if err := run(nil, &out, "wl-paste", "--no-newline"); err != nil {

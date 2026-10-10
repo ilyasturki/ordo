@@ -45,7 +45,7 @@ func (m *model) writeClipboard(result clipboardResultMsg) tea.Cmd {
 		m.ui.ClipboardWrites++
 	}
 	viaTerminal := tea.Sequence(tea.SetClipboard(result.text), func() tea.Msg { return result })
-	if m.deps.CfgManager.Get().CopyVia != config.CopyViaWlCopy {
+	if m.deps.CfgManager.Get().CopyVia != config.CopyViaWlCopy && !clipboard.Redirected() {
 		return viaTerminal
 	}
 	return func() tea.Msg {

@@ -5,12 +5,12 @@ Set Height 700
 Set FontSize 16
 Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
 Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
+Env PHASIONARY_CLIPBOARD_FILE "/tmp/phas-vt/clipboard"
 
-# Seeds the SYSTEM clipboard with a note, then lands it each way the chooser
-# offers besides one task per line (34_paste_lines). Your clipboard's text is
-# saved first and put back at the end.
+# Seeds the clipboard file with a note, then lands it each way the chooser
+# offers besides one task per line (34_paste_lines).
 Hide
-Type "clear && timeout 2 wl-paste -n > /tmp/phas-vt/clip.bak 2>/dev/null; printf 'Call the bank\n\n  ask about the fees\n  and the new card\n' | timeout 2 wl-copy"
+Type "clear && printf 'Call the bank\n\n  ask about the fees\n  and the new card\n' > /tmp/phas-vt/clipboard"
 Enter
 Sleep 500ms
 Type "clear && ./phasionary -p Default"
@@ -69,7 +69,3 @@ Sleep 500ms
 Hide
 Escape
 Type "q"
-Sleep 300ms
-Type "clear && ([ -s /tmp/phas-vt/clip.bak ] && timeout 2 wl-copy < /tmp/phas-vt/clip.bak || timeout 2 wl-copy --clear)"
-Enter
-Sleep 300ms
