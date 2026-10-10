@@ -412,3 +412,27 @@ func TestInputs_LeaveTheClipboardKeysUnbound(t *testing.T) {
 	assert.False(t, km.Paste.Enabled())
 	assert.False(t, km.CopySelection.Enabled())
 }
+
+func TestPaste_CtrlVInSearchReadsThroughTheClipboardPackage(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	m.startSearch()
+	require.True(t, m.ui.Modes.IsSearch())
+
+	cmd := send(t, m, key("ctrl+v"))
+	require.NotNil(t, cmd)
+	assert.IsType(t, editorClipboardMsg{}, cmd())
+	send(t, m, editorClipboardMsg{mode: modes.ModeSearch, text: "Bravo"})
+
+	assert.Equal(t, "Bravo", m.ui.Search.input.Value())
+}
+
+func TestDescriptionEditor_CopiesTheSelectionThroughTheApp(t *testing.T) {
+	m := newTestModelWithDescription(t)
+	m.startDescriptionInlineEdit(0, 0)
+	m.ui.DescriptionEdit.textarea.SelectAll()
+
+	cmd := send(t, m, tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl | tea.ModShift})
+
+	require.NotNil(t, cmd)
+	assert.Equal(t, clipboardResultMsg{text: "alpha details"}, cmd())
+}

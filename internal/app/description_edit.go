@@ -130,6 +130,11 @@ func (m *model) handleDescriptionEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		return m, nil
 	case "ctrl+v":
 		return m, readClipboardForEditor(modes.ModeDescriptionEdit)
+	case "ctrl+shift+c":
+		if ta := m.ui.DescriptionEdit.textarea; ta.HasSelection() {
+			return m, m.copyToClipboard(ta.SelectedText(), "")
+		}
+		return m, nil
 	case "shift+enter", "alt+enter":
 		// Shift+Enter inserts a newline. Terminals disagree on its wire
 		// encoding: kitty/ghostty send ESC+CR ("alt+enter"), Kitty-protocol

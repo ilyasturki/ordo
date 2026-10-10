@@ -244,6 +244,19 @@ func normalizeKey(msg tea.KeyPressMsg) tea.KeyPressMsg {
 	return msg
 }
 
+// The title and description editors read ctrl+v in their own key handlers.
+func (m model) lineInputFocused() bool {
+	switch m.ui.Modes.Current() {
+	case modes.ModeSearch, modes.ModeCommandPrompt:
+		return true
+	case modes.ModeHelp:
+		return m.ui.Help.Filtering
+	case modes.ModeProjectPicker:
+		return m.ui.Picker.isAdding || m.ui.Picker.filtering
+	}
+	return false
+}
+
 func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	msg = normalizeKey(msg)
 	if msg.String() == "ctrl+c" && !m.ui.Modes.IsExternalEdit() {
@@ -251,6 +264,9 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.finishDescriptionEdit()
 		}
 		return m, tea.Quit
+	}
+	if msg.String() == "ctrl+v" && m.lineInputFocused() {
+		return m, readClipboardForEditor(m.ui.Modes.Current())
 	}
 	switch m.ui.Modes.Current() {
 	case modes.ModeHelp:
