@@ -3,6 +3,8 @@ package app
 import (
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -63,6 +65,29 @@ func TestFilterKeepsTheCursorOnItsTask(t *testing.T) {
 	m.ui.Filter.statuses = map[string]bool{domain.StatusCompleted: true}
 	m.rebuildPositions()
 	assert.Equal(t, "category:c2", cursorItem(t, m), "a filtered-out task hands the cursor to its category")
+}
+
+func TestFilterKeepsTheCursorInView(t *testing.T) {
+	p := longProject()
+	for i := range p.Categories[0].Tasks[:30] {
+		p.Categories[0].Tasks[i].Status = domain.StatusCompleted
+	}
+	m := newTestModel(t, p)
+	m.ui.Screen.Height = 12
+	selectRow(t, m, selection.FocusTask, "t35")
+	m.ensureVisible()
+	require.Positive(t, m.ui.Screen.TopRow)
+
+	m.ui.Modes.ToFilter()
+	m.ui.Filter.SetView(FilterViewStatus)
+	m.ui.Filter.statusSelected = 0
+	next := m.handleFilterKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
+	m = &next
+	assert.Equal(t, "task:t35", cursorItem(t, m))
+	start, end, ok := m.buildLayout().rowRange(m.selected())
+	require.True(t, ok)
+	assert.GreaterOrEqual(t, start, m.ui.Screen.TopRow, "the cursor row must stay on screen")
+	assert.LessOrEqual(t, end, m.ui.Screen.TopRow+m.availableHeight())
 }
 
 func TestFoldAllFromASeparatorLandsOnItsCategory(t *testing.T) {

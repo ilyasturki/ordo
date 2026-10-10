@@ -479,10 +479,12 @@ func (m model) handleFilterKey(msg tea.KeyPressMsg) model {
 		m.ui.Filter.ResetToHub()
 		m.ui.Modes.ToNormal()
 		m.rebuildPositions()
+		m.ensureVisible()
 	case "esc":
 		if m.ui.Filter.View() == FilterViewHub {
 			m.ui.Modes.ToNormal()
 			m.rebuildPositions()
+			m.ensureVisible()
 		} else {
 			m.ui.Filter.SetView(FilterViewHub)
 		}
@@ -496,6 +498,7 @@ func (m model) handleFilterKey(msg tea.KeyPressMsg) model {
 		} else {
 			m.ui.Filter.ToggleSelected(m.project.Categories)
 			m.rebuildPositions()
+			m.ensureVisible()
 		}
 	}
 	return m
@@ -515,6 +518,7 @@ func (m *model) openFilterHubSelection() {
 		if m.ui.Filter.HasActiveFilter() {
 			m.ui.Filter.ClearAll()
 			m.rebuildPositions()
+			m.ensureVisible()
 		}
 	}
 }
