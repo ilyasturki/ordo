@@ -354,6 +354,12 @@ func (m model) forwardToInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sanitizeInput(&m.ui.Search.input)
 		return m, cmd
 	}
+	if m.ui.Modes.IsCommandPrompt() {
+		var cmd tea.Cmd
+		m.ui.TaskCommand.input, cmd = m.ui.TaskCommand.input.Update(msg)
+		sanitizeInput(&m.ui.TaskCommand.input)
+		return m, cmd
+	}
 	if m.ui.Picker.isAdding {
 		var cmd tea.Cmd
 		m.ui.Picker.input, cmd = m.ui.Picker.input.Update(msg)

@@ -174,7 +174,15 @@ type Dependencies struct {
 	Saver        projectSaver
 	CursorSaver  cursorSaver
 	// Already checked against the built-in keys.
-	TaskCommands []taskCommand
+	TaskCommands       []taskCommand
+	helpSections       []helpSection
+	helpReferenceLines []helpLine
+}
+
+func (d *Dependencies) setTaskCommands(cmds []taskCommand) {
+	d.TaskCommands = cmds
+	d.helpSections = buildHelpSections(cmds)
+	d.helpReferenceLines = referenceLines(d.helpSections)
 }
 
 func NewUIState(sel *selection.Manager, modeMachine *modes.Machine) *UIState {

@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"unicode"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"phasionary/internal/app/selection"
 	"phasionary/internal/config"
@@ -130,6 +130,7 @@ func (m *model) startTaskCommand(c taskCommand) tea.Cmd {
 		return nil
 	}
 	if c.Prompt == "" {
+		m.ui.Screen.StatusMsg = c.Label + "…"
 		return runTaskCommand(c.TaskCommand, taskCommandEnv(m.project, cat, task, ""))
 	}
 	ti := textinput.New()
@@ -139,6 +140,7 @@ func (m *model) startTaskCommand(c taskCommand) tea.Cmd {
 	if !m.ui.Modes.ToCommandPrompt() {
 		return nil
 	}
+	m.ensureVisible()
 	return cmd
 }
 
@@ -156,26 +158,19 @@ func (m model) handleCommandPromptKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		if input == "" {
 			return m, nil
 		}
-		cat, task, ok := m.taskAndCategoryByID(s.taskID)
-		if !ok {
+		ci, ti := m.findTaskByID(s.taskID)
+		if ci < 0 {
 			m.ui.Screen.StatusMsg = s.command.Label + ": the task is gone"
 			return m, nil
 		}
-		return m, runTaskCommand(s.command.TaskCommand, taskCommandEnv(m.project, cat, task, input))
+		cat := m.project.Categories[ci]
+		m.ui.Screen.StatusMsg = s.command.Label + "…"
+		return m, runTaskCommand(s.command.TaskCommand, taskCommandEnv(m.project, cat, cat.Tasks[ti], input))
 	}
 	var cmd tea.Cmd
 	s.input, cmd = s.input.Update(msg)
 	sanitizeInput(&s.input)
 	return m, cmd
-}
-
-func (m model) taskAndCategoryByID(id string) (domain.Category, domain.Task, bool) {
-	for _, cat := range m.project.Categories {
-		if i, err := cat.FindTaskByID(id); err == nil {
-			return cat, cat.Tasks[i], true
-		}
-	}
-	return domain.Category{}, domain.Task{}, false
 }
 
 func (m model) renderCommandPrompt() string {
@@ -227,12 +222,10 @@ func (m *model) handleTaskCommandResult(msg taskCommandResultMsg) {
 	m.ui.Screen.StatusMsg = msg.label + ": done"
 }
 
-var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)`)
-
 // Escape sequences are stripped so command output cannot drive the terminal.
 func firstOutputLine(out string) string {
 	for line := range strings.SplitSeq(out, "\n") {
-		line = domain.StripControl(ansiEscape.ReplaceAllString(line, ""), false)
+		line = domain.StripControl(ansi.Strip(line), false)
 		if line = strings.TrimSpace(line); line != "" {
 			return line
 		}

@@ -144,17 +144,17 @@ func buildHelpSections(commands []taskCommand) []helpSection {
 var builtinReferenceLines = referenceLines(builtinHelpSections)
 
 func (m model) helpSections() []helpSection {
-	if len(m.taskCommands()) == 0 {
+	if m.deps.helpSections == nil {
 		return builtinHelpSections
 	}
-	return buildHelpSections(m.taskCommands())
+	return m.deps.helpSections
 }
 
 func (m model) helpReferenceLines() []helpLine {
-	if len(m.taskCommands()) == 0 {
+	if m.deps.helpReferenceLines == nil {
 		return builtinReferenceLines
 	}
-	return referenceLines(m.helpSections())
+	return m.deps.helpReferenceLines
 }
 
 func (m model) helpShortcutCount() int {

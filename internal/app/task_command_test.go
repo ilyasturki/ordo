@@ -17,7 +17,7 @@ func newCommandModel(t *testing.T, cmds ...config.TaskCommand) *model {
 	bound, err := bindTaskCommands(cmds)
 	require.NoError(t, err)
 	m := newTestModel(t, sampleProject())
-	m.deps.TaskCommands = bound
+	m.deps.setTaskCommands(bound)
 	m.ui.Selection.SetSelected(findFirstTaskIndex(m.positions()))
 	return m
 }
@@ -150,6 +150,7 @@ func TestTaskCommand_MissingProgram(t *testing.T) {
 func TestTaskCommand_SilentSuccess(t *testing.T) {
 	m := newCommandModel(t, shCommand("m", "", "true"))
 	m, cmd := pressKeys(m, "m")
+	assert.Equal(t, "probe…", m.ui.Screen.StatusMsg, "a running command says so until it finishes")
 	m = runCmd(t, m, cmd)
 	assert.Equal(t, "probe: done", m.ui.Screen.StatusMsg)
 }

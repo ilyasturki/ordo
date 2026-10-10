@@ -901,7 +901,7 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	deps := NewDependencies(store, cfgManager, stateManager)
 	deps.Saver = saver
 	deps.CursorSaver = cursorSaver
-	deps.TaskCommands = taskCommands
+	deps.setTaskCommands(taskCommands)
 	m := model{
 		project: project,
 		ui:      NewUIState(selMgr, modeMachine),
