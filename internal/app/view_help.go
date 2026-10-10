@@ -199,7 +199,7 @@ var helpCardColumns = [2][]cardGroup{
 	{
 		{title: "Move", shortcuts: []cardShortcut{
 			{key: "j", label: "j / k", desc: "move up / down"},
-			{key: "tab", label: "tab", desc: "fold category"},
+			{key: "tab", label: "tab", desc: "fold / unfold"},
 			{key: "/", label: "/", desc: "search"},
 		}},
 		{title: "Do", shortcuts: []cardShortcut{

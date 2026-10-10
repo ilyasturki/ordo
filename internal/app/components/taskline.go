@@ -500,7 +500,7 @@ func (r *TaskLineRenderer) formatProgressBadge(selected bool) string {
 	if selected {
 		return r.selectedStyle().Render(text)
 	}
-	return r.maybeCut(ui.MutedStyle).Render(text)
+	return ui.MutedStyle.Render(text)
 }
 
 func (r *TaskLineRenderer) formatDescriptionBadge(description string, selected bool) string {
