@@ -178,7 +178,7 @@ func TestTaskCommand_ListedInHelpAndBarOnlyWhenConfigured(t *testing.T) {
 
 	m.ui.Modes.ToHelp()
 	m.ui.Help = HelpState{}
-	m.deps.CfgManager.(*stubConfigReader).cfg.HelpExpanded = true
+	m.ui.Screen.HelpExpanded = true
 	body := m.helpBody()
 	for i, target := range body.targets {
 		if e := body.entryAt(target); e.command != nil {

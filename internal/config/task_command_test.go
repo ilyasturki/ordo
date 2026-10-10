@@ -25,7 +25,7 @@ func TestTaskCommands_LoadAndSurviveSave(t *testing.T) {
 	want := []TaskCommand{{Key: "gr", Label: "notify", Prompt: "when", Run: []string{"notify-send", "--app-name=x"}}}
 	assert.Equal(t, want, m.Get().TaskCommands)
 
-	require.NoError(t, m.Update(func(c *Config) { c.HelpExpanded = true }))
+	require.NoError(t, m.Update(func(c *Config) { c.ShowShortcutBar = false }))
 	again := NewManager(m.Path())
 	require.NoError(t, again.Load())
 	assert.Equal(t, want, again.Get().TaskCommands)
