@@ -137,7 +137,6 @@ func TestCopy_FallsBackToOSC52WithoutWlCopy(t *testing.T) {
 	assert.Contains(t, runSequence(t, msg), tea.SetClipboard("Alpha\n\nthe body of alpha")())
 }
 
-// runSequence runs the commands a tea.Sequence message holds and collects what they send.
 func runSequence(t *testing.T, msg tea.Msg) []tea.Msg {
 	t.Helper()
 	v := reflect.ValueOf(msg)

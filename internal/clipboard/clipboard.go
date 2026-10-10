@@ -1,5 +1,5 @@
 // Package clipboard reads and writes the Wayland clipboard through
-// wl-clipboard, and never leaves one of its processes running past the call.
+// wl-clipboard, and kills a tool still running when its timeout passes.
 package clipboard
 
 import (
@@ -28,7 +28,6 @@ var ErrTimeout = errors.New("clipboard utility timed out")
 // On GNOME (no data-control protocol) wl-copy and wl-paste wait for a focus an unfocused session never gets.
 var timeout = 2 * time.Second
 
-// Redirected reports whether EnvFile stands in for the clipboard.
 func Redirected() bool {
 	return os.Getenv(EnvFile) != ""
 }
