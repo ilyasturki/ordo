@@ -122,6 +122,7 @@ func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		if m.project.ID == "" {
 			return m, tea.Quit
 		}
+		m.announceConflicts("")
 		m.ui.Picker.reset()
 		m.ui.Modes.ToNormal()
 	}
@@ -308,6 +309,7 @@ func (m *model) selectProject() {
 
 	selectedProject := m.ui.Picker.projects[m.ui.Picker.selected]
 	if selectedProject.ID == m.project.ID {
+		m.announceConflicts("")
 		m.ui.Picker.reset()
 		m.ui.Modes.ToNormal()
 		return
@@ -344,10 +346,7 @@ func (m *model) selectProject() {
 	// would otherwise arrive pinned to the bottom edge.
 	m.centerOnSelected()
 
-	m.ui.Screen.StatusMsg = fmt.Sprintf("Switched to: %s", project.Name)
-	if notice := conflictNotice(m.deps.Store, project.ID); notice != "" {
-		m.ui.Screen.StatusMsg = notice
-	}
+	m.announceConflicts(fmt.Sprintf("Switched to: %s", project.Name))
 	m.ui.Picker.reset()
 	m.ui.Modes.ToNormal()
 }

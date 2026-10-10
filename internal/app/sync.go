@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"phasionary/internal/app/selection"
 	"phasionary/internal/data"
@@ -36,15 +37,37 @@ func saveFailedMessage(err error) string {
 	return "Save failed: " + err.Error()
 }
 
-func conflictNotice(store data.ProjectRepository, projectID string) string {
-	names := store.ConflictFiles(projectID)
-	switch len(names) {
-	case 0:
-		return ""
-	case 1:
+func conflictNotice(names []string) string {
+	if len(names) == 1 {
 		return "Conflict: " + names[0]
 	}
 	return fmt.Sprintf("Conflict: %s (+%d more)", names[0], len(names)-1)
+}
+
+// Sets msg as the status, unless the open project has conflict copies the
+// status line has not named yet.
+func (m *model) announceConflicts(msg string) {
+	if m.deps.Store == nil {
+		m.ui.Screen.StatusMsg = msg
+		return
+	}
+	names := m.deps.Store.ConflictFiles(m.project.ID)
+	var seen []string
+	if m.ui.Screen.AnnouncedProject == m.project.ID {
+		seen = m.ui.Screen.AnnouncedConflicts
+	}
+	var fresh []string
+	for _, name := range names {
+		if !slices.Contains(seen, name) {
+			fresh = append(fresh, name)
+		}
+	}
+	m.ui.Screen.AnnouncedProject = m.project.ID
+	m.ui.Screen.AnnouncedConflicts = names
+	if len(fresh) > 0 {
+		msg = conflictNotice(fresh)
+	}
+	m.ui.Screen.StatusMsg = msg
 }
 
 // invalidateLayout drops the memoized layout so the next render/scroll rebuilds
@@ -76,7 +99,7 @@ func (m *model) reloadProject() {
 	}
 
 	m.ensureVisible()
-	m.ui.Screen.StatusMsg = "Reloaded from disk"
+	m.announceConflicts("Reloaded from disk")
 }
 
 // restoreSelection moves the cursor onto the row identified by (kind, catID,

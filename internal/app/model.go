@@ -79,6 +79,9 @@ type Screen struct {
 	// exists to avoid. Cleared once consumed, so later resizes go back to
 	// ensureVisible rather than yanking the view out from under the user.
 	PendingCenter bool
+	// The conflict copies the status line last named, so each is named once.
+	AnnouncedProject   string
+	AnnouncedConflicts []string
 }
 
 // InfoState holds the info dialog's scroll position. The dialog shows fields in

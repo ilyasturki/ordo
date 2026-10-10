@@ -8,7 +8,7 @@ Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
 
 Hide
 # Leave a Syncthing conflict copy next to the seeded project.
-Type `cd /tmp/phas-vt/data/projects && cp 872e2818-9fd7-44c6-e33e-e6ef4c934ef0.json 872e2818-9fd7-44c6-e33e-e6ef4c934ef0.sync-conflict-20260921-203208-ICE5FOT.json && cd - >/dev/null`
+Type `f=$(ls /tmp/phas-vt/data/projects/*.json) && cp "$f" "${f%.json}.sync-conflict-20260921-203208-ICE5FOT.json"`
 Enter
 Type "clear && ./phasionary -p Default"
 Enter
