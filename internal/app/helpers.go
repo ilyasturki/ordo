@@ -25,10 +25,6 @@ func (m model) dialogStyle() lipgloss.Style {
 // on the left and the match count (or "no matches") right-aligned to width.
 // query is what matches was counted for, so an all-whitespace one shows nothing.
 func (m model) filterPromptRow(input textinput.Model, query string, matches, width int) string {
-	split := splitAtCursor(input.Value(), input.Position())
-	left := "/" + split.left +
-		ui.GetCursorStyle(m.ui.Screen.WindowFocused).Render(split.cursorCh) + split.right
-
 	status := ""
 	if query != "" {
 		text := "no matches"
@@ -37,6 +33,14 @@ func (m model) filterPromptRow(input textinput.Model, query string, matches, wid
 		}
 		status = ui.MutedStyle.Render(text)
 	}
+	return m.promptRow("/", input, status, width)
+}
+
+// promptRow draws a one-line input after its label, with status right-aligned.
+func (m model) promptRow(label string, input textinput.Model, status string, width int) string {
+	split := splitAtCursor(input.Value(), input.Position())
+	left := label + split.left +
+		ui.GetCursorStyle(m.ui.Screen.WindowFocused).Render(split.cursorCh) + split.right
 	return ui.SplitRow(left, status, width)
 }
 

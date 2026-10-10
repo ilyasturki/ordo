@@ -49,6 +49,9 @@ func (m *Manager) Load() error {
 	if err := json.Unmarshal(data, &m.cfg); err != nil {
 		return fmt.Errorf("parsing config %s: %w", m.path, err)
 	}
+	if err := validateTaskCommands(m.cfg.TaskCommands); err != nil {
+		return fmt.Errorf("config %s: %w", m.path, err)
+	}
 	d := DefaultConfig()
 	m.cfg.StatusDisplay = cmp.Or(m.cfg.StatusDisplay, d.StatusDisplay)
 	m.cfg.PriorityColor = cmp.Or(m.cfg.PriorityColor, d.PriorityColor)

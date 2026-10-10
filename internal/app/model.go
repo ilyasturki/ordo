@@ -120,6 +120,7 @@ type UIState struct {
 	Visual          VisualState
 	DescriptionEdit DescriptionEditState
 	TagEdit         TagEditState
+	TaskCommand     TaskCommandState
 	History         HistoryState
 	Search          SearchState
 	Cursor          cursorTracker
@@ -172,6 +173,9 @@ type Dependencies struct {
 	StateManager data.StateRepository
 	Saver        projectSaver
 	CursorSaver  cursorSaver
+	// TaskCommands are the configured commands, already checked against the
+	// built-in keys.
+	TaskCommands []taskCommand
 }
 
 func NewUIState(sel *selection.Manager, modeMachine *modes.Machine) *UIState {

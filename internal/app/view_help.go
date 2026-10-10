@@ -29,6 +29,8 @@ type helpEntry struct {
 	keys         string
 	desc         string
 	bindingIndex int
+	// command is set instead of bindingIndex for a configured task command.
+	command *taskCommand
 	// false for a shortcut Enter must not fire: one that only exists inside
 	// editing or visual mode, or `?` itself.
 	runnable bool
@@ -98,11 +100,11 @@ var helpModeSections = []helpSection{
 	},
 }
 
-var helpSections = buildHelpSections()
+var builtinHelpSections = buildHelpSections(nil)
 
 // Sections come out in declaration order, so the groups in normalBindings are
 // the one source of truth for how the reference reads.
-func buildHelpSections() []helpSection {
+func buildHelpSections(commands []taskCommand) []helpSection {
 	var out []helpSection
 	for i, b := range normalBindings {
 		if b.desc == "" {
@@ -124,18 +126,45 @@ func buildHelpSections() []helpSection {
 			runnable: !slices.Contains(b.keys, "?"),
 		})
 	}
+	if len(commands) > 0 {
+		section := helpSection{title: sectionCommands}
+		for i := range commands {
+			section.entries = append(section.entries, helpEntry{
+				keys:     commands[i].Key,
+				desc:     commands[i].Label,
+				command:  &commands[i],
+				runnable: true,
+			})
+		}
+		out = append(out, section)
+	}
 	return append(out, helpModeSections...)
 }
 
-var helpShortcutCount = func() int {
+var builtinReferenceLines = referenceLines(builtinHelpSections)
+
+// With no command configured these are the built-in globals, untouched.
+func (m model) helpSections() []helpSection {
+	if len(m.taskCommands()) == 0 {
+		return builtinHelpSections
+	}
+	return buildHelpSections(m.taskCommands())
+}
+
+func (m model) helpReferenceLines() []helpLine {
+	if len(m.taskCommands()) == 0 {
+		return builtinReferenceLines
+	}
+	return referenceLines(m.helpSections())
+}
+
+func (m model) helpShortcutCount() int {
 	n := 0
-	for _, s := range helpSections {
+	for _, s := range m.helpSections() {
 		n += len(s.entries)
 	}
 	return n
-}()
-
-var helpReferenceLines = referenceLines(helpSections)
+}
 
 func referenceLines(sections []helpSection) []helpLine {
 	var lines []helpLine
@@ -243,7 +272,7 @@ func (m model) helpBodyHeight() int {
 	if !m.helpExpanded() {
 		return min(helpCardBody, room)
 	}
-	return min(len(helpReferenceLines), room)
+	return min(len(m.helpReferenceLines()), room)
 }
 
 func (m model) helpQuery() string {
@@ -259,9 +288,9 @@ func (m model) helpBody() helpBody {
 	var lines []helpLine
 	switch {
 	case strings.TrimSpace(m.helpQuery()) != "":
-		lines = filteredReferenceLines(m.helpQuery())
+		lines = filteredReferenceLines(m.helpSections(), m.helpQuery())
 	case m.helpExpanded():
-		lines = helpReferenceLines
+		lines = m.helpReferenceLines()
 	default:
 		lines = helpCardLines
 	}
@@ -282,9 +311,9 @@ func helpTargets(lines []helpLine) []helpCursor {
 	return out
 }
 
-func filteredReferenceLines(query string) []helpLine {
+func filteredReferenceLines(all []helpSection, query string) []helpLine {
 	var sections []helpSection
-	for _, s := range helpSections {
+	for _, s := range all {
 		var matched []helpEntry
 		for _, e := range s.entries {
 			if ui.Contains(e.filterText(), query) {
@@ -372,7 +401,7 @@ func (m model) helpHints() []ui.Hint {
 	if m.ui.Help.Filtering {
 		return helpFilterHint
 	}
-	toggle := fmt.Sprintf("all %d shortcuts", helpShortcutCount)
+	toggle := fmt.Sprintf("all %d shortcuts", m.helpShortcutCount())
 	if m.helpExpanded() {
 		toggle = "essentials"
 	}

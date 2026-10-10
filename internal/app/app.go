@@ -138,6 +138,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pasteClipboardLines(msg)
 	case openURLResultMsg:
 		m.handleOpenURLResult(msg)
+	case taskCommandResultMsg:
+		m.handleTaskCommandResult(msg)
 	case editorFinishedMsg:
 		m.handleEditorFinished(msg)
 		return m, nil
@@ -258,6 +260,8 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handleDescriptionEditKey(msg)
 	case modes.ModeTagEdit:
 		return m.handleTagEditKey(msg)
+	case modes.ModeCommandPrompt:
+		return m.handleCommandPromptKey(msg)
 	case modes.ModeExternalEdit:
 		return m, nil
 	default:
@@ -363,9 +367,11 @@ func (m model) runFocusedHelpBinding() (tea.Model, tea.Cmd) {
 	if !entry.runnable {
 		return m, nil
 	}
-	b := normalBindings[entry.bindingIndex]
 	m.ui.Modes.ToNormal()
-	return m, b.action(&m)
+	if entry.command != nil {
+		return m, m.startTaskCommand(*entry.command)
+	}
+	return m, normalBindings[entry.bindingIndex].action(&m)
 }
 
 func (m model) handleConfirmDeleteKey(msg tea.KeyPressMsg) model {
@@ -806,6 +812,11 @@ func AttachSyncRecorder(store *data.Store) error {
 
 // taskSelector, when set, opens on that task instead of the remembered row.
 func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader, workingDir string, forcePicker bool) error {
+	taskCommands, err := bindTaskCommands(cfgManager.Get().TaskCommands)
+	if err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+
 	store := data.NewStore(dataDir)
 	if err := store.Ensure(); err != nil {
 		return err
@@ -891,6 +902,7 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	deps := NewDependencies(store, cfgManager, stateManager)
 	deps.Saver = saver
 	deps.CursorSaver = cursorSaver
+	deps.TaskCommands = taskCommands
 	m := model{
 		project: project,
 		ui:      NewUIState(selMgr, modeMachine),

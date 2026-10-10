@@ -1,0 +1,250 @@
+package app
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
+	"unicode"
+
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+
+	"phasionary/internal/app/selection"
+	"phasionary/internal/config"
+	"phasionary/internal/domain"
+	"phasionary/internal/ui"
+)
+
+const sectionCommands = "Task commands"
+
+// taskCommand is a configured command bound to its parsed key.
+type taskCommand struct {
+	prefix rune
+	key    string
+	config.TaskCommand
+}
+
+// TaskCommandState backs the one-line prompt a command with a prompt opens.
+type TaskCommandState struct {
+	input   textinput.Model
+	command taskCommand
+	taskID  string
+}
+
+type taskCommandResultMsg struct {
+	label  string
+	stdout string
+	stderr string
+	err    error
+}
+
+// bindTaskCommands parses each configured key and refuses any that collides
+// with a built-in shortcut or another command, so a config can never silently
+// shadow a key.
+func bindTaskCommands(cmds []config.TaskCommand) ([]taskCommand, error) {
+	out := make([]taskCommand, 0, len(cmds))
+	for i, c := range cmds {
+		bound, err := bindTaskCommand(c, out)
+		if err != nil {
+			return nil, fmt.Errorf("task_commands[%d] (%s): %w", i, c.Label, err)
+		}
+		out = append(out, bound)
+	}
+	return out, nil
+}
+
+func bindTaskCommand(c config.TaskCommand, taken []taskCommand) (taskCommand, error) {
+	runes := []rune(c.Key)
+	for _, r := range runes {
+		if unicode.IsSpace(r) || unicode.IsControl(r) {
+			return taskCommand{}, fmt.Errorf("unknown key %q: use one character, or g or z followed by one", c.Key)
+		}
+	}
+	bound := taskCommand{TaskCommand: c}
+	switch len(runes) {
+	case 1:
+		bound.key = c.Key
+		if _, isChord := chordPrefixes[runes[0]]; isChord {
+			return taskCommand{}, fmt.Errorf("key %q starts built-in shortcuts such as %s%s", c.Key, c.Key, c.Key)
+		}
+	case 2:
+		if _, isChord := chordPrefixes[runes[0]]; !isChord {
+			return taskCommand{}, fmt.Errorf("unknown key %q: a two-key shortcut must start with g or z", c.Key)
+		}
+		bound.prefix, bound.key = runes[0], string(runes[1])
+	default:
+		return taskCommand{}, fmt.Errorf("unknown key %q: use one character, or g or z followed by one", c.Key)
+	}
+
+	if b := matchBinding(bound.prefix, bound.key); b != nil {
+		return taskCommand{}, fmt.Errorf("key %q is already bound to %q", c.Key, builtinDesc(b))
+	}
+	for _, other := range taken {
+		if other.prefix == bound.prefix && other.key == bound.key {
+			return taskCommand{}, fmt.Errorf("key %q is already bound to the command %q", c.Key, other.Label)
+		}
+	}
+	return bound, nil
+}
+
+// builtinDesc names a built-in binding. A partner binding such as `k` in
+// "j / k" carries no description of its own, so it borrows the one above it.
+func builtinDesc(b *keyBinding) string {
+	for i := range normalBindings {
+		if &normalBindings[i] != b {
+			continue
+		}
+		for j := i; j >= 0; j-- {
+			if normalBindings[j].desc != "" {
+				return normalBindings[j].desc
+			}
+		}
+	}
+	return b.desc
+}
+
+func (m model) taskCommands() []taskCommand {
+	return m.deps.TaskCommands
+}
+
+func (m model) matchTaskCommand(prefix rune, key string) *taskCommand {
+	for i, c := range m.taskCommands() {
+		if c.prefix == prefix && c.key == key {
+			return &m.deps.TaskCommands[i]
+		}
+	}
+	return nil
+}
+
+// focusedTask returns the task under the cursor, counting a description row as
+// its task.
+func (m model) focusedTask() (domain.Category, domain.Task, bool) {
+	pos, ok := m.selectedPosition()
+	if !ok || (pos.Kind != selection.FocusTask && pos.Kind != selection.FocusDescription) {
+		return domain.Category{}, domain.Task{}, false
+	}
+	cat := m.project.Categories[pos.CategoryIndex]
+	return cat, cat.Tasks[pos.TaskIndex], true
+}
+
+func (m *model) startTaskCommand(c taskCommand) tea.Cmd {
+	cat, task, ok := m.focusedTask()
+	if !ok {
+		m.ui.Screen.StatusMsg = c.Label + ": focus a task first"
+		return nil
+	}
+	if c.Prompt == "" {
+		return runTaskCommand(c.TaskCommand, taskCommandEnv(m.project, cat, task, ""))
+	}
+	ti := textinput.New()
+	ti.Prompt = ""
+	cmd := ti.Focus()
+	m.ui.TaskCommand = TaskCommandState{input: ti, command: c, taskID: task.ID}
+	if !m.ui.Modes.ToCommandPrompt() {
+		return nil
+	}
+	return cmd
+}
+
+func (m model) handleCommandPromptKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	s := &m.ui.TaskCommand
+	switch msg.String() {
+	case "esc":
+		m.ui.Modes.ToNormal()
+		return m, nil
+	case "ctrl+c":
+		return m, tea.Quit
+	case "enter":
+		m.ui.Modes.ToNormal()
+		input := strings.TrimSpace(s.input.Value())
+		if input == "" {
+			return m, nil
+		}
+		cat, task, ok := m.taskAndCategoryByID(s.taskID)
+		if !ok {
+			m.ui.Screen.StatusMsg = s.command.Label + ": the task is gone"
+			return m, nil
+		}
+		return m, runTaskCommand(s.command.TaskCommand, taskCommandEnv(m.project, cat, task, input))
+	}
+	var cmd tea.Cmd
+	s.input, cmd = s.input.Update(msg)
+	sanitizeInput(&s.input)
+	return m, cmd
+}
+
+func (m model) taskAndCategoryByID(id string) (domain.Category, domain.Task, bool) {
+	for _, cat := range m.project.Categories {
+		if i, err := cat.FindTaskByID(id); err == nil {
+			return cat, cat.Tasks[i], true
+		}
+	}
+	return domain.Category{}, domain.Task{}, false
+}
+
+func (m model) renderCommandPrompt() string {
+	s := m.ui.TaskCommand
+	return m.promptRow(s.command.Prompt+": ", s.input, ui.MutedStyle.Render(s.command.Label), m.ui.Screen.Width)
+}
+
+func taskCommandEnv(p domain.Project, cat domain.Category, t domain.Task, input string) []string {
+	return append(os.Environ(),
+		"PHASIONARY_PROJECT_ID="+p.ID,
+		"PHASIONARY_PROJECT_NAME="+p.Name,
+		"PHASIONARY_TASK_ID="+t.ID,
+		"PHASIONARY_TASK_TITLE="+t.Title,
+		"PHASIONARY_TASK_DESCRIPTION="+t.Description,
+		"PHASIONARY_CATEGORY="+cat.Name,
+		"PHASIONARY_INPUT="+input,
+	)
+}
+
+// runTaskCommand runs the command off the event loop. Stdin is left empty: the
+// terminal belongs to the TUI.
+func runTaskCommand(c config.TaskCommand, env []string) tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command(c.Run[0], c.Run[1:]...)
+		cmd.Env = env
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		err := cmd.Run()
+		return taskCommandResultMsg{label: c.Label, stdout: stdout.String(), stderr: stderr.String(), err: err}
+	}
+}
+
+func (m *model) handleTaskCommandResult(msg taskCommandResultMsg) {
+	if msg.err != nil {
+		detail := firstOutputLine(msg.stderr)
+		if detail == "" {
+			detail = firstOutputLine(msg.stdout)
+		}
+		if detail == "" {
+			detail = msg.err.Error()
+		}
+		m.ui.Screen.StatusMsg = msg.label + " failed: " + detail
+		return
+	}
+	if line := firstOutputLine(msg.stdout); line != "" {
+		m.ui.Screen.StatusMsg = line
+		return
+	}
+	m.ui.Screen.StatusMsg = msg.label + ": done"
+}
+
+var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)`)
+
+// firstOutputLine is the first non-blank line, with colors and other control
+// sequences removed so they cannot reach the terminal through the status line.
+func firstOutputLine(out string) string {
+	for line := range strings.SplitSeq(out, "\n") {
+		line = domain.StripControl(ansiEscape.ReplaceAllString(line, ""), false)
+		if line = strings.TrimSpace(line); line != "" {
+			return line
+		}
+	}
+	return ""
+}

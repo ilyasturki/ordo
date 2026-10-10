@@ -1,6 +1,10 @@
 package config
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,6 +35,55 @@ type Config struct {
 	// HelpExpanded remembers whether the help dialog opens on the full
 	// shortcut reference rather than the essentials card.
 	HelpExpanded bool `json:"help_expanded"`
+
+	TaskCommands []TaskCommand `json:"task_commands,omitempty"`
+}
+
+// TaskCommand runs an external program on the focused task. The task reaches
+// it through PHASIONARY_* environment variables, and Run is executed directly,
+// never through a shell.
+type TaskCommand struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	// Prompt, when set, asks for one line of input first; the answer is passed
+	// as PHASIONARY_INPUT.
+	Prompt string   `json:"prompt,omitempty"`
+	Run    []string `json:"run"`
+}
+
+// UnmarshalJSON rejects unknown fields, so a misspelt "run" fails loudly
+// instead of leaving a command that does nothing.
+func (c *TaskCommand) UnmarshalJSON(data []byte) error {
+	type plain TaskCommand
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	var p plain
+	if err := dec.Decode(&p); err != nil {
+		return err
+	}
+	*c = TaskCommand(p)
+	return nil
+}
+
+func (c TaskCommand) validate() error {
+	switch {
+	case strings.TrimSpace(c.Key) == "":
+		return errors.New(`"key" is required`)
+	case strings.TrimSpace(c.Label) == "":
+		return errors.New(`"label" is required`)
+	case len(c.Run) == 0 || strings.TrimSpace(c.Run[0]) == "":
+		return errors.New(`"run" needs a program, e.g. ["notify-send"]`)
+	}
+	return nil
+}
+
+func validateTaskCommands(cmds []TaskCommand) error {
+	for i, c := range cmds {
+		if err := c.validate(); err != nil {
+			return fmt.Errorf("task_commands[%d]: %w", i, err)
+		}
+	}
+	return nil
 }
 
 // DefaultConfig returns a Config with default values.

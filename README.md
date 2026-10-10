@@ -126,6 +126,27 @@ Config lives at `~/.config/phasionary/config.json`. Override with `phasionary co
 | `default_project` | project UUID | (none) | Project to open on launch |
 | `priority_color` | `full`, `icon`, `none` | `full` | How priority is colored — full row, icon only, or off |
 
+### Task commands
+
+`task_commands` binds keys in the TUI to programs that act on the focused task, such as filing it in another tool. None are set by default.
+
+```json
+{
+  "task_commands": [
+    { "key": "gn", "label": "notify", "prompt": "message", "run": ["notify-send", "--app-name=phasionary"] }
+  ]
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `key` | yes | One character (`m`), or `g` or `z` followed by one (`gn`). A key a built-in shortcut already uses is refused at launch. |
+| `label` | yes | Name shown in `?` and the shortcut bar. |
+| `prompt` | no | Asks for one line first; Enter on an empty line cancels. |
+| `run` | yes | Program and arguments, run directly, never through a shell. |
+
+The command runs in the background. It gets the task through environment variables: `PHASIONARY_PROJECT_ID`, `PHASIONARY_PROJECT_NAME`, `PHASIONARY_TASK_ID`, `PHASIONARY_TASK_TITLE`, `PHASIONARY_TASK_DESCRIPTION`, `PHASIONARY_CATEGORY` and `PHASIONARY_INPUT` (the prompt's answer). The first line it prints shows in the status line. A non-zero exit shows as a failure with the first line of its error output.
+
 Paths can be relocated with `PHASIONARY_CONFIG_PATH` and `PHASIONARY_DATA_PATH` — both name a directory; `PHASIONARY_CONFIG_PATH` also accepts a path ending in `config.json` for convenience.
 
 ## Data

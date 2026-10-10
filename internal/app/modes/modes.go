@@ -19,6 +19,7 @@ const (
 	ModeYankPicker
 	ModeSearch
 	ModeTagEdit
+	ModeCommandPrompt
 )
 
 type Action int
@@ -133,6 +134,8 @@ func (m *Machine) canTransition(target Mode) bool {
 	case ModeSearch:
 		return target == ModeNormal
 	case ModeTagEdit:
+		return target == ModeNormal
+	case ModeCommandPrompt:
 		return target == ModeNormal
 	}
 	return false
@@ -266,4 +269,12 @@ func (m *Machine) IsTagEdit() bool {
 
 func (m *Machine) ToTagEdit() bool {
 	return m.TransitionTo(ModeTagEdit)
+}
+
+func (m *Machine) IsCommandPrompt() bool {
+	return m.current == ModeCommandPrompt
+}
+
+func (m *Machine) ToCommandPrompt() bool {
+	return m.TransitionTo(ModeCommandPrompt)
 }

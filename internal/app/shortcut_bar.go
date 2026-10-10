@@ -1,6 +1,8 @@
 package app
 
 import (
+	"slices"
+
 	"phasionary/internal/app/modes"
 	"phasionary/internal/ui"
 )
@@ -56,6 +58,13 @@ func (m model) renderShortcutBar() string {
 	hints := normalShortcuts
 	if m.ui.Modes.IsVisual() {
 		hints = visualShortcuts
+	} else if cmds := m.taskCommands(); len(cmds) > 0 {
+		// Right after help: the bar drops whatever overflows its right end.
+		commandHints := make([]ui.Hint, len(cmds))
+		for i, c := range cmds {
+			commandHints[i] = ui.Hint{Key: c.Key, Label: c.Label}
+		}
+		hints = slices.Concat(normalShortcuts[:1], commandHints, normalShortcuts[1:])
 	}
 	return ui.RenderHintsToWidth(hints, m.ui.Screen.Width)
 }
@@ -63,7 +72,7 @@ func (m model) renderShortcutBar() string {
 // bottomBarHeight is the rows reserved at the bottom of the screen: the search
 // prompt while searching, otherwise the shortcut bar (when enabled).
 func (m model) bottomBarHeight() int {
-	if m.ui.Modes.IsSearch() {
+	if m.ui.Modes.IsSearch() || m.ui.Modes.IsCommandPrompt() {
 		return 1
 	}
 	return m.shortcutBarHeight()
@@ -72,8 +81,11 @@ func (m model) bottomBarHeight() int {
 // renderBottomBar draws the search prompt while searching, otherwise the
 // shortcut bar. The two never show at once (search isn't normal/visual mode).
 func (m model) renderBottomBar() string {
-	if m.ui.Modes.IsSearch() {
+	switch {
+	case m.ui.Modes.IsSearch():
 		return m.renderSearchBar()
+	case m.ui.Modes.IsCommandPrompt():
+		return m.renderCommandPrompt()
 	}
 	return m.renderShortcutBar()
 }

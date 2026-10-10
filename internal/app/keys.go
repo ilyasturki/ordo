@@ -220,6 +220,10 @@ func (m *model) dispatchNormalKey(key string) tea.Cmd {
 			m.ui.Screen.PendingKey = 0
 			return b.action(m)
 		}
+		if c := m.matchTaskCommand(m.ui.Screen.PendingKey, key); c != nil {
+			m.ui.Screen.PendingKey = 0
+			return m.startTaskCommand(*c)
+		}
 		m.ui.Screen.PendingKey = 0
 	}
 
@@ -235,6 +239,9 @@ func (m *model) dispatchNormalKey(key string) tea.Cmd {
 
 	if b := matchBinding(0, key); b != nil {
 		return b.action(m)
+	}
+	if c := m.matchTaskCommand(0, key); c != nil {
+		return m.startTaskCommand(*c)
 	}
 	return nil
 }
