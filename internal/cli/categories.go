@@ -107,7 +107,7 @@ func newCategoryAddCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&parent, "parent", "", "add it under this top-level category")
-	_ = cmd.RegisterFlagCompletionFunc("parent", completeCategories)
+	_ = cmd.RegisterFlagCompletionFunc("parent", completeParentCategories)
 
 	return cmd
 }

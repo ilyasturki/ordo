@@ -59,18 +59,22 @@ func completeProjects(cmd *cobra.Command, args []string, toComplete string) ([]s
 }
 
 func completeTasks(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	store, err := storeFromViper()
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
-	}
-	project, err := store.LoadProject(projectSelector(nil))
+	return completeTaskIDs(false)
+}
+
+func completeParentTasks(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return completeTaskIDs(true)
+}
+
+func completeTaskIDs(topLevel bool) ([]string, cobra.ShellCompDirective) {
+	project, err := completionProject()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
 	var completions []string
 	for _, cat := range project.Categories {
 		for _, task := range cat.Tasks {
-			if task.IsSeparator() {
+			if task.IsSeparator() || (topLevel && task.ParentID != "") {
 				continue
 			}
 			completions = append(completions, task.ID)
@@ -80,19 +84,34 @@ func completeTasks(cmd *cobra.Command, args []string, toComplete string) ([]stri
 }
 
 func completeCategories(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	store, err := storeFromViper()
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
-	}
-	project, err := store.LoadProject(projectSelector(nil))
+	return completeCategoryPaths(false)
+}
+
+func completeParentCategories(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return completeCategoryPaths(true)
+}
+
+func completeCategoryPaths(topLevel bool) ([]string, cobra.ShellCompDirective) {
+	project, err := completionProject()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
 	var completions []string
-	for i := range project.Categories {
+	for i, cat := range project.Categories {
+		if topLevel && cat.ParentID != "" {
+			continue
+		}
 		completions = append(completions, cliPath(project, i))
 	}
 	return completions, cobra.ShellCompDirectiveNoFileComp
+}
+
+func completionProject() (domain.Project, error) {
+	store, err := storeFromViper()
+	if err != nil {
+		return domain.Project{}, err
+	}
+	return store.LoadProject(projectSelector(nil))
 }
 
 func completeStatuses(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

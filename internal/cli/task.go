@@ -188,7 +188,7 @@ func newTaskAddCmd() *cobra.Command {
 	cmd.Flags().StringVar(&description, "description", "", "description, may span several lines")
 
 	_ = cmd.RegisterFlagCompletionFunc("category", completeCategories)
-	_ = cmd.RegisterFlagCompletionFunc("parent", completeTasks)
+	_ = cmd.RegisterFlagCompletionFunc("parent", completeParentTasks)
 	_ = cmd.RegisterFlagCompletionFunc("priority", completePriorities)
 
 	return cmd

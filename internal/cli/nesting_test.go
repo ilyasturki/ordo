@@ -288,3 +288,33 @@ func TestImportJSONMakesNamesUniqueAfterTheRepair(t *testing.T) {
 		t.Fatalf("names = %q, parent = %q; want the orphan top-level as Work (2)", got, p.Categories[1].ParentID)
 	}
 }
+
+func TestParentCompletionOffersTopLevelRowsOnly(t *testing.T) {
+	dir := versionsDir(t)
+	complete := func(args ...string) []string {
+		t.Helper()
+		out, err := runCLI(t, dir, append([]string{"__complete"}, args...)...)
+		if err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+		var got []string
+		for _, line := range strings.Split(out, "\n") {
+			if strings.HasPrefix(line, ":") {
+				break
+			}
+			got = append(got, line)
+		}
+		return got
+	}
+
+	if got := complete("category", "add", "x", "--project", "Nested", "--parent", ""); strings.Join(got, "|") != "v0.2.0|v0.1.0" {
+		t.Errorf("category add --parent offers %q, want the top-level categories", got)
+	}
+	if got := complete("tasks", "--project", "Nested", "-C", ""); len(got) != 4 {
+		t.Errorf("tasks -C offers %q, want every category", got)
+	}
+	got := strings.Join(complete("task", "add", "x", "--project", "Nested", "--parent", ""), "|")
+	if !strings.Contains(got, "timer") || strings.Contains(got, "pick") {
+		t.Errorf("task add --parent offers %q, want top-level tasks only", got)
+	}
+}
