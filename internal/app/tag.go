@@ -395,7 +395,7 @@ func tagColorIndex(color string) int {
 // tagColorName is the human-facing name of a tag mark, used in the info,
 // filter, and tag-picker views.
 func tagColorName(color string) string {
-	hue, diamond := strings.CutSuffix(color, "-diamond")
+	hue, diamond := strings.CutSuffix(color, domain.TagDiamondSuffix)
 	var name string
 	switch hue {
 	case domain.TagGreen:

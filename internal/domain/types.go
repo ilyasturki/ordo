@@ -34,10 +34,11 @@ const (
 	TagBlue           = "blue"
 	TagMagenta        = "magenta"
 	TagCyan           = "cyan"
-	TagGreenDiamond   = "green-diamond"
-	TagBlueDiamond    = "blue-diamond"
-	TagMagentaDiamond = "magenta-diamond"
-	TagCyanDiamond    = "cyan-diamond"
+	TagDiamondSuffix  = "-diamond"
+	TagGreenDiamond   = TagGreen + TagDiamondSuffix
+	TagBlueDiamond    = TagBlue + TagDiamondSuffix
+	TagMagentaDiamond = TagMagenta + TagDiamondSuffix
+	TagCyanDiamond    = TagCyan + TagDiamondSuffix
 )
 
 // TagColorCycle is the canonical mark order `t` steps through and the single
