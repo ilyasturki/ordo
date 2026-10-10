@@ -58,11 +58,7 @@ type LayoutBuilder struct {
 	filter             *FilterState
 	fold               *FoldState
 	expandDescriptions bool
-	// cursorCat/cursorTask address the description row the cursor sits on
-	// (-1/-1 when the cursor is elsewhere). That row renders in full; every
-	// other description row is capped to its preview height.
-	cursorCat  int
-	cursorTask int
+	limits             rowLimits
 	// editHeight of 0 means no editor is open on editPos.
 	editPos    int
 	editHeight int
@@ -78,8 +74,7 @@ func NewLayoutBuilder(config LayoutConfig, width int, statusDisplay string, filt
 		statusDisplay: statusDisplay,
 		filter:        filter,
 		fold:          fold,
-		cursorCat:     -1,
-		cursorTask:    -1,
+		limits:        defaultRowLimits(),
 	}
 }
 
@@ -88,9 +83,8 @@ func (b *LayoutBuilder) WithExpandedDescriptions(v bool) *LayoutBuilder {
 	return b
 }
 
-func (b *LayoutBuilder) WithCursorDescription(catIdx, taskIdx int) *LayoutBuilder {
-	b.cursorCat = catIdx
-	b.cursorTask = taskIdx
+func (b *LayoutBuilder) WithRowLimits(l rowLimits) *LayoutBuilder {
+	b.limits = l
 	return b
 }
 
@@ -240,8 +234,7 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 			posIndex++
 
 			if b.expandDescriptions && task.Description != "" {
-				full := catIdx == b.cursorCat && taskIdx == b.cursorTask
-				descHeight := components.DescriptionHeight(task.Description, b.width, taskTitleColumn(task, b.statusDisplay), full)
+				descHeight := components.DescriptionHeight(task.Description, b.width, taskTitleColumn(task, b.statusDisplay), b.limits.descriptionRows(catIdx, taskIdx))
 				items = append(items, LayoutItem{
 					Kind:          LayoutDescription,
 					Height:        descHeight,
@@ -279,24 +272,21 @@ func (b *LayoutBuilder) countCategoryLines(category domain.Category) int {
 
 func (m *model) buildLayout() *Layout {
 	w := m.ui.Screen.Width
-	cursorCat, cursorTask := -1, -1
-	if pos, ok := m.selectedPosition(); ok && pos.Kind == selection.FocusDescription {
-		cursorCat, cursorTask = pos.CategoryIndex, pos.TaskIndex
-	}
+	limits := m.rowLimits()
 	editPos, editHeight := m.editOverlay()
 	cut := m.cutKey()
 	c := m.ui.layout
-	if c.layout != nil && c.width == w && c.cursorCat == cursorCat && c.cursorTask == cursorTask &&
+	if c.layout != nil && c.width == w && c.limits == limits &&
 		c.editPos == editPos && c.editHeight == editHeight && c.cut == cut {
 		return c.layout
 	}
 	builder := NewLayoutBuilder(m.layoutConfig(), w, m.deps.CfgManager.Get().StatusDisplay, &m.ui.Filter, &m.ui.Fold).
 		WithExpandedDescriptions(m.ui.Screen.ExpandDescriptions).
-		WithCursorDescription(cursorCat, cursorTask).
+		WithRowLimits(limits).
 		WithEditOverlay(editPos, editHeight).
 		WithCutMarks(m.isTaskCut, m.isCategoryCut)
 	layout := builder.Build(m.project, m.positions())
-	m.ui.layout = layoutCache{width: w, cursorCat: cursorCat, cursorTask: cursorTask, editPos: editPos, editHeight: editHeight, cut: cut, layout: &layout}
+	m.ui.layout = layoutCache{width: w, limits: limits, editPos: editPos, editHeight: editHeight, cut: cut, layout: &layout}
 	return &layout
 }
 

@@ -759,7 +759,8 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 	case LayoutDescription:
 		task := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
 		cut := m.isTaskCut(task.ID)
-		return m.renderTaskDescription(task, isSelected, m.ui.Screen.Width, focused, visualMode, isCursor, cut)
+		rows := m.rowLimits().descriptionRows(item.CategoryIndex, item.TaskIndex)
+		return m.renderTaskDescription(task, rows, isSelected, m.ui.Screen.Width, focused, visualMode, isCursor, cut)
 
 	case LayoutEmptyCategory:
 		return ui.MutedStyle.Render("    (no tasks)")

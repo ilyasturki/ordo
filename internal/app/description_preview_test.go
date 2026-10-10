@@ -1,9 +1,11 @@
 package app
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -54,7 +56,72 @@ func TestDescriptionPreview_TruncatesUnfocusedRow(t *testing.T) {
 	assert.NotContains(t, rendered, "six")
 }
 
-func TestDescriptionPreview_FullWhenCursorOnRow(t *testing.T) {
+func numberedLines(n int) string {
+	lines := make([]string, n)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("line%02d", i+1)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func focusDescription(t *testing.T, m *model) {
+	t.Helper()
+	m.ui.Screen.ExpandDescriptions = true
+	m.rebuildPositions()
+	require.True(t, m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
+		return p.Kind == selection.FocusDescription && p.TaskIndex == 0
+	}))
+}
+
+func TestDescriptionPreview_FocusedCapsAtTenRows(t *testing.T) {
+	p := longDescriptionProject()
+	p.Categories[0].Tasks[0].Description = numberedLines(30)
+	m := newTestModel(t, p)
+	focusDescription(t, m)
+
+	item := findDescriptionItem(t, m.buildLayout(), 0, 0)
+	assert.Equal(t, maxFocusedDescriptionRows+1, item.Height, "10 lines plus the tail")
+
+	rendered := m.renderLayoutItem(item)
+	assert.Equal(t, item.Height, strings.Count(rendered, "\n")+1)
+	assert.Contains(t, rendered, "line10")
+	assert.NotContains(t, rendered, "line11")
+	assert.Contains(t, rendered, "+20 more lines · gi full view")
+}
+
+func TestDescriptionPreview_FocusedCapIsHalfAShortScreen(t *testing.T) {
+	p := longDescriptionProject()
+	p.Categories[0].Tasks[0].Description = numberedLines(30)
+	m := newTestModel(t, p)
+	m.ui.Screen.Height = 14
+	focusDescription(t, m)
+
+	item := findDescriptionItem(t, m.buildLayout(), 0, 0)
+	want := m.availableHeight() / 2
+	require.Less(t, want, maxFocusedDescriptionRows)
+	assert.Equal(t, want+1, item.Height)
+}
+
+func TestDescriptionPreview_WindowFollowsSearchMatch(t *testing.T) {
+	p := longDescriptionProject()
+	p.Categories[0].Tasks[0].Description = numberedLines(30)
+	m := newTestModel(t, p)
+	focusDescription(t, m)
+	item := findDescriptionItem(t, m.buildLayout(), 0, 0)
+
+	m.ui.Search.query = "line15"
+	m.invalidateLayout()
+	searched := findDescriptionItem(t, m.buildLayout(), 0, 0)
+	rendered := ansi.Strip(m.renderLayoutItem(searched))
+
+	assert.Equal(t, item.Height, searched.Height, "the match moves the window, never resizes it")
+	assert.Equal(t, searched.Height, strings.Count(rendered, "\n")+1)
+	assert.Contains(t, rendered, "line15")
+	assert.Contains(t, rendered, "…line14", "the first shown line marks the lines above")
+	assert.NotContains(t, rendered, "line01")
+}
+
+func TestDescriptionPreview_ShortFocusedDescriptionShowsInFull(t *testing.T) {
 	m := newTestModel(t, longDescriptionProject())
 	m.ui.Screen.ExpandDescriptions = true
 	m.rebuildPositions()
@@ -64,7 +131,7 @@ func TestDescriptionPreview_FullWhenCursorOnRow(t *testing.T) {
 
 	layout := m.buildLayout()
 	item := findDescriptionItem(t, layout, 0, 0)
-	assert.Equal(t, 6, item.Height, "focused description lays out at full height")
+	assert.Equal(t, 6, item.Height, "a body under the cap lays out in full")
 
 	rendered := m.renderLayoutItem(item)
 	assert.Contains(t, rendered, "six")

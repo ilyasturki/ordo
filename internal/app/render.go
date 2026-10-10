@@ -192,12 +192,13 @@ func (m model) renderTaskLine(task domain.Task, selected bool, width int, focuse
 	return renderer.Render(task, selected)
 }
 
-func (m model) renderTaskDescription(task domain.Task, selected bool, width int, focused bool, visualMode bool, isCursor bool, cut bool) string {
+func (m model) renderTaskDescription(task domain.Task, descriptionRows int, selected bool, width int, focused bool, visualMode bool, isCursor bool, cut bool) string {
 	cfg := m.deps.CfgManager.Get()
 	renderer := components.NewTaskLineRenderer(width, cfg.StatusDisplay, cfg.PriorityColor, focused).
 		WithVisualMode(visualMode).
 		WithCursor(isCursor).
-		WithCut(cut)
+		WithCut(cut).
+		WithRowLimits(ui.MaxLineRows, descriptionRows)
 	if q := m.searchQuery(); q != "" {
 		renderer = renderer.WithSearch(q, m.searchMatchStyle(selected))
 	}

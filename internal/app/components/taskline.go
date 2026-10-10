@@ -2,7 +2,9 @@ package components
 
 import (
 	"fmt"
+	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -22,15 +24,28 @@ type TaskLineRenderer struct {
 	descriptionExpanded bool
 	searchQuery         string
 	searchMatch         lipgloss.Style
+	titleRows           int
+	descriptionRows     int
 }
+
+// Uncapped as a row limit lets a field take every row it wraps to.
+const Uncapped = 0
 
 func NewTaskLineRenderer(width int, statusDisplay, priorityColor string, focused bool) *TaskLineRenderer {
 	return &TaskLineRenderer{
-		width:         width,
-		statusDisplay: statusDisplay,
-		priorityColor: priorityColor,
-		focused:       focused,
+		width:           width,
+		statusDisplay:   statusDisplay,
+		priorityColor:   priorityColor,
+		focused:         focused,
+		titleRows:       ui.MaxLineRows,
+		descriptionRows: DescriptionPreviewLines,
 	}
+}
+
+// WithRowLimits caps the title and the description block to the given rows.
+func (r *TaskLineRenderer) WithRowLimits(title, description int) *TaskLineRenderer {
+	r.titleRows, r.descriptionRows = title, description
+	return r
 }
 
 func (r *TaskLineRenderer) WithVisualMode(v bool) *TaskLineRenderer {
@@ -142,15 +157,18 @@ func wrapDescriptionLines(description string, available int) []string {
 	return lines
 }
 
-// truncateDescriptionLines applies the preview rule: unless full is set, at
-// most DescriptionPreviewLines lines are shown — but only when that saves at
-// least one row, since the "… +N more lines" tail takes a row of its own.
-// Returns the visible lines and how many were hidden (0 = shown in full).
-func truncateDescriptionLines(lines []string, full bool) ([]string, int) {
-	if full || len(lines) <= DescriptionPreviewLines+1 {
-		return lines, 0
+// descriptionWindow is the span [start, end) of lines a block capped to maxRows
+// shows. It caps only when that saves a row, since the "… +N more lines" tail
+// takes one of its own. focus is a line the window must contain, or -1.
+func descriptionWindow(lines []string, maxRows, focus int) (int, int) {
+	if maxRows == Uncapped || len(lines) <= maxRows+1 {
+		return 0, len(lines)
 	}
-	return lines[:DescriptionPreviewLines], len(lines) - DescriptionPreviewLines
+	start := 0
+	if focus >= maxRows {
+		start = min(focus-1, len(lines)-maxRows)
+	}
+	return start, start + maxRows
 }
 
 // descriptionAvailable returns the content columns left for description text
@@ -163,17 +181,18 @@ func descriptionAvailable(width, indent int) int {
 	return available
 }
 
-// DescriptionHeight returns the rows a description block occupies at the given
-// title-column indent and total width, honoring the preview rule. It is the
+// DescriptionHeight returns the rows a description block capped to maxRows
+// occupies at the given title-column indent and total width. It is the
 // layout-side mirror of RenderDescription: both derive their lines from
-// wrapDescriptionLines/truncateDescriptionLines so the counted height always
-// matches the rendered height.
-func DescriptionHeight(description string, width, indent int, full bool) int {
-	shown, hidden := truncateDescriptionLines(wrapDescriptionLines(description, descriptionAvailable(width, indent)), full)
-	if hidden > 0 {
-		return len(shown) + 1
+// wrapDescriptionLines/descriptionWindow, and the window's size does not depend
+// on where a search match moves it.
+func DescriptionHeight(description string, width, indent, maxRows int) int {
+	lines := wrapDescriptionLines(description, descriptionAvailable(width, indent))
+	start, end := descriptionWindow(lines, maxRows, -1)
+	if end-start < len(lines) {
+		return end - start + 1
 	}
-	return len(shown)
+	return len(lines)
 }
 
 // RenderDescription renders a task description as a standalone, focusable block
@@ -203,16 +222,49 @@ func (r *TaskLineRenderer) RenderDescription(task domain.Task, indent int, selec
 	// paragraph tails produce a ragged selection band.
 	shouldPad := selected && r.width > 0
 
-	shown, hidden := truncateDescriptionLines(wrapDescriptionLines(description, available), r.isCursor)
+	lines := wrapDescriptionLines(description, available)
+	start, end := descriptionWindow(lines, r.descriptionRows, r.firstMatchLine(lines))
+	shown := slices.Clone(lines[start:end])
+	if start > 0 {
+		if available > 0 {
+			shown[0] = ansi.Truncate(shown[0], available-1, "")
+		}
+		shown[0] = ui.Ellipsis + shown[0]
+	}
 	out := make([]string, 0, len(shown)+1)
 	for _, l := range shown {
 		out = append(out, r.styleDescriptionLine(indentStr, l, textStyle, barStyle, selected, shouldPad))
 	}
-	if hidden > 0 {
+	if hidden := len(lines) - len(shown); hidden > 0 {
 		tail := fmt.Sprintf("… +%d more lines", hidden)
-		out = append(out, r.styleDescriptionLine(indentStr, tail, tailStyle, barStyle, selected, shouldPad))
+		if r.isCursor {
+			tail += " · gi full view"
+		}
+		out = append(out, r.styleDescriptionLine(indentStr, fitWidth(tail, available), tailStyle, barStyle, selected, shouldPad))
 	}
 	return strings.Join(out, "\n")
+}
+
+// firstMatchLine is the index of the first line holding a search match, or -1.
+func (r *TaskLineRenderer) firstMatchLine(lines []string) int {
+	if r.searchQuery == "" {
+		return -1
+	}
+	for i, l := range lines {
+		if ui.FirstMatchIndex(l, r.searchQuery) >= 0 {
+			return i
+		}
+	}
+	return -1
+}
+
+// fitWidth truncates s to width columns; width <= 0 means no wrapping, so no
+// limit.
+func fitWidth(s string, width int) string {
+	if width <= 0 {
+		return s
+	}
+	return ansi.Truncate(s, width, "")
 }
 
 func (r *TaskLineRenderer) styleDescriptionLine(indentStr, text string, textStyle, barStyle lipgloss.Style, selected, shouldPad bool) string {
@@ -349,7 +401,14 @@ func (r *TaskLineRenderer) TitleRows(task domain.Task) int {
 	if r.width <= 0 {
 		return 1
 	}
-	return ui.CountClamped(task.Title, r.titleWidth(task), ui.MaxLineRows)
+	return ui.CountClamped(task.Title, r.titleWidth(task), r.maxTitleRows(task.Title))
+}
+
+func (r *TaskLineRenderer) maxTitleRows(title string) int {
+	if r.titleRows == Uncapped {
+		return utf8.RuneCountInString(title) + 1 // every row holds a rune at least
+	}
+	return r.titleRows
 }
 
 // wrapContentWithSuffix lays the title out behind prefixPart, continuation rows
@@ -412,7 +471,7 @@ func statusIcon(status string) string {
 // clampTitle wraps a title into the rows a list row may occupy, with the window
 // aimed at the search match so a hit past the cap is still visible.
 func (r *TaskLineRenderer) clampTitle(title string, available int) []string {
-	return ui.WrapClamped(title, available, ui.MaxLineRows, ui.FirstMatchIndex(title, r.searchQuery))
+	return ui.WrapClamped(title, available, r.maxTitleRows(title), ui.FirstMatchIndex(title, r.searchQuery))
 }
 
 func safeWidth(totalWidth, overhead int) int {
