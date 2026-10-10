@@ -104,7 +104,7 @@ func TestUndo_MoveCategoryDown(t *testing.T) {
 func TestUndo_PasteCopy(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	src := m.project.Categories[0].Tasks[0]
-	m.ui.Clipboard = ClipboardState{Task: &src, IsCut: false}
+	m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{src}, TaskIDs: []string{src.ID}}
 	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
 		return p.Kind == selection.FocusTask && p.CategoryIndex == 1 && p.TaskIndex == 0
 	})
@@ -390,11 +390,11 @@ func TestUndo_DeleteThenPasteDoesNotDuplicate(t *testing.T) {
 	m.ui.Selection.MoveTo(2) // t1
 	m.deleteTask(selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0})
 	require.Len(t, m.project.Categories[0].Tasks, 2)
-	require.NotNil(t, m.ui.Clipboard.Task, "delete stages the task in clipboard")
+	require.NotEmpty(t, m.ui.Clipboard.Tasks, "delete stages the task in clipboard")
 
 	m.undo()
 	require.Len(t, m.project.Categories[0].Tasks, 3, "task is restored by undo")
-	assert.Nil(t, m.ui.Clipboard.Task,
+	assert.Empty(t, m.ui.Clipboard.Tasks,
 		"clipboard must be restored to its pre-delete state (nil) by undo, "+
 			"otherwise paste would duplicate the just-restored task")
 
@@ -417,7 +417,7 @@ func TestPaste_FocusDescriptionTargetsParentTaskCategory(t *testing.T) {
 	}), "expected to land on the description row")
 
 	src := m.project.Categories[0].Tasks[0]
-	m.ui.Clipboard = ClipboardState{Task: &src, IsCut: false}
+	m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{src}, TaskIDs: []string{src.ID}}
 	m.pasteFromClipboard()
 
 	// The new task must be inserted in c2 right after t4 — not in c1 at index 0.

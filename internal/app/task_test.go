@@ -270,9 +270,9 @@ func TestCutSelectedTask_PopulatesClipboardAndSetsStatus(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(2) // t1
 	m.cutSelectedTask()
-	require.NotNil(t, m.ui.Clipboard.Task)
+	require.Len(t, m.ui.Clipboard.Tasks, 1)
 	assert.True(t, m.ui.Clipboard.IsCut)
-	assert.Equal(t, "t1", m.ui.Clipboard.SourceID)
+	assert.Equal(t, []string{"t1"}, m.ui.Clipboard.TaskIDs)
 	assert.Contains(t, m.ui.Screen.StatusMsg, "Marked for cut")
 }
 
@@ -280,7 +280,7 @@ func TestCutSelectedTask_RejectsCategory(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(1) // Cat A header
 	m.cutSelectedTask()
-	assert.Nil(t, m.ui.Clipboard.Task)
+	assert.Empty(t, m.ui.Clipboard.Tasks)
 	assert.Equal(t, "Can only cut tasks", m.ui.Screen.StatusMsg)
 }
 
@@ -302,7 +302,7 @@ func TestPasteTask_AfterCut_MovesTaskToTarget(t *testing.T) {
 	assert.Equal(t, "Delta", m.project.Categories[1].Tasks[0].Title)
 	assert.Equal(t, "Alpha", m.project.Categories[1].Tasks[1].Title)
 	// Clipboard cleared, status updated
-	assert.Nil(t, m.ui.Clipboard.Task)
+	assert.Empty(t, m.ui.Clipboard.Tasks)
 	assert.Equal(t, "Moved!", m.ui.Screen.StatusMsg)
 }
 
@@ -310,7 +310,7 @@ func TestPasteTask_AfterCopy_KeepsOriginal(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	// Simulate a copied (not cut) task via clipboard.
 	src := m.project.Categories[0].Tasks[0]
-	m.ui.Clipboard = ClipboardState{Task: &src, IsCut: false}
+	m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{src}, TaskIDs: []string{src.ID}}
 	// Paste onto t4 in Cat B
 	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
 		return p.Kind == selection.FocusTask && p.CategoryIndex == 1 && p.TaskIndex == 0
@@ -358,8 +358,8 @@ func TestDeleteTask_RemovesAndCopiesToClipboard(t *testing.T) {
 	m.ui.Selection.MoveTo(2)
 	m.deleteTask(pos)
 	assert.Len(t, m.project.Categories[0].Tasks, 2)
-	require.NotNil(t, m.ui.Clipboard.Task)
-	assert.Equal(t, "Alpha", m.ui.Clipboard.Task.Title)
+	require.Len(t, m.ui.Clipboard.Tasks, 1)
+	assert.Equal(t, "Alpha", m.ui.Clipboard.Tasks[0].Title)
 	assert.False(t, m.ui.Clipboard.IsCut)
 }
 
@@ -452,7 +452,7 @@ func TestEscCancelsPendingCut(t *testing.T) {
 
 	m.dispatchNormalKey("esc")
 	assert.False(t, m.ui.Clipboard.IsCut)
-	assert.Nil(t, m.ui.Clipboard.Task)
+	assert.Empty(t, m.ui.Clipboard.Tasks)
 	assert.False(t, m.isTaskCut("t1"))
 	assert.Equal(t, "Cut cancelled", m.ui.Screen.StatusMsg)
 }
@@ -461,10 +461,10 @@ func TestEscKeepsCopiedTaskOnClipboard(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(2) // t1
 	m.copySelected()
-	require.NotNil(t, m.ui.Clipboard.Task)
+	require.Len(t, m.ui.Clipboard.Tasks, 1)
 
 	m.dispatchNormalKey("esc")
-	assert.NotNil(t, m.ui.Clipboard.Task, "a plain copy survives esc — nothing on screen marks it")
+	assert.NotEmpty(t, m.ui.Clipboard.Tasks, "a plain copy survives esc — nothing on screen marks it")
 }
 
 func TestEscClearsSearchBeforeCut(t *testing.T) {

@@ -56,10 +56,6 @@ func cloneProject(p domain.Project) domain.Project {
 
 func cloneClipboard(c ClipboardState) ClipboardState {
 	out := c
-	if c.Task != nil {
-		t := *c.Task
-		out.Task = &t
-	}
 	if len(c.Tasks) > 0 {
 		out.Tasks = make([]domain.Task, len(c.Tasks))
 		copy(out.Tasks, c.Tasks)

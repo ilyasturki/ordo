@@ -589,12 +589,8 @@ func (m *model) copySelected() tea.Cmd {
 	// A task copy also stashes the whole task for paste; other kinds (category,
 	// description, separator) only put text on the system clipboard.
 	if pos.Kind == selection.FocusTask {
-		taskCopy := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-		m.ui.Clipboard = ClipboardState{
-			Task:     &taskCopy,
-			IsCut:    false,
-			SourceID: "",
-		}
+		task := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
+		m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{task}, TaskIDs: []string{task.ID}}
 		m.ui.TagCopiedLast = false
 	}
 	return copyToClipboard(m.copyTextForPosition(pos), "")

@@ -68,7 +68,7 @@ func TestCopySelected_CopiesDescriptionBody(t *testing.T) {
 
 	// A description copy is text-only: it must not stash a paste-able task.
 	m.copySelected()
-	assert.Nil(t, m.ui.Clipboard.Task)
+	assert.Empty(t, m.ui.Clipboard.Tasks)
 }
 
 // A copy that only reached the terminal via OSC 52 is unverifiable — the escape

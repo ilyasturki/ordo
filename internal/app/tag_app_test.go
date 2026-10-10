@@ -205,7 +205,7 @@ func TestPaste_MovesTaskWhenCutIsFreshest(t *testing.T) {
 
 	// p took the task-move path, which consumes the clipboard, rather than
 	// painting t1's tag onto t3.
-	assert.Nil(t, m.ui.Clipboard.Task, "p should paste the cut task, not the tag")
+	assert.Empty(t, m.ui.Clipboard.Tasks, "p should paste the cut task, not the tag")
 	assert.Equal(t, "", m.project.Categories[0].Tasks[2].TagLabel, "t3 tag untouched")
 }
 

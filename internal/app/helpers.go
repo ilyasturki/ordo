@@ -59,9 +59,6 @@ func (m model) isTaskCut(taskID string) bool {
 	if !m.ui.Clipboard.IsCut || taskID == "" {
 		return false
 	}
-	if m.ui.Clipboard.SourceID == taskID {
-		return true
-	}
 	for _, id := range m.ui.Clipboard.TaskIDs {
 		if id == taskID {
 			return true

@@ -297,7 +297,7 @@ func (m *model) cutKey() string {
 	if !c.IsCut {
 		return ""
 	}
-	return c.SourceID + "|" + strings.Join(c.TaskIDs, ",") + "|" + strings.Join(c.CategoryIDs, ",")
+	return strings.Join(c.TaskIDs, ",") + "|" + strings.Join(c.CategoryIDs, ",")
 }
 
 // editOverlay is the row an editor is open on and the rows its live buffer

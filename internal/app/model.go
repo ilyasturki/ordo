@@ -24,10 +24,10 @@ type DescriptionEditState struct {
 	cursorRow *int
 }
 
+// ClipboardState holds either task-level rows (tasks and separators) or whole
+// categories. A cut moves the live rows its IDs name, not the snapshots.
 type ClipboardState struct {
-	Task     *domain.Task
-	IsCut    bool
-	SourceID string
+	IsCut bool
 
 	Tasks       []domain.Task
 	TaskIDs     []string
