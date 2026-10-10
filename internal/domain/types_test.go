@@ -485,6 +485,40 @@ func TestTask_CycleTag(t *testing.T) {
 	})
 }
 
+func TestFreeTagColor(t *testing.T) {
+	open := func(color, status string) Task { return Task{TagColor: color, Status: status} }
+
+	t.Run("empty category takes the first mark", func(t *testing.T) {
+		assert.Equal(t, TagGreen, FreeTagColor(nil))
+	})
+
+	t.Run("skips marks open tasks use", func(t *testing.T) {
+		tasks := []Task{open(TagGreen, StatusTodo), open(TagBlue, StatusInProgress), open("", StatusTodo)}
+		assert.Equal(t, TagMagenta, FreeTagColor(tasks))
+	})
+
+	t.Run("finished tasks free their mark", func(t *testing.T) {
+		tasks := []Task{open(TagGreen, StatusCompleted), open(TagBlue, StatusCancelled)}
+		assert.Equal(t, TagGreen, FreeTagColor(tasks))
+	})
+
+	t.Run("ignores separators", func(t *testing.T) {
+		tasks := []Task{{Kind: KindSeparator, TagColor: TagGreen}}
+		assert.Equal(t, TagGreen, FreeTagColor(tasks))
+	})
+
+	t.Run("all marks taken picks the least used", func(t *testing.T) {
+		var tasks []Task
+		for _, c := range TagColorCycle {
+			tasks = append(tasks, open(c, StatusTodo), open(c, StatusTodo))
+		}
+		tasks = tasks[1:] // green now has one open task, the rest two
+		assert.Equal(t, TagGreen, FreeTagColor(tasks))
+		tasks = append(tasks, open(TagGreen, StatusTodo), open(TagGreen, StatusTodo))
+		assert.Equal(t, TagBlue, FreeTagColor(tasks))
+	})
+}
+
 func TestNextTagColor(t *testing.T) {
 	assert.Equal(t, TagGreen, NextTagColor(""))
 	assert.Equal(t, TagBlue, NextTagColor(TagGreen))

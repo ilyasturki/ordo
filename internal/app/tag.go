@@ -18,13 +18,20 @@ var tagEditColors = append([]string{""}, domain.TagColorCycle...)
 
 // TagEditState backs the `T` tag picker. taskIDs holds every task the edit
 // applies to — one for a single task, many for a visual-mode bulk edit — so it
-// survives any position shift while open.
+// survives any position shift while open. batchIDs, when set, are the tasks of
+// the category that share the edited task's mark; batch applies the pick to all
+// of them.
 type TagEditState struct {
-	taskIDs  []string
-	colorIdx int
+	taskIDs    []string
+	colorIdx   int
+	batchIDs   []string
+	batchColor string
+	batchCat   string
+	batch      bool
 }
 
-// cycleTag advances the selected task's tag color one step through the palette.
+// cycleTag gives an untagged task the category's first free mark and steps a
+// tagged one through the palette.
 func (m *model) cycleTag() {
 	if !m.ui.Modes.CanPerformAction(modes.ActionChangeTag) {
 		return
@@ -33,17 +40,19 @@ func (m *model) cycleTag() {
 	if !ok || position.Kind != selection.FocusTask {
 		return
 	}
-	task := &m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
+	cat := &m.project.Categories[position.CategoryIndex]
+	task := &cat.Tasks[position.TaskIndex]
 	m.recordHistory()
-	if task.CycleTag() {
-		m.storeTaskUpdate()
-		return
+	if task.TagColor == "" {
+		_ = task.SetTagColor(domain.FreeTagColor(cat.Tasks))
+	} else {
+		task.CycleTag()
 	}
-	m.discardLastHistory()
+	m.storeTaskUpdate()
 }
 
 // startTagEdit opens the tag picker for the selected task, seeded with its
-// current color.
+// current color, and offers the batch of tasks sharing its mark.
 func (m *model) startTagEdit() {
 	if !m.ui.Modes.CanPerformAction(modes.ActionChangeTag) {
 		return
@@ -52,8 +61,23 @@ func (m *model) startTagEdit() {
 	if !ok || position.Kind != selection.FocusTask {
 		return
 	}
-	task := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
+	cat := m.project.Categories[position.CategoryIndex]
+	task := cat.Tasks[position.TaskIndex]
 	m.beginTagEdit([]string{task.ID}, task.TagColor)
+	if task.TagColor == "" {
+		return
+	}
+	var batch []string
+	for _, t := range cat.Tasks {
+		if !t.IsSeparator() && t.TagColor == task.TagColor {
+			batch = append(batch, t.ID)
+		}
+	}
+	if len(batch) > 1 {
+		m.ui.TagEdit.batchIDs = batch
+		m.ui.TagEdit.batchColor = task.TagColor
+		m.ui.TagEdit.batchCat = cat.Name
+	}
 }
 
 // beginTagEdit opens the picker over the given tasks. Callers must already be
@@ -84,6 +108,8 @@ func (m *model) handleTagEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if s.colorIdx > 0 {
 			s.colorIdx--
 		}
+	case "space":
+		s.batch = len(s.batchIDs) > 0 && !s.batch
 	}
 	return m, nil
 }
@@ -102,10 +128,14 @@ func (m *model) finishTagEdit() {
 	if len(s.taskIDs) == 0 {
 		return
 	}
+	ids := s.taskIDs
+	if s.batch {
+		ids = s.batchIDs
+	}
 
 	m.recordHistory()
 	changed := 0
-	for _, id := range s.taskIDs {
+	for _, id := range ids {
 		task := m.taskByID(id)
 		if task == nil || task.TagColor == color {
 			continue
@@ -123,7 +153,7 @@ func (m *model) finishTagEdit() {
 	m.rebuildPositions()
 	m.selectTaskByID(s.taskIDs[0])
 	m.ensureVisible()
-	if len(s.taskIDs) > 1 {
+	if len(ids) > 1 {
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Tagged %d task(s)", changed)
 	}
 }
@@ -151,10 +181,18 @@ func (m model) tagEditView() string {
 		lines = append(lines, marker+swatch)
 	}
 
-	lines = append(lines, "", ui.RenderHints([]ui.Hint{
-		{Key: "enter", Label: "save"},
-		{Key: "esc", Label: "cancel"},
-	}))
+	hints := []ui.Hint{{Key: "enter", Label: "save"}, {Key: "esc", Label: "cancel"}}
+	if n := len(s.batchIDs); n > 0 {
+		box := "[ ]"
+		if s.batch {
+			box = "[x]"
+		}
+		style, _ := ui.TagDotStyle(s.batchColor, false)
+		lines = append(lines, "", fmt.Sprintf("  %s all %d tasks marked %s in %s",
+			box, n, style.Render(ui.TagGlyph(s.batchColor)), truncateText(s.batchCat, 30)))
+		hints = append([]ui.Hint{{Key: "space", Label: "whole batch"}}, hints...)
+	}
+	lines = append(lines, "", ui.RenderHints(hints))
 	return m.dialogStyle().Render(strings.Join(lines, "\n"))
 }
 
@@ -270,9 +308,10 @@ func tagClipDescription(clip TagClipboard) string {
 	return tagColorName(clip.Color)
 }
 
-// visualCycleTag sets every task in the visual selection to a single shared next
-// color, stepped from the first selected task so repeated presses walk the whole
-// block through the palette together. Stays in visual mode.
+// visualCycleTag gives the whole selection one shared mark, stepped from the
+// first selected task so repeated presses walk the block through the palette
+// together. When that task is untagged the block gets the first mark no open
+// task outside it uses in its categories. Stays in visual mode.
 func (m *model) visualCycleTag() {
 	if m.ui.Visual.Kind != selection.FocusTask {
 		return
@@ -283,11 +322,34 @@ func (m *model) visualCycleTag() {
 	}
 	first := m.project.Categories[selPositions[0].CategoryIndex].Tasks[selPositions[0].TaskIndex]
 	next := domain.NextTagColor(first.TagColor)
+	if first.TagColor == "" {
+		next = domain.FreeTagColor(m.tasksAroundSelection(selPositions))
+	}
 	m.recordHistory()
 	for _, pos := range selPositions {
 		_ = m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].SetTagColor(next)
 	}
 	m.storeTaskUpdate()
+}
+
+// tasksAroundSelection lists the tasks of every category the selection touches,
+// minus the selected ones.
+func (m *model) tasksAroundSelection(sel []selection.Position) []domain.Task {
+	selected := make(map[[2]int]bool, len(sel))
+	cats := make(map[int]bool)
+	for _, p := range sel {
+		selected[[2]int{p.CategoryIndex, p.TaskIndex}] = true
+		cats[p.CategoryIndex] = true
+	}
+	var out []domain.Task
+	for ci := range cats {
+		for ti, t := range m.project.Categories[ci].Tasks {
+			if !selected[[2]int{ci, ti}] {
+				out = append(out, t)
+			}
+		}
+	}
+	return out
 }
 
 // visualStartTagEdit collects the selected task IDs, leaves visual mode (a modal

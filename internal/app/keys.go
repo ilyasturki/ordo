@@ -110,7 +110,7 @@ var normalBindings = []keyBinding{
 		action: void((*model).decreasePriority)},
 	{keys: []string{"l"}, section: sectionTasks,
 		action: void((*model).increasePriority)},
-	{keys: []string{"t"}, display: "t / T", desc: "cycle tag / edit tag", section: sectionTasks,
+	{keys: []string{"t"}, display: "t / T", desc: "free tag, then cycle / pick tag", section: sectionTasks,
 		action: void((*model).cycleTag)},
 	{keys: []string{"T"}, section: sectionTasks,
 		action: void((*model).startTagEdit)},

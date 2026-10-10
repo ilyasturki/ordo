@@ -426,6 +426,29 @@ func NextTagColor(color string) string {
 	return "" // last color, or any unrecognized value, wraps to no tag
 }
 
+// FreeTagColor picks a mark for a new batch among tasks: the first mark in
+// TagColorCycle that no open (todo or in progress) task uses, or, when every
+// mark is taken, the one the fewest open tasks use.
+func FreeTagColor(tasks []Task) string {
+	open := make(map[string]int)
+	for _, t := range tasks {
+		if !t.IsSeparator() && t.TagColor != "" &&
+			(t.Status == StatusTodo || t.Status == StatusInProgress) {
+			open[t.TagColor]++
+		}
+	}
+	best := TagColorCycle[0]
+	for _, c := range TagColorCycle {
+		if open[c] < open[best] {
+			best = c
+		}
+		if open[c] == 0 {
+			return c
+		}
+	}
+	return best
+}
+
 // CycleTag advances the tag one step through the palette, wrapping through none.
 // Always reports a change.
 func (t *Task) CycleTag() bool {
