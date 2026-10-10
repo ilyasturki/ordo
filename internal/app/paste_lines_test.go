@@ -19,6 +19,10 @@ func sep(label string) pastedRow {
 	return pastedRow{title: label, separator: true}
 }
 
+func subtask(title, status string) pastedRow {
+	return pastedRow{title: title, status: status, subtask: true}
+}
+
 func TestParsePastedRows(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -59,10 +63,21 @@ func TestParsePastedRows(t *testing.T) {
 			task("auth", domain.StatusCompleted),
 			sep(""),
 		}},
-		{"indented list items stay rows of their own", "- parent\n  - child\n    - grandchild", []pastedRow{
+		{"indented list items under a task are its subtasks, however deep", "- parent\n  - child\n    - grandchild\n- next", []pastedRow{
 			task("parent", domain.StatusTodo),
-			task("child", domain.StatusTodo),
-			task("grandchild", domain.StatusTodo),
+			subtask("child", domain.StatusTodo),
+			subtask("grandchild", domain.StatusTodo),
+			task("next", domain.StatusTodo),
+		}},
+		{"a separator ends the task subtasks join", "- a\n## Group\n  - b", []pastedRow{
+			task("a", domain.StatusTodo),
+			sep("Group"),
+			task("b", domain.StatusTodo),
+		}},
+		{"a subtask takes a description", "- a\n  - b\n      about b\n  - c", []pastedRow{
+			task("a", domain.StatusTodo),
+			{title: "b", status: domain.StatusTodo, subtask: true, description: "about b"},
+			subtask("c", domain.StatusTodo),
 		}},
 		{"indented lines under a task are its description", "- [x] parent\n    first\n\n      deeper\n    ---\n\n- next", []pastedRow{
 			{title: "parent", status: domain.StatusCompleted, description: "first\n\n  deeper\n---"},
@@ -82,7 +97,7 @@ func TestParsePastedRows(t *testing.T) {
 		}},
 		{"an indented list item after a description ends it", "- a\n  about a\n  - b", []pastedRow{
 			{title: "a", status: domain.StatusTodo, description: "about a"},
-			task("b", domain.StatusTodo),
+			subtask("b", domain.StatusTodo),
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -101,11 +116,11 @@ func TestParsePastedRows_TheAppsOwnCopiesComeBackWhole(t *testing.T) {
 	assert.Equal(t, []pastedRow{
 		sep("Sprint"),
 		{title: "Write handlers", status: domain.StatusInProgress, description: "GET and PUT"},
-		task("one list item", domain.StatusTodo),
+		subtask("one list item", domain.StatusTodo),
 		sep("Later"),
 		{title: "Ship", status: domain.StatusTodo, description: "on friday\n---\nafter review"},
-	}, parsePastedRows(export.ExportCategoryMarkdown(cat)),
-		"Y: descriptions fold back, a list inside one still splits off")
+	}, parsePastedRows(export.CategoryMarkdown(domain.Project{Categories: []domain.Category{cat}}, 0)),
+		"Y: descriptions fold back, a list inside one splits off as subtasks")
 
 	m := newTestModelWithDescription(t)
 	require.True(t, m.selectTaskIdx(0, 0))

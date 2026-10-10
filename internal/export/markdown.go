@@ -14,6 +14,9 @@ var (
 	projectHeaderRe  = regexp.MustCompile(`^#\s+(.+)$`)
 	categoryHeaderRe = regexp.MustCompile(`^##\s+(.+)$`)
 	taskLineRe       = regexp.MustCompile(`^-\s+\[([ x\-~])\]\s+(.+)$`)
+	// A subtask sits under its parent's line, indented less than a
+	// description so the two never mix.
+	subtaskLineRe    = regexp.MustCompile(`^ {1,3}-\s+\[([ x\-~])\]\s+(.+)$`)
 	prioritySuffixRe = regexp.MustCompile(`\s+\((critical|high|medium|low|trivial)\)\s*$`)
 	// A labeled separator is a level-3 heading (### label); a bare one is a
 	// thematic break (--- or longer). Neither collides with the project (#) or
@@ -48,22 +51,41 @@ func markerToStatus(marker string) string {
 	}
 }
 
-const descriptionIndent = "    "
+const (
+	descriptionIndent = "    "
+	subtaskIndent     = "  "
+)
 
-func ExportCategoryMarkdown(cat domain.Category) string {
+// CategoryMarkdown renders the category at i, then its sub-categories, each
+// under a heading that carries its path.
+func CategoryMarkdown(project domain.Project, i int) string {
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "## %s\n\n", cat.Name)
+	for c := i; c < domain.BlockEnd(project.Categories, i); c++ {
+		if c > i {
+			sb.WriteByte('\n')
+		}
+		writeCategory(&sb, project.CategoryPath(c), project.Categories[c])
+	}
+	return sb.String()
+}
+
+func writeCategory(sb *strings.Builder, heading string, cat domain.Category) {
+	fmt.Fprintf(sb, "## %s\n\n", heading)
 	for _, task := range cat.Tasks {
 		if task.IsSeparator() {
 			if label := strings.TrimSpace(task.Title); label != "" {
-				fmt.Fprintf(&sb, "### %s\n", label)
+				fmt.Fprintf(sb, "### %s\n", label)
 			} else {
 				sb.WriteString("---\n")
 			}
 			continue
 		}
+		indent := ""
+		if task.ParentID != "" {
+			indent = subtaskIndent
+		}
 		marker := statusToMarker(task.Status)
-		line := fmt.Sprintf("- [%s] %s", marker, task.Title)
+		line := fmt.Sprintf("%s- [%s] %s", indent, marker, task.Title)
 		if task.Priority != "" {
 			line += fmt.Sprintf(" (%s)", task.Priority)
 		}
@@ -75,21 +97,20 @@ func ExportCategoryMarkdown(cat domain.Category) string {
 					sb.WriteByte('\n')
 					continue
 				}
-				sb.WriteString(descriptionIndent)
+				sb.WriteString(indent + descriptionIndent)
 				sb.WriteString(dline)
 				sb.WriteByte('\n')
 			}
 		}
 	}
-	return sb.String()
 }
 
 func ExportMarkdown(project domain.Project, w io.Writer) error {
 	if _, err := fmt.Fprintf(w, "# %s\n", project.Name); err != nil {
 		return err
 	}
-	for _, cat := range project.Categories {
-		if _, err := fmt.Fprintf(w, "\n%s", ExportCategoryMarkdown(cat)); err != nil {
+	for i := 0; i < len(project.Categories); i = domain.BlockEnd(project.Categories, i) {
+		if _, err := fmt.Fprintf(w, "\n%s", CategoryMarkdown(project, i)); err != nil {
 			return err
 		}
 	}
@@ -154,7 +175,13 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 			continue
 		}
 
-		if m := taskLineRe.FindStringSubmatch(line); m != nil && currentCategory != nil {
+		m := taskLineRe.FindStringSubmatch(line)
+		sub := false
+		if m == nil && currentCategory != nil {
+			m = subtaskLineRe.FindStringSubmatch(line)
+			sub = currentCategory.hasParent()
+		}
+		if m != nil && currentCategory != nil {
 			flushDescription()
 			marker := m[1]
 			title := strings.TrimSpace(m[2])
@@ -167,6 +194,7 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 				title:    title,
 				status:   markerToStatus(marker),
 				priority: priority,
+				subtask:  sub,
 			})
 			currentTask = &currentCategory.tasks[len(currentCategory.tasks)-1]
 			continue
@@ -182,7 +210,7 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 					descBuf = append(descBuf, "")
 				}
 				pendingBlanks = 0
-				descBuf = append(descBuf, strings.TrimLeft(line, " \t"))
+				descBuf = append(descBuf, dedentDescription(line, currentTask.subtask))
 				continue
 			}
 			flushDescription()
@@ -211,17 +239,18 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 
 	for _, cd := range categories {
 		// A repeated heading continues the category it names.
+		parentID, name := headingParent(project, cd.name)
 		var cat *domain.Category
-		if i := domain.CategoryNameConflict(project.Categories, "", cd.name, -1); i >= 0 {
+		if i := domain.CategoryNameConflict(project.Categories, parentID, name, -1); i >= 0 {
 			cat = &project.Categories[i]
 		} else {
-			fresh, err := domain.NewCategory(cd.name)
+			fresh, err := project.AddCategoryUnder(parentID, name)
 			if err != nil {
 				return domain.Project{}, err
 			}
-			project.Categories = append(project.Categories, fresh)
-			cat = &project.Categories[len(project.Categories)-1]
+			cat = fresh
 		}
+		parentTask := ""
 		for _, td := range cd.tasks {
 			if td.kind == domain.KindSeparator {
 				sep, err := domain.NewSeparator()
@@ -230,6 +259,7 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 				}
 				sep.Title = td.title
 				cat.Tasks = append(cat.Tasks, sep)
+				parentTask = ""
 				continue
 			}
 			task, err := domain.NewTask(td.title)
@@ -245,6 +275,11 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 				}
 			}
 			task.Description = td.description
+			if td.subtask && parentTask != "" {
+				task.ParentID = parentTask
+			} else {
+				parentTask = task.ID
+			}
 			cat.Tasks = append(cat.Tasks, task)
 		}
 	}
@@ -252,9 +287,41 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 	return project, nil
 }
 
+// headingParent reads a category heading: "parent / name" makes name a
+// sub-category of a top-level category already in project, and anything else
+// names a top-level category.
+func headingParent(project domain.Project, heading string) (parentID, name string) {
+	for _, split := range domain.SplitCategoryPath(heading) {
+		if i := domain.CategoryNameConflict(project.Categories, "", split[0], -1); i >= 0 {
+			return project.Categories[i].ID, split[1]
+		}
+	}
+	return "", heading
+}
+
+// dedentDescription strips the indent the export puts before a description
+// line, keeping any indent of the line's own; a line indented less loses all
+// of it.
+func dedentDescription(line string, subtask bool) string {
+	indent := descriptionIndent
+	if subtask {
+		indent = subtaskIndent + descriptionIndent
+	}
+	if rest, ok := strings.CutPrefix(line, indent); ok {
+		return rest
+	}
+	return strings.TrimLeft(line, " \t")
+}
+
 type categoryData struct {
 	name  string
 	tasks []taskData
+}
+
+// hasParent reports whether a subtask line read now has a task to belong to;
+// one without stays a task of its own.
+func (c *categoryData) hasParent() bool {
+	return len(c.tasks) > 0 && c.tasks[len(c.tasks)-1].kind != domain.KindSeparator
 }
 
 type taskData struct {
@@ -263,4 +330,5 @@ type taskData struct {
 	priority    string
 	description string
 	kind        string
+	subtask     bool
 }

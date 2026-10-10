@@ -646,7 +646,7 @@ func (m *model) copyCategoryContent() tea.Cmd {
 	if !ok || pos.Kind == selection.FocusProject {
 		return nil
 	}
-	return m.copyToClipboard(export.ExportCategoryMarkdown(m.project.Categories[pos.CategoryIndex]), "")
+	return m.copyToClipboard(export.CategoryMarkdown(m.project, pos.CategoryIndex), "")
 }
 
 func (m model) View() tea.View {

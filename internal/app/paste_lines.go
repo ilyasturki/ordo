@@ -15,11 +15,13 @@ import (
 	"phasionary/internal/domain"
 )
 
-// A separator with an empty title renders as a bare rule.
+// A separator with an empty title renders as a bare rule. A subtask belongs
+// to the nearest row above it that isn't one.
 type pastedRow struct {
 	title       string
 	status      string
 	separator   bool
+	subtask     bool
 	description string
 }
 
@@ -44,7 +46,8 @@ func indentOf(line string) int {
 	return len(line) - len(strings.TrimLeft(line, " \t"))
 }
 
-// An indented list item stays a row of its own, never description text.
+// An indented list item stays a row of its own, never description text: under
+// a task it is a subtask, however deep it sits.
 func continuesDescription(line string, parentIndent int) bool {
 	return indentOf(line) > parentIndent && !isListItem(line)
 }
@@ -67,6 +70,9 @@ func parsePastedRows(text string) []pastedRow {
 	var rows []pastedRow
 	var desc []string
 	parentIndent := -1
+	// The indent of the last top-level task, which an item indented past it
+	// is a subtask of; -1 after a separator, which takes none.
+	topIndent := -1
 	flush := func() {
 		if len(desc) > 0 {
 			rows[len(rows)-1].description = dedentLines(desc)
@@ -89,11 +95,13 @@ func parsePastedRows(text string) []pastedRow {
 
 		if rulePattern.MatchString(raw) {
 			rows = append(rows, pastedRow{separator: true})
+			topIndent = -1
 			continue
 		}
 		if m := headingPattern.FindString(raw); m != "" {
 			label := strings.Clone(strings.TrimSpace(raw[len(m):]))
 			rows = append(rows, pastedRow{title: label, separator: true})
+			topIndent = -1
 			continue
 		}
 
@@ -104,10 +112,16 @@ func parsePastedRows(text string) []pastedRow {
 		body = strings.Clone(body)
 		if !marked && hasMarked {
 			rows = append(rows, pastedRow{title: body, separator: true})
+			topIndent = -1
 			continue
 		}
-		rows = append(rows, pastedRow{title: body, status: status})
-		parentIndent = indentOf(raw)
+		indent := indentOf(raw)
+		subtask := topIndent >= 0 && indent > topIndent
+		if !subtask {
+			topIndent = indent
+		}
+		rows = append(rows, pastedRow{title: body, status: status, subtask: subtask})
+		parentIndent = indent
 	}
 	flush()
 	return rows
@@ -169,6 +183,22 @@ func newTaskForRow(row pastedRow) (domain.Task, error) {
 	return task, nil
 }
 
+// linkSubtasks points each subtask among tasks, built row for row from rows,
+// at the task of the nearest row above it that isn't one; parentID stands for
+// the row before the first.
+func linkSubtasks(tasks []domain.Task, rows []pastedRow, parentID string) {
+	for i := range tasks {
+		switch {
+		case rows[i].subtask:
+			tasks[i].ParentID = parentID
+		case rows[i].separator:
+			parentID = ""
+		default:
+			parentID = tasks[i].ID
+		}
+	}
+}
+
 func appendDescription(existing, text string) string {
 	existing = strings.TrimRight(existing, "\n")
 	if existing == "" || text == "" {
@@ -178,21 +208,26 @@ func appendDescription(existing, text string) string {
 }
 
 func describeRows(rows []pastedRow, withDescriptions bool) string {
-	tasks, seps, descs := 0, 0, 0
+	tasks, subtasks, seps, descs := 0, 0, 0, 0
 	for _, r := range rows {
 		switch {
 		case r.separator:
 			seps++
-		case r.description != "":
-			descs++
-			tasks++
+		case r.subtask:
+			subtasks++
 		default:
 			tasks++
+		}
+		if !r.separator && r.description != "" {
+			descs++
 		}
 	}
 	var parts []string
 	if tasks > 0 {
 		parts = append(parts, fmt.Sprintf("%d %s", tasks, plural(tasks, "task", "tasks")))
+	}
+	if subtasks > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", subtasks, plural(subtasks, "subtask", "subtasks")))
 	}
 	if seps > 0 {
 		parts = append(parts, fmt.Sprintf("%d %s", seps, plural(seps, "separator", "separators")))
@@ -275,7 +310,15 @@ func (m *model) pasteLinesInEdit(text string) bool {
 	}
 	edited.UpdatedAt = domain.NowTimestamp()
 	last := edited.ID
-	at := settleTasks(cat.Tasks, newRows, domain.BlockEnd(cat.Tasks, pos.TaskIndex), edited.ParentID)
+	at := domain.BlockEnd(cat.Tasks, pos.TaskIndex)
+	if fold && !edited.IsSeparator() {
+		linkSubtasks(newRows, rest, edited.ID)
+	} else {
+		linkSubtasks(newRows, rest, "")
+	}
+	if edited.ParentID != "" || edited.IsSeparator() {
+		at = settleTasks(cat.Tasks, newRows, at, edited.ParentID)
+	}
 	cat.Tasks = slices.Insert(cat.Tasks, at, newRows...)
 	// A subtask turned separator leaves its parent's block, which this regroups.
 	domain.NormalizeNesting(&m.project)
@@ -379,6 +422,7 @@ func (m *model) insertPastedRows(rows []pastedRow, retiresCopy bool) {
 	if retiresCopy {
 		m.ui.Clipboard = ClipboardState{}
 	}
+	linkSubtasks(newRows, rows, "")
 	cat := &m.project.Categories[catIndex]
 	taskIndex = settleTasks(cat.Tasks, newRows, taskIndex, parentID)
 	cat.Tasks = slices.Insert(cat.Tasks, taskIndex, newRows...)

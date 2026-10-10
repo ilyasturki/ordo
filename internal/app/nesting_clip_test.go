@@ -99,6 +99,55 @@ func TestPasteLandsAtTheCursorsDepth(t *testing.T) {
 	})
 }
 
+func TestPastedBulletsBecomeSubtasks(t *testing.T) {
+	t.Run("indented bullets under a pasted task", func(t *testing.T) {
+		m := newNestedModel(t)
+		selectRow(t, m, selection.FocusTask, "sets")
+		m.insertPastedRows(parsePastedRows("- Charts\n  - axis labels\n  - colours\n- Export"), false)
+		ui := catByID(t, m, "ui")
+		require.Len(t, ui.Tasks, 8)
+		charts := ui.Tasks[4]
+		assert.Equal(t, "Charts", charts.Title)
+		assert.Empty(t, charts.ParentID)
+		assert.Equal(t, charts.ID, ui.Tasks[5].ParentID)
+		assert.Equal(t, charts.ID, ui.Tasks[6].ParentID)
+		assert.Empty(t, ui.Tasks[7].ParentID)
+		assertNestingValid(t, m.project)
+	})
+	t.Run("plain lines pasted among subtasks join them", func(t *testing.T) {
+		m := newNestedModel(t)
+		selectRow(t, m, selection.FocusTask, "pick")
+		m.insertPastedRows(parsePastedRows("- one\n- two"), false)
+		assert.Equal(t, "timer", catByID(t, m, "ui").Tasks[2].ParentID)
+		assert.Equal(t, "timer", catByID(t, m, "ui").Tasks[3].ParentID)
+		assertNestingValid(t, m.project)
+	})
+	t.Run("a pasted parent among subtasks lands after their parent", func(t *testing.T) {
+		m := newNestedModel(t)
+		selectRow(t, m, selection.FocusTask, "pick")
+		m.insertPastedRows(parsePastedRows("- one\n  - one a"), false)
+		ui := catByID(t, m, "ui")
+		assert.Equal(t, []string{"timer", "pick<timer", "sound<timer"}, shapeOf(ui)[:3])
+		assert.Equal(t, "one", ui.Tasks[3].Title)
+		assert.Empty(t, ui.Tasks[3].ParentID)
+		assert.Equal(t, ui.Tasks[3].ID, ui.Tasks[4].ParentID)
+		assertNestingValid(t, m.project)
+	})
+	t.Run("in the title editor, indented lines nest under the edited task", func(t *testing.T) {
+		m := newNestedModel(t)
+		selectRow(t, m, selection.FocusTask, "sets")
+		m.startEditing()
+		require.True(t, m.pasteLinesInEdit("- Fix sets\n  - reps\n  - weight\n- New"))
+		ui := catByID(t, m, "ui")
+		assert.Equal(t, []string{"timer", "pick<timer", "sound<timer", "sets"}, shapeOf(ui)[:4])
+		assert.Equal(t, "sets", ui.Tasks[4].ParentID)
+		assert.Equal(t, "sets", ui.Tasks[5].ParentID)
+		assert.Equal(t, "New", ui.Tasks[6].Title)
+		assert.Empty(t, ui.Tasks[6].ParentID)
+		assertNestingValid(t, m.project)
+	})
+}
+
 func TestVisualCutTakesFoldedSubtasks(t *testing.T) {
 	m := newNestedModel(t)
 	m.ui.Fold.Toggle("timer")
