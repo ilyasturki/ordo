@@ -124,7 +124,7 @@ func TestPasteChooser_AppendOnlyOnATask(t *testing.T) {
 	require.True(t, m.selectTaskIdx(0, 0))
 	m.pasteText(threeLines)
 	require.Len(t, m.ui.PasteChooser.options, 4)
-	assert.Equal(t, `append to the description of "Alpha"`, m.ui.PasteChooser.options[3].label)
+	assert.Equal(t, "append to the description of “Alpha”", m.ui.PasteChooser.options[3].label)
 }
 
 func TestPasteChooser_NavigatesWithJKAndEnter(t *testing.T) {
@@ -227,6 +227,7 @@ func TestPasteChooser_EachModeFromTheEditor(t *testing.T) {
 		assert.True(t, m.ui.Modes.IsNormal())
 		task := m.project.Categories[0].Tasks[0]
 		assert.Equal(t, "Alpha Call the bank", task.Title, "the first line follows the typed title, as with t")
+		assert.Equal(t, "Pasted into the title and description", m.ui.Screen.StatusMsg, "an edit adds no task")
 		assert.Equal(t, domain.StatusTodo, task.Status, "an edited task keeps its status")
 		assert.Equal(t, "old\nask about fees\n\n- and the card", task.Description)
 		m.undo()

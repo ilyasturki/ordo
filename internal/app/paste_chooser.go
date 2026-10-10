@@ -57,7 +57,7 @@ func (m *model) openPasteChooser(text string, rows []pastedRow) {
 	if title, ok := m.appendTarget(fromEdit); ok {
 		label := "append to this task's description"
 		if title != "" {
-			label = fmt.Sprintf("append to the description of %q", truncateRunes(title, 30))
+			label = fmt.Sprintf("append to the description of “%s”", truncateRunes(title, 30))
 		}
 		options = append(options, pasteOption{key: "a", mode: pasteAppend, label: label})
 	}
@@ -194,12 +194,13 @@ func (m *model) pasteTitleAndDescriptionInEdit(text string) {
 		return
 	}
 	row := titleAndDescription(text)
-	if !m.ui.Edit.isAdding {
+	adding := m.ui.Edit.isAdding
+	if !adding {
 		m.recordHistory()
 	}
 	task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
 	task.Title = strings.TrimSpace(strings.TrimSpace(m.ui.Edit.input.Value()) + " " + row.title)
-	if m.ui.Edit.isAdding {
+	if adding {
 		_ = task.SetStatus(row.status)
 	}
 	task.Description = appendDescription(task.Description, row.description)
@@ -210,7 +211,10 @@ func (m *model) pasteTitleAndDescriptionInEdit(text string) {
 	m.rebuildPositions()
 	m.selectTaskByID(id)
 	m.storeTaskUpdate()
-	m.ui.Screen.StatusMsg = "Added 1 task with a description"
+	m.ui.Screen.StatusMsg = "Pasted into the title and description"
+	if adding {
+		m.ui.Screen.StatusMsg = "Added 1 task with a description"
+	}
 }
 
 func (m *model) insertAtEditCaret(text string) {
