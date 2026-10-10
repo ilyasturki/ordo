@@ -55,7 +55,6 @@ type LayoutBuilder struct {
 	config             LayoutConfig
 	width              int
 	statusDisplay      string
-	filter             *FilterState
 	fold               *FoldState
 	expandDescriptions bool
 	limits             rowLimits
@@ -67,12 +66,11 @@ type LayoutBuilder struct {
 	categoryCut func(categoryID string) bool
 }
 
-func NewLayoutBuilder(config LayoutConfig, width int, statusDisplay string, filter *FilterState, fold *FoldState) *LayoutBuilder {
+func NewLayoutBuilder(config LayoutConfig, width int, statusDisplay string, fold *FoldState) *LayoutBuilder {
 	return &LayoutBuilder{
 		config:        config,
 		width:         width,
 		statusDisplay: statusDisplay,
-		filter:        filter,
 		fold:          fold,
 		limits:        defaultRowLimits(),
 	}
@@ -107,151 +105,73 @@ func (b *LayoutBuilder) rowHeight(posIndex, fallback int) int {
 	return b.editHeight
 }
 
+// Build lays out the rows positions lists, adding the blank lines and the
+// placeholders between them.
 func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Position) Layout {
-	var items []LayoutItem
-	totalHeight := 0
-	posIndex := 0
-
-	projectHeight := b.rowHeight(posIndex, 1)
-	items = append(items, LayoutItem{
-		Kind:          LayoutProject,
-		Height:        projectHeight,
-		PositionIndex: posIndex,
-		CategoryIndex: -1,
-		TaskIndex:     -1,
-	})
-	totalHeight += projectHeight
-	posIndex++
-
-	// Spacing after project
-	if b.config.BlankAfterProject > 0 {
-		items = append(items, LayoutItem{
-			Kind:          LayoutSpacing,
-			Height:        b.config.BlankAfterProject,
-			PositionIndex: -1,
-			CategoryIndex: -1,
-			TaskIndex:     -1,
-		})
-		totalHeight += b.config.BlankAfterProject
+	var layout Layout
+	add := func(item LayoutItem) {
+		layout.Items = append(layout.Items, item)
+		layout.TotalHeight += item.Height
 	}
-
-	for catIdx, category := range project.Categories {
-		// Spacing between categories (not before first)
-		if catIdx > 0 && b.config.BlankBetweenCats > 0 {
-			items = append(items, LayoutItem{
-				Kind:          LayoutSpacing,
-				Height:        b.config.BlankBetweenCats,
-				PositionIndex: -1,
-				CategoryIndex: -1,
-				TaskIndex:     -1,
-			})
-			totalHeight += b.config.BlankBetweenCats
-		}
-
-		catHeight := b.rowHeight(posIndex, b.countCategoryLines(category))
-		items = append(items, LayoutItem{
-			Kind:          LayoutCategory,
-			Height:        catHeight,
-			PositionIndex: posIndex,
-			CategoryIndex: catIdx,
-			TaskIndex:     -1,
-		})
-		totalHeight += catHeight
-		posIndex++
-
-		isFolded := b.fold != nil && b.fold.IsFolded(category.ID)
-		if isFolded {
-			items = append(items, LayoutItem{
-				Kind:          LayoutFolded,
-				Height:        1,
-				PositionIndex: -1,
-				CategoryIndex: catIdx,
-				TaskIndex:     -1,
-			})
-			totalHeight++
-			continue
-		}
-
-		visibleTaskCount := 0
-		for _, task := range category.Tasks {
-			if taskRowVisible(b.filter, task, category.ID) {
-				visibleTaskCount++
-			}
-		}
-
-		if visibleTaskCount == 0 {
-			// "(no tasks)" placeholder - not selectable
-			items = append(items, LayoutItem{
-				Kind:          LayoutEmptyCategory,
-				Height:        1,
-				PositionIndex: -1,
-				CategoryIndex: catIdx,
-				TaskIndex:     -1,
-			})
-			totalHeight++
-			continue
-		}
-
-		// Spacing after category header (before tasks)
-		if b.config.BlankAfterCatHead > 0 {
-			items = append(items, LayoutItem{
-				Kind:          LayoutSpacing,
-				Height:        b.config.BlankAfterCatHead,
-				PositionIndex: -1,
-				CategoryIndex: -1,
-				TaskIndex:     -1,
-			})
-			totalHeight += b.config.BlankAfterCatHead
-		}
-
-		// Tasks (consecutive tasks have no blank lines between them)
-		for taskIdx, task := range category.Tasks {
-			if !taskRowVisible(b.filter, task, category.ID) {
-				continue
-			}
-			if task.IsSeparator() {
-				sepHeight := b.rowHeight(posIndex, 1)
-				items = append(items, LayoutItem{
-					Kind:          LayoutSeparator,
-					Height:        sepHeight,
-					PositionIndex: posIndex,
-					CategoryIndex: catIdx,
-					TaskIndex:     taskIdx,
-				})
-				totalHeight += sepHeight
-				posIndex++
-				continue
-			}
-			taskHeight := b.rowHeight(posIndex, b.countTaskLines(task))
-			items = append(items, LayoutItem{
-				Kind:          LayoutTask,
-				Height:        taskHeight,
-				PositionIndex: posIndex,
-				CategoryIndex: catIdx,
-				TaskIndex:     taskIdx,
-			})
-			totalHeight += taskHeight
-			posIndex++
-
-			if (b.expandDescriptions || b.limits.expands(task.ID)) && task.Description != "" {
-				descHeight := components.DescriptionHeight(task.Description, b.width, taskTitleColumn(task, b.statusDisplay), b.limits.descriptionRows(catIdx, taskIdx, task.ID))
-				items = append(items, LayoutItem{
-					Kind:          LayoutDescription,
-					Height:        descHeight,
-					PositionIndex: posIndex,
-					CategoryIndex: catIdx,
-					TaskIndex:     taskIdx,
-				})
-				totalHeight += descHeight
-				posIndex++
-			}
+	spacing := func(height int) {
+		if height > 0 {
+			add(LayoutItem{Kind: LayoutSpacing, Height: height, PositionIndex: -1, CategoryIndex: -1, TaskIndex: -1})
 		}
 	}
-
-	return Layout{
-		Items:       items,
-		TotalHeight: totalHeight,
+	placeholder := func(kind LayoutItemKind, catIdx int) {
+		add(LayoutItem{Kind: kind, Height: 1, PositionIndex: -1, CategoryIndex: catIdx, TaskIndex: -1})
 	}
+
+	seenCategory := false
+	for posIndex, pos := range positions {
+		item := LayoutItem{PositionIndex: posIndex, CategoryIndex: pos.CategoryIndex, TaskIndex: pos.TaskIndex}
+		switch pos.Kind {
+		case selection.FocusProject:
+			item.Kind, item.Height = LayoutProject, b.rowHeight(posIndex, 1)
+			add(item)
+			spacing(b.config.BlankAfterProject)
+
+		case selection.FocusCategory:
+			if seenCategory {
+				spacing(b.config.BlankBetweenCats)
+			}
+			seenCategory = true
+			category := project.Categories[pos.CategoryIndex]
+			item.Kind, item.Height = LayoutCategory, b.rowHeight(posIndex, b.countCategoryLines(category))
+			add(item)
+			switch {
+			case b.fold != nil && b.fold.IsFolded(category.ID):
+				placeholder(LayoutFolded, pos.CategoryIndex)
+			case !rowOfCategory(positions, posIndex+1, pos.CategoryIndex):
+				placeholder(LayoutEmptyCategory, pos.CategoryIndex)
+			default:
+				spacing(b.config.BlankAfterCatHead)
+			}
+
+		case selection.FocusSeparator:
+			item.Kind, item.Height = LayoutSeparator, b.rowHeight(posIndex, 1)
+			add(item)
+
+		case selection.FocusTask:
+			task := project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
+			item.Kind, item.Height = LayoutTask, b.rowHeight(posIndex, b.countTaskLines(task))
+			add(item)
+
+		case selection.FocusDescription:
+			task := project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
+			item.Kind = LayoutDescription
+			item.Height = components.DescriptionHeight(task.Description, b.width, taskTitleColumn(task, b.statusDisplay), b.limits.descriptionRows(pos.CategoryIndex, pos.TaskIndex, task.ID))
+			add(item)
+		}
+	}
+	return layout
+}
+
+// rowOfCategory reports whether positions[i] is a row inside the category at
+// catIdx.
+func rowOfCategory(positions []selection.Position, i, catIdx int) bool {
+	return i < len(positions) && positions[i].Kind != selection.FocusCategory &&
+		positions[i].Kind != selection.FocusProject && positions[i].CategoryIndex == catIdx
 }
 
 func (b *LayoutBuilder) countTaskLines(task domain.Task) int {
@@ -281,7 +201,7 @@ func (m *model) buildLayout() *Layout {
 		c.editPos == editPos && c.editHeight == editHeight && c.cut == cut {
 		return c.layout
 	}
-	builder := NewLayoutBuilder(m.layoutConfig(), w, m.deps.CfgManager.Get().StatusDisplay, &m.ui.Filter, &m.ui.Fold).
+	builder := NewLayoutBuilder(m.layoutConfig(), w, m.deps.CfgManager.Get().StatusDisplay, &m.ui.Fold).
 		WithExpandedDescriptions(m.ui.Screen.ExpandDescriptions).
 		WithRowLimits(limits).
 		WithEditOverlay(editPos, editHeight).

@@ -35,7 +35,7 @@ func TestComputeVisibility_ScrollOffsetZero_ProjectVisible(t *testing.T) {
 	}
 
 	// Build layout
-	builder := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil, nil)
+	builder := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil)
 	layout := builder.Build(project, positions)
 
 	// Create viewport with reasonable screen height
@@ -74,7 +74,7 @@ func TestComputeVisibility_ZeroHeight_ProjectStillVisible(t *testing.T) {
 		{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0},
 	}
 
-	builder := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil, nil)
+	builder := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil)
 	layout := builder.Build(project, positions)
 
 	// Create viewport with 0 height (startup condition)
@@ -159,7 +159,7 @@ func TestComputeVisibility_RemainingContentHeight(t *testing.T) {
 		{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0},
 		{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 1},
 	}
-	builder := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil, nil)
+	builder := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil)
 	layout := builder.Build(project, positions)
 
 	// Inflate the last item's height so it cannot fit and forces wasted space.
@@ -194,7 +194,7 @@ func TestComputeVisibility_ScrollOffsetNonZero(t *testing.T) {
 		{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 1},
 	}
 
-	builder := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil, nil)
+	builder := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil)
 	layout := builder.Build(project, positions)
 	viewport := NewViewport(&layout, 20, DefaultLayoutConfig())
 
@@ -229,7 +229,7 @@ func TestCenterOnPosition_ConsistentlyCentered(t *testing.T) {
 	}
 
 	config := DefaultLayoutConfig()
-	layout := NewLayoutBuilder(config, 80, "icons", nil, nil).Build(project, positions)
+	layout := NewLayoutBuilder(config, 80, "icons", nil).Build(project, positions)
 	const screenHeight = 24
 
 	// rowsAbove reports the on-screen content row the target renders at, given a
@@ -289,8 +289,8 @@ func TestLayoutBuilder_ExpandedDescriptions_AddsSeparateRow(t *testing.T) {
 		{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 1},
 	}
 
-	base := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil, nil).Build(project, basePositions)
-	expanded := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil, nil).
+	base := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil).Build(project, basePositions)
+	expanded := NewLayoutBuilder(DefaultLayoutConfig(), 80, "icons", nil).
 		WithExpandedDescriptions(true).
 		Build(project, expandedPositions)
 
