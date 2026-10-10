@@ -291,8 +291,7 @@ func (m *model) buildLayout() *Layout {
 	return &layout
 }
 
-// cutKey names the rows marked cut, so the layout cache can tell when a ✂ badge
-// came or went: the clipboard changes without touching the project.
+// cutKey exists because the clipboard changes a row's ✂ badge without touching the project.
 func (m *model) cutKey() string {
 	c := m.ui.Clipboard
 	if !c.IsCut {

@@ -42,7 +42,6 @@ func NewTaskLineRenderer(width int, statusDisplay, priorityColor string, focused
 	}
 }
 
-// WithRowLimits caps the title and the description block to the given rows.
 func (r *TaskLineRenderer) WithRowLimits(title, description int) *TaskLineRenderer {
 	r.titleRows, r.descriptionRows = title, description
 	return r
@@ -157,9 +156,7 @@ func wrapDescriptionLines(description string, available int) []string {
 	return lines
 }
 
-// descriptionWindow is the span [start, end) of lines a block capped to maxRows
-// shows. It caps only when that saves a row, since the "… +N more lines" tail
-// takes one of its own. focus is a line the window must contain, or -1.
+// descriptionWindow caps only when that saves a row, since the tail takes one; focus is -1 or a line to keep in view.
 func descriptionWindow(lines []string, maxRows, focus int) (int, int) {
 	if maxRows == Uncapped || len(lines) <= maxRows+1 {
 		return 0, len(lines)
@@ -181,11 +178,7 @@ func descriptionAvailable(width, indent int) int {
 	return available
 }
 
-// DescriptionHeight returns the rows a description block capped to maxRows
-// occupies at the given title-column indent and total width. It is the
-// layout-side mirror of RenderDescription: both derive their lines from
-// wrapDescriptionLines/descriptionWindow, and the window's size does not depend
-// on where a search match moves it.
+// DescriptionHeight must match RenderDescription, whose window size a search match never changes.
 func DescriptionHeight(description string, width, indent, maxRows int) int {
 	lines := wrapDescriptionLines(description, descriptionAvailable(width, indent))
 	start, end := descriptionWindow(lines, maxRows, -1)
@@ -261,8 +254,7 @@ func (r *TaskLineRenderer) firstMatchLine(lines []string) int {
 	return -1
 }
 
-// fitWidth truncates s to width columns; width <= 0 means no wrapping, so no
-// limit.
+// fitWidth treats width <= 0 as no wrapping, so no limit.
 func fitWidth(s string, width int) string {
 	if width <= 0 {
 		return s
@@ -385,9 +377,7 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 	return r.wrapContentWithSuffix(task, prefixPart, leading, indent, priorityStyle, suffix)
 }
 
-// titleWidth is the columns a task's title wraps to: the row less everything
-// drawn beside it, the trailing badges included although only the last row
-// carries them.
+// titleWidth reserves the trailing badges on every row although only the last carries them.
 func (r *TaskLineRenderer) titleWidth(task domain.Task) int {
 	lead := "  [" + r.statusLabel(task.Status) + "] " + ui.TagSegmentText(task.TagColor, task.TagLabel)
 	if icon := ui.PriorityIcon(task.Priority); icon != "" {
@@ -398,8 +388,7 @@ func (r *TaskLineRenderer) titleWidth(task domain.Task) int {
 	return safeWidth(r.width, ansi.StringWidth(lead+badges))
 }
 
-// TitleRows is how many rows Render draws for task, so the layout can reserve
-// exactly that.
+// TitleRows must match the rows Render draws.
 func (r *TaskLineRenderer) TitleRows(task domain.Task) int {
 	if r.width <= 0 {
 		return 1

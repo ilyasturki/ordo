@@ -128,8 +128,7 @@ func taskRowVisible(filter *FilterState, task domain.Task, categoryID string) bo
 	return filter == nil || filter.TaskVisible(task, categoryID)
 }
 
-// expandedTaskID names a task whose description row shows even while
-// descriptions are hidden.
+// expandedTaskID's description row shows even while descriptions are hidden.
 func rebuildPositions(categories []domain.Category, filter *FilterState, fold *FoldState, expandDescriptions bool, expandedTaskID string) []selection.Position {
 	positions := make([]selection.Position, 0)
 	positions = append(positions, selection.Position{

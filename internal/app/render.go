@@ -163,8 +163,7 @@ func renderCategoryLine(name string, estimateMinutes int, aggregateStatus string
 
 const categoryFoldWidth = 2 // "▼ "
 
-// categoryNameWidth is the columns a category name wraps to, shared by the
-// renderer and the layout so both count the same rows.
+// categoryNameWidth is shared by the renderer and the layout so both count the same rows.
 func categoryNameWidth(width, estimateMinutes int, aggregateStatus string, cut bool) int {
 	badges := 0
 	if aggregateStatus != "" {

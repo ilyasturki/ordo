@@ -67,8 +67,7 @@ type Screen struct {
 	WindowFocused      bool
 	ExpandDescriptions bool
 	HelpExpanded       bool
-	// ExpandedTaskID is the task `ze` shows in full, title and description,
-	// until the cursor leaves it.
+	// ExpandedTaskID is shown in full by `ze` until the cursor leaves it.
 	ExpandedTaskID string
 	// WheelAccum accumulates mouse-wheel events between scroll steps. Trackpads
 	// and hi-res wheels emit several events per physical notch, so we only move
