@@ -177,7 +177,64 @@ func TestSchemaStampedOnSave(t *testing.T) {
 
 	loaded, err := store.LoadProjectByID(project.ID)
 	require.NoError(t, err)
-	assert.Equal(t, domain.ProjectSchemaVersion, loaded.Schema)
+	assert.Equal(t, 1, loaded.Schema, "a project without nesting stays readable by older builds")
+}
+
+// The schema follows the content: a file is stamped 2 only while it holds a
+// nested category or task, so an older phasionary keeps opening every file it
+// can read whole.
+func TestSchemaFollowsNesting(t *testing.T) {
+	store := NewStore(t.TempDir())
+	project, err := store.CreateProject("Nested")
+	require.NoError(t, err)
+	schemaOnDisk := func() int {
+		t.Helper()
+		loaded, err := store.LoadProjectByID(project.ID)
+		require.NoError(t, err)
+		return loaded.Schema
+	}
+	require.Equal(t, 1, schemaOnDisk())
+
+	cat := &project.Categories[0]
+	require.GreaterOrEqual(t, len(cat.Tasks), 2)
+	require.NoError(t, cat.IndentTask(1))
+	require.NoError(t, store.SaveProjectLocked(project))
+	assert.Equal(t, 2, schemaOnDisk(), "a subtask needs schema 2")
+
+	_, err = cat.OutdentTask(1)
+	require.NoError(t, err)
+	require.NoError(t, store.SaveProjectLocked(project))
+	assert.Equal(t, 1, schemaOnDisk(), "without nesting the file drops back to 1")
+
+	require.NoError(t, project.IndentCategory(1))
+	require.NoError(t, store.SaveProjectLocked(project))
+	assert.Equal(t, 2, schemaOnDisk(), "a sub-category needs schema 2")
+}
+
+// Load repairs a file whose nesting breaks the rules: a stray child rejoins
+// its parent and a child of a missing parent becomes top-level.
+func TestLoadRepairsNesting(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewStore(tmpDir)
+	require.NoError(t, store.Ensure())
+
+	raw := `{"schema":2,"id":"nest-1","name":"N","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z","categories":[
+	  {"id":"c1","name":"C","created_at":"2024-01-01T00:00:00Z","tasks":[
+	    {"id":"a","title":"A","status":"todo","created_at":"x","updated_at":"x"},
+	    {"id":"b","title":"B","status":"todo","created_at":"x","updated_at":"x"},
+	    {"id":"a1","parent_id":"a","title":"A1","status":"todo","created_at":"x","updated_at":"x"},
+	    {"id":"o","parent_id":"gone","title":"O","status":"todo","created_at":"x","updated_at":"x"}
+	  ]}]}`
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "nest-1.json"), []byte(raw), 0o644))
+
+	project, err := store.LoadProjectByID("nest-1")
+	require.NoError(t, err)
+	tasks := project.Categories[0].Tasks
+	var got []string
+	for _, task := range tasks {
+		got = append(got, task.ID+":"+task.ParentID)
+	}
+	assert.Equal(t, []string{"a:", "a1:a", "b:", "o:"}, got)
 }
 
 // A file written before versioning existed has no schema field; it must load
@@ -197,7 +254,7 @@ func TestSchemaLegacyFileLoadsAndMigrates(t *testing.T) {
 	require.NoError(t, store.SaveProjectLocked(project))
 	migrated, err := store.LoadProjectByID("legacy-1")
 	require.NoError(t, err)
-	assert.Equal(t, domain.ProjectSchemaVersion, migrated.Schema)
+	assert.Equal(t, 1, migrated.Schema)
 }
 
 // A half-upgraded machine sharing a data directory must refuse a file from a

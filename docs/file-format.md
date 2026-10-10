@@ -66,7 +66,8 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | Field | Type | Rule |
 | --- | --- | --- |
 | `id` | string | |
-| `name` | string | One line. Unique within the project, compared trimmed and case-insensitive. |
+| `name` | string | One line. Unique among its siblings, compared trimmed and case-insensitive: the top-level categories, or the sub-categories of one parent. |
+| `parent_id` | string | Optional. Makes it a sub-category of that category, see [Nesting](#nesting). |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | Optional. |
 | `estimate_minutes` | integer | Optional. Set on the category itself, not summed from its tasks. |
@@ -77,6 +78,7 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | Field | Type | Rule |
 | --- | --- | --- |
 | `id` | string | |
+| `parent_id` | string | Optional. Makes it a subtask of that task, see [Nesting](#nesting). |
 | `title` | string | One line. On a separator, its label, often empty. |
 | `status` | string | `todo`, `in_progress`, `completed` or `cancelled`. Empty on a separator. |
 | `created_at` | timestamp | |
@@ -90,6 +92,32 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 
 Every string is valid UTF-8 with no control characters: nothing below U+0020, no U+007F, nothing from U+0080 to U+009F. `description` is the exception for newline and tab. Phasionary strips control characters from any file it loads, since a terminal would run them as commands.
 
+## Nesting
+
+A category can hold sub-categories, and a task can hold subtasks, one level deep: category › sub-category › task › subtask. Both use the same rule.
+
+- A child names its parent in `parent_id`. It stays in the same array as its parent, `categories` for a sub-category and its category's `tasks` for a subtask, and nothing marks the parent itself.
+- Children follow their parent directly, in display order, before the parent's next sibling. A parent category's own tasks show before its sub-categories.
+- A parent is top-level: a child has no children. A separator is never a parent or a child.
+
+```json
+"categories": [
+  { "id": "c1", "name": "v0.2.0", "created_at": "2026-10-01T09:00:00Z", "tasks": [] },
+  {
+    "id": "c2",
+    "name": "workout",
+    "parent_id": "c1",
+    "created_at": "2026-10-01T09:00:00Z",
+    "tasks": [
+      { "id": "t1", "title": "Rest timer", "status": "todo", "created_at": "2026-10-01T09:05:00Z", "updated_at": "2026-10-01T09:05:00Z" },
+      { "id": "t2", "parent_id": "t1", "title": "Pick a default", "status": "todo", "created_at": "2026-10-01T09:06:00Z", "updated_at": "2026-10-01T09:06:00Z" }
+    ]
+  }
+]
+```
+
+Phasionary repairs a file that breaks these rules when it loads it. A child whose parent is missing, is itself a child or is a separator becomes top-level where it stands, and so does a separator with a `parent_id`. Every other child joins its parent's children, which follow the parent in the order they had in the file. The repair reaches the file on the next save.
+
 ## IDs and timestamps
 
 An ID is 1 to 64 characters from `A-Z`, `a-z`, `0-9`, `-` and `_`. Phasionary makes them from 16 random bytes printed as lowercase hex in 8-4-4-4-12 groups, the same for projects, categories and tasks. An ID never changes and is never reused, even after the thing it named is deleted.
@@ -98,11 +126,16 @@ Timestamps are RFC 3339 in UTC to the second: `2026-05-23T16:37:34Z`.
 
 ## Schema
 
-`schema` is the version of this format, 1 today.
+`schema` is the version of this format, 2 today.
 
 - A reader refuses a file whose `schema` is higher than the one it knows. Loading it and saving it back would drop whatever the newer version added.
-- A writer stamps the version it writes, on every save.
+- A writer stamps, on every save, the lowest version that holds everything in the file: 2 while any category or task has a `parent_id`, 1 otherwise. A project without nesting thus stays open to a phasionary that only knows version 1, and gains version 2 with its first sub-category or subtask.
 - A file without the field reads as version 1.
+
+| Version | Adds |
+| --- | --- |
+| 1 | The format above, without nesting. |
+| 2 | `parent_id` on categories and tasks. |
 
 The number goes up when an older phasionary would misread a file, or would lose data by saving it without a field it does not know (see below). A new field whose loss is harmless needs no bump.
 

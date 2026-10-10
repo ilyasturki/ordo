@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"slices"
 	"strings"
 
 	"phasionary/internal/domain"
@@ -45,29 +46,33 @@ func RenameCategory(p *domain.Project, categoryID, name string) (domain.Category
 	return p.Categories[idx], nil
 }
 
-// MoveCategory shifts the identified category by delta positions. A move that
-// would fall off either end changes nothing and returns ErrNoChange.
+// MoveCategory shifts the identified category, with its sub-categories, by
+// delta sibling blocks. A move that would fall off either end of its siblings
+// changes nothing and returns ErrNoChange.
 func MoveCategory(p *domain.Project, categoryID string, delta int) (domain.Category, error) {
 	idx, err := p.FindCategoryByID(categoryID)
 	if err != nil {
 		return domain.Category{}, err
 	}
-	dst := idx + delta
-	if dst < 0 || dst >= len(p.Categories) {
-		return p.Categories[idx], ErrNoChange
+	before := slices.Clone(p.Categories)
+	at := idx
+	for range max(delta, -delta) {
+		var ok bool
+		if at, ok = p.MoveCategoryBlock(at, sign(delta)); !ok {
+			p.Categories = before
+			return p.Categories[idx], ErrNoChange
+		}
 	}
-	if err := p.MoveCategory(idx, delta); err != nil {
-		return domain.Category{}, err
-	}
-	return p.Categories[dst], nil
+	return p.Categories[at], nil
 }
 
-// DeleteCategory removes the identified category and, with it, every task it
-// held (the cascade is inherent in removing the category from the project).
+// DeleteCategory removes the identified category and, with it, its
+// sub-categories and every task they held.
 func DeleteCategory(p *domain.Project, categoryID string) error {
 	idx, err := p.FindCategoryByID(categoryID)
 	if err != nil {
 		return err
 	}
-	return p.RemoveCategory(idx)
+	p.RemoveCategoryBlock(idx)
+	return nil
 }

@@ -150,7 +150,7 @@ func (s *Store) marshalProject(project domain.Project) ([]byte, error) {
 	project.UpdatedAt = domain.NowTimestamp()
 	// Stamping on every save is also the migration: a pre-versioning file
 	// gains the schema field the first time it is written back.
-	project.Schema = domain.ProjectSchemaVersion
+	project.Schema = domain.RequiredSchema(project)
 	return json.MarshalIndent(project, "", "  ")
 }
 
@@ -246,6 +246,7 @@ func (s *Store) ImportProject(project domain.Project) (domain.Project, error) {
 	if err := domain.ValidateProjectText(project); err != nil {
 		return domain.Project{}, fmt.Errorf("importing project: %w", err)
 	}
+	domain.NormalizeNesting(&project)
 	return s.createNewProjectLocked(project.Name, func() (domain.Project, error) {
 		// ValidateID comes before projectExists so a malformed ID is never used
 		// to stat a path; an ID like "../../x" would otherwise have become a
@@ -398,6 +399,7 @@ func (s *Store) loadProjectFile(path string) (domain.Project, os.FileInfo, error
 	// injected byte enough to lock the user out of their own project with no
 	// in-app way to fix it. The stripped form becomes canonical on the next save.
 	domain.StripProjectText(&project)
+	domain.NormalizeNesting(&project)
 	return project, info, nil
 }
 

@@ -325,7 +325,8 @@ func (m *model) finishCategoryEditing(position selection.Position, name string) 
 	if !m.ui.Edit.isAdding && currentName == name {
 		return true
 	}
-	if i := domain.CategoryNameConflict(m.project.Categories, name, position.CategoryIndex); i >= 0 {
+	edited := m.project.Categories[position.CategoryIndex]
+	if i := domain.CategoryNameConflict(m.project.Categories, edited.ParentID, name, position.CategoryIndex); i >= 0 {
 		target := m.project.Categories[i]
 		m.ui.Edit.err = fmt.Sprintf("A category named %q already exists", target.Name)
 		m.ui.Edit.mergeInto = target.ID

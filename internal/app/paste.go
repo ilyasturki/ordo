@@ -206,7 +206,7 @@ func (m *model) pasteCategories() {
 		}
 		m.recordHistory()
 		for i, c := range cats {
-			c.Name = domain.UniqueCategoryName(m.project.Categories, c.Name)
+			c.Name = domain.UniqueCategoryName(m.project.Categories, c.ParentID, c.Name)
 			cats[i] = c
 			m.project.InsertCategory(index+i, c)
 		}

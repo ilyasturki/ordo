@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"slices"
 	"strings"
 
 	"phasionary/internal/domain"
@@ -20,6 +21,8 @@ type TaskFields struct {
 	// domain.KindSeparator for a divider. A separator carries only a Title (its
 	// label, which may be empty); every other field must be unset.
 	Kind string
+	// ParentID makes the task the last subtask of that top-level task.
+	ParentID string
 }
 
 // isSeparatorKind reports whether f describes a separator row.
@@ -29,7 +32,7 @@ func (f TaskFields) isSeparatorKind() bool { return f.Kind == domain.KindSeparat
 // client can't smuggle a status or an estimate onto a divider.
 func validateSeparatorFields(f TaskFields) error {
 	if f.Status != "" || f.Priority != "" || f.Estimate != 0 ||
-		f.Description != "" || f.TagColor != "" {
+		f.Description != "" || f.TagColor != "" || f.ParentID != "" {
 		return ErrSeparatorFieldNotAllowed
 	}
 	return nil
@@ -44,13 +47,15 @@ func CreateTask(p *domain.Project, categoryID string, f TaskFields) (domain.Task
 	return CreateTaskAfter(p, categoryID, f, "")
 }
 
-// CreateTaskAfter is CreateTask with a position: the new row lands immediately
-// below the task identified by afterTaskID, or at the end of the category when
-// afterTaskID is empty. Separators exist to divide a list, so they are always
-// created relative to a neighbour rather than appended.
+// CreateTaskAfter is CreateTask with a position: the new row lands below the
+// task identified by afterTaskID and its subtasks, at that task's depth, or at
+// the end of the category when afterTaskID is empty. A separator never nests,
+// so below a subtask it lands after the parent's block. With f.ParentID the
+// task lands last among that parent's subtasks instead.
 //
-// Returns domain.ErrTaskNotFound when afterTaskID doesn't resolve within the
-// category, plus everything CreateTask returns.
+// Returns domain.ErrTaskNotFound when afterTaskID or f.ParentID doesn't
+// resolve within the category, domain.ErrNestDepth or domain.ErrSeparatorNest
+// for a parent that can't take subtasks, plus everything CreateTask returns.
 // validateTaskText screens the free-text fields of a write.
 //
 // This is the single gate every writer shares — the TUI and the CLI both
@@ -101,12 +106,29 @@ func CreateTaskAfter(
 	// Resolve the anchor before building the row so a bad id fails without
 	// mutating anything.
 	insertAt := len(cat.Tasks)
-	if afterTaskID != "" {
+	parentID := ""
+	switch {
+	case f.ParentID != "":
+		parent, err := cat.FindTaskByID(f.ParentID)
+		if err != nil {
+			return domain.Task{}, err
+		}
+		if cat.Tasks[parent].IsSeparator() {
+			return domain.Task{}, domain.ErrSeparatorNest
+		}
+		if cat.Tasks[parent].ParentID != "" {
+			return domain.Task{}, domain.ErrNestDepth
+		}
+		insertAt, parentID = domain.BlockEnd(cat.Tasks, parent), f.ParentID
+	case afterTaskID != "":
 		anchor, err := cat.FindTaskByID(afterTaskID)
 		if err != nil {
 			return domain.Task{}, err
 		}
-		insertAt = anchor + 1
+		insertAt, parentID = domain.BlockEnd(cat.Tasks, anchor), cat.Tasks[anchor].ParentID
+		if f.isSeparatorKind() && parentID != "" {
+			insertAt, parentID = domain.BlockEnd(cat.Tasks, domain.BlockStart(cat.Tasks, anchor)), ""
+		}
 	}
 
 	if f.isSeparatorKind() {
@@ -135,6 +157,7 @@ func CreateTaskAfter(
 	}
 	task.SetEstimate(f.Estimate)
 	task.Description = f.Description
+	task.ParentID = parentID
 	if f.TagColor != "" {
 		if err := task.SetTagColor(f.TagColor); err != nil {
 			return domain.Task{}, err
@@ -303,8 +326,8 @@ func updateSeparator(sep *domain.Task, u TaskUpdate) (domain.Task, error) {
 	return *sep, nil
 }
 
-// DeleteTask removes the identified task from its category and returns the task
-// as it was, so callers can report or undo the deletion.
+// DeleteTask removes the identified task, with its subtasks, from its category
+// and returns the task as it was, so callers can report or undo the deletion.
 func DeleteTask(p *domain.Project, categoryID, taskID string) (domain.Task, error) {
 	cidx, err := p.FindCategoryByID(categoryID)
 	if err != nil {
@@ -316,9 +339,7 @@ func DeleteTask(p *domain.Project, categoryID, taskID string) (domain.Task, erro
 		return domain.Task{}, err
 	}
 	task := cat.Tasks[tidx]
-	if err := cat.RemoveTask(tidx); err != nil {
-		return domain.Task{}, err
-	}
+	cat.RemoveTaskBlock(tidx)
 	return task, nil
 }
 
@@ -348,9 +369,10 @@ func SetTaskEstimate(p *domain.Project, categoryID, taskID string, minutes int) 
 	return *task, nil
 }
 
-// MoveTaskWithinCategory shifts the identified task by delta positions inside
-// its category. A move that would fall off either end changes nothing and
-// returns ErrNoChange, so a boundary tap doesn't trigger a save.
+// MoveTaskWithinCategory shifts the identified task, with its subtasks, by
+// delta sibling blocks inside its category. A move that would fall off either
+// end of its siblings changes nothing and returns ErrNoChange, so a boundary
+// tap doesn't trigger a save.
 func MoveTaskWithinCategory(p *domain.Project, categoryID, taskID string, delta int) (domain.Task, error) {
 	cidx, err := p.FindCategoryByID(categoryID)
 	if err != nil {
@@ -361,14 +383,23 @@ func MoveTaskWithinCategory(p *domain.Project, categoryID, taskID string, delta 
 	if err != nil {
 		return domain.Task{}, err
 	}
-	dst := tidx + delta
-	if dst < 0 || dst >= len(cat.Tasks) {
-		return cat.Tasks[tidx], ErrNoChange
+	before := slices.Clone(cat.Tasks)
+	at := tidx
+	for range max(delta, -delta) {
+		var ok bool
+		if at, ok = cat.MoveTaskBlock(at, sign(delta)); !ok {
+			cat.Tasks = before
+			return cat.Tasks[tidx], ErrNoChange
+		}
 	}
-	if err := cat.MoveTask(tidx, delta); err != nil {
-		return domain.Task{}, err
+	return cat.Tasks[at], nil
+}
+
+func sign(n int) int {
+	if n < 0 {
+		return -1
 	}
-	return cat.Tasks[dst], nil
+	return 1
 }
 
 // MoveTaskToCategory moves the identified task out of srcCatID and into

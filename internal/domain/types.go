@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"iter"
 	"slices"
 	"strings"
 	"time"
@@ -65,12 +66,12 @@ var (
 	ErrTaskNotFound          = errors.New("task not found")
 )
 
-// ProjectSchemaVersion is the version of the on-disk project format this
-// binary reads and writes. Files written before versioning existed carry no
-// schema field and are read as version 1. Bump it when an older binary would
-// misread a file, or would lose data by saving it without a field it does not
-// know; never reuse a number.
-const ProjectSchemaVersion = 1
+// ProjectSchemaVersion is the newest on-disk project format this binary
+// reads; a save stamps RequiredSchema instead. Files written before versioning
+// existed carry no schema field and are read as version 1. Bump it when an
+// older binary would misread a file, or would lose data by saving it without
+// a field it does not know; never reuse a number.
+const ProjectSchemaVersion = 2
 
 // ErrSchemaTooNew is returned when a project file declares a schema version
 // newer than this binary understands. Refusing beats loading: saving through a
@@ -104,6 +105,7 @@ func CheckSchema(p Project) error {
 type Category struct {
 	ID              string `json:"id"`
 	Name            string `json:"name"`
+	ParentID        string `json:"parent_id,omitempty"`
 	CreatedAt       string `json:"created_at"`
 	UpdatedAt       string `json:"updated_at,omitempty"`
 	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
@@ -112,6 +114,7 @@ type Category struct {
 
 type Task struct {
 	ID              string `json:"id"`
+	ParentID        string `json:"parent_id,omitempty"`
 	Title           string `json:"title"`
 	Status          string `json:"status"`
 	CreatedAt       string `json:"created_at"`
@@ -501,8 +504,12 @@ func (c *Category) TaskCount() int {
 }
 
 func (c *Category) StatusCounts() StatusCounts {
+	return statusCounts(slices.Values(c.Tasks))
+}
+
+func statusCounts(tasks iter.Seq[Task]) StatusCounts {
 	var counts StatusCounts
-	for _, task := range c.Tasks {
+	for task := range tasks {
 		if task.IsSeparator() {
 			continue
 		}
@@ -533,11 +540,15 @@ func (p *Project) StatusCounts() StatusCounts {
 }
 
 func (c *Category) AggregateStatus() string {
+	return aggregateStatus(slices.Values(c.Tasks))
+}
+
+func aggregateStatus(tasks iter.Seq[Task]) string {
 	allFinished := true
 	hasInProgress := false
 	hasFinished := false
 	hasTask := false
-	for _, t := range c.Tasks {
+	for t := range tasks {
 		if t.IsSeparator() {
 			continue
 		}
@@ -619,24 +630,11 @@ func (p *Project) RemoveCategory(index int) error {
 	return nil
 }
 
-// CategoryNameConflict is the one category uniqueness rule: it returns the index
-// of the category in cats, other than except, whose name matches name trimmed
-// and case-insensitively, or -1. Pass except -1 to check a new name.
-func CategoryNameConflict(cats []Category, name string, except int) int {
-	normalized := NormalizeName(name)
-	for i, cat := range cats {
-		if i != except && NormalizeName(cat.Name) == normalized {
-			return i
-		}
-	}
-	return -1
-}
-
 // UniqueCategoryName returns name, or name with the first free " (n)" suffix
-// from 2 up when a category in cats already carries it.
-func UniqueCategoryName(cats []Category, name string) string {
+// from 2 up when a category under parentID in cats already carries it.
+func UniqueCategoryName(cats []Category, parentID, name string) string {
 	candidate := name
-	for n := 2; CategoryNameConflict(cats, candidate, -1) >= 0; n++ {
+	for n := 2; CategoryNameConflict(cats, parentID, candidate, -1) >= 0; n++ {
 		candidate = fmt.Sprintf("%s (%d)", name, n)
 	}
 	return candidate
@@ -644,7 +642,8 @@ func UniqueCategoryName(cats []Category, name string) string {
 
 // MergeCategory moves the category at src into the one at dst and removes src.
 // Its tasks land at the end of dst under a separator labelled with src's name;
-// an empty src just goes.
+// an empty src just goes. Its sub-categories join dst's, merging the same way
+// into one that carries their name.
 func (p *Project) MergeCategory(src, dst int) error {
 	if src < 0 || src >= len(p.Categories) || dst < 0 || dst >= len(p.Categories) {
 		return errors.New("category index out of range")
@@ -652,25 +651,51 @@ func (p *Project) MergeCategory(src, dst int) error {
 	if src == dst {
 		return errors.New("cannot merge a category into itself")
 	}
-	from := p.Categories[src]
-	if len(from.Tasks) > 0 {
-		sep, err := NewSeparator()
-		if err != nil {
-			return err
-		}
-		sep.Title = strings.TrimSpace(from.Name)
-		to := &p.Categories[dst]
-		to.Tasks = append(append(to.Tasks, sep), from.Tasks...)
-		to.UpdatedAt = NowTimestamp()
+	end := BlockEnd(p.Categories, src)
+	subs := slices.Clone(p.Categories[src+1 : end])
+	if len(subs) > 0 && p.Categories[dst].ParentID != "" {
+		return ErrNestDepth
 	}
-	return p.RemoveCategory(src)
+	if err := mergeTasks(&p.Categories[dst], p.Categories[src]); err != nil {
+		return err
+	}
+	dstID := p.Categories[dst].ID
+	p.RemoveCategoryBlock(src)
+	for _, sub := range subs {
+		if same := CategoryNameConflict(p.Categories, dstID, sub.Name, -1); same >= 0 {
+			if err := mergeTasks(&p.Categories[same], sub); err != nil {
+				return err
+			}
+			continue
+		}
+		parent, _ := p.FindCategoryByID(dstID)
+		sub.ParentID = dstID
+		p.InsertCategory(BlockEnd(p.Categories, parent), sub)
+	}
+	return nil
+}
+
+// mergeTasks appends from's tasks to dst under a separator labelled with
+// from's name.
+func mergeTasks(dst *Category, from Category) error {
+	if len(from.Tasks) == 0 {
+		return nil
+	}
+	sep, err := NewSeparator()
+	if err != nil {
+		return err
+	}
+	sep.Title = strings.TrimSpace(from.Name)
+	dst.Tasks = append(append(dst.Tasks, sep), from.Tasks...)
+	dst.UpdatedAt = NowTimestamp()
+	return nil
 }
 
 func (p *Project) RenameCategory(index int, name string) error {
 	if index < 0 || index >= len(p.Categories) {
 		return errors.New("category index out of range")
 	}
-	if CategoryNameConflict(p.Categories, name, index) >= 0 {
+	if CategoryNameConflict(p.Categories, p.Categories[index].ParentID, name, index) >= 0 {
 		return ErrDuplicateCategoryName
 	}
 	p.Categories[index].Name = name
@@ -681,15 +706,33 @@ func (p *Project) RenameCategory(index int, name string) error {
 }
 
 func (p *Project) AddCategoryNamed(name string) (*Category, error) {
-	if CategoryNameConflict(p.Categories, name, -1) >= 0 {
+	return p.AddCategoryUnder("", name)
+}
+
+// AddCategoryUnder adds a category named name as the last sub-category of the
+// top-level category parentID, or at the end of the project for "".
+func (p *Project) AddCategoryUnder(parentID, name string) (*Category, error) {
+	at := len(p.Categories)
+	if parentID != "" {
+		parent, err := p.FindCategoryByID(parentID)
+		if err != nil {
+			return nil, err
+		}
+		if p.Categories[parent].ParentID != "" {
+			return nil, ErrNestDepth
+		}
+		at = BlockEnd(p.Categories, parent)
+	}
+	if CategoryNameConflict(p.Categories, parentID, name, -1) >= 0 {
 		return nil, ErrDuplicateCategoryName
 	}
 	cat, err := NewCategory(name)
 	if err != nil {
 		return nil, err
 	}
-	p.AddCategory(cat)
-	return &p.Categories[len(p.Categories)-1], nil
+	cat.ParentID = parentID
+	p.InsertCategory(at, cat)
+	return &p.Categories[at], nil
 }
 
 func (p *Project) FindCategoryByID(id string) (int, error) {
@@ -735,43 +778,27 @@ func (p *Project) FindTask(selector string) (catIdx, taskIdx int, err error) {
 	return -1, -1, ErrTaskNotFound
 }
 
-func (p *Project) MoveCategory(idx, delta int) error {
-	if idx < 0 || idx >= len(p.Categories) {
-		return errors.New("category index out of range")
-	}
-	dst := idx + delta
-	if dst < 0 || dst >= len(p.Categories) {
-		return errors.New("destination index out of range")
-	}
-	p.Categories[idx], p.Categories[dst] = p.Categories[dst], p.Categories[idx]
-	p.UpdatedAt = NowTimestamp()
-	return nil
-}
-
-// ReverseCategories flips the order of the categories in place. It is its own
+// ReverseCategories flips the order of the top-level categories in place,
+// each keeping its sub-categories after it in their order. It is its own
 // inverse: invoking it twice restores the original order. Tasks within each
 // category keep their order.
 func (p *Project) ReverseCategories() {
-	if len(p.Categories) < 2 {
+	var blocks [][]Category
+	for i := 0; i < len(p.Categories); {
+		end := BlockEnd(p.Categories, i)
+		blocks = append(blocks, p.Categories[i:end])
+		i = end
+	}
+	if len(blocks) < 2 {
 		return
 	}
-	slices.Reverse(p.Categories)
+	slices.Reverse(blocks)
+	p.Categories = slices.Concat(blocks...)
 	p.UpdatedAt = NowTimestamp()
 }
 
-func (c *Category) MoveTask(idx, delta int) error {
-	if idx < 0 || idx >= len(c.Tasks) {
-		return errors.New("task index out of range")
-	}
-	dst := idx + delta
-	if dst < 0 || dst >= len(c.Tasks) {
-		return errors.New("destination index out of range")
-	}
-	c.Tasks[idx], c.Tasks[dst] = c.Tasks[dst], c.Tasks[idx]
-	c.UpdatedAt = NowTimestamp()
-	return nil
-}
-
+// MoveTask moves the task at taskIdx, with its subtasks, to the end of the
+// destination category. A subtask moved on its own becomes top-level there.
 func (p *Project) MoveTask(srcCatIdx, taskIdx, dstCatIdx int) error {
 	if srcCatIdx < 0 || srcCatIdx >= len(p.Categories) {
 		return errors.New("source category index out of range")
@@ -782,15 +809,18 @@ func (p *Project) MoveTask(srcCatIdx, taskIdx, dstCatIdx int) error {
 	if srcCatIdx == dstCatIdx {
 		return errors.New("source and destination categories are the same")
 	}
-	srcTasks := p.Categories[srcCatIdx].Tasks
-	if taskIdx < 0 || taskIdx >= len(srcTasks) {
+	src := &p.Categories[srcCatIdx]
+	if taskIdx < 0 || taskIdx >= len(src.Tasks) {
 		return errors.New("task index out of range")
 	}
-	task := srcTasks[taskIdx]
-	if err := p.Categories[srcCatIdx].RemoveTask(taskIdx); err != nil {
-		return err
-	}
-	p.Categories[dstCatIdx].AddTask(task)
+	end := BlockEnd(src.Tasks, taskIdx)
+	block := slices.Clone(src.Tasks[taskIdx:end])
+	block[0].ParentID = ""
+	src.Tasks = slices.Delete(src.Tasks, taskIdx, end)
+	src.UpdatedAt = NowTimestamp()
+	dst := &p.Categories[dstCatIdx]
+	dst.Tasks = append(dst.Tasks, block...)
+	dst.UpdatedAt = NowTimestamp()
 	p.UpdatedAt = NowTimestamp()
 	return nil
 }

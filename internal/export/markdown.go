@@ -212,7 +212,7 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 	for _, cd := range categories {
 		// A repeated heading continues the category it names.
 		var cat *domain.Category
-		if i := domain.CategoryNameConflict(project.Categories, cd.name, -1); i >= 0 {
+		if i := domain.CategoryNameConflict(project.Categories, "", cd.name, -1); i >= 0 {
 			cat = &project.Categories[i]
 		} else {
 			fresh, err := domain.NewCategory(cd.name)

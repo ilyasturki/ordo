@@ -131,10 +131,10 @@ func StripControl(s string, allowNewlines bool) string {
 func ValidateProjectText(p Project) error {
 	lines := []string{p.ID, p.Name, p.CreatedAt, p.UpdatedAt}
 	for _, c := range p.Categories {
-		lines = append(lines, c.ID, c.Name, c.CreatedAt, c.UpdatedAt)
+		lines = append(lines, c.ID, c.Name, c.ParentID, c.CreatedAt, c.UpdatedAt)
 		for _, t := range c.Tasks {
 			lines = append(lines,
-				t.ID, t.Title, t.Status, t.CreatedAt, t.UpdatedAt,
+				t.ID, t.ParentID, t.Title, t.Status, t.CreatedAt, t.UpdatedAt,
 				t.Priority, t.CompletionDate, t.Kind, t.TagColor,
 			)
 			if err := ValidateMultiline(t.Description); err != nil {
@@ -166,11 +166,13 @@ func StripProjectText(p *Project) {
 		c := &p.Categories[i]
 		c.ID = StripControl(c.ID, false)
 		c.Name = StripControl(c.Name, false)
+		c.ParentID = StripControl(c.ParentID, false)
 		c.CreatedAt = StripControl(c.CreatedAt, false)
 		c.UpdatedAt = StripControl(c.UpdatedAt, false)
 		for j := range c.Tasks {
 			t := &c.Tasks[j]
 			t.ID = StripControl(t.ID, false)
+			t.ParentID = StripControl(t.ParentID, false)
 			t.Title = StripControl(t.Title, false)
 			t.Status = StripControl(t.Status, false)
 			t.CreatedAt = StripControl(t.CreatedAt, false)
