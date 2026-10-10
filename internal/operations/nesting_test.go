@@ -100,6 +100,15 @@ func TestMoveTaskWithinCategoryMovesBlocks(t *testing.T) {
 	if _, err := MoveTaskWithinCategory(p, cid, p.Categories[0].Tasks[2].ID, -1); !errors.Is(err, ErrNoChange) {
 		t.Fatalf("a lone subtask can't leave its parent: err = %v", err)
 	}
+
+	const stamp = "2000-01-01T00:00:00Z"
+	p.Categories[0].UpdatedAt = stamp
+	if _, err := MoveTaskWithinCategory(p, cid, p.Categories[0].Tasks[0].ID, 2); !errors.Is(err, ErrNoChange) {
+		t.Fatalf("a move past the end: err = %v", err)
+	}
+	if got := shape(p); !equal(got, []string{"b", "a", ">a1"}) || p.Categories[0].UpdatedAt != stamp {
+		t.Fatalf("a refused move left shape %v and updated_at %q", got, p.Categories[0].UpdatedAt)
+	}
 }
 
 func TestDeleteCategoryTakesSubCategories(t *testing.T) {

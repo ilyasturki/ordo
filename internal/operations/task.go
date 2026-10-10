@@ -371,12 +371,12 @@ func MoveTaskWithinCategory(p *domain.Project, categoryID, taskID string, delta 
 	if err != nil {
 		return domain.Task{}, err
 	}
-	before := slices.Clone(cat.Tasks)
+	before, stamp := slices.Clone(cat.Tasks), cat.UpdatedAt
 	at := tidx
 	for range max(delta, -delta) {
 		var ok bool
 		if at, ok = cat.MoveTaskBlock(at, sign(delta)); !ok {
-			cat.Tasks = before
+			cat.Tasks, cat.UpdatedAt = before, stamp
 			return cat.Tasks[tidx], ErrNoChange
 		}
 	}

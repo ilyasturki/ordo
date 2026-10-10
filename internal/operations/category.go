@@ -57,12 +57,12 @@ func MoveCategory(p *domain.Project, categoryID string, delta int) (domain.Categ
 	if err != nil {
 		return domain.Category{}, err
 	}
-	before := slices.Clone(p.Categories)
+	before, stamp := slices.Clone(p.Categories), p.UpdatedAt
 	at := idx
 	for range max(delta, -delta) {
 		var ok bool
 		if at, ok = p.MoveCategoryBlock(at, sign(delta)); !ok {
-			p.Categories = before
+			p.Categories, p.UpdatedAt = before, stamp
 			return p.Categories[idx], ErrNoChange
 		}
 	}
