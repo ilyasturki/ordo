@@ -227,6 +227,20 @@ func TestVisualCut_WritesWhatVisualYWould(t *testing.T) {
 	assert.Equal(t, "Cut: 2 task(s), p moves them here, esc cancels", m.ui.Screen.StatusMsg)
 }
 
+func TestCut_ShortcutBarSaysHowToFinish(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	m.ui.Screen.Width = 200
+	assert.NotContains(t, m.renderShortcutBar(), "move here")
+
+	m.cutSelectedTask()
+	send(t, m, key("j"))
+
+	assert.Empty(t, m.ui.Screen.StatusMsg, "the cut's status is gone after one key")
+	assert.Contains(t, m.renderShortcutBar(), "move here")
+	assert.Contains(t, m.renderShortcutBar(), "cancel cut")
+}
+
 func TestCut_PasteMovesThenPasteCopies(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))

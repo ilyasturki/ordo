@@ -82,6 +82,7 @@ var helpModeSections = []helpSection{
 			{keys: "ctrl+← / ctrl+→", desc: "move by word"},
 			{keys: "ctrl+w", desc: "delete word back"},
 			{keys: "ctrl+k / ctrl+u", desc: "delete to end / start"},
+			{keys: "ctrl+v", desc: "paste (several lines ask how)"},
 		},
 	},
 	{
@@ -92,7 +93,7 @@ var helpModeSections = []helpSection{
 			{keys: "o", desc: "swap which end moves"},
 			{keys: "space", desc: "cycle status of every row"},
 			{keys: "y / Y", desc: "copy / copy as markdown"},
-			{keys: "x", desc: "cut (p pastes, esc cancels)"},
+			{keys: "x", desc: "cut (p moves it, esc cancels)"},
 			{keys: "d", desc: "delete (asks first)"},
 			{keys: "esc", desc: "leave visual mode"},
 		},

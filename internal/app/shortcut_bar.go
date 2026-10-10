@@ -23,6 +23,15 @@ var normalShortcuts = []ui.Hint{
 	{Key: "q", Label: "quit"},
 }
 
+// The cut's status line clears on the next key, the first step to the destination.
+var cutShortcuts = []ui.Hint{
+	{Key: "p", Label: "move here"},
+	{Key: "esc", Label: "cancel cut"},
+	{Key: "/", Label: "search"},
+	{Key: "?", Label: "help"},
+	{Key: "q", Label: "quit"},
+}
+
 var visualShortcuts = []ui.Hint{
 	{Key: "J/K", Label: "move"},
 	{Key: "y", Label: "copy"},
@@ -56,9 +65,13 @@ func (m model) renderShortcutBar() string {
 		return ""
 	}
 	hints := normalShortcuts
-	if m.ui.Modes.IsVisual() {
+	switch {
+	case m.ui.Modes.IsVisual():
 		hints = visualShortcuts
-	} else if cmds := m.taskCommands(); len(cmds) > 0 {
+	case m.ui.Clipboard.IsCut:
+		hints = cutShortcuts
+	case len(m.taskCommands()) > 0:
+		cmds := m.taskCommands()
 		// Right after help: the bar drops whatever overflows its right end.
 		commandHints := make([]ui.Hint, len(cmds))
 		for i, c := range cmds {
