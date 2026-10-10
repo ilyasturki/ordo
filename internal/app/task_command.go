@@ -150,8 +150,6 @@ func (m model) handleCommandPromptKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 	case "esc":
 		m.ui.Modes.ToNormal()
 		return m, nil
-	case "ctrl+c":
-		return m, tea.Quit
 	case "enter":
 		m.ui.Modes.ToNormal()
 		input := strings.TrimSpace(s.input.Value())
