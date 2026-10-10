@@ -219,17 +219,13 @@ func formatStatusLabel(status string) string {
 }
 
 // formatTagInfo renders a task's tag for the info modal: "None" when untagged,
-// otherwise a colored dot, the color name, and the label if present.
+// otherwise the colored mark and its name.
 func formatTagInfo(task domain.Task) string {
 	style, ok := ui.TagDotStyle(task.TagColor, false)
 	if !ok {
 		return "None"
 	}
-	s := style.Render(ui.TagDot) + " " + tagColorName(task.TagColor)
-	if task.TagLabel != "" {
-		s += " " + task.TagLabel
-	}
-	return s
+	return style.Render(ui.TagDot) + " " + tagColorName(task.TagColor)
 }
 
 func formatPriorityLabel(priority string) string {

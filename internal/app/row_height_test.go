@@ -21,7 +21,7 @@ func badgedProject(title string) domain.Project {
 			Name: title, EstimateMinutes: 120,
 			Tasks: []domain.Task{{
 				ID: "t1", Title: title, Status: domain.StatusInProgress,
-				Priority: domain.PriorityHigh, TagColor: "red", TagLabel: "work",
+				Priority: domain.PriorityHigh, TagColor: domain.TagGreen,
 				EstimateMinutes: 90, Description: "body",
 			}},
 		}},

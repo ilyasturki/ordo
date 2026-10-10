@@ -113,7 +113,7 @@ var normalBindings = []keyBinding{
 	{keys: []string{"t"}, display: "t / T", desc: "cycle tag / edit tag", section: sectionTasks,
 		action: void((*model).cycleTag)},
 	{keys: []string{"T"}, section: sectionTasks,
-		action: func(m *model) tea.Cmd { return m.startTagEdit() }},
+		action: void((*model).startTagEdit)},
 	{keys: []string{"ctrl+t"}, desc: "set time estimate", section: sectionTasks,
 		action: void((*model).openEstimatePicker)},
 	{keys: []string{"d"}, desc: "delete", section: sectionTasks,
@@ -141,7 +141,7 @@ var normalBindings = []keyBinding{
 	{keys: []string{"y"}, prefix: 'g', display: "gy", desc: "copy id, url, title…", section: sectionClipboard,
 		action: func(m *model) tea.Cmd { return m.yankPartForSelected() }},
 	{keys: []string{"t"}, prefix: 'g', display: "gt", desc: "copy tag (p paints it elsewhere)", section: sectionClipboard,
-		action: func(m *model) tea.Cmd { return m.copyTagFromSelected() }},
+		action: void((*model).copyTagFromSelected)},
 
 	{keys: []string{"ctrl+p"}, desc: "switch project", section: sectionApp,
 		action: void((*model).openProjectPicker)},

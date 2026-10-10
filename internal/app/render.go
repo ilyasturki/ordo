@@ -207,7 +207,7 @@ func (m model) renderTaskDescription(task domain.Task, descriptionRows int, sele
 // so the description's blockquote bar can sit flush with the title.
 func taskTitleColumn(task domain.Task, statusDisplay string) int {
 	prefix := "  "
-	dotText := ui.TagSegmentText(task.TagColor, task.TagLabel)
+	dotText := ui.TagSegmentText(task.TagColor)
 	priorityIcon := ui.PriorityIcon(task.Priority)
 	iconText := ""
 	if priorityIcon != "" {
@@ -273,7 +273,7 @@ func (m model) renderEditTaskLine(task domain.Task) string {
 		iconPrefix = iconStyle.Render(icon) + " "
 	}
 	dotPrefix := ""
-	dotPlain := ui.TagSegmentText(task.TagColor, task.TagLabel)
+	dotPlain := ui.TagSegmentText(task.TagColor)
 	if dotPlain != "" {
 		dotStyle, _ := ui.TagDotStyle(task.TagColor, task.Status == domain.StatusCompleted || task.Status == domain.StatusCancelled)
 		dotPrefix = dotStyle.Render(dotPlain)

@@ -18,28 +18,24 @@ Type "t"
 Sleep 400ms
 Screenshot "/tmp/phas-vt/vhs-out/22_tag_green_focused.png"
 
-# `T` opens the full tag editor: label field + color picker.
+# `T` opens the mark picker, seeded on the current mark.
 Type "T"
 Sleep 300ms
 Screenshot "/tmp/phas-vt/vhs-out/22_editor_open.png"
 
-# Type a label, switch to the color picker, choose magenta.
-Type "urgent"
-Sleep 200ms
-Tab
-Sleep 150ms
+# Choose magenta.
 Type "jj"
 Sleep 200ms
 Screenshot "/tmp/phas-vt/vhs-out/22_editor_color.png"
+Sleep 300ms
 Enter
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/22_row_labeled_focused.png"
+Screenshot "/tmp/phas-vt/vhs-out/22_row_tagged_focused.png"
 
-# Move the cursor off the task so the inline dot + label show on an
-# unfocused row too.
+# Move the cursor off the task so the dot shows on an unfocused row too.
 Type "j"
 Sleep 300ms
-Screenshot "/tmp/phas-vt/vhs-out/22_row_labeled_unfocused.png"
+Screenshot "/tmp/phas-vt/vhs-out/22_row_tagged_unfocused.png"
 
 # Info view still lists the tag.
 Type "gi"
@@ -48,17 +44,15 @@ Screenshot "/tmp/phas-vt/vhs-out/22_tag_info.png"
 Type "q"
 Sleep 200ms
 
-# Remove the tag via the editor: back onto the task, T, switch to color,
-# navigate up to "None".
+# Remove the tag via the picker: back onto the task, T, up to "None".
 Type "k"
 Sleep 200ms
 Type "T"
 Sleep 200ms
-Tab
-Sleep 150ms
 Type "kkk"
 Sleep 200ms
 Screenshot "/tmp/phas-vt/vhs-out/22_editor_none.png"
+Sleep 300ms
 Enter
 Sleep 400ms
 Screenshot "/tmp/phas-vt/vhs-out/22_row_removed.png"

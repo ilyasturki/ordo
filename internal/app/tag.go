@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"phasionary/internal/app/modes"
@@ -17,21 +16,12 @@ import (
 // "None (remove)" row, so removing a tag is just selecting the first row.
 var tagEditColors = append([]string{""}, domain.TagColorCycle...)
 
-type tagEditField int
-
-const (
-	tagFieldLabel tagEditField = iota
-	tagFieldColor
-)
-
-// TagEditState backs the `T` tag editor: a color picker plus a label field.
-// taskIDs holds every task the edit applies to — one for a single task, many
-// for a visual-mode bulk edit — so it survives any position shift while open.
+// TagEditState backs the `T` tag picker. taskIDs holds every task the edit
+// applies to — one for a single task, many for a visual-mode bulk edit — so it
+// survives any position shift while open.
 type TagEditState struct {
-	input    textinput.Model
 	taskIDs  []string
 	colorIdx int
-	field    tagEditField
 }
 
 // cycleTag advances the selected task's tag color one step through the palette.
@@ -52,99 +42,50 @@ func (m *model) cycleTag() {
 	m.discardLastHistory()
 }
 
-// startTagEdit opens the tag editor for the selected task, seeded with its
-// current color and label.
-func (m *model) startTagEdit() tea.Cmd {
+// startTagEdit opens the tag picker for the selected task, seeded with its
+// current color.
+func (m *model) startTagEdit() {
 	if !m.ui.Modes.CanPerformAction(modes.ActionChangeTag) {
-		return nil
+		return
 	}
 	position, ok := m.selectedPosition()
 	if !ok || position.Kind != selection.FocusTask {
-		return nil
+		return
 	}
 	task := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
-	return m.beginTagEdit([]string{task.ID}, task.TagColor, task.TagLabel)
+	m.beginTagEdit([]string{task.ID}, task.TagColor)
 }
 
-// beginTagEdit focuses a fresh editor over the given tasks and enters the modal.
-// Callers must already be in (or have returned to) normal mode.
-func (m *model) beginTagEdit(taskIDs []string, color, label string) tea.Cmd {
+// beginTagEdit opens the picker over the given tasks. Callers must already be
+// in (or have returned to) normal mode.
+func (m *model) beginTagEdit(taskIDs []string, color string) {
 	if len(taskIDs) == 0 {
-		return nil
+		return
 	}
-	ti := textinput.New()
-	ti.Prompt = ""
-	ti.SetValue(label)
-	ti.SetCursor(len([]rune(label)))
-	cmd := ti.Focus()
 	m.ui.TagEdit = TagEditState{
-		input:    ti,
 		taskIDs:  taskIDs,
 		colorIdx: tagColorIndex(color),
-		field:    tagFieldLabel,
 	}
-	if !m.ui.Modes.ToTagEdit() {
-		return nil
-	}
-	return cmd
+	m.ui.Modes.ToTagEdit()
 }
 
 func (m *model) handleTagEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	s := &m.ui.TagEdit
 	switch msg.String() {
-	case "esc":
+	case "esc", "q":
 		m.cancelTagEdit()
-		return m, nil
 	case "enter":
 		m.finishTagEdit()
-		return m, nil
-	case "tab", "shift+tab":
-		s.field = otherTagField(s.field)
-		return m, nil
-	}
-
-	if s.field == tagFieldColor {
-		switch msg.String() {
-		case "down", "j", "right", "l":
-			if s.colorIdx < len(tagEditColors)-1 {
-				s.colorIdx++
-			}
-		case "up", "k", "left", "h":
-			if s.colorIdx > 0 {
-				s.colorIdx--
-			} else {
-				s.field = tagFieldLabel // step up past the first color into the label
-			}
+	case "down", "j":
+		if s.colorIdx < len(tagEditColors)-1 {
+			s.colorIdx++
 		}
-		return m, nil
+	case "up", "k":
+		if s.colorIdx > 0 {
+			s.colorIdx--
+		}
 	}
-
-	// Label field.
-	if msg.String() == "down" {
-		s.field = tagFieldColor
-		return m, nil
-	}
-	return m, m.updateTagLabel(msg)
-}
-
-func (m *model) updateTagLabel(msg tea.Msg) tea.Cmd {
-	s := &m.ui.TagEdit
-	var cmd tea.Cmd
-	s.input, cmd = s.input.Update(msg)
-	sanitizeInput(&s.input)
-	// A label needs a colored dot to ride on: typing one onto an untagged task
-	// promotes the "None" selection to the first real color.
-	if strings.TrimSpace(s.input.Value()) != "" && s.colorIdx == 0 {
-		s.colorIdx = tagColorIndex(domain.TagGreen)
-	}
-	return cmd
-}
-
-func otherTagField(f tagEditField) tagEditField {
-	if f == tagFieldLabel {
-		return tagFieldColor
-	}
-	return tagFieldLabel
+	return m, nil
 }
 
 func (m *model) cancelTagEdit() {
@@ -156,10 +97,6 @@ func (m *model) cancelTagEdit() {
 func (m *model) finishTagEdit() {
 	s := m.ui.TagEdit
 	color := tagEditColors[s.colorIdx]
-	label := strings.TrimSpace(s.input.Value())
-	if color == "" {
-		label = "" // "None" removes the tag entirely
-	}
 	m.ui.TagEdit = TagEditState{}
 	m.ui.Modes.ToNormal()
 	if len(s.taskIDs) == 0 {
@@ -170,16 +107,10 @@ func (m *model) finishTagEdit() {
 	changed := 0
 	for _, id := range s.taskIDs {
 		task := m.taskByID(id)
-		if task == nil {
-			continue
-		}
-		if task.TagColor == color && task.TagLabel == label {
+		if task == nil || task.TagColor == color {
 			continue
 		}
 		_ = task.SetTagColor(color)
-		if color != "" {
-			task.SetTagLabel(label)
-		}
 		changed++
 	}
 	if changed == 0 {
@@ -205,20 +136,10 @@ func (m model) tagEditView() string {
 	}
 	lines := []string{ui.DialogTitleStyle.Render(title), ""}
 
-	labelMarker := "  "
-	if s.field == tagFieldLabel {
-		labelMarker = "> "
-	}
-	lines = append(lines, labelMarker+"Label  "+s.input.View(), "", "  Color")
-
 	for i, color := range tagEditColors {
 		marker := "  "
 		if i == s.colorIdx {
-			if s.field == tagFieldColor {
-				marker = "> "
-			} else {
-				marker = "· "
-			}
+			marker = "> "
 		}
 		var swatch string
 		if color == "" {
@@ -231,7 +152,6 @@ func (m model) tagEditView() string {
 	}
 
 	lines = append(lines, "", ui.RenderHints([]ui.Hint{
-		{Key: "tab", Label: "switch"},
 		{Key: "enter", Label: "save"},
 		{Key: "esc", Label: "cancel"},
 	}))
@@ -239,26 +159,18 @@ func (m model) tagEditView() string {
 }
 
 // copyTagFromSelected grabs the focused task's tag into the tag clipboard so it
-// can be painted onto other tasks with p, and — when the tag carries a label —
-// also copies that label to the system clipboard. Copying an untagged task
-// stores an empty tag, so a subsequent paste clears the target.
-func (m *model) copyTagFromSelected() tea.Cmd {
+// can be painted onto other tasks with p. Copying an untagged task stores an
+// empty tag, so a subsequent paste clears the target.
+func (m *model) copyTagFromSelected() {
 	pos, ok := m.selectedPosition()
 	if !ok || pos.Kind != selection.FocusTask {
 		m.ui.Screen.StatusMsg = "Copy tag: focus a task first"
-		return nil
+		return
 	}
 	task := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-	m.ui.TagClip = TagClipboard{Set: true, Color: task.TagColor, Label: task.TagLabel}
+	m.ui.TagClip = TagClipboard{Set: true, Color: task.TagColor}
 	m.ui.TagCopiedLast = true
-	desc := tagClipDescription(m.ui.TagClip)
-	// Only a label carries text worth exporting; a color-only or untagged tag has
-	// nothing to put on the system clipboard, so report the copy synchronously.
-	if task.TagLabel == "" {
-		m.ui.Screen.StatusMsg = "Copied tag: " + desc
-		return nil
-	}
-	return m.copyToClipboard(task.TagLabel, "tag: "+desc)
+	m.ui.Screen.StatusMsg = "Copied tag: " + tagClipDescription(m.ui.TagClip)
 }
 
 // paste routes the normal-mode `p`: a tag copied last wins, then the clipboard.
@@ -270,8 +182,8 @@ func (m *model) paste() tea.Cmd {
 	return m.pasteFromClipboard()
 }
 
-// pasteTagOntoSelected applies the copied tag to the focused task, replacing its
-// color and label without touching the title or status.
+// pasteTagOntoSelected applies the copied tag to the focused task without
+// touching the title or status.
 func (m *model) pasteTagOntoSelected() {
 	if !m.ui.TagClip.Set {
 		m.ui.Screen.StatusMsg = "No tag copied (use gt on a task first)"
@@ -283,27 +195,18 @@ func (m *model) pasteTagOntoSelected() {
 		return
 	}
 	task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-	if task.TagColor == m.ui.TagClip.Color && task.TagLabel == m.ui.TagClip.Label {
+	if task.TagColor == m.ui.TagClip.Color {
 		return
 	}
 	taskID := task.ID
 	m.recordHistory()
-	m.applyTagClip(task)
+	_ = task.SetTagColor(m.ui.TagClip.Color)
 	m.storeTaskUpdate()
 	// A tag change can move the task in or out of an active tag filter.
 	m.rebuildPositions()
 	m.selectTaskByID(taskID)
 	m.ensureVisible()
 	m.ui.Screen.StatusMsg = "Pasted tag: " + tagClipDescription(m.ui.TagClip)
-}
-
-// applyTagClip writes the copied tag onto task. SetTagColor("") already clears
-// the label, so the label is only reapplied when a color is present.
-func (m *model) applyTagClip(task *domain.Task) {
-	_ = task.SetTagColor(m.ui.TagClip.Color)
-	if m.ui.TagClip.Color != "" {
-		task.SetTagLabel(m.ui.TagClip.Label)
-	}
 }
 
 // visualTaskPositions keeps only real task rows from a visual selection,
@@ -341,10 +244,10 @@ func (m *model) visualPasteTag() {
 	changed := 0
 	for _, pos := range selPositions {
 		task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-		if task.TagColor == m.ui.TagClip.Color && task.TagLabel == m.ui.TagClip.Label {
+		if task.TagColor == m.ui.TagClip.Color {
 			continue
 		}
-		m.applyTagClip(task)
+		_ = task.SetTagColor(m.ui.TagClip.Color)
 		changed++
 	}
 	m.exitVisualMode()
@@ -358,17 +261,13 @@ func (m *model) visualPasteTag() {
 	m.ui.Screen.StatusMsg = fmt.Sprintf("Pasted tag onto %d task(s)", changed)
 }
 
-// tagClipDescription is a short human label for a copied tag, e.g. "Cyan
-// (urgent)" or "none".
+// tagClipDescription is a short human label for a copied tag, e.g. "Cyan" or
+// "none".
 func tagClipDescription(clip TagClipboard) string {
 	if clip.Color == "" {
 		return "none"
 	}
-	s := tagColorName(clip.Color)
-	if clip.Label != "" {
-		s += " (" + clip.Label + ")"
-	}
-	return s
+	return tagColorName(clip.Color)
 }
 
 // visualCycleTag sets every task in the visual selection to a single shared next
@@ -392,12 +291,12 @@ func (m *model) visualCycleTag() {
 }
 
 // visualStartTagEdit collects the selected task IDs, leaves visual mode (a modal
-// can only open from normal mode), and opens the tag editor seeded from the
+// can only open from normal mode), and opens the tag picker seeded from the
 // first task's color for a shared edit across the whole selection.
-func (m *model) visualStartTagEdit() tea.Cmd {
+func (m *model) visualStartTagEdit() {
 	if m.ui.Visual.Kind != selection.FocusTask {
 		m.exitVisualMode()
-		return nil
+		return
 	}
 	selPositions := visualTaskPositions(m.visualSelectedPositions())
 	ids := make([]string, 0, len(selPositions))
@@ -409,7 +308,7 @@ func (m *model) visualStartTagEdit() tea.Cmd {
 		ids = append(ids, m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID)
 	}
 	m.exitVisualMode()
-	return m.beginTagEdit(ids, color, "")
+	m.beginTagEdit(ids, color)
 }
 
 // taskByID returns a pointer to the stored task with the given ID, or nil.

@@ -210,9 +210,6 @@ func (m model) rowMatches(r selection.Position, query string) bool {
 		if ui.Contains(task.Title, query) {
 			return true
 		}
-		if ui.Contains(task.TagLabel, query) {
-			return true
-		}
 		return !m.ui.Screen.ExpandDescriptions && ui.Contains(task.Description, query)
 	case selection.FocusDescription:
 		if r.TaskIndex < 0 || r.TaskIndex >= len(cat.Tasks) {

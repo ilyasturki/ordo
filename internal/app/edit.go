@@ -400,9 +400,6 @@ func (m *model) handlePaste(text string) tea.Cmd {
 	case modes.ModeCommandPrompt:
 		m.ui.TaskCommand.input, cmd = m.ui.TaskCommand.input.Update(flat)
 		sanitizeInput(&m.ui.TaskCommand.input)
-	case modes.ModeTagEdit:
-		m.ui.TagEdit.field = tagFieldLabel
-		cmd = m.updateTagLabel(flat)
 	case modes.ModeHelp:
 		if !m.ui.Help.Filtering {
 			cmd = m.startHelpFilter()

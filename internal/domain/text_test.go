@@ -137,7 +137,7 @@ func TestValidateProjectText(t *testing.T) {
 		assert.ErrorIs(t, ValidateProjectText(p), ErrControlCharacters)
 
 		p = withTitle("fine")
-		p.Categories[0].Tasks[0].TagLabel = osc52Clipboard
+		p.Categories[0].Tasks[0].TagColor = osc52Clipboard
 		assert.ErrorIs(t, ValidateProjectText(p), ErrControlCharacters)
 	})
 
@@ -164,7 +164,7 @@ func TestStripProjectText(t *testing.T) {
 			Tasks: []Task{{
 				Title:       "Ship" + osc52Clipboard,
 				Description: "keep\nthe newline" + csiEraseScreen,
-				TagLabel:    c1CSI + "urgent",
+				TagColor:    c1CSI + "green",
 			}},
 		}},
 	}
@@ -175,7 +175,7 @@ func TestStripProjectText(t *testing.T) {
 	assert.Equal(t, "Road[2Jmap", p.Name)
 	assert.Equal(t, "Back]52;c;cm0gLXJmlog", p.Categories[0].Name)
 	assert.Equal(t, "Ship]52;c;cm0gLXJm", p.Categories[0].Tasks[0].Title)
-	assert.Equal(t, "Kurgent", p.Categories[0].Tasks[0].TagLabel)
+	assert.Equal(t, "Kgreen", p.Categories[0].Tasks[0].TagColor)
 	// Descriptions keep their line structure; only the escape byte goes.
 	assert.Equal(t, "keep\nthe newline[2J", p.Categories[0].Tasks[0].Description)
 

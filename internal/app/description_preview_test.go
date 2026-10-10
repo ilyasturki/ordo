@@ -179,9 +179,9 @@ func TestDescriptionHeight_MatchesRenderedLines(t *testing.T) {
 	}{
 		{"plain", domain.Task{ID: "t1", Title: "Alpha", Status: domain.StatusTodo, Description: long}},
 		{"tagged", domain.Task{ID: "t1", Title: "Alpha", Status: domain.StatusTodo, Description: long,
-			TagColor: domain.TagGreen, TagLabel: "urgent"}},
+			TagColor: domain.TagGreen}},
 		{"tagged with priority", domain.Task{ID: "t1", Title: "Alpha", Status: domain.StatusTodo, Description: long,
-			TagColor: domain.TagGreen, TagLabel: "urgent", Priority: domain.PriorityHigh}},
+			TagColor: domain.TagGreen, Priority: domain.PriorityHigh}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -129,28 +129,12 @@ func TestCreateTask_AppliesTag(t *testing.T) {
 	got, err := operations.CreateTask(p, "c1", operations.TaskFields{
 		Title:    "Tagged",
 		TagColor: domain.TagCyan,
-		TagLabel: "backend",
 	})
 	if err != nil {
 		t.Fatalf("CreateTask returned error: %v", err)
 	}
-	if got.TagColor != domain.TagCyan || got.TagLabel != "backend" {
-		t.Fatalf("tag not applied: color=%q label=%q", got.TagColor, got.TagLabel)
-	}
-}
-
-func TestCreateTask_LabelWithoutColorGetsDefault(t *testing.T) {
-	p := projectWithCategory("c1")
-
-	got, err := operations.CreateTask(p, "c1", operations.TaskFields{
-		Title:    "Tagged",
-		TagLabel: "urgent",
-	})
-	if err != nil {
-		t.Fatalf("CreateTask returned error: %v", err)
-	}
-	if got.TagColor != domain.TagGreen || got.TagLabel != "urgent" {
-		t.Fatalf("label without color should default to green: color=%q label=%q", got.TagColor, got.TagLabel)
+	if got.TagColor != domain.TagCyan {
+		t.Fatalf("tag not applied: color=%q", got.TagColor)
 	}
 }
 

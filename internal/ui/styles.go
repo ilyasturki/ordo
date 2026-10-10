@@ -186,15 +186,11 @@ func TagBlockStyle(name string) (lipgloss.Style, bool) {
 	return lipgloss.NewStyle().Foreground(c).Reverse(true), true
 }
 
-// TagSegmentText is the plain leading tag text drawn before a task title: the
-// dot, an optional label, and a trailing space — or "" when untagged. Both the
-// renderer and the layout/column math call this so the two never drift.
-func TagSegmentText(name, label string) string {
+// TagSegmentText is the plain leading tag text drawn before a task title, or ""
+// when untagged. The renderer and the column math both call it so they never drift.
+func TagSegmentText(name string) string {
 	if !TagDotVisible(name) {
 		return ""
-	}
-	if label != "" {
-		return TagDot + " " + label + " "
 	}
 	return TagDot + " "
 }

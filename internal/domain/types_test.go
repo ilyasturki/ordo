@@ -477,13 +477,6 @@ func TestTask_CycleTag(t *testing.T) {
 		}
 	})
 
-	t.Run("cycling to none clears the label", func(t *testing.T) {
-		task := Task{TagColor: TagCyan, TagLabel: "urgent"}
-		task.CycleTag()
-		assert.Equal(t, "", task.TagColor)
-		assert.Equal(t, "", task.TagLabel)
-	})
-
 	t.Run("stamps UpdatedAt", func(t *testing.T) {
 		task := Task{}
 		task.CycleTag()
@@ -516,38 +509,14 @@ func TestTask_SetTagColor(t *testing.T) {
 		assert.NotEmpty(t, task.UpdatedAt)
 	})
 
-	t.Run("clearing the color drops the label", func(t *testing.T) {
-		task := Task{TagColor: TagBlue, TagLabel: "api"}
+	t.Run("clears the tag", func(t *testing.T) {
+		task := Task{TagColor: TagBlue}
 		require.NoError(t, task.SetTagColor(""))
 		assert.Equal(t, "", task.TagColor)
-		assert.Equal(t, "", task.TagLabel)
 	})
 
 	t.Run("rejects an invalid color", func(t *testing.T) {
 		task := Task{}
 		assert.Error(t, task.SetTagColor("chartreuse"))
-	})
-}
-
-func TestTask_SetTagLabel(t *testing.T) {
-	t.Run("labeling an untagged task assigns the first color", func(t *testing.T) {
-		task := Task{}
-		task.SetTagLabel("  urgent  ")
-		assert.Equal(t, "urgent", task.TagLabel)
-		assert.Equal(t, TagGreen, task.TagColor)
-	})
-
-	t.Run("keeps an existing color", func(t *testing.T) {
-		task := Task{TagColor: TagCyan}
-		task.SetTagLabel("backend")
-		assert.Equal(t, "backend", task.TagLabel)
-		assert.Equal(t, TagCyan, task.TagColor)
-	})
-
-	t.Run("clearing the label keeps the color", func(t *testing.T) {
-		task := Task{TagColor: TagCyan, TagLabel: "backend"}
-		task.SetTagLabel("")
-		assert.Equal(t, "", task.TagLabel)
-		assert.Equal(t, TagCyan, task.TagColor)
 	})
 }

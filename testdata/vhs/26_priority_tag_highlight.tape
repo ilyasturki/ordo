@@ -23,36 +23,12 @@ Type "t"
 Sleep 400ms
 Screenshot "/tmp/phas-vt/vhs-out/26_coloronly_tag_priority.png"
 
-# Labeled tag beside a priority icon: the separator space between the tag
-# block and the priority block is filled with the tag color so the two
-# colored blocks connect (no monochrome gap).
-Type "T"
-Sleep 300ms
-Type "urgent"
-Sleep 200ms
-Tab
-Sleep 150ms
-Type "jj"
-Sleep 200ms
-Enter
-Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/26_labeled_tag_priority.png"
-
-# Regression: a labeled tag on a medium task (no priority icon) still keeps
-# its trailing separator in the selection band so the block hugs the label.
+# The same tag on a task without a priority icon: the block hugs the title.
 Type "j"
 Sleep 200ms
-Type "T"
-Sleep 300ms
-Type "later"
-Sleep 200ms
-Tab
-Sleep 150ms
-Type "j"
-Sleep 200ms
-Enter
+Type "t"
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/26_labeled_tag_no_priority.png"
+Screenshot "/tmp/phas-vt/vhs-out/26_tag_no_priority.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 

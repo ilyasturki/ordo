@@ -135,7 +135,7 @@ func ValidateProjectText(p Project) error {
 		for _, t := range c.Tasks {
 			lines = append(lines,
 				t.ID, t.Title, t.Status, t.CreatedAt, t.UpdatedAt,
-				t.Priority, t.CompletionDate, t.Kind, t.TagColor, t.TagLabel,
+				t.Priority, t.CompletionDate, t.Kind, t.TagColor,
 			)
 			if err := ValidateMultiline(t.Description); err != nil {
 				return err
@@ -179,7 +179,6 @@ func StripProjectText(p *Project) {
 			t.CompletionDate = StripControl(t.CompletionDate, false)
 			t.Kind = StripControl(t.Kind, false)
 			t.TagColor = StripControl(t.TagColor, false)
-			t.TagLabel = StripControl(t.TagLabel, false)
 			t.Description = StripControl(t.Description, true)
 		}
 	}

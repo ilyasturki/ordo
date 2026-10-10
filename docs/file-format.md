@@ -87,7 +87,6 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | `description` | string | Optional. The one field that may hold newlines and tabs. |
 | `kind` | string | Optional. `separator` turns the row into a divider; missing means an ordinary task. |
 | `tag_color` | string | Optional. `green`, `blue`, `magenta` or `cyan`. |
-| `tag_label` | string | Optional. Only alongside a `tag_color`. |
 
 Every string is valid UTF-8 with no control characters: nothing below U+0020, no U+007F, nothing from U+0080 to U+009F. `description` is the exception for newline and tab. Phasionary strips control characters from any file it loads, since a terminal would run them as commands.
 

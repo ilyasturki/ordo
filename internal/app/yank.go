@@ -89,9 +89,6 @@ func (m *model) buildYankItems(pos selection.Position) []components.YankItem {
 		if task.Description != "" {
 			set.add(task.Description)
 		}
-		if task.TagLabel != "" {
-			set.add(task.TagLabel)
-		}
 		addEntities(task.Title, task.Description)
 	}
 	return set.items

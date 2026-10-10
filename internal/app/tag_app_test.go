@@ -26,41 +26,21 @@ func TestCycleTag_IgnoresNonTaskSelection(t *testing.T) {
 	assert.Equal(t, "", m.project.Categories[0].Tasks[0].TagColor)
 }
 
-func TestTagEdit_LabelDefaultsToGreenAndApplies(t *testing.T) {
-	m := newTestModel(t, sampleProject())
-	m.ui.Selection.SetSelected(2) // t1
-
-	m.startTagEdit()
-	require.True(t, m.ui.Modes.IsTagEdit())
-	m.ui.TagEdit.input.SetValue("urgent")
-	// Typing a label onto an untagged task should promote the color off "None".
-	if m.ui.TagEdit.colorIdx == 0 {
-		m.ui.TagEdit.colorIdx = 1
-	}
-	m.finishTagEdit()
-
-	assert.True(t, m.ui.Modes.IsNormal())
-	assert.Equal(t, "urgent", m.project.Categories[0].Tasks[0].TagLabel)
-	assert.Equal(t, domain.TagGreen, m.project.Categories[0].Tasks[0].TagColor)
-}
-
 func TestTagEdit_PicksSpecificColor(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.SetSelected(2)
 
 	m.startTagEdit()
 	m.ui.TagEdit.colorIdx = tagColorIndex(domain.TagMagenta)
-	m.ui.TagEdit.input.SetValue("api")
 	m.finishTagEdit()
 
+	assert.True(t, m.ui.Modes.IsNormal())
 	assert.Equal(t, domain.TagMagenta, m.project.Categories[0].Tasks[0].TagColor)
-	assert.Equal(t, "api", m.project.Categories[0].Tasks[0].TagLabel)
 }
 
 func TestTagEdit_NoneRemovesTag(t *testing.T) {
 	p := sampleProject()
 	p.Categories[0].Tasks[0].TagColor = domain.TagCyan
-	p.Categories[0].Tasks[0].TagLabel = "backend"
 	m := newTestModel(t, p)
 	m.ui.Selection.SetSelected(2)
 
@@ -71,7 +51,6 @@ func TestTagEdit_NoneRemovesTag(t *testing.T) {
 	m.finishTagEdit()
 
 	assert.Equal(t, "", m.project.Categories[0].Tasks[0].TagColor)
-	assert.Equal(t, "", m.project.Categories[0].Tasks[0].TagLabel)
 }
 
 func TestTagEdit_CancelLeavesTaskUntouched(t *testing.T) {
@@ -79,12 +58,10 @@ func TestTagEdit_CancelLeavesTaskUntouched(t *testing.T) {
 	m.ui.Selection.SetSelected(2)
 
 	m.startTagEdit()
-	m.ui.TagEdit.input.SetValue("nope")
 	m.ui.TagEdit.colorIdx = tagColorIndex(domain.TagBlue)
 	m.cancelTagEdit()
 
 	assert.True(t, m.ui.Modes.IsNormal())
-	assert.Equal(t, "", m.project.Categories[0].Tasks[0].TagLabel)
 	assert.Equal(t, "", m.project.Categories[0].Tasks[0].TagColor)
 }
 
@@ -128,19 +105,16 @@ func TestVisualTagEdit_AppliesSharedTagAndExitsVisual(t *testing.T) {
 	require.True(t, m.ui.Modes.IsTagEdit())
 	require.Len(t, m.ui.TagEdit.taskIDs, 2)
 	m.ui.TagEdit.colorIdx = tagColorIndex(domain.TagCyan)
-	m.ui.TagEdit.input.SetValue("sprint")
 	m.finishTagEdit()
 
 	assert.True(t, m.ui.Modes.IsNormal())
-	assert.Equal(t, "sprint", m.project.Categories[0].Tasks[0].TagLabel)
-	assert.Equal(t, "sprint", m.project.Categories[0].Tasks[1].TagLabel)
 	assert.Equal(t, domain.TagCyan, m.project.Categories[0].Tasks[0].TagColor)
+	assert.Equal(t, domain.TagCyan, m.project.Categories[0].Tasks[1].TagColor)
 }
 
 func TestCopyPasteTag_NormalMode(t *testing.T) {
 	p := sampleProject()
 	p.Categories[0].Tasks[0].TagColor = domain.TagMagenta
-	p.Categories[0].Tasks[0].TagLabel = "api"
 	m := newTestModel(t, p)
 
 	// Copy the tag from t1.
@@ -148,7 +122,6 @@ func TestCopyPasteTag_NormalMode(t *testing.T) {
 	m.copyTagFromSelected()
 	require.True(t, m.ui.TagClip.Set)
 	assert.Equal(t, domain.TagMagenta, m.ui.TagClip.Color)
-	assert.Equal(t, "api", m.ui.TagClip.Label)
 
 	// Paste onto t2 (leaves title/status untouched).
 	m.ui.Selection.SetSelected(3) // t2
@@ -157,7 +130,6 @@ func TestCopyPasteTag_NormalMode(t *testing.T) {
 	m.pasteTagOntoSelected()
 
 	assert.Equal(t, domain.TagMagenta, m.project.Categories[0].Tasks[1].TagColor)
-	assert.Equal(t, "api", m.project.Categories[0].Tasks[1].TagLabel)
 	assert.Equal(t, titleBefore, m.project.Categories[0].Tasks[1].Title)
 	assert.Equal(t, statusBefore, m.project.Categories[0].Tasks[1].Status)
 }
@@ -172,7 +144,6 @@ func TestPasteTag_WithoutCopyIsNoop(t *testing.T) {
 func TestPaste_PaintsTagWhenTagCopiedLast(t *testing.T) {
 	p := sampleProject()
 	p.Categories[0].Tasks[0].TagColor = domain.TagMagenta
-	p.Categories[0].Tasks[0].TagLabel = "api"
 	m := newTestModel(t, p)
 
 	m.ui.Selection.SetSelected(2) // t1
@@ -184,13 +155,11 @@ func TestPaste_PaintsTagWhenTagCopiedLast(t *testing.T) {
 	m.paste()
 
 	assert.Equal(t, domain.TagMagenta, m.project.Categories[0].Tasks[1].TagColor)
-	assert.Equal(t, "api", m.project.Categories[0].Tasks[1].TagLabel)
 }
 
 func TestPaste_MovesTaskWhenCutIsFreshest(t *testing.T) {
 	p := sampleProject()
 	p.Categories[0].Tasks[0].TagColor = domain.TagMagenta
-	p.Categories[0].Tasks[0].TagLabel = "api"
 	m := newTestModel(t, p)
 
 	// Copy a tag, then cut a task: the cut is now the freshest clipboard action.
@@ -207,29 +176,12 @@ func TestPaste_MovesTaskWhenCutIsFreshest(t *testing.T) {
 
 	assert.False(t, m.ui.Clipboard.IsCut, "p should move the cut task, not paint the tag")
 	assert.Equal(t, []string{"t1", "t3", "t2"}, taskIDs(m.project.Categories[0]))
-	assert.Equal(t, "", m.project.Categories[0].Tasks[1].TagLabel, "t3 tag untouched")
-}
-
-func TestCopyTag_ExportsLabelToClipboardCmd(t *testing.T) {
-	p := sampleProject()
-	p.Categories[0].Tasks[0].TagColor = domain.TagCyan
-	p.Categories[0].Tasks[0].TagLabel = "urgent"
-	p.Categories[0].Tasks[1].TagColor = domain.TagBlue // color only, no label
-	m := newTestModel(t, p)
-
-	// A labeled tag returns a command that writes the label to the OS clipboard.
-	m.ui.Selection.SetSelected(2) // t1 (labeled)
-	assert.NotNil(t, m.copyTagFromSelected())
-
-	// A color-only tag has no label to export, so no clipboard command is issued.
-	m.ui.Selection.SetSelected(3) // t2 (no label)
-	assert.Nil(t, m.copyTagFromSelected())
+	assert.Equal(t, "", m.project.Categories[0].Tasks[1].TagColor, "t3 tag untouched")
 }
 
 func TestCopyPasteTag_EmptyTagClearsTarget(t *testing.T) {
 	p := sampleProject()
 	p.Categories[0].Tasks[1].TagColor = domain.TagBlue
-	p.Categories[0].Tasks[1].TagLabel = "old"
 	m := newTestModel(t, p)
 
 	// t1 is untagged; copying it yields an empty tag that pastes as a clear.
@@ -239,13 +191,11 @@ func TestCopyPasteTag_EmptyTagClearsTarget(t *testing.T) {
 	m.pasteTagOntoSelected()
 
 	assert.Equal(t, "", m.project.Categories[0].Tasks[1].TagColor)
-	assert.Equal(t, "", m.project.Categories[0].Tasks[1].TagLabel)
 }
 
 func TestVisualPasteTag_AppliesToSelection(t *testing.T) {
 	p := sampleProject()
 	p.Categories[0].Tasks[0].TagColor = domain.TagCyan
-	p.Categories[0].Tasks[0].TagLabel = "sprint"
 	m := newTestModel(t, p)
 
 	m.ui.Selection.SetSelected(2) // t1
@@ -259,27 +209,5 @@ func TestVisualPasteTag_AppliesToSelection(t *testing.T) {
 
 	assert.True(t, m.ui.Modes.IsNormal())
 	assert.Equal(t, domain.TagCyan, m.project.Categories[0].Tasks[1].TagColor)
-	assert.Equal(t, "sprint", m.project.Categories[0].Tasks[1].TagLabel)
 	assert.Equal(t, domain.TagCyan, m.project.Categories[0].Tasks[2].TagColor)
-	assert.Equal(t, "sprint", m.project.Categories[0].Tasks[2].TagLabel)
-}
-
-func TestYankMenu_IncludesTagLabel(t *testing.T) {
-	p := sampleProject()
-	p.Categories[0].Tasks[0].TagColor = domain.TagGreen
-	p.Categories[0].Tasks[0].TagLabel = "backend"
-	m := newTestModel(t, p)
-
-	m.ui.Selection.SetSelected(2) // t1
-	pos, ok := m.selectedPosition()
-	require.True(t, ok)
-	items := m.buildYankItems(pos)
-
-	found := false
-	for _, it := range items {
-		if it.Value == "backend" {
-			found = true
-		}
-	}
-	assert.True(t, found, "tag label should be a yank candidate")
 }

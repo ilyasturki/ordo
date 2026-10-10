@@ -16,7 +16,6 @@ type TaskFields struct {
 	Estimate    int
 	Description string
 	TagColor    string
-	TagLabel    string
 	// Kind selects the row to build: empty for an ordinary task,
 	// domain.KindSeparator for a divider. A separator carries only a Title (its
 	// label, which may be empty); every other field must be unset.
@@ -30,7 +29,7 @@ func (f TaskFields) isSeparatorKind() bool { return f.Kind == domain.KindSeparat
 // client can't smuggle a status or an estimate onto a divider.
 func validateSeparatorFields(f TaskFields) error {
 	if f.Status != "" || f.Priority != "" || f.Estimate != 0 ||
-		f.Description != "" || f.TagColor != "" || f.TagLabel != "" {
+		f.Description != "" || f.TagColor != "" {
 		return ErrSeparatorFieldNotAllowed
 	}
 	return nil
@@ -56,15 +55,11 @@ func CreateTask(p *domain.Project, categoryID string, f TaskFields) (domain.Task
 //
 // This is the single gate every writer shares — the TUI and the CLI both
 // build a TaskFields and hand it here — which is why the check lives at this
-// layer rather than in each front door. Titles and tag
-// labels render on one line and reject every control character; descriptions
-// are legitimately multi-line, so they keep newlines and tabs and reject the
-// rest.
+// layer rather than in each front door. Titles render on one line and reject
+// every control character; descriptions are legitimately multi-line, so they
+// keep newlines and tabs and reject the rest.
 func validateTaskText(f TaskFields) error {
 	if err := domain.ValidateLine(f.Title); err != nil {
-		return err
-	}
-	if err := domain.ValidateLine(f.TagLabel); err != nil {
 		return err
 	}
 	return domain.ValidateMultiline(f.Description)
@@ -140,11 +135,10 @@ func CreateTaskAfter(
 	}
 	task.SetEstimate(f.Estimate)
 	task.Description = f.Description
-	if f.TagColor != "" || f.TagLabel != "" {
+	if f.TagColor != "" {
 		if err := task.SetTagColor(f.TagColor); err != nil {
 			return domain.Task{}, err
 		}
-		task.SetTagLabel(f.TagLabel)
 	}
 
 	cat.InsertTask(insertAt, task)

@@ -319,14 +319,14 @@ func TestPaste_OneLineInputsFlattenIt(t *testing.T) {
 		assert.Equal(t, "Gamma", m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].Title,
 			"the search follows the pasted query")
 	})
-	t.Run("tag edit", func(t *testing.T) {
+	t.Run("tag picker", func(t *testing.T) {
 		m := newTestModel(t, sampleProject())
 		require.True(t, m.selectTaskIdx(0, 0))
 		m.startTagEdit()
-		m.ui.TagEdit.field = tagFieldColor
 		send(t, m, tea.PasteMsg{Content: "needs\nreview"})
-		assert.Equal(t, "needs review", m.ui.TagEdit.input.Value())
-		assert.NotZero(t, m.ui.TagEdit.colorIdx, "a label promotes the color")
+		assert.True(t, m.ui.Modes.IsTagEdit())
+		assert.Zero(t, m.ui.TagEdit.colorIdx, "a mark picker takes no text")
+		assert.Equal(t, "Nothing here takes a paste", m.ui.Screen.StatusMsg)
 	})
 	t.Run("help filter", func(t *testing.T) {
 		m := newTestModel(t, sampleProject())

@@ -462,59 +462,30 @@ func TestMarkerToStatus(t *testing.T) {
 	}
 }
 
-func TestTagLabelRoundTrip(t *testing.T) {
-	t.Run("exports label as a trailing hashtag after the priority", func(t *testing.T) {
-		project := domain.Project{
-			Name: "Tagged",
-			Categories: []domain.Category{
-				{
-					Name: "Feature",
-					Tasks: []domain.Task{
-						{Title: "Ship it", Status: domain.StatusTodo, Priority: domain.PriorityHigh, TagColor: domain.TagCyan, TagLabel: "urgent"},
-						{Title: "Plain task", Status: domain.StatusTodo, TagColor: domain.TagGreen},
-					},
-				},
+func TestExportMarkdown_TagLeavesTitleAlone(t *testing.T) {
+	project := domain.Project{
+		Name: "Tagged",
+		Categories: []domain.Category{{
+			Name: "Feature",
+			Tasks: []domain.Task{
+				{Title: "Ship it", Status: domain.StatusTodo, Priority: domain.PriorityHigh, TagColor: domain.TagCyan},
 			},
-		}
-
-		var buf bytes.Buffer
-		require.NoError(t, ExportMarkdown(project, &buf))
-		out := buf.String()
-
-		assert.Contains(t, out, "- [ ] Ship it (high) #urgent")
-		// A tag with no label exports nothing extra.
-		assert.Contains(t, out, "- [ ] Plain task\n")
-		assert.NotContains(t, out, "Plain task #")
-	})
-
-	t.Run("import recovers the label and assigns the default color", func(t *testing.T) {
-		md := "# Tagged\n\n## Feature\n\n- [ ] Ship it (high) #urgent\n- [x] Done #backend\n"
-		imported, err := ImportMarkdown(strings.NewReader(md), "")
-		require.NoError(t, err)
-
-		require.Len(t, imported.Categories, 1)
-		tasks := imported.Categories[0].Tasks
-		require.Len(t, tasks, 2)
-
-		assert.Equal(t, "Ship it", tasks[0].Title)
-		assert.Equal(t, domain.PriorityHigh, tasks[0].Priority)
-		assert.Equal(t, "urgent", tasks[0].TagLabel)
-		assert.Equal(t, domain.TagGreen, tasks[0].TagColor)
-
-		assert.Equal(t, "Done", tasks[1].Title)
-		assert.Equal(t, "backend", tasks[1].TagLabel)
-	})
+		}},
+	}
+	var buf bytes.Buffer
+	require.NoError(t, ExportMarkdown(project, &buf))
+	assert.Contains(t, buf.String(), "- [ ] Ship it (high)\n")
 }
 
-func TestTagLabel_TitleWithHashKeepsPriority(t *testing.T) {
-	// A title that itself contains a mid-string "#123" must not have its
-	// priority suffix swallowed by the single-token label parser.
-	md := "# P\n\n## Feature\n\n- [ ] Fix #123 in parser (high)\n"
+// Titles used to lose a trailing " #word" to the removed tag-label suffix.
+func TestImportMarkdown_TrailingHashtagStaysInTitle(t *testing.T) {
+	md := "# P\n\n## Feature\n\n- [ ] Fix #123 in parser (high)\n- [x] Ship it #urgent\n"
 	imported, err := ImportMarkdown(strings.NewReader(md), "")
 	require.NoError(t, err)
 
-	task := imported.Categories[0].Tasks[0]
-	assert.Equal(t, "Fix #123 in parser", task.Title)
-	assert.Equal(t, domain.PriorityHigh, task.Priority)
-	assert.Equal(t, "", task.TagLabel)
+	tasks := imported.Categories[0].Tasks
+	assert.Equal(t, "Fix #123 in parser", tasks[0].Title)
+	assert.Equal(t, domain.PriorityHigh, tasks[0].Priority)
+	assert.Equal(t, "Ship it #urgent", tasks[1].Title)
+	assert.Equal(t, "", tasks[1].TagColor)
 }

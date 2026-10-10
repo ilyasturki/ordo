@@ -116,7 +116,6 @@ type Task struct {
 	Description     string `json:"description,omitempty"`
 	Kind            string `json:"kind,omitempty"`
 	TagColor        string `json:"tag_color,omitempty"`
-	TagLabel        string `json:"tag_label,omitempty"`
 }
 
 // IsSeparator reports whether this task is a separator row rather than a real
@@ -425,42 +424,21 @@ func NextTagColor(color string) string {
 }
 
 // CycleTag advances the tag one step through the palette (…→cyan→none→green→…).
-// Cycling back to no tag also drops the label, since a label needs a colored dot
-// to attach to. Always reports a change.
+// Always reports a change.
 func (t *Task) CycleTag() bool {
-	next := NextTagColor(t.TagColor)
-	t.TagColor = next
-	if next == "" {
-		t.TagLabel = ""
-	}
+	t.TagColor = NextTagColor(t.TagColor)
 	t.UpdatedAt = NowTimestamp()
 	return true
 }
 
-// SetTagColor sets a validated palette color (or "" to clear the tag entirely).
-// Clearing the color also clears the label.
+// SetTagColor sets a validated palette color, or "" to clear the tag.
 func (t *Task) SetTagColor(color string) error {
 	if err := ValidateTagColor(color); err != nil {
 		return err
 	}
 	t.TagColor = color
-	if color == "" {
-		t.TagLabel = ""
-	}
 	t.UpdatedAt = NowTimestamp()
 	return nil
-}
-
-// SetTagLabel stores the trimmed label. Labeling an untagged task assigns the
-// first palette color so the label has a dot to ride on; clearing the label
-// keeps the existing color.
-func (t *Task) SetTagLabel(label string) {
-	label = strings.TrimSpace(label)
-	t.TagLabel = label
-	if label != "" && t.TagColor == "" {
-		t.TagColor = TagGreen
-	}
-	t.UpdatedAt = NowTimestamp()
 }
 
 func (t *Task) CycleStatusReverse() bool {

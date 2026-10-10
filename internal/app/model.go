@@ -60,7 +60,6 @@ type VisualState struct {
 type TagClipboard struct {
 	Set   bool
 	Color string
-	Label string
 }
 
 type Screen struct {

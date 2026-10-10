@@ -12,21 +12,17 @@ Enter
 Sleep 800ms
 Show
 
-# Give the first task a tag: magenta + "backend".
+# Give the first task a magenta tag.
 Type "T"
 Sleep 250ms
-Type "backend"
-Sleep 150ms
-Tab
-Sleep 150ms
-Type "jj"
+Type "jjj"
 Sleep 150ms
 Enter
 Sleep 400ms
 Screenshot "/tmp/phas-vt/vhs-out/23_source_tagged.png"
 
-# Copy the tag (gt): stashes it for painting and puts the label on the system
-# clipboard. The status line confirms what was copied.
+# Copy the tag (gt): stashes it for painting. The status line confirms what
+# was copied.
 Type "gt"
 Sleep 400ms
 Screenshot "/tmp/phas-vt/vhs-out/23_after_copy.png"
@@ -49,15 +45,8 @@ Sleep 150ms
 Type "p"
 Sleep 400ms
 Screenshot "/tmp/phas-vt/vhs-out/23_after_visual_paste.png"
-
-# gy on a labeled task exposes the tag label as a copy-to-clipboard candidate.
-Type "gy"
-Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/23_yank_menu.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
-Escape
-Sleep 200ms
 
 Hide
 Type "q"

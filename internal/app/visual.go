@@ -657,7 +657,8 @@ func (m model) handleVisualKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.visualCycleTag()
 		return m, nil
 	case "T":
-		return m, m.visualStartTagEdit()
+		m.visualStartTagEdit()
+		return m, nil
 	case "p":
 		m.visualPasteTag()
 		return m, nil
