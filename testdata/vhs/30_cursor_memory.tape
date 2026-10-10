@@ -16,6 +16,7 @@ Show
 Type "jjjjj"
 Sleep 500ms
 Screenshot "/tmp/phas-vt/vhs-out/30_before_quit.png"
+Sleep 500ms
 
 # Quit and relaunch: the cursor must come back to the same row rather than
 # resetting to the first task.

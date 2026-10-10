@@ -19,6 +19,7 @@ Sleep 300ms
 Type "jjjjjjjjjj"
 Sleep 500ms
 Screenshot "/tmp/phas-vt/vhs-out/31_before_quit_at_edge.png"
+Sleep 500ms
 
 # Reopening has no record of where the view sat, so the restored row should come
 # back centered rather than pinned to the bottom edge it was saved from.
