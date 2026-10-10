@@ -49,6 +49,7 @@ func Read() (string, error) {
 		return string(data), err
 	}
 	var out bytes.Buffer
+	// Not an OSC 52 read: tmux answers one from its own paste buffer, never the desktop clipboard.
 	// --no-newline: wl-paste otherwise appends one that was never copied.
 	if err := run(nil, &out, "wl-paste", "--no-newline"); err != nil {
 		return "", err
