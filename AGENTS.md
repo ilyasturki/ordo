@@ -16,3 +16,10 @@ Run `./testdata/vhs/run.sh [tape-name]` to verify UI changes. It rebuilds,
 re-seeds an isolated data dir, runs each `.tape`, and writes PNG screenshots
 to `/tmp/phas-vt/vhs-out/`. Read the PNGs, then `rm -rf /tmp/phas-vt/vhs-out`.
 Add a new tape for any new mode, modal, or non-trivial keybinding.
+
+# File format
+
+`docs/file-format.md` is the contract other apps code against. A change to the
+JSON shape (`internal/domain/types.go`), the write and lock path
+(`internal/data`), or the stale guard updates it in the same commit; a change an
+older reader would misread also bumps `ProjectSchemaVersion`.
