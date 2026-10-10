@@ -79,8 +79,6 @@ func (m *model) appendTarget(fromEdit bool) (string, bool) {
 func (m model) handlePasteChooserKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	st := &m.ui.PasteChooser
 	switch key := msg.String(); key {
-	case "ctrl+c":
-		return m, tea.Quit
 	case "esc", "q":
 		m.closePasteChooser()
 		m.ui.Screen.StatusMsg = "Paste cancelled"
