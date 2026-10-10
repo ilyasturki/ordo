@@ -85,6 +85,38 @@ func TestCutPaste_WithinItsOwnCategory(t *testing.T) {
 	assert.Equal(t, []string{"t2", "t3", "t1"}, taskIDs(m.project.Categories[0]))
 }
 
+func TestCutPaste_CountsEveryLiftedRowAboveTheCursor(t *testing.T) {
+	p := sampleProject()
+	p.Categories[0].Tasks = append(p.Categories[0].Tasks,
+		domain.Task{ID: "t6", Title: "Zeta", Status: domain.StatusTodo},
+		domain.Task{ID: "t7", Title: "Eta", Status: domain.StatusTodo})
+	m := newTestModel(t, p)
+	m.ui.Clipboard = ClipboardState{IsCut: true, Tasks: p.Categories[0].Tasks[:3], TaskIDs: []string{"t1", "t2", "t3"}}
+	require.True(t, m.selectTaskIdx(0, 3))
+
+	m.pasteInternal()
+
+	assert.Equal(t, []string{"t6", "t1", "t2", "t3", "t7"}, taskIDs(m.project.Categories[0]))
+}
+
+func TestCutPaste_CategoriesLandInTheFocusedOnesPlace(t *testing.T) {
+	p := sampleProject()
+	p.Categories = append(p.Categories, domain.Category{ID: "c3", Name: "Cat C"})
+	m := newTestModel(t, p)
+	m.ui.Clipboard = ClipboardState{IsCut: true, Categories: p.Categories[:2], CategoryIDs: []string{"c1", "c2"}}
+	require.True(t, m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
+		return p.Kind == selection.FocusCategory && p.CategoryIndex == 2
+	}))
+
+	m.pasteInternal()
+
+	ids := make([]string, len(m.project.Categories))
+	for i, c := range m.project.Categories {
+		ids[i] = c.ID
+	}
+	assert.Equal(t, []string{"c1", "c2", "c3"}, ids)
+}
+
 func TestCutPaste_SourceGoneMovesNothing(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	require.True(t, m.selectTaskIdx(0, 0))

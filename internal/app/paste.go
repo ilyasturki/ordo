@@ -139,8 +139,8 @@ func (m *model) moveRows(ids []string, catIndex, index int) []domain.Task {
 		lifted[id] = true
 	}
 	dst := &m.project.Categories[catIndex]
-	for i := 0; i < index && i < len(dst.Tasks); i++ {
-		if lifted[dst.Tasks[i].ID] {
+	for _, t := range dst.Tasks[:min(index, len(dst.Tasks))] {
+		if lifted[t.ID] {
 			index--
 		}
 	}
@@ -246,8 +246,8 @@ func (m *model) moveCategories(ids []string, index int) []domain.Category {
 	for _, id := range ids {
 		lifted[id] = true
 	}
-	for i := 0; i < index && i < len(m.project.Categories); i++ {
-		if lifted[m.project.Categories[i].ID] {
+	for _, c := range m.project.Categories[:min(index, len(m.project.Categories))] {
+		if lifted[c.ID] {
 			index--
 		}
 	}
