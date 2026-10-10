@@ -810,7 +810,6 @@ func AttachSyncRecorder(store *data.Store) error {
 	return nil
 }
 
-// taskSelector, when set, opens on that task instead of the remembered row.
 func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader, workingDir string, forcePicker bool) error {
 	taskCommands, err := bindTaskCommands(cfgManager.Get().TaskCommands)
 	if err != nil {

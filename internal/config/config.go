@@ -39,20 +39,14 @@ type Config struct {
 	TaskCommands []TaskCommand `json:"task_commands,omitempty"`
 }
 
-// TaskCommand runs an external program on the focused task. The task reaches
-// it through PHASIONARY_* environment variables, and Run is executed directly,
-// never through a shell.
+// Run is executed directly, never through a shell; the task arrives as PHASIONARY_* variables.
 type TaskCommand struct {
-	Key   string `json:"key"`
-	Label string `json:"label"`
-	// Prompt, when set, asks for one line of input first; the answer is passed
-	// as PHASIONARY_INPUT.
+	Key    string   `json:"key"`
+	Label  string   `json:"label"`
 	Prompt string   `json:"prompt,omitempty"`
 	Run    []string `json:"run"`
 }
 
-// UnmarshalJSON rejects unknown fields, so a misspelt "run" fails loudly
-// instead of leaving a command that does nothing.
 func (c *TaskCommand) UnmarshalJSON(data []byte) error {
 	type plain TaskCommand
 	dec := json.NewDecoder(bytes.NewReader(data))

@@ -664,11 +664,9 @@ func (c *Category) FindTaskByID(id string) (int, error) {
 	return -1, ErrTaskNotFound
 }
 
-// minTaskIDPrefix is the shortest ID prefix FindTask accepts.
 const minTaskIDPrefix = 4
 
-// FindTask resolves a selector — a full task ID, an ID prefix of at least four
-// characters, or a title — to the first matching task. Separators never match.
+// FindTask matches a full ID, an ID prefix or a title; separators never match.
 func (p *Project) FindTask(selector string) (catIdx, taskIdx int, err error) {
 	selector = strings.TrimSpace(selector)
 	if selector == "" {

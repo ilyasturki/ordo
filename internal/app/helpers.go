@@ -36,7 +36,6 @@ func (m model) filterPromptRow(input textinput.Model, query string, matches, wid
 	return m.promptRow("/", input, status, width)
 }
 
-// promptRow draws a one-line input after its label, with status right-aligned.
 func (m model) promptRow(label string, input textinput.Model, status string, width int) string {
 	split := splitAtCursor(input.Value(), input.Position())
 	left := label + split.left +

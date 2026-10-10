@@ -20,14 +20,12 @@ import (
 
 const sectionCommands = "Task commands"
 
-// taskCommand is a configured command bound to its parsed key.
 type taskCommand struct {
 	prefix rune
 	key    string
 	config.TaskCommand
 }
 
-// TaskCommandState backs the one-line prompt a command with a prompt opens.
 type TaskCommandState struct {
 	input   textinput.Model
 	command taskCommand
@@ -41,9 +39,6 @@ type taskCommandResultMsg struct {
 	err    error
 }
 
-// bindTaskCommands parses each configured key and refuses any that collides
-// with a built-in shortcut or another command, so a config can never silently
-// shadow a key.
 func bindTaskCommands(cmds []config.TaskCommand) ([]taskCommand, error) {
 	out := make([]taskCommand, 0, len(cmds))
 	for i, c := range cmds {
@@ -90,8 +85,7 @@ func bindTaskCommand(c config.TaskCommand, taken []taskCommand) (taskCommand, er
 	return bound, nil
 }
 
-// builtinDesc names a built-in binding. A partner binding such as `k` in
-// "j / k" carries no description of its own, so it borrows the one above it.
+// A partner binding such as `k` in "j / k" has no desc; it borrows the one above it.
 func builtinDesc(b *keyBinding) string {
 	for i := range normalBindings {
 		if &normalBindings[i] != b {
@@ -119,8 +113,7 @@ func (m model) matchTaskCommand(prefix rune, key string) *taskCommand {
 	return nil
 }
 
-// focusedTask returns the task under the cursor, counting a description row as
-// its task.
+// A description row counts as its task.
 func (m model) focusedTask() (domain.Category, domain.Task, bool) {
 	pos, ok := m.selectedPosition()
 	if !ok || (pos.Kind != selection.FocusTask && pos.Kind != selection.FocusDescription) {
@@ -202,8 +195,7 @@ func taskCommandEnv(p domain.Project, cat domain.Category, t domain.Task, input 
 	)
 }
 
-// runTaskCommand runs the command off the event loop. Stdin is left empty: the
-// terminal belongs to the TUI.
+// Stdin stays empty: the terminal belongs to the TUI.
 func runTaskCommand(c config.TaskCommand, env []string) tea.Cmd {
 	return func() tea.Msg {
 		cmd := exec.Command(c.Run[0], c.Run[1:]...)
@@ -237,8 +229,7 @@ func (m *model) handleTaskCommandResult(msg taskCommandResultMsg) {
 
 var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)`)
 
-// firstOutputLine is the first non-blank line, with colors and other control
-// sequences removed so they cannot reach the terminal through the status line.
+// Escape sequences are stripped so command output cannot drive the terminal.
 func firstOutputLine(out string) string {
 	for line := range strings.SplitSeq(out, "\n") {
 		line = domain.StripControl(ansiEscape.ReplaceAllString(line, ""), false)

@@ -143,7 +143,6 @@ func buildHelpSections(commands []taskCommand) []helpSection {
 
 var builtinReferenceLines = referenceLines(builtinHelpSections)
 
-// With no command configured these are the built-in globals, untouched.
 func (m model) helpSections() []helpSection {
 	if len(m.taskCommands()) == 0 {
 		return builtinHelpSections

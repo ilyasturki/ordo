@@ -428,8 +428,6 @@ func (m *model) selectTaskByID(id string) bool {
 	})
 }
 
-// focusTask puts the cursor on the task the selector names, unfolding its
-// category for this session if needed.
 func (m *model) focusTask(selector string) error {
 	catIdx, taskIdx, err := m.project.FindTask(selector)
 	if err != nil {

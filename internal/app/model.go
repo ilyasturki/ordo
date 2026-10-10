@@ -173,8 +173,7 @@ type Dependencies struct {
 	StateManager data.StateRepository
 	Saver        projectSaver
 	CursorSaver  cursorSaver
-	// TaskCommands are the configured commands, already checked against the
-	// built-in keys.
+	// Already checked against the built-in keys.
 	TaskCommands []taskCommand
 }
 
