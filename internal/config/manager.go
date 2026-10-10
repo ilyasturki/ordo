@@ -32,9 +32,7 @@ func NewManager(configPath string) *Manager {
 	}
 }
 
-// configFileMode is the permission the config file is kept at. Owner-only:
-// past versions stored a credential here and a future sync client may again,
-// so the file never opens wider than it needs to be.
+// Owner-only: past versions stored a credential in this file.
 const configFileMode fs.FileMode = 0o600
 
 // Load reads the config from disk. Creates a default config file if missing.

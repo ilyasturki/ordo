@@ -1,7 +1,6 @@
 package data
 
 import (
-	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -65,17 +64,6 @@ func (s *Store) WriteProjectLocked(id string, data []byte) error {
 	}
 	if err := s.checkFresh(id); err != nil {
 		return err
-	}
-	if s.recording() {
-		// Unmarshal what was just marshaled: the recorder must diff exactly
-		// the state this write commits.
-		var updated domain.Project
-		if err := json.Unmarshal(data, &updated); err != nil {
-			return err
-		}
-		if err := s.recordSave(id, updated); err != nil {
-			return err
-		}
 	}
 	return s.writeProjectBytes(id, data)
 }

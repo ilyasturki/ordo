@@ -62,7 +62,6 @@ type Screen struct {
 	// as many rows as it takes, so an item can outgrow the screen.
 	TopRow             int
 	StatusMsg          string
-	SyncOffline        bool
 	PendingKey         rune
 	WindowFocused      bool
 	ExpandDescriptions bool

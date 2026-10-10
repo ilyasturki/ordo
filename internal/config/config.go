@@ -13,9 +13,6 @@ import (
 const (
 	EnvDataPath   = "PHASIONARY_DATA_PATH"
 	EnvConfigPath = "PHASIONARY_CONFIG_PATH"
-	EnvStatePath  = "PHASIONARY_STATE_PATH"
-
-	EnvServerDataPath = "PHASIONARY_SERVER_DATA_PATH"
 
 	StatusDisplayText  = "text"
 	StatusDisplayIcons = "icons"
@@ -112,16 +109,6 @@ func ResolveDataDir(input string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(dir, "projects"), nil
-}
-
-// The per-device state directory must never be carried between machines by a
-// file syncer: it holds the device identity.
-func ResolveStateDir() (string, error) {
-	return resolveDir("", EnvStatePath, "XDG_STATE_HOME", "phasionary", ".local", "state", "phasionary")
-}
-
-func ResolveServerDataDir(input string) (string, error) {
-	return resolveDir(input, EnvServerDataPath, "XDG_DATA_HOME", "phasionary-server", ".local", "share", "phasionary-server")
 }
 
 // Accepts either a directory path or a path pointing at a `*.json` file.

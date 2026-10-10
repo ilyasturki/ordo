@@ -43,27 +43,6 @@ func TestResolveConfigDir(t *testing.T) {
 	})
 }
 
-func TestResolveStateDir(t *testing.T) {
-	home, err := os.UserHomeDir()
-	require.NoError(t, err)
-	cases := []struct {
-		name, env, xdg, want string
-	}{
-		{"env var takes priority", "/env/state", "/xdg/state", "/env/state"},
-		{"XDG_STATE_HOME takes second priority", "", "/xdg/state", "/xdg/state/phasionary"},
-		{"falls back to ~/.local/state/phasionary", "", "", filepath.Join(home, ".local", "state", "phasionary")},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv(EnvStatePath, tc.env)
-			t.Setenv("XDG_STATE_HOME", tc.xdg)
-			dir, err := ResolveStateDir()
-			require.NoError(t, err)
-			assert.Equal(t, tc.want, dir)
-		})
-	}
-}
-
 func TestResolveConfigPath(t *testing.T) {
 	t.Run("returns config.json in resolved directory", func(t *testing.T) {
 		path, err := ResolveConfigPath("/custom/dir")

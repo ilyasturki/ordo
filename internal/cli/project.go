@@ -261,9 +261,5 @@ func storeFromViper() (*data.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	store := data.NewStore(dataDir)
-	if err := app.AttachSyncRecorder(store); err != nil {
-		return nil, err
-	}
-	return store, nil
+	return data.NewStore(dataDir), nil
 }

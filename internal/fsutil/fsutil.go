@@ -1,7 +1,5 @@
-// Package fsutil holds the two filesystem primitives every persistence layer
-// in phasionary needs: a crash-safe whole-file write and an advisory file
-// lock. They live here so the project store and the sync journal share one
-// implementation of the discipline instead of each re-deriving it.
+// Package fsutil holds the crash-safe whole-file write and the advisory file
+// lock that the project files and state.json share.
 package fsutil
 
 import (

@@ -1,6 +1,5 @@
 # Binaries
 /phasionary
-/phasionary-server
 *.exe
 *.test
 *.out
@@ -24,9 +23,3 @@ coverage.*
 # Nix/direnv
 .direnv/
 result
-
-# Web app
-/web/node_modules/
-/web/dist/
-/internal/webui/dist/*
-!/internal/webui/dist/placeholder

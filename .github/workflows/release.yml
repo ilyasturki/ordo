@@ -10,8 +10,8 @@ permissions:
 
 jobs:
     # VERSION is the source for the nix package version, while the tag stamps
-    # the Go binaries and AUR packages; a release with the two out of sync
-    # must not ship anything.
+    # the Go binaries and AUR packages; a release where the two disagree must
+    # not ship anything.
     check-version:
         runs-on: ubuntu-latest
         steps:
@@ -34,19 +34,6 @@ jobs:
                   go-version: stable
                   cache: true
 
-            - name: Setup Node
-              uses: actions/setup-node@v6
-              with:
-                  node-version: 22
-                  cache: npm
-                  cache-dependency-path: web/package-lock.json
-
-            - name: Build the web app into the server
-              run: |
-                  npm ci --prefix web
-                  npm run build --prefix web
-                  cp -r web/dist/. internal/webui/dist/
-
             - name: Build linux binaries
               run: |
                   version="${GITHUB_REF_NAME#v}"
@@ -59,8 +46,6 @@ jobs:
 
                   GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$ldflags" -o phasionary-linux-x64 ./cmd/phasionary
                   GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$ldflags" -o phasionary-linux-arm64 ./cmd/phasionary
-                  GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$ldflags" -o phasionary-server-linux-x64 ./cmd/phasionary-server
-                  GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$ldflags" -o phasionary-server-linux-arm64 ./cmd/phasionary-server
 
             - name: Smoke test (linux-x64)
               run: |
@@ -69,8 +54,6 @@ jobs:
                   ./phasionary-linux-x64 completion bash | grep -q 'phasionary'
                   ./phasionary-linux-x64 completion zsh | grep -q 'phasionary'
                   ./phasionary-linux-x64 completion fish | grep -q 'phasionary'
-                  ./phasionary-server-linux-x64 --version
-                  ./phasionary-server-linux-x64 --help | grep -q 'allowed-host'
 
             - name: Upload binaries
               uses: actions/upload-artifact@v7

@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"phasionary/internal/app"
 	"phasionary/internal/config"
 	"phasionary/internal/data"
 	"phasionary/internal/domain"
@@ -25,9 +24,6 @@ func newInitCmd() *cobra.Command {
 				return err
 			}
 			store := data.NewStore(dataDir)
-			if err := app.AttachSyncRecorder(store); err != nil {
-				return err
-			}
 
 			name := ""
 			if len(args) == 1 {

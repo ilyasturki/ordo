@@ -32,22 +32,9 @@ type ProjectRepository interface {
 	DeleteProject(id string) error
 }
 
-// Implementations are called with the project flock held.
-type ChangeRecorder interface {
-	// Consulted per write, so enrolling mid-session needs no restart.
-	Active() bool
-	// Called before the write, so a crash leaves at most an extra op and never
-	// a lost one; old is nil on create, and an error aborts the save.
-	RecordSave(old *domain.Project, updated domain.Project) error
-	// Called after the file is removed, not before: a spurious tombstone would
-	// propagate a deletion that never happened.
-	RecordDelete(projectID string) error
-}
-
 // Store manages JSON persistence in a directory.
 type Store struct {
-	Dir      string
-	recorder ChangeRecorder
+	Dir string
 
 	mu     sync.Mutex
 	stamps map[string]os.FileInfo
@@ -58,11 +45,6 @@ var _ ProjectRepository = (*Store)(nil)
 func NewStore(dir string) *Store {
 	return &Store{Dir: dir}
 }
-
-// Unsynchronized: call once at wiring time, before the store is shared.
-func (s *Store) SetRecorder(r ChangeRecorder) { s.recorder = r }
-
-func (s *Store) recording() bool { return s.recorder != nil && s.recorder.Active() }
 
 func (s *Store) Ensure() error {
 	return os.MkdirAll(s.Dir, 0o755)
@@ -194,26 +176,7 @@ func (s *Store) saveProjectAtomic(project domain.Project) error {
 	if err != nil {
 		return err
 	}
-	if err := s.recordSave(project.ID, project); err != nil {
-		return err
-	}
 	return s.writeProjectBytes(project.ID, data)
-}
-
-// Caller must hold the project flock, so the old state read here is the one
-// the write overwrites.
-func (s *Store) recordSave(id string, updated domain.Project) error {
-	if !s.recording() {
-		return nil
-	}
-	old, _, err := s.loadProjectFile(s.projectPath(id))
-	if errors.Is(err, fs.ErrNotExist) {
-		return s.recorder.RecordSave(nil, updated)
-	}
-	if err != nil {
-		return err
-	}
-	return s.recorder.RecordSave(&old, updated)
 }
 
 // createNewProjectLocked writes a brand-new project under the global lock,
@@ -221,7 +184,7 @@ func (s *Store) recordSave(id string, updated domain.Project) error {
 // project to save and runs while the lock is held, so it can safely consult
 // on-disk state (e.g. to dodge an ID collision). This is the shared spine of
 // CreateProject and ImportProject; keeping the lock/check/save discipline in
-// one place stops the three writers from drifting out of sync.
+// one place stops the writers from drifting apart.
 func (s *Store) createNewProjectLocked(name string, prepare func() (domain.Project, error)) (domain.Project, error) {
 	// Hold the global lock across the duplicate-name check and the save so
 	// two racing creates can't both observe a missing name and each write
@@ -438,65 +401,24 @@ func (s *Store) projectExists(id string) bool {
 func (s *Store) lockPath(id string) string { return s.projectPath(id) + ".lock" }
 func (s *Store) tmpPath(id string) string  { return s.projectPath(id) + ".tmp" }
 
+// The .lock file stays on disk: unlinking it would break mutual exclusion for a
+// process already flocked to the old inode.
 func (s *Store) DeleteProject(id string) error {
-	removed, err := s.RemoveProject(id)
+	f, err := s.acquireProjectLock(id)
 	if err != nil {
 		return err
-	}
-	if !removed {
-		return ErrProjectNotFound
-	}
-	if !s.recording() {
-		return nil
-	}
-	return s.recorder.RecordDelete(id)
-}
-
-// Sync's write path: no journaling, no staleness check; fn returning nil
-// leaves the file untouched.
-func (s *Store) ReplaceProject(id string, fn func(current *domain.Project) (*domain.Project, error)) (bool, error) {
-	f, err := s.acquireProjectLock(id)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-	var current *domain.Project
-	loaded, _, err := s.loadProjectFile(s.projectPath(id))
-	if err == nil {
-		current = &loaded
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return false, err
-	}
-	next, err := fn(current)
-	if err != nil || next == nil {
-		return false, err
-	}
-	next.ID = id
-	data, err := s.marshalProject(*next)
-	if err != nil {
-		return false, err
-	}
-	return true, s.writeProjectBytes(id, data)
-}
-
-// Delete without a tombstone. The .lock file stays on disk: unlinking it would
-// break mutual exclusion for a process already flocked to the old inode.
-func (s *Store) RemoveProject(id string) (bool, error) {
-	f, err := s.acquireProjectLock(id)
-	if err != nil {
-		return false, err
 	}
 	defer f.Close()
 	err = os.Remove(s.projectPath(id))
 	if errors.Is(err, fs.ErrNotExist) {
-		return false, nil
+		return ErrProjectNotFound
 	}
 	if err != nil {
-		return false, err
+		return err
 	}
 	_ = os.Remove(s.tmpPath(id))
 	s.forget(id)
-	return true, nil
+	return nil
 }
 
 type sampleTask struct {

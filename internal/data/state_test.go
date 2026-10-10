@@ -120,8 +120,7 @@ func TestUnlinkDirReturnsPreviousAndIsNoOpWhenUnlinked(t *testing.T) {
 	}
 }
 
-// The API server writes folds from concurrent request goroutines. Run with
-// -race to make this meaningful.
+// Run with -race: the cursor saver writes from its own goroutine.
 func TestStateManagerConcurrentWritesAreSerialized(t *testing.T) {
 	dir := t.TempDir()
 	m := newLoadedStateManager(t, dir, "")

@@ -17,7 +17,6 @@ import (
 	"phasionary/internal/data"
 	"phasionary/internal/domain"
 	"phasionary/internal/export"
-	"phasionary/internal/journal"
 	"phasionary/internal/ui"
 )
 
@@ -731,7 +730,7 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 		if m.ui.Modes.IsEdit() && isCursor {
 			return m.renderEditProjectLine()
 		}
-		return renderProjectLine(m.project.Name, isSelected, focused, m.ui.Filter.HasActiveFilter(), visualMode, m.ui.Screen.SyncOffline, m.statusText(), m.ui.Screen.Width)
+		return renderProjectLine(m.project.Name, isSelected, focused, m.ui.Filter.HasActiveFilter(), visualMode, m.statusText(), m.ui.Screen.Width)
 
 	case LayoutCategory:
 		category := m.project.Categories[item.CategoryIndex]
@@ -800,22 +799,6 @@ func linkDirIfUnset(sm data.StateRepository, projectID string) {
 	}
 }
 
-// Every store construction site must pass through here, or a writer's changes
-// never reach the journal.
-func AttachSyncRecorder(store *data.Store) error {
-	stateDir, err := config.ResolveStateDir()
-	if err != nil {
-		return err
-	}
-	// Discarded load: an unreadable identity file fails at startup, not on the
-	// first save.
-	if _, _, err := journal.LoadDevice(stateDir); err != nil {
-		return err
-	}
-	store.SetRecorder(journal.NewRecorder(stateDir))
-	return nil
-}
-
 func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader, workingDir string, forcePicker bool) error {
 	taskCommands, err := bindTaskCommands(cfgManager.Get().TaskCommands)
 	if err != nil {
@@ -826,13 +809,6 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	if err := store.Ensure(); err != nil {
 		return err
 	}
-	if err := AttachSyncRecorder(store); err != nil {
-		return err
-	}
-
-	// Deferred before saver.Close so it runs after the final flush.
-	defer syncAtExit(store)
-	syncStatus := syncAtLaunch(store)
 
 	// Persist off the event loop so no keystroke blocks on fsync. Deferring
 	// Close here means the final edit is flushed on exit regardless of which
@@ -915,8 +891,6 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	}
 	m.ui.Fold = foldState
 	m.ui.Screen.ExpandDescriptions = expandDescriptions
-	m.ui.Screen.StatusMsg = syncStatus.Toast
-	m.ui.Screen.SyncOffline = syncStatus.Offline
 	// Reopen on the row this project was last left on. Runs after the fold state
 	// is in place so a cursor inside a folded category resolves to that
 	// category's header rather than to a row that isn't rendered. The viewport
