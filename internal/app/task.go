@@ -273,7 +273,8 @@ func (m *model) reverseCategories() {
 	if !m.ui.Modes.CanPerformAction(modes.ActionMoveItem) {
 		return
 	}
-	if len(m.project.Categories) < 2 {
+	cats := m.project.Categories
+	if len(cats) == 0 || domain.BlockEnd(cats, 0) == len(cats) {
 		return
 	}
 	m.recordHistory()

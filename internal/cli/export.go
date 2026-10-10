@@ -167,6 +167,8 @@ func importJSON(r io.Reader, overrideName string) (domain.Project, error) {
 	if overrideName != "" {
 		p.Name = overrideName
 	}
+	// The repair can move a category to the top level, so siblings are only known after it.
+	domain.NormalizeNesting(&p)
 	for i := range p.Categories {
 		p.Categories[i].Name = domain.UniqueCategoryName(p.Categories[:i], p.Categories[i].ParentID, p.Categories[i].Name)
 	}

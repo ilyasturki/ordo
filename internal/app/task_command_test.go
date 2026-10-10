@@ -189,3 +189,10 @@ func TestTaskCommand_ListedInHelpAndBarOnlyWhenConfigured(t *testing.T) {
 	got := next.(model)
 	assert.True(t, got.ui.Modes.IsCommandPrompt(), "enter on the help row should open the command's prompt")
 }
+
+func TestTaskCommandEnvNamesASubCategoryByPath(t *testing.T) {
+	p := nestedProject()
+	env := taskCommandEnv(p, 1, p.Categories[1].Tasks[0], "")
+	assert.Contains(t, env, "PHASIONARY_CATEGORY=v0.2.0 / ui")
+	assert.Contains(t, env, "PHASIONARY_CATEGORY_ID=ui")
+}

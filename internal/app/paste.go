@@ -152,46 +152,36 @@ func (m *model) pasteTasks() {
 	m.ui.Screen.StatusMsg = pastedRowsStatus(rows, clip.IsCut)
 }
 
-// withSubtasks adds to ids the subtasks of every parent they name, as they
-// stand now, right after their parent.
-func (m *model) withSubtasks(ids []string) []string {
-	seen := make(map[string]bool, len(ids))
-	var out []string
-	for _, id := range ids {
-		ci, ti := m.findTaskByID(id)
-		if ci < 0 || seen[id] {
-			continue
-		}
-		tasks := m.project.Categories[ci].Tasks
-		for _, t := range tasks[ti:domain.BlockEnd(tasks, ti)] {
-			if !seen[t.ID] {
-				seen[t.ID] = true
-				out = append(out, t.ID)
-			}
-		}
-	}
-	return out
-}
-
 // moveRows moves the live rows ids name, each parent with its subtasks, to
 // index in the category at catIndex, among the subtasks of parentID when they
 // can all be subtasks. index is counted before the lift; an ID no longer in the
 // project is skipped.
 func (m *model) moveRows(ids []string, catIndex, index int, parentID string) []domain.Task {
-	ids = m.withSubtasks(ids)
-	var moved []domain.Task
+	picked := make(map[string]bool, len(ids))
 	for _, id := range ids {
-		ci, ti := m.findTaskByID(id)
-		moved = append(moved, m.project.Categories[ci].Tasks[ti])
+		picked[id] = true
+	}
+	// Project order, not the cut's: a row nested since the cut follows its parent.
+	var moved []domain.Task
+	for _, cat := range m.project.Categories {
+		moved = append(moved, domain.PickBlocks(cat.Tasks, picked)...)
 	}
 	if len(moved) == 0 {
 		return nil
 	}
+	parents := make([]string, len(moved))
+	lifted := make(map[string]bool, len(moved))
+	for i, t := range moved {
+		parents[i] = t.ParentID
+		lifted[t.ID] = true
+	}
 	dst := &m.project.Categories[catIndex]
 	index = settleTasks(dst.Tasks, moved, index, parentID)
-	lifted := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		lifted[id] = true
+	now := domain.NowTimestamp()
+	for i := range moved {
+		if moved[i].ParentID != parents[i] {
+			moved[i].UpdatedAt = now
+		}
 	}
 	for _, t := range dst.Tasks[:min(index, len(dst.Tasks))] {
 		if lifted[t.ID] {
@@ -208,12 +198,12 @@ func (m *model) moveRows(ids []string, catIndex, index int, parentID string) []d
 		}
 		if len(kept) != len(cat.Tasks) {
 			cat.Tasks = kept
-			cat.UpdatedAt = domain.NowTimestamp()
+			cat.UpdatedAt = now
 		}
 	}
 	index = max(0, min(index, len(dst.Tasks)))
 	dst.Tasks = slices.Insert(dst.Tasks, index, moved...)
-	m.project.UpdatedAt = domain.NowTimestamp()
+	dst.UpdatedAt, m.project.UpdatedAt = now, now
 	return moved
 }
 
@@ -343,22 +333,17 @@ func (m *model) pasteCategories() {
 // lift; an ID no longer in the project is skipped.
 func (m *model) moveCategories(ids []string, index int, parentID string) []domain.Category {
 	cats := m.project.Categories
-	lifted := make(map[string]bool, len(ids))
-	var moved []domain.Category
+	picked := make(map[string]bool, len(ids))
 	for _, id := range ids {
-		ci, err := m.project.FindCategoryByID(id)
-		if err != nil || lifted[id] {
-			continue
-		}
-		for _, c := range cats[ci:domain.BlockEnd(cats, ci)] {
-			if !lifted[c.ID] {
-				lifted[c.ID] = true
-				moved = append(moved, c)
-			}
-		}
+		picked[id] = true
 	}
+	moved := domain.PickBlocks(cats, picked)
 	if len(moved) == 0 {
 		return nil
+	}
+	lifted := make(map[string]bool, len(moved))
+	for _, c := range moved {
+		lifted[c.ID] = true
 	}
 	if lifted[parentID] {
 		parentID = ""

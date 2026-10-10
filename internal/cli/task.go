@@ -195,7 +195,7 @@ func newTaskAddCmd() *cobra.Command {
 }
 
 // taskDestination resolves where task add puts a task: the category -C names,
-// or the parent task's, which -C then has to agree with.
+// or the parent task's, which -C then narrows the search for.
 func taskDestination(project domain.Project, categoryName, parent string) (catID, parentID string, err error) {
 	if parent == "" {
 		cat, _, err := resolveCategory(project, categoryName)
@@ -204,21 +204,26 @@ func taskDestination(project domain.Project, categoryName, parent string) (catID
 		}
 		return cat.ID, "", nil
 	}
-	ref, err := resolveTask(project, parent)
-	if err != nil {
-		return "", "", fmt.Errorf("task %q not found", parent)
-	}
-	cat := project.Categories[ref.CategoryIndex]
 	if strings.TrimSpace(categoryName) != "" {
 		named, _, err := resolveCategory(project, categoryName)
 		if err != nil {
 			return "", "", err
 		}
-		if named.ID != cat.ID {
-			return "", "", fmt.Errorf("task %q is in category %q, not %q", ref.Task.Title, cliPath(project, ref.CategoryIndex), categoryName)
+		scoped := domain.Project{Categories: []domain.Category{*named}}
+		if _, ti, err := scoped.FindTask(parent); err == nil {
+			return named.ID, named.Tasks[ti].ID, nil
 		}
+		ref, err := resolveTask(project, parent)
+		if err != nil {
+			return "", "", fmt.Errorf("task %q not found", parent)
+		}
+		return "", "", fmt.Errorf("task %q is in category %q, not %q", ref.Task.Title, cliPath(project, ref.CategoryIndex), categoryName)
 	}
-	return cat.ID, ref.Task.ID, nil
+	ref, err := resolveTask(project, parent)
+	if err != nil {
+		return "", "", fmt.Errorf("task %q not found", parent)
+	}
+	return project.Categories[ref.CategoryIndex].ID, ref.Task.ID, nil
 }
 
 func newTaskEditCmd() *cobra.Command {

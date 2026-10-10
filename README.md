@@ -95,7 +95,7 @@ Config lives at `~/.config/phasionary/config.json`. Override with `phasionary co
 | `prompt` | no | Asks for one line first; Enter on an empty line cancels. |
 | `run` | yes | Program and arguments, run directly, never through a shell. |
 
-The command runs in the background. It gets the task through environment variables: `PHASIONARY_PROJECT_ID`, `PHASIONARY_PROJECT_NAME`, `PHASIONARY_TASK_ID`, `PHASIONARY_TASK_TITLE`, `PHASIONARY_TASK_DESCRIPTION`, `PHASIONARY_CATEGORY` and `PHASIONARY_INPUT` (the prompt's answer). The first line it prints shows in the status line. A non-zero exit shows as a failure with the first line of its error output.
+The command runs in the background. It gets the task through environment variables: `PHASIONARY_PROJECT_ID`, `PHASIONARY_PROJECT_NAME`, `PHASIONARY_TASK_ID`, `PHASIONARY_TASK_TITLE`, `PHASIONARY_TASK_DESCRIPTION`, `PHASIONARY_CATEGORY` (its path, `parent / name` for a sub-category, which `-C` resolves), `PHASIONARY_CATEGORY_ID` and `PHASIONARY_INPUT` (the prompt's answer). The first line it prints shows in the status line. A non-zero exit shows as a failure with the first line of its error output.
 
 Paths can be relocated with `PHASIONARY_CONFIG_PATH` and `PHASIONARY_DATA_PATH` — both name a directory; `PHASIONARY_CONFIG_PATH` also accepts a path ending in `config.json` for convenience.
 

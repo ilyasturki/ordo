@@ -102,10 +102,10 @@ func (m model) taskInfoLines(catIdx, taskIdx int) []string {
 		fmt.Sprintf("Priority: %s", formatPriorityLabel(task.Priority)),
 		fmt.Sprintf("Tag:      %s", formatTagInfo(task)),
 		fmt.Sprintf("Estimate: %s", FormatEstimateLabel(task.EstimateMinutes)),
-		fmt.Sprintf("Category: %s", m.project.CategoryPath(catIdx)),
+		fmt.Sprintf("Category: %s", m.infoValue(m.project.CategoryPath(catIdx))),
 	)
 	if parent := domain.ParentIndex(category.Tasks, taskIdx); parent >= 0 {
-		lines = append(lines, fmt.Sprintf("Parent:   %s", truncateText(category.Tasks[parent].Title, max(infoMaxWidth-labelWidth-3, 1))))
+		lines = append(lines, fmt.Sprintf("Parent:   %s", m.infoValue(category.Tasks[parent].Title)))
 	}
 	if done, total := category.ChildProgress(taskIdx); total > 0 {
 		lines = append(lines, fmt.Sprintf("Subtasks: %d of %d done", done, total))
@@ -138,6 +138,11 @@ func (m model) taskInfoLines(catIdx, taskIdx int) []string {
 	return lines
 }
 
+// infoValue keeps a value behind a 10-column label on one row: the dialog's window counts rows, not wraps.
+func (m model) infoValue(s string) string {
+	return truncateText(s, max(m.dialogWidth()-len("Category: ")-3, 1))
+}
+
 func (m model) separatorInfoLines(catIdx, taskIdx int) []string {
 	sep := m.project.Categories[catIdx].Tasks[taskIdx]
 
@@ -150,7 +155,7 @@ func (m model) separatorInfoLines(catIdx, taskIdx int) []string {
 		ui.DialogTitleStyle.Render("Separator Info"),
 		"",
 		fmt.Sprintf("Label:    %s", label),
-		fmt.Sprintf("Category: %s", m.project.CategoryPath(catIdx)),
+		fmt.Sprintf("Category: %s", m.infoValue(m.project.CategoryPath(catIdx))),
 		"",
 		fmt.Sprintf("Created:  %s", FormatDateWithRelative(sep.CreatedAt)),
 		fmt.Sprintf("Updated:  %s", FormatDateWithRelative(sep.UpdatedAt)),
@@ -167,7 +172,7 @@ func (m model) categoryInfoLines(catIdx int) []string {
 		fmt.Sprintf("Name:     %s", category.Name),
 	}
 	if parent := domain.ParentIndex(m.project.Categories, catIdx); parent >= 0 {
-		lines = append(lines, fmt.Sprintf("Parent:   %s", m.project.Categories[parent].Name))
+		lines = append(lines, fmt.Sprintf("Parent:   %s", m.infoValue(m.project.Categories[parent].Name)))
 	}
 	if subs := domain.BlockEnd(m.project.Categories, catIdx) - catIdx - 1; subs > 0 {
 		lines = append(lines, fmt.Sprintf("Sub-categories: %d", subs))
@@ -183,7 +188,7 @@ func (m model) categoryInfoLines(catIdx int) []string {
 
 	lines = append(lines,
 		"",
-		fmt.Sprintf("Total Tasks: %d", counts.Total()),
+		fmt.Sprintf("Total Tasks: %d", m.project.TreeTaskCount(catIdx)),
 		"",
 	)
 	lines = append(lines, statusBreakdownLines(counts)...)

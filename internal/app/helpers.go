@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"phasionary/internal/app/selection"
+	"phasionary/internal/domain"
 	"phasionary/internal/ui"
 )
 
@@ -77,6 +78,15 @@ func (m model) isCategoryCut(categoryID string) bool {
 		}
 	}
 	return false
+}
+
+// A paste moves a cut parent with the children it has then, so one nested since the cut is cut too.
+func (m model) taskRowCut(t domain.Task) bool {
+	return m.isTaskCut(t.ID) || m.isTaskCut(t.ParentID)
+}
+
+func (m model) categoryRowCut(c domain.Category) bool {
+	return m.isCategoryCut(c.ID) || m.isCategoryCut(c.ParentID)
 }
 
 const (

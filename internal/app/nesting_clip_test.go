@@ -225,3 +225,77 @@ func TestCategoryClipboardCarriesAreas(t *testing.T) {
 		assert.Equal(t, []string{"v2", "ui<v2", "v1", "api<v1", "web<v1"}, categoryOrder(m.project))
 	})
 }
+
+func TestCutRowsNestedSinceTheCutPasteParentFirst(t *testing.T) {
+	t.Run("tasks", func(t *testing.T) {
+		m := newTestModel(t, sampleProject())
+		withStubStateManager(m)
+		selectRow(t, m, selection.FocusTask, "t1")
+		m.enterVisualMode()
+		m.visualMoveCursor(1)
+		m.visualCut()
+		selectRow(t, m, selection.FocusTask, "t2")
+		m.moveSelectedRow(-1)
+		selectRow(t, m, selection.FocusTask, "t1")
+		m.nestSelected(true)
+		selectRow(t, m, selection.FocusTask, "t4")
+		m.pasteInternal()
+		assert.Equal(t, []string{"t4", "t2", "t1<t2", "t5"}, shapeOf(m.project.Categories[1]))
+		assertNestingValid(t, m.project)
+	})
+	t.Run("categories", func(t *testing.T) {
+		m := newTestModel(t, domain.Project{ID: "p1", Name: "P", Categories: []domain.Category{
+			{ID: "x", Name: "X"}, {ID: "y", Name: "Y"}, {ID: "z", Name: "Z"},
+		}})
+		withStubStateManager(m)
+		selectRow(t, m, selection.FocusCategory, "x")
+		m.enterVisualMode()
+		m.visualMoveCursor(1)
+		m.visualCut()
+		selectRow(t, m, selection.FocusCategory, "y")
+		m.moveSelectedRow(-1)
+		selectRow(t, m, selection.FocusCategory, "x")
+		m.nestSelected(true)
+		selectRow(t, m, selection.FocusCategory, "z")
+		m.pasteInternal()
+		assert.Equal(t, []string{"y", "x<y", "z"}, categoryOrder(m.project))
+		assertNestingValid(t, m.project)
+	})
+}
+
+func TestCutPasteStampsWhatItChanges(t *testing.T) {
+	m := newNestedModel(t)
+	selectRow(t, m, selection.FocusTask, "pick")
+	m.cutSelectedTask()
+	selectRow(t, m, selection.FocusTask, "auth")
+	m.pasteInternal()
+	api := catByID(t, m, "api")
+	assert.Equal(t, []string{"auth", "pick"}, shapeOf(api))
+	assert.NotEmpty(t, api.UpdatedAt, "the category it lands in")
+	assert.NotEmpty(t, api.Tasks[1].UpdatedAt, "the subtask that lost its parent")
+}
+
+func TestCutMarksTakeSubtasksNestedSinceTheCut(t *testing.T) {
+	m := newNestedModel(t)
+	selectRow(t, m, selection.FocusTask, "timer")
+	m.cutSelectedTask()
+	selectRow(t, m, selection.FocusTask, "sets")
+	m.nestSelected(true)
+	sets := catByID(t, m, "ui").Tasks[3]
+	require.Equal(t, "timer", sets.ParentID)
+	assert.True(t, m.taskRowCut(sets), "the paste will move it with timer")
+}
+
+func TestVisualCutCountsTheRowsItCarries(t *testing.T) {
+	m := newNestedModel(t)
+	selectRow(t, m, selection.FocusTask, "timer")
+	m.enterVisualMode()
+	m.visualCut()
+	assert.Contains(t, m.ui.Screen.StatusMsg, "Cut: 3 task(s)")
+
+	m = newNestedModel(t)
+	selectRow(t, m, selection.FocusCategory, "v2")
+	m.enterVisualMode()
+	m.visualCut()
+	assert.Contains(t, m.ui.Screen.StatusMsg, "Cut: 3 categories")
+}

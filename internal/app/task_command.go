@@ -114,24 +114,23 @@ func (m model) matchTaskCommand(prefix rune, key string) *taskCommand {
 }
 
 // A description row counts as its task.
-func (m model) focusedTask() (domain.Category, domain.Task, bool) {
+func (m model) focusedTask() (int, domain.Task, bool) {
 	pos, ok := m.selectedPosition()
 	if !ok || (pos.Kind != selection.FocusTask && pos.Kind != selection.FocusDescription) {
-		return domain.Category{}, domain.Task{}, false
+		return -1, domain.Task{}, false
 	}
-	cat := m.project.Categories[pos.CategoryIndex]
-	return cat, cat.Tasks[pos.TaskIndex], true
+	return pos.CategoryIndex, m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex], true
 }
 
 func (m *model) startTaskCommand(c taskCommand) tea.Cmd {
-	cat, task, ok := m.focusedTask()
+	ci, task, ok := m.focusedTask()
 	if !ok {
 		m.ui.Screen.StatusMsg = c.Label + ": focus a task first"
 		return nil
 	}
 	if c.Prompt == "" {
 		m.ui.Screen.StatusMsg = c.Label + "…"
-		return runTaskCommand(c.TaskCommand, taskCommandEnv(m.project, cat, task, ""))
+		return runTaskCommand(c.TaskCommand, taskCommandEnv(m.project, ci, task, ""))
 	}
 	ti := textinput.New()
 	ti.Prompt = ""
@@ -161,9 +160,8 @@ func (m model) handleCommandPromptKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 			m.ui.Screen.StatusMsg = s.command.Label + ": the task is gone"
 			return m, nil
 		}
-		cat := m.project.Categories[ci]
 		m.ui.Screen.StatusMsg = s.command.Label + "…"
-		return m, runTaskCommand(s.command.TaskCommand, taskCommandEnv(m.project, cat, cat.Tasks[ti], input))
+		return m, runTaskCommand(s.command.TaskCommand, taskCommandEnv(m.project, ci, m.project.Categories[ci].Tasks[ti], input))
 	}
 	var cmd tea.Cmd
 	s.input, cmd = s.input.Update(msg)
@@ -176,14 +174,16 @@ func (m model) renderCommandPrompt() string {
 	return m.promptRow(s.command.Prompt+": ", s.input, ui.MutedStyle.Render(s.command.Label), m.ui.Screen.Width)
 }
 
-func taskCommandEnv(p domain.Project, cat domain.Category, t domain.Task, input string) []string {
+// A sub-category's name repeats across parents, so the category goes by its path, which -C resolves.
+func taskCommandEnv(p domain.Project, ci int, t domain.Task, input string) []string {
 	return append(os.Environ(),
 		"PHASIONARY_PROJECT_ID="+p.ID,
 		"PHASIONARY_PROJECT_NAME="+p.Name,
 		"PHASIONARY_TASK_ID="+t.ID,
 		"PHASIONARY_TASK_TITLE="+t.Title,
 		"PHASIONARY_TASK_DESCRIPTION="+t.Description,
-		"PHASIONARY_CATEGORY="+cat.Name,
+		"PHASIONARY_CATEGORY="+p.CategoryPath(ci),
+		"PHASIONARY_CATEGORY_ID="+p.Categories[ci].ID,
 		"PHASIONARY_INPUT="+input,
 	)
 }

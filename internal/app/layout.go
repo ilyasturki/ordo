@@ -62,8 +62,8 @@ type LayoutBuilder struct {
 	editPos    int
 	editHeight int
 	// A cut row carries a ✂ badge that narrows its title.
-	taskCut     func(taskID string) bool
-	categoryCut func(categoryID string) bool
+	taskCut     func(domain.Task) bool
+	categoryCut func(domain.Category) bool
 }
 
 func NewLayoutBuilder(config LayoutConfig, width int, statusDisplay string, fold *FoldState) *LayoutBuilder {
@@ -86,7 +86,7 @@ func (b *LayoutBuilder) WithRowLimits(l rowLimits) *LayoutBuilder {
 	return b
 }
 
-func (b *LayoutBuilder) WithCutMarks(taskCut, categoryCut func(string) bool) *LayoutBuilder {
+func (b *LayoutBuilder) WithCutMarks(taskCut func(domain.Task) bool, categoryCut func(domain.Category) bool) *LayoutBuilder {
 	b.taskCut, b.categoryCut = taskCut, categoryCut
 	return b
 }
@@ -189,7 +189,7 @@ func (b *LayoutBuilder) countTaskLines(cat domain.Category, taskIdx int) int {
 	return components.NewTaskLineRenderer(b.width, b.statusDisplay, "", false).
 		WithNesting(taskIndent(cat, taskIdx), taskProgress(cat, taskIdx, b.fold)).
 		WithDescriptionExpanded(b.expandDescriptions).
-		WithCut(b.taskCut != nil && b.taskCut(task.ID)).
+		WithCut(b.taskCut != nil && b.taskCut(task)).
 		WithRowLimits(b.limits.titleRows(task.ID), components.DescriptionPreviewLines).
 		TitleRows(task)
 }
@@ -199,7 +199,7 @@ func (b *LayoutBuilder) countCategoryLines(project *domain.Project, catIdx int) 
 		return 1
 	}
 	category := project.Categories[catIdx]
-	cut := b.categoryCut != nil && b.categoryCut(category.ID)
+	cut := b.categoryCut != nil && b.categoryCut(category)
 	available := categoryNameWidth(b.width, headerOf(project, catIdx, b.fold, cut))
 	return ui.CountClamped(category.Name, available, ui.MaxLineRows)
 }
@@ -218,7 +218,7 @@ func (m *model) buildLayout() *Layout {
 		WithExpandedDescriptions(m.ui.Screen.ExpandDescriptions).
 		WithRowLimits(limits).
 		WithEditOverlay(editPos, editHeight).
-		WithCutMarks(m.isTaskCut, m.isCategoryCut)
+		WithCutMarks(m.taskRowCut, m.categoryRowCut)
 	layout := builder.Build(m.project, m.positions())
 	m.ui.layout = layoutCache{width: w, limits: limits, editPos: editPos, editHeight: editHeight, cut: cut, layout: &layout}
 	return &layout

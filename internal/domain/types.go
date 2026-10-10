@@ -813,14 +813,17 @@ func (p *Project) MoveTask(srcCatIdx, taskIdx, dstCatIdx int) error {
 	if taskIdx < 0 || taskIdx >= len(src.Tasks) {
 		return errors.New("task index out of range")
 	}
+	now := NowTimestamp()
 	end := BlockEnd(src.Tasks, taskIdx)
 	block := slices.Clone(src.Tasks[taskIdx:end])
-	block[0].ParentID = ""
+	if block[0].ParentID != "" {
+		block[0].ParentID = ""
+		block[0].UpdatedAt = now
+	}
 	src.Tasks = slices.Delete(src.Tasks, taskIdx, end)
-	src.UpdatedAt = NowTimestamp()
+	src.UpdatedAt = now
 	dst := &p.Categories[dstCatIdx]
 	dst.Tasks = append(dst.Tasks, block...)
-	dst.UpdatedAt = NowTimestamp()
-	p.UpdatedAt = NowTimestamp()
+	dst.UpdatedAt, p.UpdatedAt = now, now
 	return nil
 }

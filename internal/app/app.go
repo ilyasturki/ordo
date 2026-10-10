@@ -787,7 +787,7 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 		if m.editorOpen() && isCursor {
 			return m.renderEditCategoryLine(indent)
 		}
-		cut := m.isCategoryCut(m.project.Categories[item.CategoryIndex].ID)
+		cut := m.categoryRowCut(m.project.Categories[item.CategoryIndex])
 		header := headerOf(&m.project, item.CategoryIndex, &m.ui.Fold, cut)
 		return renderCategoryLine(header, isSelected, m.ui.Screen.Width, focused, inVisualRange, isCursor, m.searchQuery(), m.searchMatchStyle(isCursor))
 
@@ -796,7 +796,7 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 		if m.editorOpen() && isCursor {
 			return m.renderEditTaskLine(task, m.rowIndent(item.CategoryIndex, item.TaskIndex))
 		}
-		cut := m.isTaskCut(task.ID)
+		cut := m.taskRowCut(task)
 		return m.renderTaskLine(item.CategoryIndex, item.TaskIndex, isSelected, m.ui.Screen.Width, focused, inVisualRange, isCursor, cut)
 
 	case LayoutSeparator:
@@ -809,7 +809,7 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 
 	case LayoutDescription:
 		task := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
-		cut := m.isTaskCut(task.ID)
+		cut := m.taskRowCut(task)
 		rows := m.rowLimits().descriptionRows(item.CategoryIndex, item.TaskIndex, task.ID)
 		return m.renderTaskDescription(item.CategoryIndex, item.TaskIndex, rows, isSelected, m.ui.Screen.Width, focused, visualMode, isCursor, cut)
 

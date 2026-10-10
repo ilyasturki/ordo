@@ -376,4 +376,39 @@ func TestCategoryPath(t *testing.T) {
 	assert.Equal(t, [][2]string{{"v0.2", "ui/ux"}, {"v0.2 / ui", "ux"}}, SplitCategoryPath("v0.2 / ui/ux"))
 	assert.Empty(t, SplitCategoryPath("plain"))
 	assert.Empty(t, SplitCategoryPath("/edge/"))
+
+	assert.Equal(t, [][2]string{{"v0.2", "ui/ux"}}, SplitCategoryHeading("v0.2 / ui/ux"))
+	assert.Empty(t, SplitCategoryHeading("CI/CD"))
+}
+
+func TestAnIDLessItemHasNoChildren(t *testing.T) {
+	tasks := nestedTasks("a", "b", "c")
+	tasks[0].ID = ""
+	assert.Equal(t, 1, BlockEnd(tasks, 0))
+	assert.Equal(t, []string{"b", "c"}, taskShape(PickBlocks(tasks, map[string]bool{"b": true, "c": true})))
+
+	p := Project{Categories: nestedCategories("", "h", "m")}
+	require.NoError(t, p.MergeCategory(0, 2))
+	assert.Equal(t, []string{"h", "m"}, categoryShape(p.Categories))
+}
+
+func TestPickBlocksKeepsTheOutlineOrder(t *testing.T) {
+	tasks := nestedTasks("x", "b", "a<b", "c")
+	picked := map[string]bool{"a": true, "b": true}
+	assert.Equal(t, []string{"b", "a<b"}, taskShape(PickBlocks(tasks, picked)))
+}
+
+func TestMoveTaskRestampsASubtaskItUnnests(t *testing.T) {
+	p := Project{Categories: nestedCategories("v1", "v2")}
+	p.Categories[0].Tasks = nestedTasks("a", "a1<a")
+	require.NoError(t, p.MoveTask(0, 1, 1))
+	assert.NotEmpty(t, p.Categories[1].Tasks[0].UpdatedAt)
+}
+
+func TestTreeTaskCountTakesEveryStatus(t *testing.T) {
+	p := Project{Categories: nestedCategories("v", "s<v")}
+	p.Categories[0].Tasks = nestedTasks("a", "-")
+	p.Categories[1].Tasks = nestedTasks("b")
+	p.Categories[1].Tasks[0].Status = "blocked"
+	assert.Equal(t, 2, p.TreeTaskCount(0))
 }

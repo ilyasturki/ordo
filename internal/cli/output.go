@@ -108,7 +108,7 @@ func writeCategories(w io.Writer, project domain.Project) error {
 				Name:            c.Name,
 				ParentID:        c.ParentID,
 				Path:            cliPath(project, i),
-				TaskCount:       project.TreeStatusCounts(i).Total(),
+				TaskCount:       project.TreeTaskCount(i),
 				EstimateMinutes: c.EstimateMinutes,
 			})
 		}
@@ -134,7 +134,7 @@ func writeCategories(w io.Writer, project domain.Project) error {
 			name = "  " + name
 		}
 		status := formatAggregateStatus(project.TreeAggregateStatus(i))
-		tasks := project.TreeStatusCounts(i).Total()
+		tasks := project.TreeTaskCount(i)
 		if isLong() {
 			fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\n", name, c.ID, status, tasks, formatEstimateCell(c.EstimateMinutes))
 		} else {
@@ -365,7 +365,7 @@ func writeCategoryDetail(w io.Writer, project domain.Project, i int) error {
 		Path:            cliPath(project, i),
 		CreatedAt:       cat.CreatedAt,
 		UpdatedAt:       cat.UpdatedAt,
-		TaskCount:       project.TreeStatusCounts(i).Total(),
+		TaskCount:       project.TreeTaskCount(i),
 		SubCategories:   domain.BlockEnd(project.Categories, i) - i - 1,
 		EstimateMinutes: cat.EstimateMinutes,
 	}

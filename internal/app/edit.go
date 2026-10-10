@@ -98,8 +98,14 @@ func (m *model) startAddingTask() {
 		taskIndex = domain.BlockEnd(cat.Tasks, position.TaskIndex)
 		newTask.ParentID = cat.Tasks[position.TaskIndex].ParentID
 	}
+	// The editor writes to the cursor's row, which falls back to an ancestor when the new row is hidden.
+	if !taskRowVisible(&m.ui.Filter, newTask, cat.ID, cat.ParentID) {
+		m.ui.Screen.StatusMsg = "Clear the filter to add a task here"
+		return
+	}
 	m.recordHistory()
 	cat.InsertTask(taskIndex, newTask)
+	m.revealChildrenOf(cat.ID)
 
 	m.rebuildPositions()
 	m.selectItem(selection.FocusTask, newTask.ID)
@@ -140,6 +146,7 @@ func (m *model) startAddingSeparator() {
 	}
 	m.recordHistory()
 	cat.InsertTask(taskIndex, sep)
+	m.revealChildrenOf(cat.ID)
 	m.storeTaskUpdate()
 
 	m.rebuildPositions()

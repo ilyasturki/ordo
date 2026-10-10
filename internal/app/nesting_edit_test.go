@@ -279,3 +279,105 @@ func TestDeleteHandlesChildren(t *testing.T) {
 		assert.True(t, m.ui.Modes.IsConfirmDelete())
 	})
 }
+
+func TestAddNeverEditsAnotherRow(t *testing.T) {
+	t.Run("a filter that would hide the new task refuses it", func(t *testing.T) {
+		for _, anchor := range []string{"sets", "pick"} {
+			m := newNestedModel(t)
+			m.ui.Filter.statuses[domain.StatusCompleted] = true
+			m.rebuildPositions()
+			selectRow(t, m, selection.FocusTask, anchor)
+			before := shapeOf(catByID(t, m, "ui"))
+			m.startAddingTask()
+			assert.False(t, m.ui.Modes.IsEdit(), anchor)
+			assert.Equal(t, "Clear the filter to add a task here", m.ui.Screen.StatusMsg, anchor)
+			assert.Equal(t, before, shapeOf(catByID(t, m, "ui")), anchor)
+			assert.Equal(t, "ui", catByID(t, m, "ui").Name, anchor)
+		}
+	})
+	t.Run("a folded category unfolds for the new task", func(t *testing.T) {
+		m := newNestedModel(t)
+		m.ui.Fold.Toggle("api")
+		m.rebuildPositions()
+		selectRow(t, m, selection.FocusCategory, "api")
+		m.startAddingTask()
+		assert.False(t, m.ui.Fold.IsFolded("api"))
+		typeTitle(m, "Login")
+		api := catByID(t, m, "api")
+		assert.Equal(t, "api", api.Name)
+		assert.Equal(t, "Login", api.Tasks[0].Title)
+	})
+	t.Run("a folded category unfolds for a new separator", func(t *testing.T) {
+		m := newNestedModel(t)
+		m.ui.Fold.Toggle("api")
+		m.rebuildPositions()
+		selectRow(t, m, selection.FocusCategory, "api")
+		m.startAddingSeparator()
+		assert.False(t, m.ui.Fold.IsFolded("api"))
+		assert.Equal(t, "separator:"+catByID(t, m, "api").Tasks[0].ID, cursorItem(t, m))
+	})
+}
+
+func TestAddedSubtaskTurnedSeparatorLeavesTheBlock(t *testing.T) {
+	m := newNestedModel(t)
+	selectRow(t, m, selection.FocusTask, "pick")
+	m.startAddingTask()
+	require.True(t, m.pasteLinesInEdit("# Heading\n- a"))
+	ui := catByID(t, m, "ui")
+	assert.Equal(t, []string{"timer", "pick<timer", "sound<timer"}, shapeOf(ui)[:3])
+	assert.True(t, ui.Tasks[3].IsSeparator())
+	assert.Equal(t, "a", ui.Tasks[4].Title)
+	assertNestingValid(t, m.project)
+}
+
+func TestEditorPasteShowsSubtasksOfAFoldedParent(t *testing.T) {
+	m := newNestedModel(t)
+	m.ui.Fold.Toggle("timer")
+	m.rebuildPositions()
+	selectRow(t, m, selection.FocusTask, "timer")
+	m.startEditing()
+	require.True(t, m.pasteLinesInEdit("- Rest timer\n  - vibrate"))
+	assert.False(t, m.ui.Fold.IsFolded("timer"))
+	ui := catByID(t, m, "ui")
+	assert.Equal(t, "task:"+ui.Tasks[3].ID, cursorItem(t, m))
+	assert.NotEmpty(t, ui.UpdatedAt)
+}
+
+func TestNestRefusesARowTheFilterHides(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	withStubStateManager(m)
+	require.NoError(t, m.project.Categories[0].Tasks[2].SetStatus(domain.StatusTodo))
+	m.ui.Filter.statuses[domain.StatusTodo] = true
+	m.rebuildPositions()
+	selectRow(t, m, selection.FocusTask, "t3")
+	m.nestSelected(true)
+	assert.Equal(t, "Can't nest: the filter hides the row above", m.ui.Screen.StatusMsg)
+	assert.Equal(t, []string{"t1", "t2", "t3"}, shapeOf(m.project.Categories[0]))
+	assert.Equal(t, 0, m.ui.History.UndoDepth())
+}
+
+func TestMergeOfferNamesTheSubCategories(t *testing.T) {
+	p := nestedProject()
+	p.Categories[3].Tasks = nil
+	p.Categories = append(p.Categories, domain.Category{ID: "web", Name: "web", ParentID: "v1",
+		Tasks: []domain.Task{{ID: "w1", Title: "W", Status: domain.StatusTodo}}})
+	m := newTestModel(t, p)
+	withStubStateManager(m)
+	selectRow(t, m, selection.FocusCategory, "v1")
+	m.startEditing()
+	typeTitle(m, "v0.2.0")
+	require.Equal(t, "v2", m.ui.Edit.mergeInto)
+	view := m.confirmMergeView()
+	assert.NotContains(t, view, "is empty")
+	assert.Contains(t, view, "1 sub-category joins")
+}
+
+func TestReverseOfOneTopLevelBlockIsANoop(t *testing.T) {
+	p := nestedProject()
+	p.Categories = p.Categories[:3]
+	m := newTestModel(t, p)
+	withStubStateManager(m)
+	m.reverseCategories()
+	assert.Equal(t, 0, m.ui.History.UndoDepth())
+	assert.Equal(t, []string{"v2", "ui<v2", "api<v2"}, categoryOrder(m.project))
+}

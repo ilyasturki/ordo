@@ -46,6 +46,11 @@ func (m *model) visualNest(in bool) {
 // them, or un-nests them after their parent.
 func (m *model) nestTasks(catIdx, lo, hi int, in bool) {
 	cat := &m.project.Categories[catIdx]
+	if in && lo > 0 && m.ui.Filter.HasActiveFilter() &&
+		!shownRows(*cat, &m.ui.Filter, &m.ui.Fold)[domain.BlockStart(cat.Tasks, lo-1)] {
+		m.ui.Screen.StatusMsg = "Can't nest: the filter hides the row above"
+		return
+	}
 	m.recordHistory()
 	var err error
 	if in {

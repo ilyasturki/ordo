@@ -47,7 +47,8 @@ func (t *Task) nests() bool             { return !t.IsSeparator() }
 func BlockEnd[T any, P outline[T]](items []T, i int) int {
 	id, parent := P(&items[i]).links()
 	end := i + 1
-	if parent != "" {
+	// Every top-level item's parent is "", so an ID-less item would adopt all that follow it.
+	if parent != "" || id == "" {
 		return end
 	}
 	for end < len(items) {
@@ -136,8 +137,9 @@ func SettleParents[T any, P outline[T]](rows []T, parentID string) bool {
 	nest := parentID != ""
 	for i := range rows {
 		row := P(&rows[i])
-		id, _ := row.links()
-		pasted[id] = true
+		if id, _ := row.links(); id != "" {
+			pasted[id] = true
+		}
 		nest = nest && row.nests()
 	}
 	for i := range rows {
@@ -156,6 +158,20 @@ func SettleParents[T any, P outline[T]](rows []T, parentID string) bool {
 		}
 	}
 	return nest
+}
+
+// PickBlocks returns the picked items, each parent with its children, in the order items holds them.
+func PickBlocks[T any, P outline[T]](items []T, picked map[string]bool) []T {
+	var out []T
+	for i := 0; i < len(items); {
+		end := i + 1
+		if id, _ := P(&items[i]).links(); picked[id] {
+			end = BlockEnd[T, P](items, i)
+			out = append(out, items[i:end]...)
+		}
+		i = end
+	}
+	return out
 }
 
 // HasChildren reports whether items[i] is a parent.
@@ -448,11 +464,14 @@ func CategoryNameConflict(cats []Category, parentID, name string, except int) in
 	return -1
 }
 
-// CategoryPath names the category at i the way the CLI resolves it: its own
-// name, behind its parent's for a sub-category.
+// categoryHeadingSep is the spaced form CategoryPath writes, which a "/" inside a name lacks.
+const categoryHeadingSep = " " + CategoryPathSep + " "
+
+// CategoryPath names the category at i the way the TUI shows it and markdown
+// headings carry it: its own name, behind its parent's for a sub-category.
 func (p *Project) CategoryPath(i int) string {
 	if parent := ParentIndex(p.Categories, i); parent >= 0 {
-		return p.Categories[parent].Name + " " + CategoryPathSep + " " + p.Categories[i].Name
+		return p.Categories[parent].Name + categoryHeadingSep + p.Categories[i].Name
 	}
 	return p.Categories[i].Name
 }
@@ -460,11 +479,20 @@ func (p *Project) CategoryPath(i int) string {
 // SplitCategoryPath lists the ways path splits into a parent name and a
 // sub-category name, trimmed, one per separator in it.
 func SplitCategoryPath(path string) [][2]string {
+	return splitCategoryPath(path, CategoryPathSep)
+}
+
+// SplitCategoryHeading is SplitCategoryPath for a heading CategoryPath wrote.
+func SplitCategoryHeading(heading string) [][2]string {
+	return splitCategoryPath(heading, categoryHeadingSep)
+}
+
+func splitCategoryPath(path, sep string) [][2]string {
 	var out [][2]string
 	for i := 0; i < len(path); i++ {
-		if strings.HasPrefix(path[i:], CategoryPathSep) {
+		if strings.HasPrefix(path[i:], sep) {
 			parent := strings.TrimSpace(path[:i])
-			child := strings.TrimSpace(path[i+len(CategoryPathSep):])
+			child := strings.TrimSpace(path[i+len(sep):])
 			if parent != "" && child != "" {
 				out = append(out, [2]string{parent, child})
 			}
@@ -484,6 +512,14 @@ func (p *Project) treeTasks(i int) iter.Seq[Task] {
 			}
 		}
 	}
+}
+
+func (p *Project) TreeTaskCount(i int) int {
+	n := 0
+	for _, c := range p.Categories[i:BlockEnd(p.Categories, i)] {
+		n += c.TaskCount()
+	}
+	return n
 }
 
 // TreeStatusCounts counts the tasks of the category at i together with those

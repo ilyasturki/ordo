@@ -223,3 +223,68 @@ func TestResolveCategoryPaths(t *testing.T) {
 		t.Fatal("a path under a missing parent resolved")
 	}
 }
+
+func TestResolveCategoryTakesThePathItPrints(t *testing.T) {
+	p := domain.Project{Categories: []domain.Category{
+		{ID: "fix-top", Name: "Fix"},
+		{ID: "v2-id", Name: "v0.2.0"},
+		{ID: "fix-sub", Name: "Fix", ParentID: "v2-id"},
+		{ID: "be-id", Name: "Backend"},
+		{ID: "api-sub", Name: "API", ParentID: "be-id"},
+		{ID: "api-top", Name: "Backend/API"},
+	}}
+	for i := range p.Categories[:3] {
+		cat, _, err := resolveCategory(p, cliPath(p, i))
+		if err != nil || cat.ID != p.Categories[i].ID {
+			t.Errorf("resolveCategory(%q) = %v, %v; want %s", cliPath(p, i), cat, err, p.Categories[i].ID)
+		}
+	}
+	if _, _, err := resolveCategory(p, "Backend/API"); err == nil || !strings.Contains(err.Error(), "api-sub") || !strings.Contains(err.Error(), "api-top") {
+		t.Fatalf("a path two categories print: err = %v, want both refused", err)
+	}
+}
+
+func TestTaskAddParentLooksInTheNamedCategory(t *testing.T) {
+	dir := versionsDir(t)
+	for _, args := range [][]string{
+		{"task", "add", "Rest timer", "-C", "v0.1.0/ui"},
+		{"task", "add", "Old vibrate", "--parent", "Rest timer", "-C", "v0.1.0/ui"},
+	} {
+		if out, err := runCLI(t, dir, append(args, "--project", "Nested")...); err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+	}
+	p := loadNested(t, dir)
+	for i, c := range p.Categories {
+		if cliPath(p, i) != "v0.1.0/ui" {
+			continue
+		}
+		var parent, child domain.Task
+		for _, task := range c.Tasks {
+			switch task.Title {
+			case "Rest timer":
+				parent = task
+			case "Old vibrate":
+				child = task
+			}
+		}
+		if parent.ID == "" || child.ParentID != parent.ID {
+			t.Fatalf("v0.1.0/ui tasks = %+v, want Old vibrate under its own Rest timer", c.Tasks)
+		}
+		return
+	}
+	t.Fatal("no v0.1.0/ui category")
+}
+
+func TestImportJSONMakesNamesUniqueAfterTheRepair(t *testing.T) {
+	in := `{"id":"p1","name":"P","categories":[
+		{"id":"a","name":"Work","tasks":[]},
+		{"id":"b","name":"Work","parent_id":"gone","tasks":[]}]}`
+	p, err := importJSON(strings.NewReader(in), "")
+	if err != nil {
+		t.Fatalf("importJSON: %v", err)
+	}
+	if got := categoryNames(p); got[1] != "Work (2)" || p.Categories[1].ParentID != "" {
+		t.Fatalf("names = %q, parent = %q; want the orphan top-level as Work (2)", got, p.Categories[1].ParentID)
+	}
+}

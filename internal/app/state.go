@@ -193,7 +193,8 @@ func (f *FilterState) HasActiveFilter() bool {
 // CategoryVisible reports whether the category filter keeps the category
 // categoryID, whose parent category is parentCategoryID or "".
 func (f *FilterState) CategoryVisible(categoryID, parentCategoryID string) bool {
-	return len(f.categories) == 0 || f.categories[categoryID] || f.categories[parentCategoryID]
+	return len(f.categories) == 0 || f.categories[categoryID] ||
+		(parentCategoryID != "" && f.categories[parentCategoryID])
 }
 
 // TaskVisible judges a task of the category categoryID, whose parent category

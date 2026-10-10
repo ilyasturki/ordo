@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"phasionary/internal/app/selection"
+	"phasionary/internal/domain"
 	"phasionary/internal/ui"
 )
 
@@ -32,7 +33,7 @@ func (m model) confirmDeleteView() string {
 		}
 	} else {
 		cat := m.project.Categories[position.CategoryIndex]
-		tasks := m.project.TreeStatusCounts(position.CategoryIndex).Total()
+		tasks := m.project.TreeTaskCount(position.CategoryIndex)
 		message = fmt.Sprintf("Delete category %q and %d tasks?", truncateText(cat.Name, 30), tasks)
 		if children > 0 {
 			message = fmt.Sprintf("Delete category %q, its %d sub-categor%s and %d tasks?", truncateText(cat.Name, 30), children, plural(children, "y", "ies"), tasks)
@@ -108,6 +109,7 @@ func (m model) confirmMergeView() string {
 	if src.TaskCount() == 0 {
 		moved = "Its separators move"
 	}
+	subs := domain.BlockEnd(m.project.Categories, srcIdx) - srcIdx - 1
 	var lines []string
 	switch {
 	case m.ui.Edit.isAdding:
@@ -115,17 +117,23 @@ func (m model) confirmMergeView() string {
 			fmt.Sprintf("Merge into %q?", target),
 			fmt.Sprintf("The new category is dropped and the cursor moves to %q.", target),
 		}
-	case len(src.Tasks) == 0:
+	case len(src.Tasks) == 0 && subs == 0:
 		lines = []string{
 			fmt.Sprintf("Merge %q into %q?", srcName, target),
 			fmt.Sprintf("%q is empty, so it is deleted.", srcName),
 		}
 	default:
-		lines = []string{
-			fmt.Sprintf("Merge %q into %q?", srcName, target),
-			fmt.Sprintf("%s to the end of %q under a %q separator,", moved, target, srcName),
-			"then the category is deleted. u undoes it.",
+		lines = []string{fmt.Sprintf("Merge %q into %q?", srcName, target)}
+		its := "Its"
+		if len(src.Tasks) > 0 {
+			lines = append(lines, fmt.Sprintf("%s to the end of %q under a %q separator,", moved, target, srcName))
+			its = "its"
 		}
+		if subs > 0 {
+			lines = append(lines, fmt.Sprintf("%s %d sub-categor%s %s %q's, same names merging,",
+				its, subs, plural(subs, "y", "ies"), plural(subs, "joins", "join"), target))
+		}
+		lines = append(lines, "then the category is deleted. u undoes it.")
 	}
 	lines = append(lines, "", ui.RenderHints([]ui.Hint{
 		{Key: "y/enter", Label: "merge"}, {Key: "n/esc", Label: "keep editing"},

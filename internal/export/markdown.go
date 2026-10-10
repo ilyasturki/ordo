@@ -291,7 +291,7 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 // sub-category of a top-level category already in project, and anything else
 // names a top-level category.
 func headingParent(project domain.Project, heading string) (parentID, name string) {
-	for _, split := range domain.SplitCategoryPath(heading) {
+	for _, split := range domain.SplitCategoryHeading(heading) {
 		if i := domain.CategoryNameConflict(project.Categories, "", split[0], -1); i >= 0 {
 			return project.Categories[i].ID, split[1]
 		}

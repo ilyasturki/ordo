@@ -289,14 +289,18 @@ func (m *model) pasteLinesInEdit(text string) bool {
 	}
 
 	cat := &m.project.Categories[pos.CategoryIndex]
-	edited := &cat.Tasks[pos.TaskIndex]
+	idx := pos.TaskIndex
+	if adding && rows[0].separator && cat.Tasks[idx].ParentID != "" {
+		// A separator never nests, so the new row first leaves its parent's block.
+		idx, _ = cat.OutdentTask(idx)
+	}
+	edited := &cat.Tasks[idx]
 	switch {
 	case adding:
 		edited.Title = rows[0].title
 		if rows[0].separator {
 			edited.Kind = domain.KindSeparator
 			edited.Status = ""
-			edited.ParentID = ""
 		} else {
 			_ = edited.SetStatus(rows[0].status)
 		}
@@ -309,19 +313,23 @@ func (m *model) pasteLinesInEdit(text string) bool {
 		edited.Description = appendDescription(edited.Description, rows[0].description)
 	}
 	edited.UpdatedAt = domain.NowTimestamp()
-	last := edited.ID
-	at := domain.BlockEnd(cat.Tasks, pos.TaskIndex)
+	editedID := edited.ID
+	last := editedID
+	at := domain.BlockEnd(cat.Tasks, idx)
 	if fold && !edited.IsSeparator() {
-		linkSubtasks(newRows, rest, edited.ID)
+		linkSubtasks(newRows, rest, editedID)
 	} else {
 		linkSubtasks(newRows, rest, "")
 	}
 	if edited.ParentID != "" || edited.IsSeparator() {
 		at = settleTasks(cat.Tasks, newRows, at, edited.ParentID)
 	}
+	tookSubtasks := slices.ContainsFunc(newRows, func(t domain.Task) bool { return t.ParentID == editedID })
 	cat.Tasks = slices.Insert(cat.Tasks, at, newRows...)
-	// A subtask turned separator leaves its parent's block, which this regroups.
-	domain.NormalizeNesting(&m.project)
+	cat.UpdatedAt = domain.NowTimestamp()
+	if tookSubtasks {
+		m.revealChildrenOf(editedID)
+	}
 
 	if len(newRows) > 0 {
 		last = newRows[len(newRows)-1].ID

@@ -151,9 +151,7 @@ func resolveTask(project domain.Project, selector string) (TaskRef, error) {
 	}, nil
 }
 
-// resolveCategory matches an exact ID, then a name at any level, then a path
-// "parent/name", then an ID prefix. A name or path that several categories
-// share is refused rather than resolved to the first.
+// resolveCategory tries an ID, the path cliPath prints, a sub-category's own name, then an ID prefix; a tie at one step is refused.
 func resolveCategory(project domain.Project, selector string) (*domain.Category, int, error) {
 	trimmed := strings.TrimSpace(selector)
 	notFound := fmt.Errorf("category %q not found", selector)
@@ -167,21 +165,13 @@ func resolveCategory(project domain.Project, selector string) (*domain.Category,
 		}
 	}
 
-	needle := domain.NormalizeName(trimmed)
-	var named []int
-	for i := range cats {
-		if domain.NormalizeName(cats[i].Name) == needle {
-			named = append(named, i)
+	for _, named := range [][]int{pathMatches(project, trimmed), nameMatches(project, trimmed, true)} {
+		switch len(named) {
+		case 0:
+			continue
+		case 1:
+			return &cats[named[0]], named[0], nil
 		}
-	}
-	if len(named) == 0 {
-		named = pathMatches(project, trimmed)
-	}
-	switch len(named) {
-	case 0:
-	case 1:
-		return &cats[named[0]], named[0], nil
-	default:
 		ids := make([]string, len(named))
 		for j, i := range named {
 			ids[j] = fmt.Sprintf("%s (%s)", cats[i].ID, cliPath(project, i))
@@ -201,10 +191,21 @@ func resolveCategory(project domain.Project, selector string) (*domain.Category,
 	return nil, -1, notFound
 }
 
-// pathMatches lists the sub-categories a path "parent/name" names, trying each
-// "/" in it as the split, since a name may hold one too.
-func pathMatches(project domain.Project, path string) []int {
+// nameMatches lists the categories named name: the sub-categories with sub, else the top-level ones.
+func nameMatches(project domain.Project, name string, sub bool) []int {
+	needle := domain.NormalizeName(name)
 	var out []int
+	for i, c := range project.Categories {
+		if (c.ParentID != "") == sub && domain.NormalizeName(c.Name) == needle {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// pathMatches tries every "/" as the parent/name split, since a name may hold one too.
+func pathMatches(project domain.Project, path string) []int {
+	out := nameMatches(project, path, false)
 	for _, split := range domain.SplitCategoryPath(path) {
 		parent, name := domain.NormalizeName(split[0]), domain.NormalizeName(split[1])
 		for i, c := range project.Categories {

@@ -647,11 +647,17 @@ func (m *model) visualCut() tea.Cmd {
 	m.stashVisualClipboard(selPositions, true, text)
 	var what string
 	if m.ui.Visual.Kind == selection.FocusCategory {
-		n := len(selPositions)
+		n := len(m.ui.Clipboard.Categories)
 		what = fmt.Sprintf("%d categor%s", n, plural(n, "y", "ies"))
 	} else {
-		tasks := countRealTasks(selPositions)
-		what = rowCountLabel(tasks, len(selPositions)-tasks)
+		rows := m.ui.Clipboard.Tasks
+		tasks := 0
+		for _, t := range rows {
+			if !t.IsSeparator() {
+				tasks++
+			}
+		}
+		what = rowCountLabel(tasks, len(rows)-tasks)
 	}
 	status := "Cut: " + what + ", p moves them here, esc cancels"
 	m.ui.Screen.StatusMsg = status

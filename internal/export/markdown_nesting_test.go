@@ -113,6 +113,18 @@ func TestImportNestingRules(t *testing.T) {
 		assert.Equal(t, tasks[1].ID, tasks[2].ParentID)
 		assert.Empty(t, tasks[4].ParentID)
 	})
+	t.Run("a slash inside a top-level name is no path", func(t *testing.T) {
+		project := domain.Project{Name: "P", Categories: []domain.Category{
+			{ID: "ci", Name: "CI", Tasks: []domain.Task{{ID: "a", Title: "a", Status: domain.StatusTodo}}},
+			{ID: "cd", Name: "CD", ParentID: "ci", Tasks: []domain.Task{{ID: "b", Title: "b", Status: domain.StatusTodo}}},
+			{ID: "cicd", Name: "CI/CD", Tasks: []domain.Task{{ID: "c", Title: "c", Status: domain.StatusTodo}}},
+		}}
+		var buf bytes.Buffer
+		require.NoError(t, ExportMarkdown(project, &buf))
+		back, err := ImportMarkdown(&buf, "")
+		require.NoError(t, err)
+		assert.Equal(t, outline(project), outline(back))
+	})
 	t.Run("a checkbox inside a description stays description", func(t *testing.T) {
 		md := "## A\n- [ ] parent\n    - [ ] not a subtask\n"
 		p, err := ImportMarkdown(strings.NewReader(md), "")
