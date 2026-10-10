@@ -217,3 +217,33 @@ func TestSchemaTooNewRefused(t *testing.T) {
 	_, err = store.ListProjects()
 	require.ErrorIs(t, err, domain.ErrSchemaTooNew)
 }
+
+func TestListProjects_SkipsStrays(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewStore(tmpDir)
+	project, err := store.CreateProject("Live")
+	require.NoError(t, err)
+
+	conflict := filepath.Join(tmpDir, project.ID+".sync-conflict-20260921-203208-ICE5FOT.json")
+	require.NoError(t, os.WriteFile(conflict, []byte("not json"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "renamed.json"), []byte(`{"id":"original","name":"Copy"}`), 0o644))
+
+	projects, err := store.ListProjects()
+	require.NoError(t, err)
+	require.Len(t, projects, 1)
+	assert.Equal(t, project.ID, projects[0].ID)
+
+	got, err := os.ReadFile(conflict)
+	require.NoError(t, err)
+	assert.Equal(t, "not json", string(got), "the conflict file is left as it was")
+}
+
+func TestLoadProjectByID_RejectsMismatchedID(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewStore(tmpDir)
+	require.NoError(t, store.Ensure())
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "renamed.json"), []byte(`{"id":"original","name":"Copy"}`), 0o644))
+
+	_, err := store.LoadProjectByID("renamed")
+	assert.ErrorIs(t, err, ErrProjectNotFound)
+}

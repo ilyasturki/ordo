@@ -63,17 +63,17 @@ func (s *Store) ListProjects() ([]domain.Project, error) {
 		if entry.IsDir() {
 			continue
 		}
-		if filepath.Ext(entry.Name()) != ".json" {
+		id, ok := strings.CutSuffix(entry.Name(), ".json")
+		if !ok || domain.ValidateID(id) != nil {
 			continue
 		}
-		path := filepath.Join(s.Dir, entry.Name())
 		// Stamp deliberately dropped: listing must not refresh the open
 		// project's baseline.
-		project, _, err := s.loadProjectFile(path)
+		project, _, err := s.loadProjectFile(s.projectPath(id))
 		if err != nil {
 			return nil, err
 		}
-		if project.ID == "" {
+		if project.ID != id {
 			continue
 		}
 		projects = append(projects, project)
@@ -101,10 +101,9 @@ func (s *Store) LoadProjectByID(id string) (domain.Project, error) {
 	if err != nil {
 		return domain.Project{}, err
 	}
-	// A blank id would cause saveProjectAtomic to write to "<dir>/.json",
-	// silently splitting state; treat such files as not-found rather than
-	// loading them as a zero-ID project.
-	if project.ID == "" {
+	// Saves go to the path of the ID inside the file, so a mismatch would
+	// split one project across two files.
+	if project.ID != id {
 		return domain.Project{}, ErrProjectNotFound
 	}
 	s.adopt(id, info)
