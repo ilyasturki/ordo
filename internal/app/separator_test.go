@@ -263,7 +263,7 @@ func TestVisualCounts_ExcludeSeparators(t *testing.T) {
 	assert.Equal(t, "-- VISUAL -- 2 tasks selected", m.statusText())
 
 	m.visualCut()
-	assert.Equal(t, "Marked 2 task(s) for cut", m.ui.Screen.StatusMsg)
+	assert.Equal(t, "Cut: 2 task(s), p moves them here, esc cancels", m.ui.Screen.StatusMsg)
 }
 
 func TestVisualDelete_RemovesInteriorSeparator(t *testing.T) {
@@ -306,7 +306,7 @@ func TestVisualCutPaste_PreservesSeparator(t *testing.T) {
 	m.visualCut()
 
 	require.True(t, m.selectTaskIdx(1, 0)) // Gamma in Cat B
-	m.pasteFromClipboard()
+	m.pasteInternal()
 
 	// Source category is emptied; the block lands after Gamma, divider intact.
 	assert.Empty(t, m.project.Categories[0].Tasks)

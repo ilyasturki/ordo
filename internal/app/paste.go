@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -9,16 +10,49 @@ import (
 	"phasionary/internal/domain"
 )
 
+// pasteFromClipboard pastes whatever the system clipboard holds, at full
+// fidelity when that is the app's own copy.
 func (m *model) pasteFromClipboard() tea.Cmd {
+	if !m.ui.Clipboard.empty() && !m.ui.Clipboard.Written {
+		m.pasteInternal()
+		return nil
+	}
+	return readClipboardLines()
+}
+
+func (m *model) resolvePaste(msg clipboardLinesMsg) {
+	if !m.ui.Modes.IsNormal() {
+		return
+	}
+	if !m.ui.Clipboard.empty() {
+		// An unreadable clipboard (OSC 52 only) can't contradict the copy.
+		if !m.ui.Clipboard.Written || msg.err != nil || strings.TrimSpace(msg.text) == "" ||
+			sameClipboardText(msg.text, m.ui.Clipboard.Text) {
+			m.pasteInternal()
+			return
+		}
+		m.ui.Clipboard = ClipboardState{}
+	}
+	m.pasteClipboardLines(msg)
+}
+
+func sameClipboardText(a, b string) bool {
+	normalize := func(s string) string {
+		return strings.TrimSpace(strings.ReplaceAll(s, "\r\n", "\n"))
+	}
+	return normalize(a) == normalize(b)
+}
+
+func (m *model) pasteInternal() bool {
 	switch {
 	case len(m.ui.Clipboard.Tasks) > 0:
 		m.pasteTasks()
 	case len(m.ui.Clipboard.Categories) > 0:
 		m.pasteCategories()
 	default:
-		return readClipboardLines()
+		return false
 	}
-	return nil
+	return true
 }
 
 // pasteDestination is where task-level rows land: below the cursor's row, or at
@@ -74,7 +108,14 @@ func (m *model) pasteTasks() {
 		}
 	}
 
-	m.ui.Clipboard = ClipboardState{}
+	if clip.IsCut {
+		// The move used the cut up; what x copied stays, as a copy of the moved rows.
+		ids := make([]string, len(rows))
+		for i, t := range rows {
+			ids[i] = t.ID
+		}
+		m.ui.Clipboard = ClipboardState{Tasks: rows, TaskIDs: ids, Text: clip.Text, Written: clip.Written}
+	}
 	m.rebuildPositions()
 	m.selectTaskLevelRow(rows[0].ID, false)
 	m.ensureVisible()
@@ -172,7 +213,13 @@ func (m *model) pasteCategories() {
 		}
 	}
 
-	m.ui.Clipboard = ClipboardState{}
+	if clip.IsCut {
+		ids := make([]string, len(cats))
+		for i, c := range cats {
+			ids[i] = c.ID
+		}
+		m.ui.Clipboard = cloneClipboard(ClipboardState{Categories: cats, CategoryIDs: ids, Text: clip.Text, Written: clip.Written})
+	}
 	m.rebuildPositions()
 	firstID := cats[0].ID
 	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {

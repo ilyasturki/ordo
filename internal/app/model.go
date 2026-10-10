@@ -33,6 +33,18 @@ type ClipboardState struct {
 	TaskIDs     []string
 	Categories  []domain.Category
 	CategoryIDs []string
+
+	// Text is what this copy put on the system clipboard. While the clipboard
+	// still holds it, p pastes the copy itself; once it holds anything else, the
+	// user copied that later, and p pastes that instead. Written is false when
+	// nothing reached the clipboard (a delete, a failed write): p then pastes
+	// the copy without reading the clipboard.
+	Text    string
+	Written bool
+}
+
+func (c ClipboardState) empty() bool {
+	return len(c.Tasks) == 0 && len(c.Categories) == 0
 }
 
 type VisualState struct {

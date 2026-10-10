@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 
+	tea "charm.land/bubbletea/v2"
+
 	"phasionary/internal/app/components"
 	"phasionary/internal/app/modes"
 	"phasionary/internal/app/selection"
@@ -279,25 +281,30 @@ func (m *model) selectTaskOrCategory(catIndex, taskIndex int) {
 	})
 }
 
-func (m *model) cutSelectedTask() {
+// cutSelectedTask is y plus a mark: the task's text goes to the system
+// clipboard, and a p in the app moves the task itself.
+func (m *model) cutSelectedTask() tea.Cmd {
 	if !m.ui.Modes.CanPerformAction(modes.ActionDeleteItem) {
-		return
+		return nil
 	}
 	position, ok := m.selectedPosition()
 	if !ok || position.Kind != selection.FocusTask {
 		m.ui.Screen.StatusMsg = "Can only cut tasks"
-		return
+		return nil
 	}
 
 	task := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
-	m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{task}, TaskIDs: []string{task.ID}, IsCut: true}
+	text := m.copyTextForPosition(position)
+	m.ui.Clipboard = ClipboardState{Tasks: []domain.Task{task}, TaskIDs: []string{task.ID}, IsCut: true, Text: text, Written: true}
 	m.ui.TagCopiedLast = false
 
 	title := task.Title
 	if len([]rune(title)) > 30 {
 		title = string([]rune(title)[:30]) + "..."
 	}
-	m.ui.Screen.StatusMsg = "Marked for cut: " + title
+	status := "Cut: " + title + ", p moves it here, esc cancels"
+	m.ui.Screen.StatusMsg = status
+	return writeClipboard(clipboardResultMsg{text: text, status: status})
 }
 
 func (m *model) removeTaskByID(id string) {

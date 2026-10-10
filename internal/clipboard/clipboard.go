@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	atotto "github.com/atotto/clipboard"
 )
@@ -27,8 +28,14 @@ import (
 // terminal do it — should treat this as "try that" rather than as a failure.
 var ErrNoBackend = errors.New("no clipboard utility available")
 
+// A read issued just after a write must see that write: the app decides what
+// to paste by comparing the clipboard with what it last wrote.
+var mu sync.Mutex
+
 // Write puts text on the system clipboard.
 func Write(text string) error {
+	mu.Lock()
+	defer mu.Unlock()
 	if !atotto.Unsupported {
 		if err := atotto.WriteAll(text); err == nil {
 			return nil
@@ -39,6 +46,8 @@ func Write(text string) error {
 
 // Read returns the system clipboard's contents.
 func Read() (string, error) {
+	mu.Lock()
+	defer mu.Unlock()
 	if !atotto.Unsupported {
 		if text, err := atotto.ReadAll(); err == nil {
 			return text, nil

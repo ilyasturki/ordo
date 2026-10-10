@@ -256,8 +256,7 @@ func (m *model) copyTagFromSelected() tea.Cmd {
 	return copyToClipboard(task.TagLabel, "tag: "+desc)
 }
 
-// paste routes the normal-mode `p`: a tag copied last wins, then the internal
-// clipboard, then the system clipboard.
+// paste routes the normal-mode `p`: a tag copied last wins, then the clipboard.
 func (m *model) paste() tea.Cmd {
 	if m.ui.TagCopiedLast && m.ui.TagClip.Set {
 		m.pasteTagOntoSelected()

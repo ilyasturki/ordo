@@ -279,7 +279,7 @@ func (m *model) visualCopyBullets() tea.Cmd {
 		return nil
 	}
 	text := m.visualMarkdownText(selPositions, false)
-	m.stashVisualClipboard(selPositions, false)
+	m.stashVisualClipboard(selPositions, false, text)
 	m.exitVisualMode()
 	return copyToClipboard(text, "")
 }
@@ -291,7 +291,7 @@ func (m *model) visualCopyChecklist() tea.Cmd {
 		return nil
 	}
 	text := m.visualMarkdownText(selPositions, true)
-	m.stashVisualClipboard(selPositions, false)
+	m.stashVisualClipboard(selPositions, false, text)
 	m.exitVisualMode()
 	return copyToClipboard(text, "")
 }
@@ -331,7 +331,7 @@ func (m model) visualMarkdownText(selPositions []selection.Position, checkboxes 
 	return strings.Join(lines, "\n")
 }
 
-func (m *model) stashVisualClipboard(selPositions []selection.Position, isCut bool) {
+func (m *model) stashVisualClipboard(selPositions []selection.Position, isCut bool, text string) {
 	if len(selPositions) == 0 {
 		return
 	}
@@ -345,7 +345,9 @@ func (m *model) stashVisualClipboard(selPositions []selection.Position, isCut bo
 			cats = append(cats, c)
 			ids = append(ids, c.ID)
 		}
-		m.ui.Clipboard = ClipboardState{Categories: cats, CategoryIDs: ids, IsCut: isCut}
+		// Cloned: each category's Tasks would otherwise share the project's
+		// backing array, and an edit after the copy would rewrite the copy.
+		m.ui.Clipboard = cloneClipboard(ClipboardState{Categories: cats, CategoryIDs: ids, IsCut: isCut, Text: text, Written: true})
 	default:
 		// Task-level: stash the tasks and any interleaved separators so a paste
 		// reproduces the block, dividers and all. Description rows round up to
@@ -359,7 +361,7 @@ func (m *model) stashVisualClipboard(selPositions []selection.Position, isCut bo
 			tasks = append(tasks, t)
 			ids = append(ids, t.ID)
 		}
-		m.ui.Clipboard = ClipboardState{Tasks: tasks, TaskIDs: ids, IsCut: isCut}
+		m.ui.Clipboard = ClipboardState{Tasks: tasks, TaskIDs: ids, IsCut: isCut, Text: text, Written: true}
 	}
 }
 
@@ -561,21 +563,28 @@ func (m *model) selectTaskLevelRow(id string, onDescription bool) {
 	})
 }
 
-func (m *model) visualCut() {
-	selPositions := visualRoundUpPositions(m.visualSelectedPositions())
+// visualCut writes the range as visual y does and marks it for a move.
+func (m *model) visualCut() tea.Cmd {
+	raw := m.visualSelectedPositions()
+	selPositions := visualRoundUpPositions(raw)
 	if len(selPositions) == 0 {
 		m.exitVisualMode()
-		return
+		return nil
 	}
-	m.stashVisualClipboard(selPositions, true)
+	text := m.visualMarkdownText(raw, false)
+	m.stashVisualClipboard(selPositions, true, text)
+	var what string
 	if m.ui.Visual.Kind == selection.FocusCategory {
 		n := len(selPositions)
-		m.ui.Screen.StatusMsg = fmt.Sprintf("Marked %d categor%s for cut", n, plural(n, "y", "ies"))
+		what = fmt.Sprintf("%d categor%s", n, plural(n, "y", "ies"))
 	} else {
 		tasks := countRealTasks(selPositions)
-		m.ui.Screen.StatusMsg = "Marked " + rowCountLabel(tasks, len(selPositions)-tasks) + " for cut"
+		what = rowCountLabel(tasks, len(selPositions)-tasks)
 	}
+	status := "Cut: " + what + ", p moves them here, esc cancels"
+	m.ui.Screen.StatusMsg = status
 	m.exitVisualMode()
+	return writeClipboard(clipboardResultMsg{text: text, status: status})
 }
 
 func plural(n int, singular, plural string) string {
@@ -636,8 +645,7 @@ func (m model) handleVisualKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "Y":
 		return m, m.visualCopyChecklist()
 	case "x":
-		m.visualCut()
-		return m, nil
+		return m, m.visualCut()
 	case "d":
 		m.visualDelete()
 		return m, nil

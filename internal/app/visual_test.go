@@ -151,7 +151,7 @@ func TestPasteMultiTasks_FlattensIntoCursorCategory(t *testing.T) {
 		return p.Kind == selection.FocusTask && p.CategoryIndex == 1 && p.TaskIndex == 0
 	})
 
-	m.pasteFromClipboard()
+	m.pasteInternal()
 
 	// Cat A should now have just t3
 	require.Len(t, m.project.Categories[0].Tasks, 1)
@@ -164,8 +164,7 @@ func TestPasteMultiTasks_FlattensIntoCursorCategory(t *testing.T) {
 	assert.Equal(t, "Beta", m.project.Categories[1].Tasks[2].Title)
 	assert.Equal(t, "Epsilon", m.project.Categories[1].Tasks[3].Title)
 
-	// Clipboard cleared
-	assert.Empty(t, m.ui.Clipboard.Tasks)
+	assert.False(t, m.ui.Clipboard.IsCut, "the move used the cut up")
 }
 
 func TestVisualYank_PopulatesInternalClipboardForPaste(t *testing.T) {
@@ -184,7 +183,7 @@ func TestVisualYank_PopulatesInternalClipboardForPaste(t *testing.T) {
 	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
 		return p.Kind == selection.FocusTask && p.CategoryIndex == 1 && p.TaskIndex == 0
 	})
-	m.pasteFromClipboard()
+	m.pasteInternal()
 
 	// Cat A unchanged (still 3 tasks t1, t2, t3)
 	require.Len(t, m.project.Categories[0].Tasks, 3)

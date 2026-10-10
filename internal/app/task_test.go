@@ -273,7 +273,7 @@ func TestCutSelectedTask_PopulatesClipboardAndSetsStatus(t *testing.T) {
 	require.Len(t, m.ui.Clipboard.Tasks, 1)
 	assert.True(t, m.ui.Clipboard.IsCut)
 	assert.Equal(t, []string{"t1"}, m.ui.Clipboard.TaskIDs)
-	assert.Contains(t, m.ui.Screen.StatusMsg, "Marked for cut")
+	assert.Equal(t, "Cut: Alpha, p moves it here, esc cancels", m.ui.Screen.StatusMsg)
 }
 
 func TestCutSelectedTask_RejectsCategory(t *testing.T) {
@@ -292,7 +292,7 @@ func TestPasteTask_AfterCut_MovesTaskToTarget(t *testing.T) {
 	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
 		return p.Kind == selection.FocusTask && p.CategoryIndex == 1 && p.TaskIndex == 0
 	})
-	m.pasteFromClipboard()
+	m.pasteInternal()
 
 	// Cat A lost t1
 	assert.Len(t, m.project.Categories[0].Tasks, 2)
@@ -301,8 +301,7 @@ func TestPasteTask_AfterCut_MovesTaskToTarget(t *testing.T) {
 	require.Len(t, m.project.Categories[1].Tasks, 3)
 	assert.Equal(t, "Delta", m.project.Categories[1].Tasks[0].Title)
 	assert.Equal(t, "Alpha", m.project.Categories[1].Tasks[1].Title)
-	// Clipboard cleared, status updated
-	assert.Empty(t, m.ui.Clipboard.Tasks)
+	assert.False(t, m.ui.Clipboard.IsCut, "the move used the cut up")
 	assert.Equal(t, "Moved!", m.ui.Screen.StatusMsg)
 }
 
@@ -315,7 +314,7 @@ func TestPasteTask_AfterCopy_KeepsOriginal(t *testing.T) {
 	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
 		return p.Kind == selection.FocusTask && p.CategoryIndex == 1 && p.TaskIndex == 0
 	})
-	m.pasteFromClipboard()
+	m.pasteInternal()
 
 	// Original survived
 	assert.Equal(t, "t1", m.project.Categories[0].Tasks[0].ID)
@@ -331,7 +330,7 @@ func TestPasteTask_AfterCopy_KeepsOriginal(t *testing.T) {
 func TestPasteTask_EmptyClipboardFallsBackToSystemClipboard(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(2)
-	cmd := m.pasteFromClipboard()
+	cmd := m.paste()
 	require.NotNil(t, cmd)
 	assert.Empty(t, m.ui.Screen.StatusMsg)
 }

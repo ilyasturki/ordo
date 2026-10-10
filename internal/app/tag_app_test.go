@@ -201,12 +201,12 @@ func TestPaste_MovesTaskWhenCutIsFreshest(t *testing.T) {
 	require.False(t, m.ui.TagCopiedLast, "a cut resets the tag-copied-last flag")
 
 	m.ui.Selection.SetSelected(4) // t3
-	m.paste()
+	require.NotNil(t, m.paste(), "p reads the clipboard rather than painting the tag")
+	m.resolvePaste(clipboardLinesMsg{text: m.ui.Clipboard.Text})
 
-	// p took the task-move path, which consumes the clipboard, rather than
-	// painting t1's tag onto t3.
-	assert.Empty(t, m.ui.Clipboard.Tasks, "p should paste the cut task, not the tag")
-	assert.Equal(t, "", m.project.Categories[0].Tasks[2].TagLabel, "t3 tag untouched")
+	assert.False(t, m.ui.Clipboard.IsCut, "p should move the cut task, not paint the tag")
+	assert.Equal(t, []string{"t1", "t3", "t2"}, taskIDs(m.project.Categories[0]))
+	assert.Equal(t, "", m.project.Categories[0].Tasks[1].TagLabel, "t3 tag untouched")
 }
 
 func TestCopyTag_ExportsLabelToClipboardCmd(t *testing.T) {
