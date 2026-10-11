@@ -100,6 +100,11 @@ func (m *model) openLink(link components.Link) tea.Cmd {
 			m.ui.Screen.StatusMsg = missingImageStatus(link, m.deps.Attachments)
 			return nil
 		}
+		// The label hides the path, and xdg-open runs a .desktop file it is handed.
+		if !attachments.IsImageFile(link.Target) {
+			m.ui.Screen.StatusMsg = link.Target + " is not an image"
+			return nil
+		}
 	}
 	return openURL(link)
 }
