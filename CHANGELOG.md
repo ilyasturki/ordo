@@ -8,6 +8,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - `gc` shows this changelog in the TUI
 
+### Changed
+
+- Folded categories in a row stack one header per row, with no blank line between them and no `(folded)` row. Folded sub-categories under the same parent stack at their indent
+
 ## [0.10.0] - 2026-10-11
 
 Update ordo on every machine that shares the data directory before nesting anything or shipping a version. A project with a sub-category or subtask is saved as schema 2, one with a shipped version as schema 3, and older builds refuse to open both.

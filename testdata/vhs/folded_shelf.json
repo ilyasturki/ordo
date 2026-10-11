@@ -1,0 +1,823 @@
+{
+ "schema": 2,
+ "id": "7e0f4b52-3c1d-4a8e-9b6f-0d2a5c8e1f31",
+ "name": "Shelf",
+ "created_at": "2026-09-01T09:00:00Z",
+ "updated_at": "2026-09-01T09:00:00Z",
+ "categories": [
+  {
+   "id": "s00",
+   "name": "v0.0.1",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t001",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t002",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t003",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t004",
+     "title": "shipped item 4",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t005",
+     "title": "shipped item 5",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t006",
+     "title": "shipped item 6",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s01",
+   "name": "v0.0.2",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t007",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t008",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t009",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t010",
+     "title": "shipped item 4",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t011",
+     "title": "shipped item 5",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t012",
+     "title": "shipped item 6",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t013",
+     "title": "shipped item 7",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t014",
+     "title": "shipped item 8",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t015",
+     "title": "shipped item 9",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s02",
+   "name": "v0.0.3",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t016",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t017",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s03",
+   "name": "v0.0.4",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t018",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t019",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t020",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t021",
+     "title": "shipped item 4",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t022",
+     "title": "shipped item 5",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t023",
+     "title": "shipped item 6",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s04",
+   "name": "v0.0.5",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t024",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t025",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t026",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t027",
+     "title": "shipped item 4",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s05",
+   "name": "v0.1.0 - working and usable app",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t028",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t029",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t030",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t031",
+     "title": "shipped item 4",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t032",
+     "title": "shipped item 5",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s06",
+   "name": "v0.1.0 - app polish",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t033",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t034",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t035",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s07",
+   "name": "v0.1.1",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t036",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t037",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t038",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t039",
+     "title": "shipped item 4",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s08",
+   "name": "v0.1.2",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t040",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t041",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t042",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s09",
+   "name": "v0.1.3",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t043",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t044",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t045",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t046",
+     "title": "shipped item 4",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t047",
+     "title": "shipped item 5",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s10",
+   "name": "v0.1.4",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t048",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t049",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t050",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t051",
+     "title": "shipped item 4",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t052",
+     "title": "shipped item 5",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t053",
+     "title": "shipped item 6",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s11",
+   "name": "v0.1.5",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t054",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t055",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s12",
+   "name": "v0.1.6",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t056",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t057",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t058",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s13",
+   "name": "v0.1.8",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t059",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t060",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t061",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t062",
+     "title": "shipped item 4",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s14",
+   "name": "v0.1.9",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t063",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t064",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t065",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t066",
+     "title": "shipped item 4",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t067",
+     "title": "shipped item 5",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t068",
+     "title": "shipped item 6",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t069",
+     "title": "shipped item 7",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s15",
+   "name": "v0.1.10",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t070",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t071",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s-open",
+   "name": "v0.1.13",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t072",
+     "title": "Polish the invoice PDF",
+     "status": "in_progress",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t073",
+     "title": "Order form",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t074",
+     "title": "Simpler quote creation",
+     "status": "todo",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "id": "s-area",
+   "name": "v0.4.0",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": []
+  },
+  {
+   "id": "s-api",
+   "name": "api",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t075",
+     "title": "Rate limit the public API",
+     "status": "in_progress",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t076",
+     "title": "Webhook retries",
+     "status": "todo",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z"
+    }
+   ],
+   "parent_id": "s-area"
+  },
+  {
+   "id": "s-ui",
+   "name": "ui",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t077",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t078",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t079",
+     "title": "shipped item 3",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ],
+   "parent_id": "s-area"
+  },
+  {
+   "id": "s-docs",
+   "name": "docs",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t080",
+     "title": "shipped item 1",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t081",
+     "title": "shipped item 2",
+     "status": "completed",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z",
+     "completion_date": "2026-09-01T09:00:00Z"
+    }
+   ],
+   "parent_id": "s-area"
+  },
+  {
+   "id": "s-next",
+   "name": "v1.0.0",
+   "created_at": "2026-09-01T09:00:00Z",
+   "tasks": [
+    {
+     "id": "t082",
+     "title": "Launch checklist",
+     "status": "todo",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z"
+    },
+    {
+     "id": "t083",
+     "title": "Pricing page",
+     "status": "todo",
+     "created_at": "2026-09-01T09:00:00Z",
+     "updated_at": "2026-09-01T09:00:00Z"
+    }
+   ]
+  }
+ ]
+}

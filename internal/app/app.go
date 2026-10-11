@@ -861,9 +861,6 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 	case LayoutEmptyCategory:
 		return ui.MutedStyle.Render(placeholderIndent(m.rowIndent(item.CategoryIndex, -1)) + "(no tasks)")
 
-	case LayoutFolded:
-		return ui.MutedStyle.Render(placeholderIndent(m.rowIndent(item.CategoryIndex, -1)) + "(folded)")
-
 	case LayoutSpacing:
 		return strings.Repeat("\n", item.Height-1)
 	}
