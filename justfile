@@ -26,7 +26,7 @@ fmt:
     gofmt -w cmd internal
     go mod tidy
 
-# Record the README demo GIFs and the social preview (needs vhs and nix).
+# Record the README demo GIFs and the social preview (needs go, vhs, nix and IosevkaTerm Nerd Font).
 demo:
     vhs assets/demo-dark.tape
     vhs assets/demo-light.tape

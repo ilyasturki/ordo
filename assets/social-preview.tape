@@ -26,5 +26,6 @@ Sleep 500ms
 
 Hide
 Type "q"
+Sleep 500ms
 Type 'rm -rf "$demo_dir"'
 Enter
