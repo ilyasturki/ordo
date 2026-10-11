@@ -17,15 +17,32 @@ func (m *model) moveSelectionByPage(factor float64) {
 	if !m.ui.Modes.CanPerformAction(modes.ActionNavigate) || m.ui.Selection.IsEmpty() {
 		return
 	}
-	pageSize := int(float64(m.availableHeight()) * factor)
-	if pageSize == 0 {
-		if factor > 0 {
-			pageSize = 1
-		} else {
-			pageSize = -1
-		}
+	step := 1
+	if factor < 0 {
+		step = -1
 	}
-	m.moveSelection(pageSize)
+	layout := m.buildLayout()
+	start, _, ok := layout.rowRange(m.selected())
+	if !ok {
+		m.moveSelection(step)
+		return
+	}
+	// The last row the cursor may start on going down, the first going up.
+	target := start + int(float64(m.availableHeight())*factor)
+	next, row := m.selected(), 0
+	for _, item := range layout.Items {
+		pos := item.PositionIndex
+		if pos >= 0 && (step > 0 && pos > m.selected() && row <= target || step < 0 && pos < next && row >= target) {
+			next = pos
+		}
+		row += item.Height
+	}
+	if next == m.selected() {
+		m.moveSelection(step)
+		return
+	}
+	m.ui.Selection.MoveTo(next)
+	m.ensureVisible()
 }
 
 func (m *model) jumpToFirst() {

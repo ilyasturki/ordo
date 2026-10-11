@@ -20,6 +20,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Moving onto the row just above the last one of a scrolled project shows it again. A category added or pasted at the end, a folded last category and the second-to-last task were left under `↓ more below`
 - Status messages and the visual-mode count stay on screen once the project line scrolls off: they sit on the `↑ more above` row instead
 - The view follows the focused row when a cut mark, a priority or a tag makes it wrap onto one more row at the bottom of the screen
+- `ctrl+d` and `ctrl+u` move half a screen of rows, so wrapped titles and open descriptions no longer make them skip past a whole screen
 - `zb` no longer leaves the row one line below the screen when the view lands one row from the top
 
 ## [0.10.0] - 2026-10-11

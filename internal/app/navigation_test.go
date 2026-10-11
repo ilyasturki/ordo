@@ -59,6 +59,32 @@ func TestMoveSelectionByPage_ZeroFactorStillMovesOne(t *testing.T) {
 	assert.Equal(t, 1, m.ui.Selection.Selected())
 }
 
+func TestMoveSelectionByPage_MovesByRowsNotItems(t *testing.T) {
+	p := longProject()
+	for i := range p.Categories[0].Tasks {
+		p.Categories[0].Tasks[i].Description = "first line\nsecond line\nthird line"
+	}
+	m := newTestModel(t, p)
+	m.ui.Screen.Height = 24
+	m.ui.Screen.ExpandDescriptions = true
+	m.rebuildPositions()
+	require.True(t, m.selectItem(selection.FocusTask, "t00"))
+	rowOf := func() int {
+		start, _, ok := m.buildLayout().rowRange(m.selected())
+		require.True(t, ok)
+		return start
+	}
+	half := m.availableHeight() / 2
+
+	from := rowOf()
+	m.moveSelectionByPage(0.5)
+	assert.InDelta(t, from+half, rowOf(), 3, "half a screen of rows, not of tasks")
+
+	from = rowOf()
+	m.moveSelectionByPage(-0.5)
+	assert.InDelta(t, from-half, rowOf(), 3)
+}
+
 func TestJumpToFirst(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(5)
