@@ -51,12 +51,7 @@ jobs:
                   GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$ldflags" -o phasionary-linux-arm64 ./cmd/phasionary
 
             - name: Smoke test (linux-x64)
-              run: |
-                  ./phasionary-linux-x64 --version
-                  ./phasionary-linux-x64 --help
-                  ./phasionary-linux-x64 completion bash | grep -q 'phasionary'
-                  ./phasionary-linux-x64 completion zsh | grep -q 'phasionary'
-                  ./phasionary-linux-x64 completion fish | grep -q 'phasionary'
+              run: scripts/smoke.sh ./phasionary-linux-x64
 
             - name: Upload binaries
               uses: actions/upload-artifact@v7

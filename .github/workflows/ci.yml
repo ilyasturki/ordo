@@ -1,0 +1,54 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+permissions:
+    contents: read
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Setup Go
+              uses: actions/setup-go@v6
+              with:
+                  go-version: stable
+                  cache: true
+
+            - name: Vet
+              run: go vet ./...
+
+            - name: Test
+              run: go test ./...
+
+            - name: Build
+              run: go build -o phasionary ./cmd/phasionary
+
+            - name: Smoke test
+              run: scripts/smoke.sh ./phasionary
+
+    nix-build:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Install Nix
+              uses: DeterminateSystems/nix-installer-action@main
+
+            - name: Cache Nix store
+              uses: DeterminateSystems/magic-nix-cache-action@main
+              with:
+                  use-flakehub: false
+
+            - name: Build
+              run: nix build
+
+            - name: Smoke test
+              run: scripts/smoke.sh ./result/bin/phasionary
