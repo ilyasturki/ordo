@@ -29,6 +29,13 @@ type clipboardResultMsg struct {
 	// status, when set, replaces the "Copied …" report.
 	status string
 	ofCopy bool
+	blurs  int
+}
+
+// clipboardWrite is what phasionary last put on the system clipboard; fresh until the terminal loses focus.
+type clipboardWrite struct {
+	text  string
+	fresh bool
 }
 
 // copyToClipboard sends text out as OSC 52 for the terminal to put on the
@@ -40,6 +47,7 @@ func (m *model) copyToClipboard(text, label string) tea.Cmd {
 }
 
 func (m *model) writeClipboard(result clipboardResultMsg) tea.Cmd {
+	result.blurs = m.ui.Blurs
 	result.ofCopy = !m.ui.Clipboard.empty() && result.text == m.ui.Clipboard.Text
 	if result.ofCopy {
 		m.ui.ClipboardWrites++
@@ -65,6 +73,9 @@ func (m *model) handleClipboardResult(msg clipboardResultMsg) {
 	// A clipboard that never got the copy can't vouch for it.
 	if msg.err != nil && m.ui.Clipboard.Text == msg.text {
 		m.ui.Clipboard.Written = false
+	}
+	if msg.err == nil {
+		m.ui.LastWrite = clipboardWrite{text: msg.text, fresh: msg.blurs == m.ui.Blurs}
 	}
 	// A cut moved or cancelled before its write answered no longer waits on p.
 	cutGone := msg.status != "" && !(m.ui.Clipboard.IsCut && m.ui.Clipboard.Text == msg.text)
@@ -161,8 +172,12 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.FocusMsg:
 		m.ui.Screen.WindowFocused = true
+		m.ui.FocusReported = true
 	case tea.BlurMsg:
 		m.ui.Screen.WindowFocused = false
+		m.ui.FocusReported = true
+		m.ui.Blurs++
+		m.ui.LastWrite.fresh = false
 	case tea.MouseWheelMsg:
 		m.handleMouseWheel(msg)
 		return m, nil

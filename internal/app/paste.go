@@ -16,6 +16,11 @@ func (m *model) pasteFromClipboard() tea.Cmd {
 		m.pasteInternal()
 		return nil
 	}
+	// Only another app can have replaced our last write, and reaching one costs the terminal its focus.
+	if w := m.ui.LastWrite; w.fresh && m.ui.FocusReported {
+		m.resolvePaste(clipboardLinesMsg{text: w.text})
+		return nil
+	}
 	return readClipboardLines()
 }
 

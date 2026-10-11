@@ -126,7 +126,12 @@ type UIState struct {
 	Clipboard      ClipboardState
 	// Writes of Clipboard.Text not yet answered: until they land, p trusts the copy unread.
 	ClipboardWrites int
-	TagClip         TagClipboard
+	LastWrite       clipboardWrite
+	// Blurs counts focus losses, so a write answered after one never counts as fresh.
+	Blurs int
+	// FocusReported: a terminal that never reports focus can't vouch that no other app copied since.
+	FocusReported bool
+	TagClip       TagClipboard
 	// TagCopiedLast records whether the most recent copy gesture was a tag copy
 	// (gt) rather than a task/category cut or copy. It routes the normal-mode `p`:
 	// true → paint the copied tag, false → paste the clipboard task/category.

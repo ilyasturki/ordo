@@ -332,10 +332,10 @@ func TestCut_LateWriteKeepsTheMoveReport(t *testing.T) {
 	assert.Zero(t, m.ui.ClipboardWrites)
 }
 
-// landWrite delivers the answers to every clipboard write still on its way.
+// landWrite delivers the answers to every clipboard write still on its way, with no blur in between.
 func landWrite(m *model) {
 	for m.ui.ClipboardWrites > 0 {
-		m.handleClipboardResult(clipboardResultMsg{text: m.ui.Clipboard.Text, ofCopy: true})
+		m.handleClipboardResult(clipboardResultMsg{text: m.ui.Clipboard.Text, ofCopy: true, blurs: m.ui.Blurs})
 	}
 }
 
