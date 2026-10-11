@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-11
+
 ### Added
 
 - `gc` shows this changelog in the TUI
