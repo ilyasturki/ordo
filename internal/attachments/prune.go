@@ -18,6 +18,13 @@ const PruneAge = 30 * 24 * time.Hour
 // path copied out of ordo, or JSON-escaped.
 var mention = regexp.MustCompile(`[0-9a-f]{32}\.(?:png|jpg|gif|webp)`)
 
+// leftover is the temp file of an Add that never finished.
+var leftover = regexp.MustCompile(`^\.[0-9a-f]{32}\.(?:png|jpg|gif|webp)\.\d+\.tmp$`)
+
+func prunable(name string, referenced map[string]bool) bool {
+	return fileName.MatchString(name) && !referenced[name] || leftover.MatchString(name)
+}
+
 type Orphan struct {
 	Name    string
 	Size    int64
@@ -41,7 +48,7 @@ func (s *Store) Unreferenced(now time.Time) ([]Orphan, error) {
 	var orphans []Orphan
 	for _, e := range entries {
 		name := e.Name()
-		if !fileName.MatchString(name) || referenced[name] {
+		if !prunable(name, referenced) {
 			continue
 		}
 		info, err := e.Info()
@@ -98,7 +105,7 @@ func mentioned(projectsDir string) (map[string]bool, error) {
 // Remove deletes the named files from the store, and nothing else.
 func (s *Store) Remove(orphans []Orphan) error {
 	for _, o := range orphans {
-		if !fileName.MatchString(o.Name) {
+		if !fileName.MatchString(o.Name) && !leftover.MatchString(o.Name) {
 			return errors.New("not a stored image: " + o.Name)
 		}
 		if err := os.Remove(filepath.Join(s.dir, o.Name)); err != nil && !errors.Is(err, fs.ErrNotExist) {

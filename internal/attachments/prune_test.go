@@ -103,7 +103,8 @@ func TestUnreferenced_TouchesOnlyStoredNames(t *testing.T) {
 	f := newPruneFixture(t)
 	f.projectFile("p.json", "nothing")
 	for _, name := range []string{
-		".0123456789abcdef0123456789abcdef.png.123.tmp",
+		".0123456789abcdef0123456789abcdef.png.tmp",
+		"0123456789abcdef0123456789abcdef.png.123.tmp",
 		"0123456789ABCDEF0123456789ABCDEF.png",
 		"0123456789abcdef0123456789abcdef.svg",
 		"notes.txt",
@@ -117,6 +118,23 @@ func TestUnreferenced_TouchesOnlyStoredNames(t *testing.T) {
 	assert.Error(t, f.store.Remove([]Orphan{{Name: "../p.json"}}), "never a name outside the store")
 	_, err := os.Stat(filepath.Join(f.projects, "p.json"))
 	assert.NoError(t, err)
+}
+
+func TestUnreferenced_ClearsTheTempFileOfAnInterruptedWrite(t *testing.T) {
+	f := newPruneFixture(t)
+	f.projectFile("p.json", "nothing")
+	stale := ".0123456789abcdef0123456789abcdef.png.2718281828.tmp"
+	fresh := ".fedcba9876543210fedcba9876543210.jpg.31415.tmp"
+	f.storeFile(stale, old)
+	f.storeFile(fresh, time.Hour)
+
+	assert.Equal(t, []string{stale}, f.orphanNames(), "one still young may be a write in progress")
+
+	orphans, err := f.store.Unreferenced(pruneNow)
+	require.NoError(t, err)
+	require.NoError(t, f.store.Remove(orphans))
+	assert.False(t, f.exists(stale))
+	assert.True(t, f.exists(fresh))
 }
 
 func TestUnreferenced_FollowsASymlinkedProjectFile(t *testing.T) {
