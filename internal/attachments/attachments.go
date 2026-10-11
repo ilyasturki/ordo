@@ -57,7 +57,12 @@ type Store struct {
 }
 
 func NewStore(projectsDir string) *Store {
-	return &Store{dir: filepath.Join(projectsDir, DirName)}
+	dir := filepath.Join(projectsDir, DirName)
+	// Absolute so a path copied or opened from it still resolves elsewhere.
+	if abs, err := filepath.Abs(dir); err == nil {
+		dir = abs
+	}
+	return &Store{dir: dir}
 }
 
 func (s *Store) Dir() string {
