@@ -38,6 +38,8 @@ jobs:
                   cache: true
 
             - name: Build binaries
+              env:
+                  CGO_ENABLED: '0'
               run: |
                   version="${GITHUB_REF_NAME#v}"
                   commit="${GITHUB_SHA::7}"
