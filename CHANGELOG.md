@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-11
+
 Update ordo on every machine that shares the data directory before nesting anything or shipping a version. A project with a sub-category or subtask is saved as schema 2, one with a shipped version as schema 3, and older builds refuse to open both.
 
 phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and the directories are renamed, and nothing reads the old ones: move `~/.config/phasionary` to `~/.config/ordo` and `~/.local/share/phasionary` to `~/.local/share/ordo` on every machine.
@@ -52,6 +54,13 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 ### Fixed
 
 - The cursor stays on its item when the tree is rebuilt or the filter changes
+- A wrapped title or category name gets the rows its tag and badges take, so it no longer spills past its row
+- Renaming a project keeps unsaved edits
+- The project opened after a delete keeps the guard against overwriting changes made on disk
+- `p` on an empty clipboard says there is nothing to paste instead of calling the clipboard unreadable
+- The stale-project message names `r`, the key that reloads
+- `category delete` asks before deleting a category that holds only separators
+- `task edit` validates every field it sets, as the TUI does
 
 ## [0.9.0] - 2026-09-14
 
