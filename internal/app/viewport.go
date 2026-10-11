@@ -158,7 +158,7 @@ func (v *Viewport) ShowRows(start, end int) int {
 	for range 2 {
 		// A row taller than the view keeps any top that shows only its rows.
 		lo := end - v.windowAt(top)
-		top = min(max(v.TopRow, min(lo, start)), max(lo, start))
+		top = min(max(top, min(lo, start)), max(lo, start))
 	}
 	return max(top, 0)
 }

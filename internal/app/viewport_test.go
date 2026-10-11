@@ -1,6 +1,7 @@
 package app
 
 import (
+	"math/rand/v2"
 	"strings"
 	"testing"
 
@@ -388,4 +389,64 @@ func TestScroll_StepsByRowThroughATallItem(t *testing.T) {
 	assert.Equal(t, start+3, m.ui.Screen.TopRow, "scrolling back walks the same rows")
 	m.scrollUp(10)
 	assert.Less(t, m.ui.Screen.TopRow, start, "past the item's first row the view moves on")
+}
+
+func TestEnsureVisible_RowAboveAOneRowLastItem(t *testing.T) {
+	l := &Layout{}
+	for i := range 40 {
+		l.Items = append(l.Items, LayoutItem{Kind: LayoutTask, Height: 1, PositionIndex: i})
+		l.TotalHeight++
+	}
+	cfg := DefaultLayoutConfig()
+	cfg.FooterHeight = 1
+	v := NewViewport(l, 24, cfg)
+	v.ComputeVisibility(5)
+	v.ComputeVisibility(v.EnsureVisible(38))
+	assert.Greater(t, v.VisibleEnd, 38)
+}
+
+func randomLayout(r *rand.Rand) *Layout {
+	l := &Layout{}
+	for i := range 1 + r.IntN(40) {
+		h := 1
+		if r.IntN(5) == 0 {
+			h += r.IntN(30)
+		}
+		l.Items = append(l.Items, LayoutItem{Kind: LayoutTask, Height: h, PositionIndex: i})
+		l.TotalHeight += h
+	}
+	return l
+}
+
+func randomViewport(r *rand.Rand) *Viewport {
+	l := randomLayout(r)
+	v := NewViewport(l, 4+r.IntN(40), LayoutConfig{FooterHeight: r.IntN(2)})
+	v.ComputeVisibility(r.IntN(l.TotalHeight))
+	return v
+}
+
+func shownWhole(v *Viewport, idx int) bool {
+	if idx < v.VisibleStart || idx >= v.VisibleEnd {
+		return false
+	}
+	return idx != v.VisibleStart || v.RowOffset == 0
+}
+
+func TestEnsureVisible_ShowsAnyItemThatFits(t *testing.T) {
+	r := rand.New(rand.NewPCG(1, 2))
+	for range 20000 {
+		v := randomViewport(r)
+		idx := r.IntN(len(v.Layout.Items))
+		before, oldTop := shownWhole(v, idx), v.TopRow
+
+		v.ComputeVisibility(v.EnsureVisible(idx))
+
+		if before {
+			require.Equal(t, oldTop, v.TopRow, "an item already on screen never moves the view")
+		}
+		if v.Layout.Items[idx].Height <= v.availableHeight()-2 {
+			require.True(t, shownWhole(v, idx), "item %d (height %d) from top %d on %d rows: top %d",
+				idx, v.Layout.Items[idx].Height, oldTop, v.ScreenHeight, v.TopRow)
+		}
+	}
 }
