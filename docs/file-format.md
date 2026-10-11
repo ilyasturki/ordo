@@ -123,7 +123,7 @@ Phasionary repairs a file that breaks these rules when it loads it. A child whos
 
 A top-level category whose name starts with `v<major>.<minor>.<patch>`, digits only, is a version: `v0.9.0`, `v0.1.0 - app polish` and `v0.1.6b` are, `v0.N.0` and `FUTURE` are not. A sub-category is never one. Nothing in the file marks a version; the name alone decides.
 
-- `released_at` marks a version shipped. Phasionary sets it on a version only, and clearing it reopens the version. A category keeps it through a rename, so a reader treats any category that has it as shipped.
+- `released_at` marks a version shipped. Phasionary sets it on a version only, and clearing it reopens the version. A category keeps it through a rename or a move under another category: phasionary shows a top-level category that has it as shipped whatever its name, and keeps it on a sub-category without showing it.
 - The first top-level category named `next`, or `next` and a number (`next 2`), compared case-insensitive, is the inbox: where new tasks land before they go to a version. Phasionary leaves it where the file puts it.
 
 ## IDs and timestamps

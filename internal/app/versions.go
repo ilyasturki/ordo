@@ -12,7 +12,12 @@ func (m *model) toggleShippedSelected() {
 	if !ok || pos.Kind == selection.FocusProject {
 		return
 	}
-	m.toggleShipped([]int{domain.BlockStart(m.project.Categories, pos.CategoryIndex)})
+	ci := pos.CategoryIndex
+	// A shipped sub-category is a nested version: s reopens it rather than shipping its parent.
+	if !m.project.Categories[ci].Shipped() {
+		ci = domain.BlockStart(m.project.Categories, ci)
+	}
+	m.toggleShipped([]int{ci})
 }
 
 func (m *model) visualToggleShipped() {

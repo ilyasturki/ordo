@@ -98,6 +98,20 @@ func TestShipFoldsAndUndoReopens(t *testing.T) {
 	assert.False(t, m.ui.Fold.IsFolded("v3"))
 }
 
+func TestShipReopensAVersionNestedUnderACategory(t *testing.T) {
+	m := newTestModel(t, domain.Project{ID: "p1", Categories: []domain.Category{
+		{ID: "area", Name: "FUTURE"}, {ID: "old", Name: "v0.1.0", ParentID: "area", ReleasedAt: shippedAt},
+	}})
+	withStubStateManager(m)
+	m.rebuildPositions()
+	require.True(t, m.selectItem(selection.FocusCategory, "old"))
+
+	m.toggleShippedSelected()
+
+	assert.False(t, m.project.Categories[1].Shipped())
+	assert.Equal(t, "Reopened v0.1.0", m.ui.Screen.StatusMsg)
+}
+
 func TestShipRefusesNonVersionsAndReopens(t *testing.T) {
 	m, _ := newVersionsModel(t)
 	require.True(t, m.selectItem(selection.FocusTask, "n1"))
