@@ -25,6 +25,7 @@ Update phasionary on every machine that shares the data directory before nesting
 - A Syncthing conflict copy of a project is named when the project opens
 - `docs/file-format.md` documents the project file for other apps
 - `ctrl+c` quits from every mode, saving a description being edited
+- macOS release binaries for Intel and Apple silicon, and a Homebrew tap. On macOS, `gx` opens links with `open`, `p` reads the clipboard with `pbpaste` and `copy_via: wl-copy` copies with `pbcopy`
 
 ### Changed
 

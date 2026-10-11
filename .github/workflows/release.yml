@@ -37,7 +37,7 @@ jobs:
                   go-version: stable
                   cache: true
 
-            - name: Build linux binaries
+            - name: Build binaries
               run: |
                   version="${GITHUB_REF_NAME#v}"
                   commit="${GITHUB_SHA::7}"
@@ -49,6 +49,8 @@ jobs:
 
                   GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$ldflags" -o phasionary-linux-x64 ./cmd/phasionary
                   GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$ldflags" -o phasionary-linux-arm64 ./cmd/phasionary
+                  GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$ldflags" -o phasionary-darwin-x64 ./cmd/phasionary
+                  GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$ldflags" -o phasionary-darwin-arm64 ./cmd/phasionary
 
             - name: Smoke test (linux-x64)
               run: scripts/smoke.sh ./phasionary-linux-x64
@@ -57,7 +59,9 @@ jobs:
               uses: actions/upload-artifact@v7
               with:
                   name: binaries
-                  path: phasionary-linux-*
+                  path: |
+                      phasionary-linux-*
+                      phasionary-darwin-*
 
     github-release:
         needs: build
@@ -78,7 +82,98 @@ jobs:
               uses: softprops/action-gh-release@v3
               with:
                   body_path: release-notes.md
-                  files: phasionary-linux-*
+                  files: |
+                      phasionary-linux-*
+                      phasionary-darwin-*
+
+    homebrew:
+        needs: github-release
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check for the tap token
+              id: tap
+              env:
+                  HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+              run: |
+                  if [ -n "$HOMEBREW_TAP_TOKEN" ]; then
+                      echo "enabled=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "::notice::HOMEBREW_TAP_TOKEN is not set, so the Homebrew tap is not updated"
+                  fi
+
+            - name: Download binaries
+              if: steps.tap.outputs.enabled == 'true'
+              uses: actions/download-artifact@v8
+              with:
+                  name: binaries
+
+            - name: Update Homebrew tap
+              if: steps.tap.outputs.enabled == 'true'
+              env:
+                  HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+              run: |
+                  version="${GITHUB_REF_NAME#v}"
+
+                  darwin_arm64_sha=$(sha256sum phasionary-darwin-arm64 | cut -d ' ' -f 1)
+                  darwin_x64_sha=$(sha256sum phasionary-darwin-x64 | cut -d ' ' -f 1)
+                  linux_arm64_sha=$(sha256sum phasionary-linux-arm64 | cut -d ' ' -f 1)
+                  linux_x64_sha=$(sha256sum phasionary-linux-x64 | cut -d ' ' -f 1)
+
+                  git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/ilyasturki/homebrew-phasionary.git" tap
+                  mkdir -p tap/Formula
+
+                  cat > tap/Formula/phasionary.rb << RUBY
+                  class Phasionary < Formula
+                    desc "Terminal-first, single-user project planning tool"
+                    homepage "https://github.com/ilyasturki/phasionary"
+                    version "${version}"
+                    license "MIT"
+
+                    on_macos do
+                      on_arm do
+                        url "https://github.com/ilyasturki/phasionary/releases/download/v#{version}/phasionary-darwin-arm64"
+                        sha256 "${darwin_arm64_sha}"
+                      end
+                      on_intel do
+                        url "https://github.com/ilyasturki/phasionary/releases/download/v#{version}/phasionary-darwin-x64"
+                        sha256 "${darwin_x64_sha}"
+                      end
+                    end
+
+                    on_linux do
+                      on_arm do
+                        url "https://github.com/ilyasturki/phasionary/releases/download/v#{version}/phasionary-linux-arm64"
+                        sha256 "${linux_arm64_sha}"
+                      end
+                      on_intel do
+                        url "https://github.com/ilyasturki/phasionary/releases/download/v#{version}/phasionary-linux-x64"
+                        sha256 "${linux_x64_sha}"
+                      end
+                    end
+
+                    def install
+                      binary = Dir.glob("phasionary-*").first
+                      chmod 0755, binary
+                      bin.install binary => "phasionary"
+                      generate_completions_from_executable(bin/"phasionary", "completion")
+                    end
+
+                    test do
+                      assert_match version.to_s, shell_output("#{bin}/phasionary --version")
+                    end
+                  end
+                  RUBY
+
+                  cd tap
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git add Formula/phasionary.rb
+                  if git diff --cached --quiet; then
+                      echo "Formula/phasionary.rb already describes ${version}"
+                      exit 0
+                  fi
+                  git commit -m "phasionary ${version}"
+                  git push -u origin HEAD
 
     aur:
         needs: github-release
