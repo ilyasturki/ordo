@@ -39,7 +39,7 @@ type clipboardWrite struct {
 }
 
 // copyToClipboard sends text out as OSC 52 for the terminal to put on the
-// clipboard, or through wl-copy when copy_via asks for it.
+// clipboard, or through wl-copy (pbcopy on macOS) when copy_via asks for it.
 //
 // tmux passes an application's OSC 52 on only with `set-clipboard on`.
 func (m *model) copyToClipboard(text, label string) tea.Cmd {
