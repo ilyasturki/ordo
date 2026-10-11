@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -46,7 +47,11 @@ func extractURLs(text string) []string {
 
 func openURL(url string) tea.Cmd {
 	return func() tea.Msg {
-		c := exec.Command("xdg-open", url)
+		opener := "xdg-open"
+		if runtime.GOOS == "darwin" {
+			opener = "open"
+		}
+		c := exec.Command(opener, url)
 		err := c.Start()
 		if err == nil {
 			go func() { _ = c.Wait() }()
