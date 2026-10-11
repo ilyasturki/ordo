@@ -98,6 +98,7 @@ ordo task move <id> v1.3.0                     # plan it
 ordo task status <id> in_progress              # start it
 ordo export -f json -o ferry.json              # snapshot
 ordo import ferry.json -n ferry-copy           # load it back as a new project
+ordo attachments prune                         # images no task references (--yes removes them)
 ```
 
 Run `ordo --help` for the rest: projects, categories, config and completions.

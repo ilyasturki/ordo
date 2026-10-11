@@ -156,21 +156,11 @@ func imageInfoLines(img taskImage, width int) []string {
 	for _, l := range strings.Split(ansi.Wrap(img.path, max(width, 1), "/"), "\n") {
 		lines = append(lines, indent+ui.MutedStyle.Render(l))
 	}
-	detail := formatSize(info.Size)
+	detail := attachments.FormatSize(info.Size)
 	if info.Width > 0 {
 		detail += fmt.Sprintf(" · %d×%d", info.Width, info.Height)
 	}
 	return append(lines, indent+detail)
-}
-
-func formatSize(n int64) string {
-	switch {
-	case n < 1<<10:
-		return fmt.Sprintf("%d B", n)
-	case n < 1<<20:
-		return fmt.Sprintf("%d KB", n>>10)
-	}
-	return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
 }
 
 // infoValue keeps a value behind a 10-column label on one row: the dialog's window counts rows, not wraps.

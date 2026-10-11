@@ -136,7 +136,7 @@ func attachedStatus(msg imagesStoredMsg, title string) string {
 	}
 	status := "Attached " + what + " to " + title
 	if msg.largest > 0 {
-		status += fmt.Sprintf(" (large: %.1f MB)", float64(msg.largest)/(1<<20))
+		status += " (large: " + attachments.FormatSize(int64(msg.largest)) + ")"
 	}
 	return status
 }

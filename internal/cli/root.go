@@ -97,6 +97,7 @@ func newRootCmd() *cobra.Command {
 	cmd.AddCommand(newTasksCmd())
 	cmd.AddCommand(newCategoryCmd())
 	cmd.AddCommand(newCategoriesCmd())
+	cmd.AddCommand(newAttachmentsCmd())
 	cmd.AddCommand(newExportCmd())
 	cmd.AddCommand(newImportCmd())
 	cmd.AddCommand(newConfigCmd())

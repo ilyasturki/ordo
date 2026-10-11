@@ -12,6 +12,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Images on tasks: `p` with an image on the clipboard attaches it to the focused task, and so does dropping image files on the terminal. In the description editor, `ctrl+v` and a drop insert it at the cursor. The image is copied into `projects/attachments/`, named by its content, and the description references it as `![name](attachments/<hash>.png)`
 - An image reads `▣ name` in the description, or `▣ name (not synced yet)` before its file arrives, and the title row counts them as `▣` or `▣2`, with descriptions expanded too. `gi` lists each image's path, size and pixel size, and `gy` offers its path
 - `gx` opens the URLs in the description as well as the title's, and opens an image in the desktop's viewer
+- `ordo attachments prune` lists the images no project references any more and that are over 30 days old, conflict copies counted; `--yes` removes them. Nothing else ever deletes an image
 
 ### Changed
 
