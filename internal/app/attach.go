@@ -115,6 +115,11 @@ func (m *model) handleImagesStored(msg imagesStoredMsg) tea.Cmd {
 		m.ui.Screen.StatusMsg = status
 		return cmd
 	}
+	// An editor or a visual range holds indexes and an undo step of its own.
+	if !m.ui.Modes.IsNormal() {
+		m.ui.Screen.StatusMsg = "Image not attached: it arrived mid-edit, press p again"
+		return nil
+	}
 	m.recordHistory()
 	if msg.retiresCopy {
 		m.ui.Clipboard = ClipboardState{}

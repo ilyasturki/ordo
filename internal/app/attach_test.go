@@ -292,6 +292,21 @@ func TestAttach_LandsInTheTasksOpenEditor(t *testing.T) {
 	assert.Empty(t, m.project.Categories[0].Tasks[0].Description, "finishing the editor must not drop it")
 }
 
+func TestAttach_WaitsForNormalModeOutsideTheTasksEditor(t *testing.T) {
+	m, _ := newAttachModel(t)
+	require.True(t, m.selectTaskIdx(0, 0))
+	cmd := m.attachImages(imageFiles([]string{imageFile(t, "a.png", 4)}), false)
+	m.startAddingTask()
+	before := len(m.project.Categories[0].Tasks)
+
+	runAll(t, m, cmd)
+
+	assert.True(t, m.ui.Modes.IsEdit(), "the new task's editor stays open")
+	assert.Len(t, m.project.Categories[0].Tasks, before)
+	assert.Empty(t, m.project.Categories[0].Tasks[0].Description)
+	assert.Equal(t, "Image not attached: it arrived mid-edit, press p again", m.ui.Screen.StatusMsg)
+}
+
 func TestShellWords(t *testing.T) {
 	for in, want := range map[string][]string{
 		`/a/b.png`:                          {"/a/b.png"},
