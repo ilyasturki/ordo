@@ -134,16 +134,3 @@ func (p *Project) NewestVersion() int {
 	}
 	return best
 }
-
-// NextVersionSlot places the next patch above the newest version in a newest-first project, after every category otherwise.
-func (p *Project) NextVersionSlot() (name string, index int, ok bool) {
-	newest := p.NewestVersion()
-	if newest < 0 {
-		return "", 0, false
-	}
-	v, _ := p.Categories[newest].Version()
-	if p.NewestOnTop() {
-		return v.NextPatch().String(), newest, true
-	}
-	return v.NextPatch().String(), len(p.Categories), true
-}

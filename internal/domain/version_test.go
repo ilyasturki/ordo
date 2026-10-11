@@ -70,31 +70,3 @@ func TestInboxIndexSkipsSubCategories(t *testing.T) {
 	none := projectNamed("todo")
 	assert.Equal(t, -1, none.InboxIndex())
 }
-
-func TestNextVersionSlot(t *testing.T) {
-	newestFirst := projectNamed("next 2", "v0.9.0", "v0.8.6", "v0.8.5")
-	name, at, ok := newestFirst.NextVersionSlot()
-	require.True(t, ok)
-	assert.Equal(t, "v0.9.1", name)
-	assert.Equal(t, 1, at, "above the newest version, below the inbox")
-
-	oldestFirst := projectNamed("v0.0.1", "v0.1.0 - app polish", "v0.2.0", "MARKETING + SEO", "v1.0.0")
-	name, at, ok = oldestFirst.NextVersionSlot()
-	require.True(t, ok)
-	assert.Equal(t, "v1.0.1", name)
-	assert.Equal(t, 5, at, "after every category")
-
-	kilorep := projectNamed("v0.2.0", "next", "v0.1.13", "v0.1.12")
-	name, at, _ = kilorep.NextVersionSlot()
-	assert.Equal(t, "v0.2.1", name)
-	assert.Equal(t, 0, at)
-
-	single := projectNamed("FUTURE", "v0.1.0")
-	name, at, _ = single.NextVersionSlot()
-	assert.Equal(t, "v0.1.1", name)
-	assert.Equal(t, 1, at, "one version reads as newest first")
-
-	flat := projectNamed("todo", "other")
-	_, _, ok = flat.NextVersionSlot()
-	assert.False(t, ok)
-}

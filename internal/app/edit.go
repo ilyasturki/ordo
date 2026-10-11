@@ -159,20 +159,17 @@ func (m *model) startAddingCategory() {
 	if err != nil {
 		return
 	}
-	insertIndex, name := 0, ""
+	insertIndex := 0
 	if ci := position.CategoryIndex; ci >= 0 && ci < len(m.project.Categories) {
 		insertIndex = domain.BlockEnd(m.project.Categories, ci)
 		newCat.ParentID = m.project.Categories[ci].ParentID
-		if m.project.Categories[ci].IsVersion() {
-			name, insertIndex, _ = m.project.NextVersionSlot()
-		}
 	}
 	m.recordHistory()
 	m.project.InsertCategory(insertIndex, newCat)
 	m.rebuildPositions()
 	m.selectItem(selection.FocusCategory, newCat.ID)
 	m.ui.Modes.ToEdit()
-	m.ui.Edit = newEditState(name, true, newCat.ID, selection.FocusCategory)
+	m.ui.Edit = newEditState("", true, newCat.ID, selection.FocusCategory)
 	m.ensureVisible()
 }
 

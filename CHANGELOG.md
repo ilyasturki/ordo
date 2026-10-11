@@ -14,6 +14,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Folded categories in a row stack one header per row, with no blank line between them and no `(folded)` row. Folded sub-categories under the same parent stack at their indent
 - Category headers no longer show counts unless "Category Counts" is on, versions included, and the `· N in progress` suffix is gone: the `[/]` badge says it
 
+### Fixed
+
+- `A` on a version adds an empty category right after it again, like on any other category, instead of proposing the next patch at the top or the end of the project
+
 ## [0.10.0] - 2026-10-11
 
 Update ordo on every machine that shares the data directory before nesting anything or shipping a version. A project with a sub-category or subtask is saved as schema 2, one with a shipped version as schema 3, and older builds refuse to open both.

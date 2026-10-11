@@ -203,31 +203,6 @@ func TestSearchRestoresShippedFolds(t *testing.T) {
 	assert.True(t, m.ui.Fold.IsFolded("v2"))
 }
 
-func TestAOnAVersionProposesTheNextPatch(t *testing.T) {
-	m := newMoveModel(t)
-	require.True(t, m.selectItem(selection.FocusTask, "a1"))
-
-	m.startAddingCategory()
-
-	require.True(t, m.ui.Modes.IsEdit())
-	assert.Equal(t, "v0.10.1", m.ui.Edit.input.Value())
-	assert.Equal(t, m.ui.Edit.newItemID, m.project.Categories[1].ID, "above the newest version, below the inbox")
-	m.finishEditing()
-	assert.Equal(t, "v0.10.1", m.project.Categories[1].Name)
-	assert.Equal(t, "v0.10.0", m.project.Categories[2].Name)
-}
-
-func TestAOnAVersionAppendsInAnOldestFirstProject(t *testing.T) {
-	m := newTestModel(t, domain.Project{ID: "p1", Categories: []domain.Category{
-		{ID: "a", Name: "v0.0.1"}, {ID: "b", Name: "v0.1.0 - app polish"}, {ID: "c", Name: "MARKETING"},
-	}})
-	m.rebuildPositions()
-	require.True(t, m.selectItem(selection.FocusCategory, "a"))
-	m.startAddingCategory()
-	assert.Equal(t, "v0.1.1", m.ui.Edit.input.Value())
-	assert.Equal(t, m.ui.Edit.newItemID, m.project.Categories[3].ID)
-}
-
 func TestAOutsideAVersionStaysPlain(t *testing.T) {
 	m := newMoveModel(t)
 	for _, at := range []struct {

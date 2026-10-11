@@ -84,10 +84,9 @@ func TestAddAtTheCursorsDepth(t *testing.T) {
 	})
 	t.Run("A on a parent category adds after its sub-categories", func(t *testing.T) {
 		m := newNestedModel(t)
-		m.project.Categories[0].Name = "areas" // a version would propose the next one at the top instead
 		selectRow(t, m, selection.FocusCategory, "v2")
 		m.startAddingCategory()
-		typeTitle(m, "later")
+		typeTitle(m, "v0.3.0")
 		assert.Equal(t, []string{"v2", "ui<v2", "api<v2", m.project.Categories[3].ID, "v1"}, categoryOrder(m.project))
 	})
 	t.Run("a sub-category may reuse a name another parent's area carries", func(t *testing.T) {
@@ -381,4 +380,47 @@ func TestReverseOfOneTopLevelBlockIsANoop(t *testing.T) {
 	m.reverseCategories()
 	assert.Equal(t, 0, m.ui.History.UndoDepth())
 	assert.Equal(t, []string{"v2", "ui<v2", "api<v2"}, categoryOrder(m.project))
+}
+
+func TestAOnAVersionAddsAnEmptyCategoryAfterIt(t *testing.T) {
+	oldestFirst := domain.Project{ID: "p1", Categories: []domain.Category{
+		{ID: "v1", Name: "v0.0.1", Tasks: []domain.Task{{ID: "t1", Title: "Old", Status: domain.StatusTodo}}},
+		{ID: "v2", Name: "v0.1.0 - app polish", Tasks: []domain.Task{{ID: "t2", Title: "Polish", Status: domain.StatusTodo}}},
+		{ID: "mk", Name: "MARKETING"},
+		{ID: "v3", Name: "v1.0.0"},
+	}}
+	newestFirst := domain.Project{ID: "p1", Categories: []domain.Category{
+		{ID: "nx", Name: "next"},
+		{ID: "v3", Name: "v0.10.0"},
+		{ID: "v2", Name: "v0.9.1", Tasks: []domain.Task{{ID: "t2", Title: "Menu", Status: domain.StatusTodo}}},
+		{ID: "v1", Name: "v0.9.0", Tasks: []domain.Task{{ID: "t1", Title: "Old", Status: domain.StatusTodo}}},
+	}}
+	for _, tc := range []struct {
+		name    string
+		project domain.Project
+		kind    selection.FocusKind
+		id      string
+		want    []string
+	}{
+		{"oldest-first, on a version", oldestFirst, selection.FocusCategory, "v1", []string{"v1", "new", "v2", "mk", "v3"}},
+		{"oldest-first, on a task", oldestFirst, selection.FocusTask, "t2", []string{"v1", "v2", "new", "mk", "v3"}},
+		{"newest-first, on a version", newestFirst, selection.FocusCategory, "v2", []string{"nx", "v3", "v2", "new", "v1"}},
+		{"newest-first, on a task", newestFirst, selection.FocusTask, "t1", []string{"nx", "v3", "v2", "v1", "new"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newTestModel(t, tc.project)
+			m.rebuildPositions()
+			selectRow(t, m, tc.kind, tc.id)
+			m.startAddingCategory()
+			require.True(t, m.ui.Modes.IsEdit())
+			assert.Empty(t, m.ui.Edit.input.Value())
+			order := categoryOrder(m.project)
+			for i, id := range order {
+				if id == m.ui.Edit.newItemID {
+					order[i] = "new"
+				}
+			}
+			assert.Equal(t, tc.want, order)
+		})
+	}
 }
