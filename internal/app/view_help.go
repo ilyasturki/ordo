@@ -83,6 +83,7 @@ var helpModeSections = []helpSection{
 			{keys: "ctrl+w", desc: "delete word back"},
 			{keys: "ctrl+k / ctrl+u", desc: "delete to end / start"},
 			{keys: "ctrl+v", desc: "paste (several lines ask how)"},
+			{keys: "ctrl+v / drop", desc: "insert an image in a description"},
 		},
 	},
 	{

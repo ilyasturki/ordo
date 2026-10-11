@@ -12,6 +12,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/components"
 	"github.com/ilyasturki/ordo/internal/app/modes"
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/clipboard"
 	"github.com/ilyasturki/ordo/internal/config"
 	"github.com/ilyasturki/ordo/internal/data"
@@ -167,7 +168,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clipboardResultMsg:
 		m.handleClipboardResult(msg)
 	case clipboardLinesMsg:
-		m.resolvePaste(msg)
+		return m, m.resolvePaste(msg)
+	case imagesStoredMsg:
+		return m, m.handleImagesStored(msg)
 	case editorClipboardMsg:
 		return m, m.handleEditorClipboard(msg)
 	case tea.PasteMsg:
@@ -983,6 +986,7 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	modeMachine := modes.NewMachine(startMode)
 
 	deps := NewDependencies(store, cfgManager, stateManager)
+	deps.Attachments = attachments.NewStore(dataDir)
 	deps.Saver = saver
 	deps.CursorSaver = cursorSaver
 	deps.setTaskCommands(taskCommands)

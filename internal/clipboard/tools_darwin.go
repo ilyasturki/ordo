@@ -10,3 +10,8 @@ var (
 func toolEnv() ([]string, bool) {
 	return os.Environ(), true
 }
+
+// pbpaste prints nothing for an image.
+func readTool() (Content, error) {
+	return readText()
+}

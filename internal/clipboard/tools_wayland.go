@@ -5,7 +5,9 @@ package clipboard
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -13,7 +15,66 @@ var (
 	copyTool = []string{"wl-copy"}
 	// --no-newline: wl-paste otherwise appends one that was never copied.
 	pasteTool = []string{"wl-paste", "--no-newline"}
+	listTool  = []string{"wl-paste", "--list-types"}
 )
+
+var imageTypes = []string{"image/png", "image/jpeg", "image/webp", "image/gif"}
+
+func typedPasteTool(mime string) []string {
+	return []string{"wl-paste", "--no-newline", "--type", mime}
+}
+
+// readTool asks for an image, then copied files, before text: a bare wl-paste
+// picks text, such as the HTML a browser offers beside a copied image.
+func readTool() (Content, error) {
+	var list strings.Builder
+	if err := run(nil, &list, listTool, timeout); err != nil {
+		return Content{}, err
+	}
+	offered := strings.Fields(list.String())
+	for _, mime := range imageTypes {
+		if !slices.Contains(offered, mime) {
+			continue
+		}
+		out := &cappedBuffer{limit: maxImage}
+		err := run(nil, out, typedPasteTool(mime), imageTimeout)
+		if out.over {
+			return Content{}, ErrTooLarge
+		}
+		if err != nil {
+			return Content{}, err
+		}
+		return sniff(out.buf.Bytes())
+	}
+	if slices.Contains(offered, "text/uri-list") {
+		var out strings.Builder
+		if err := run(nil, &out, typedPasteTool("text/uri-list"), timeout); err != nil {
+			return Content{}, err
+		}
+		if paths := localPaths(out.String()); paths != nil {
+			return Content{Text: strings.Join(paths, "\n"), Paths: paths}, nil
+		}
+	}
+	return readText()
+}
+
+// localPaths reads a text/uri-list (RFC 2483), or nil when an entry isn't a
+// local file.
+func localPaths(list string) []string {
+	var paths []string
+	for _, line := range strings.Split(list, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		path, ok := FilePath(line)
+		if !ok {
+			return nil
+		}
+		paths = append(paths, path)
+	}
+	return paths
+}
 
 func toolEnv() ([]string, bool) {
 	display, ok := waylandDisplay()

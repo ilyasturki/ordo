@@ -7,6 +7,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/components"
 	"github.com/ilyasturki/ordo/internal/app/modes"
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/config"
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
@@ -190,6 +191,7 @@ type layoutCache struct {
 
 type Dependencies struct {
 	Store        data.ProjectRepository
+	Attachments  *attachments.Store
 	CfgManager   config.Reader
 	StateManager data.StateRepository
 	Saver        projectSaver

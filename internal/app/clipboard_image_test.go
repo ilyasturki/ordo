@@ -30,38 +30,23 @@ func clipboardHolds(t *testing.T, data []byte) {
 	t.Setenv(clipboard.EnvFile, path)
 }
 
-// runAll runs cmd and feeds every message it yields back through Update.
+// runAll runs cmd and feeds its clipboard and attach messages back through
+// Update, up to the attach. Anything else, such as a cursor blink that ticks
+// forever, ends it.
 func runAll(t *testing.T, m *model, cmd tea.Cmd) {
 	t.Helper()
 	for cmd != nil {
-		cmd = send(t, m, cmd())
+		msg := cmd()
+		switch msg.(type) {
+		case clipboardLinesMsg, editorClipboardMsg:
+			cmd = send(t, m, msg)
+		case imagesStoredMsg:
+			send(t, m, msg)
+			return
+		default:
+			return
+		}
 	}
-}
-
-func TestPaste_AnImageOnTheClipboardIsNeverReadAsText(t *testing.T) {
-	m := newTestModel(t, sampleProject())
-	require.True(t, m.selectTaskIdx(0, 0))
-	clipboardHolds(t, pngBytes(t, 64, 64))
-	before := taskTitles(m.project.Categories[0])
-
-	runAll(t, m, m.paste())
-
-	assert.True(t, m.ui.Modes.IsNormal(), "no paste chooser for the image's bytes")
-	assert.Equal(t, before, taskTitles(m.project.Categories[0]))
-	assert.Equal(t, "The clipboard holds an image", m.ui.Screen.StatusMsg)
-}
-
-func TestPaste_AnImageCopiedAfterOursIsNotOurCopy(t *testing.T) {
-	m := copiedWhileFocused(t)
-	m = sendMsg(m, tea.BlurMsg{})
-	m = sendMsg(m, tea.FocusMsg{})
-	clipboardHolds(t, pngBytes(t, 4, 4))
-	before := taskTitles(m.project.Categories[1])
-
-	runAll(t, m, m.paste())
-
-	assert.Equal(t, before, taskTitles(m.project.Categories[1]), "the copied task must not be pasted")
-	assert.Equal(t, "The clipboard holds an image", m.ui.Screen.StatusMsg)
 }
 
 func TestPaste_BinaryBytesAreNotText(t *testing.T) {

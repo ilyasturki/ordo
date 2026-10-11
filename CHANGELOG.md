@@ -9,6 +9,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - `gc` shows this changelog in the TUI
 - A "Category Counts" option (`show_category_counts`, off by default) shows done / total on every top-level category that holds tasks, a parent counting its sub-categories
 - `ctrl+a` and `ctrl+x` add or take one from the patch of the version in a category's name, on the focused category or a visual range of them, and `gm` and `gM` bump its minor or major. Only the digits change, and a name a sibling already has is refused
+- Images on tasks: `p` with an image on the clipboard attaches it to the focused task, and so does dropping image files on the terminal. In the description editor, `ctrl+v` and a drop insert it at the cursor. The image is copied into `projects/attachments/`, named by its content, and the description references it as `![name](attachments/<hash>.png)`
 
 ### Changed
 
@@ -30,9 +31,6 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The view follows the focused row when a cut mark, a priority or a tag makes it wrap onto one more row at the bottom of the screen
 - `ctrl+d` and `ctrl+u` move half a screen of rows, so wrapped titles and open descriptions no longer make them skip past a whole screen
 - `zb` no longer leaves the row one line below the screen when the view lands one row from the top
-
-### Fixed
-
 - `p` and `ctrl+v` with an image on the clipboard no longer paste its bytes as hundreds of garbage tasks or characters
 
 ## [0.10.0] - 2026-10-11

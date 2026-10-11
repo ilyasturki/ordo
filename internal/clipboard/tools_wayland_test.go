@@ -56,12 +56,72 @@ func TestRun_ReportsErrNoBackendWithoutASocket(t *testing.T) {
 }
 
 func TestRead_ReturnsWhatThePasteToolPrints(t *testing.T) {
-	fakeTools(t, `[ "$1" = --no-newline ] && printf 'from the browser'`)
+	fakeTools(t, `case "$*" in
+--list-types) printf 'text/plain;charset=utf-8\nUTF8_STRING\n' ;;
+--no-newline) printf 'from the browser' ;;
+*) exit 1 ;;
+esac`)
 
 	got, err := Read()
 
 	require.NoError(t, err)
 	assert.Equal(t, "from the browser", got.Text)
+}
+
+func TestRead_PrefersAnImageToTheTextBesideIt(t *testing.T) {
+	img := filepath.Join(t.TempDir(), "shot.png")
+	require.NoError(t, os.WriteFile(img, pngBytes(t), 0o600))
+	fakeTools(t, `case "$*" in
+--list-types) printf 'text/html\nimage/jpeg\nimage/png\n' ;;
+"--no-newline --type image/png") cat `+img+` ;;
+*) exit 1 ;;
+esac`)
+
+	got, err := Read()
+
+	require.NoError(t, err)
+	assert.Equal(t, pngBytes(t), got.Image)
+	assert.Empty(t, got.Text)
+}
+
+func TestRead_RefusesAnImageTooLargeToHold(t *testing.T) {
+	fakeTools(t, `case "$*" in
+--list-types) echo image/png ;;
+*) head -c 40000000 /dev/zero ;;
+esac`)
+
+	_, err := Read()
+
+	assert.ErrorIs(t, err, ErrTooLarge)
+}
+
+func TestRead_CopiedFilesArePaths(t *testing.T) {
+	fakeTools(t, `case "$*" in
+--list-types) printf 'x-special/gnome-copied-files\ntext/uri-list\ntext/plain\n' ;;
+"--no-newline --type text/uri-list") printf '# from Files\r\nfile:///home/me/My%%20Shots/a.png\r\nfile://localhost/tmp/b.png\r\n' ;;
+*) exit 1 ;;
+esac`)
+
+	got, err := Read()
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"/home/me/My Shots/a.png", "/tmp/b.png"}, got.Paths)
+	assert.Equal(t, "/home/me/My Shots/a.png\n/tmp/b.png", got.Text)
+}
+
+func TestRead_AURIListOfRemoteFilesIsText(t *testing.T) {
+	fakeTools(t, `case "$*" in
+--list-types) printf 'text/uri-list\ntext/plain\n' ;;
+"--no-newline --type text/uri-list") printf 'https://example.com/a.png\n' ;;
+--no-newline) printf 'https://example.com/a.png' ;;
+*) exit 1 ;;
+esac`)
+
+	got, err := Read()
+
+	require.NoError(t, err)
+	assert.Nil(t, got.Paths)
+	assert.Equal(t, "https://example.com/a.png", got.Text)
 }
 
 // wl-copy forks a server once the selection is set; that server must live on.

@@ -495,10 +495,13 @@ func (m *model) handlePaste(text string) tea.Cmd {
 	var cmd tea.Cmd
 	switch m.ui.Modes.Current() {
 	case modes.ModeNormal:
-		m.pasteText(text, false)
+		cmd = m.pasteTextOrImages(text, false)
 	case modes.ModeEdit:
 		m.pasteIntoEditor(text)
 	case modes.ModeDescriptionEdit:
+		if paths, ok := droppedImages(text); ok {
+			return m.attachImagesInEditor(imageFiles(paths))
+		}
 		m.ui.DescriptionEdit.textarea, cmd = m.ui.DescriptionEdit.textarea.Update(tea.PasteMsg{Content: text})
 	case modes.ModeSearch:
 		m.ui.Search.input, cmd = m.ui.Search.input.Update(flat)

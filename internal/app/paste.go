@@ -20,37 +20,37 @@ func (m *model) pasteFromClipboard() tea.Cmd {
 	}
 	// Only another app can have replaced our last write, and reaching one costs the terminal its focus.
 	if w := m.ui.LastWrite; w.fresh && m.ui.FocusReported {
-		m.resolvePaste(clipboardLinesMsg{text: w.text})
-		return nil
+		return m.resolvePaste(clipboardLinesMsg{text: w.text})
 	}
 	return readClipboardLines()
 }
 
-func (m *model) resolvePaste(msg clipboardLinesMsg) {
+func (m *model) resolvePaste(msg clipboardLinesMsg) tea.Cmd {
 	if !m.ui.Modes.IsNormal() {
-		return
+		return nil
 	}
 	// Bytes other than text are another app's copy, never ordo's own.
-	notText := msg.image != nil || errors.Is(msg.err, clipboard.ErrNotText)
+	notText := msg.image != nil || errors.Is(msg.err, clipboard.ErrNotText) || errors.Is(msg.err, clipboard.ErrTooLarge)
 	retiresCopy := false
 	if !m.ui.Clipboard.empty() {
 		// An unreadable clipboard can't contradict the copy.
 		if m.clipboardVouchedFor() || !notText && (msg.err != nil || strings.TrimSpace(msg.text) == "" ||
 			sameClipboardText(msg.text, m.ui.Clipboard.Text)) {
 			m.pasteInternal()
-			return
+			return nil
 		}
 		retiresCopy = true
 	}
-	if msg.image != nil {
-		m.ui.Screen.StatusMsg = clipboardHoldsImage
-		return
-	}
-	if msg.err != nil {
+	switch {
+	case msg.image != nil:
+		return m.attachImages([]pendingImage{clipboardImage(msg.image)}, retiresCopy)
+	case msg.err != nil:
 		m.ui.Screen.StatusMsg = clipboardReadFailure(msg.err)
-		return
+		return nil
+	case allImageFiles(msg.paths):
+		return m.attachImages(imageFiles(msg.paths), retiresCopy)
 	}
-	m.pasteText(msg.text, retiresCopy)
+	return m.pasteTextOrImages(msg.text, retiresCopy)
 }
 
 func (m *model) clipboardVouchedFor() bool {

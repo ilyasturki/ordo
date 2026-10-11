@@ -11,6 +11,7 @@ import (
 
 	"github.com/ilyasturki/ordo/internal/app/modes"
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/clipboard"
 	"github.com/ilyasturki/ordo/internal/domain"
 )
@@ -346,13 +347,14 @@ func (m *model) pasteLinesInEdit(text string) bool {
 type clipboardLinesMsg struct {
 	text  string
 	image []byte
+	paths []string
 	err   error
 }
 
 func readClipboardLines() tea.Cmd {
 	return func() tea.Msg {
 		c, err := clipboard.Read()
-		return clipboardLinesMsg{text: c.Text, image: c.Image, err: err}
+		return clipboardLinesMsg{text: c.Text, image: c.Image, paths: c.Paths, err: err}
 	}
 }
 
@@ -361,13 +363,14 @@ type editorClipboardMsg struct {
 	mode  modes.Mode
 	text  string
 	image []byte
+	paths []string
 	err   error
 }
 
 func readClipboardForEditor(mode modes.Mode) tea.Cmd {
 	return func() tea.Msg {
 		c, err := clipboard.Read()
-		return editorClipboardMsg{mode: mode, text: c.Text, image: c.Image, err: err}
+		return editorClipboardMsg{mode: mode, text: c.Text, image: c.Image, paths: c.Paths, err: err}
 	}
 }
 
@@ -381,21 +384,29 @@ func clipboardReadFailure(err error) string {
 		return "Can't read the clipboard: paste with the terminal instead"
 	case errors.Is(err, clipboard.ErrNotText):
 		return "The clipboard holds no text"
+	case errors.Is(err, clipboard.ErrTooLarge):
+		return fmt.Sprintf("The clipboard's image is over %d MB: not attached", attachments.MaxSize>>20)
 	}
 	return "Nothing to paste"
 }
 
+// Only the description editor takes an image; the others say what's there.
 func (m *model) handleEditorClipboard(msg editorClipboardMsg) tea.Cmd {
 	if m.ui.Modes.Current() != msg.mode {
 		return nil
 	}
-	if msg.image != nil {
+	inDescription := msg.mode == modes.ModeDescriptionEdit
+	switch {
+	case msg.image != nil && inDescription:
+		return m.attachImagesInEditor([]pendingImage{clipboardImage(msg.image)})
+	case msg.image != nil:
 		m.ui.Screen.StatusMsg = clipboardHoldsImage
 		return nil
-	}
-	if msg.err != nil {
+	case msg.err != nil:
 		m.ui.Screen.StatusMsg = clipboardReadFailure(msg.err)
 		return nil
+	case inDescription && allImageFiles(msg.paths):
+		return m.attachImagesInEditor(imageFiles(msg.paths))
 	}
 	return m.handlePaste(msg.text)
 }
