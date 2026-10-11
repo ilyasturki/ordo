@@ -139,6 +139,10 @@ func TestValidateProjectText(t *testing.T) {
 		p = withTitle("fine")
 		p.Categories[0].Tasks[0].TagColor = osc52Clipboard
 		assert.ErrorIs(t, ValidateProjectText(p), ErrControlCharacters)
+
+		p = withTitle("fine")
+		p.Categories[0].ReleasedAt = osc52Clipboard
+		assert.ErrorIs(t, ValidateProjectText(p), ErrControlCharacters)
 	})
 
 	t.Run("allows multi-line descriptions", func(t *testing.T) {
@@ -160,7 +164,8 @@ func TestStripProjectText(t *testing.T) {
 		ID:   "abc",
 		Name: "Road" + csiEraseScreen + "map",
 		Categories: []Category{{
-			Name: "Back" + osc52Clipboard + "log",
+			Name:       "Back" + osc52Clipboard + "log",
+			ReleasedAt: csiEraseScreen + "2026-10-01T09:00:00Z",
 			Tasks: []Task{{
 				Title:       "Ship" + osc52Clipboard,
 				Description: "keep\nthe newline" + csiEraseScreen,
@@ -174,6 +179,7 @@ func TestStripProjectText(t *testing.T) {
 	// text — the terminal displays "[2J" instead of clearing the screen.
 	assert.Equal(t, "Road[2Jmap", p.Name)
 	assert.Equal(t, "Back]52;c;cm0gLXJmlog", p.Categories[0].Name)
+	assert.Equal(t, "[2J2026-10-01T09:00:00Z", p.Categories[0].ReleasedAt)
 	assert.Equal(t, "Ship]52;c;cm0gLXJm", p.Categories[0].Tasks[0].Title)
 	assert.Equal(t, "Kgreen", p.Categories[0].Tasks[0].TagColor)
 	// Descriptions keep their line structure; only the escape byte goes.
