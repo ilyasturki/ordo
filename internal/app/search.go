@@ -19,10 +19,10 @@ import (
 // matches. It complements (does not replace) the `f` filter, which hides rows.
 type SearchState struct {
 	input          textinput.Model
-	query          string   // committed query, "" when no search is in effect: drives the persistent highlight + n/N
-	originSelected int      // cursor index when the search began (Esc restores it)
-	originScroll   int      // scroll offset when the search began
-	originFolded   []string // fold state when the search began (Esc restores it)
+	query          string    // committed query, "" when no search is in effect: drives the persistent highlight + n/N
+	originSelected int       // cursor index when the search began (Esc restores it)
+	originScroll   int       // scroll offset when the search began
+	originFold     FoldState // fold state when the search began (Esc restores it)
 }
 
 // searchQuery is the text to highlight: the live input while typing, the
@@ -52,7 +52,7 @@ func (m *model) startSearch() tea.Cmd {
 		input:          ti,
 		originSelected: m.selected(),
 		originScroll:   m.ui.Screen.TopRow,
-		originFolded:   m.ui.Fold.FoldedIDs(),
+		originFold:     m.ui.Fold.Clone(),
 	}
 	m.ui.Modes.ToSearch()
 	m.ensureVisible()
@@ -79,7 +79,7 @@ func (m model) handleSearchKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // taken when the search began. Restored folds are in-memory only until a caller
 // persists them with saveFoldState.
 func (m *model) restoreSearchOrigin() {
-	m.restoreFolds(m.ui.Search.originFolded)
+	m.restoreFolds(m.ui.Search.originFold)
 	m.ui.Selection.SetSelected(m.ui.Search.originSelected)
 	m.ui.Screen.TopRow = m.ui.Search.originScroll
 }
@@ -167,8 +167,8 @@ func (m *model) moveToMatch(dir int) {
 
 // restoreFolds replaces the fold state and rebuilds positions. It does not
 // persist — callers that want the change saved call saveFoldState explicitly.
-func (m *model) restoreFolds(foldedIDs []string) {
-	m.ui.Fold = NewFoldStateFrom(foldedIDs)
+func (m *model) restoreFolds(fold FoldState) {
+	m.ui.Fold = fold.Clone()
 	m.rebuildPositions()
 }
 

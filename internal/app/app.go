@@ -926,7 +926,7 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 		startMode = modes.ModeProjectPicker
 	}
 
-	foldState := NewFoldStateFrom(stateManager.GetFoldedCategories(project.ID))
+	foldState := loadFoldState(stateManager, project)
 	expandDescriptions := cfgManager.Get().ExpandDescriptionsByDefault
 	positions := rebuildPositions(project.Categories, nil, &foldState, expandDescriptions, "")
 	initialSelection := findFirstTaskIndex(positions)

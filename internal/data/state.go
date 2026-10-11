@@ -31,7 +31,9 @@ type State struct {
 	DirectoryProjects map[string]string   `json:"directory_projects,omitempty"`
 	ProjectOrder      []string            `json:"project_order,omitempty"`
 	FoldedCategories  map[string][]string `json:"folded_categories,omitempty"`
-	Cursors           map[string]Cursor   `json:"cursors,omitempty"`
+	// UnfoldedCategories holds the shipped versions unfolded by hand; they fold by default.
+	UnfoldedCategories map[string][]string `json:"unfolded_categories,omitempty"`
+	Cursors            map[string]Cursor   `json:"cursors,omitempty"`
 }
 
 // StateRepository abstracts persistence of UI state. Implemented by *StateManager.
@@ -42,6 +44,8 @@ type StateRepository interface {
 	SetProjectOrder(order []string) error
 	GetFoldedCategories(projectID string) []string
 	SetFoldedCategories(projectID string, categoryIDs []string) error
+	GetUnfoldedCategories(projectID string) []string
+	SetUnfoldedCategories(projectID string, categoryIDs []string) error
 	DeleteFoldedCategories(projectID string) error
 	GetCursor(projectID string) Cursor
 	SetCursor(projectID string, cursor Cursor) error
@@ -92,11 +96,12 @@ func (m *StateManager) load() error {
 
 	// Use a temporary struct to handle migration from old format
 	var raw struct {
-		LastProjectID     string              `json:"last_project_id"`
-		DirectoryProjects map[string]string   `json:"directory_projects,omitempty"`
-		ProjectOrder      []string            `json:"project_order,omitempty"`
-		FoldedCategories  map[string][]string `json:"folded_categories,omitempty"`
-		Cursors           map[string]Cursor   `json:"cursors,omitempty"`
+		LastProjectID      string              `json:"last_project_id"`
+		DirectoryProjects  map[string]string   `json:"directory_projects,omitempty"`
+		ProjectOrder       []string            `json:"project_order,omitempty"`
+		FoldedCategories   map[string][]string `json:"folded_categories,omitempty"`
+		UnfoldedCategories map[string][]string `json:"unfolded_categories,omitempty"`
+		Cursors            map[string]Cursor   `json:"cursors,omitempty"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -105,6 +110,7 @@ func (m *StateManager) load() error {
 	m.state.DirectoryProjects = raw.DirectoryProjects
 	m.state.ProjectOrder = raw.ProjectOrder
 	m.state.FoldedCategories = raw.FoldedCategories
+	m.state.UnfoldedCategories = raw.UnfoldedCategories
 	m.state.Cursors = raw.Cursors
 	if m.state.DirectoryProjects == nil {
 		m.state.DirectoryProjects = make(map[string]string)
@@ -249,15 +255,50 @@ func (m *StateManager) SetFoldedCategories(projectID string, categoryIDs []strin
 	})
 }
 
-func (m *StateManager) DeleteFoldedCategories(projectID string) error {
+func (m *StateManager) GetUnfoldedCategories(projectID string) []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	_ = m.load()
+	return slices.Clone(m.state.UnfoldedCategories[projectID])
+}
+
+// SetUnfoldedCategories skips the write when nothing changes: most toggles touch no shipped version.
+func (m *StateManager) SetUnfoldedCategories(projectID string, categoryIDs []string) error {
 	return m.update(func(s *State) bool {
-		if s.FoldedCategories == nil {
+		prev := s.UnfoldedCategories[projectID]
+		if len(prev) == len(categoryIDs) && containsAll(prev, categoryIDs) {
 			return false
 		}
-		if _, ok := s.FoldedCategories[projectID]; !ok {
+		if len(categoryIDs) == 0 {
+			delete(s.UnfoldedCategories, projectID)
+			return true
+		}
+		if s.UnfoldedCategories == nil {
+			s.UnfoldedCategories = make(map[string][]string)
+		}
+		s.UnfoldedCategories[projectID] = slices.Clone(categoryIDs)
+		return true
+	})
+}
+
+func containsAll(set, ids []string) bool {
+	for _, id := range ids {
+		if !slices.Contains(set, id) {
+			return false
+		}
+	}
+	return true
+}
+
+func (m *StateManager) DeleteFoldedCategories(projectID string) error {
+	return m.update(func(s *State) bool {
+		_, folded := s.FoldedCategories[projectID]
+		_, unfolded := s.UnfoldedCategories[projectID]
+		if !folded && !unfolded {
 			return false
 		}
 		delete(s.FoldedCategories, projectID)
+		delete(s.UnfoldedCategories, projectID)
 		return true
 	})
 }

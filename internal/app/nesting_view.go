@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"time"
 
 	"phasionary/internal/domain"
 )
@@ -38,9 +39,11 @@ type categoryHeader struct {
 	estimate int
 	status   string
 	progress string
+	warning  string
 	indent   int
 	folded   bool
 	cut      bool
+	shipped  bool
 }
 
 func headerOf(p *domain.Project, ci int, fold *FoldState, cut bool) categoryHeader {
@@ -58,11 +61,43 @@ func headerOf(p *domain.Project, ci int, fold *FoldState, cut bool) categoryHead
 	}
 	if domain.HasChildren(p.Categories, ci) {
 		h.status = p.TreeAggregateStatus(ci)
-		if counts := p.TreeStatusCounts(ci); counts.Total() > 0 {
-			h.progress = fmt.Sprintf("%d/%d", counts.Completed+counts.Cancelled, counts.Total())
+	}
+	counts := p.TreeStatusCounts(ci)
+	done := fmt.Sprintf("%d/%d", counts.Completed+counts.Cancelled, counts.Total())
+	switch {
+	case cat.Shipped():
+		h.shipped = true
+		h.progress = "shipped " + shipDate(cat.ReleasedAt, time.Now())
+		if counts.Total() > 0 {
+			h.progress += " · " + done
 		}
+		if open := counts.Todo + counts.InProgress; open > 0 {
+			h.warning = fmt.Sprintf("! %d open", open)
+		}
+	case cat.IsVersion():
+		if counts.Total() > 0 {
+			h.progress = done
+		}
+		if counts.InProgress > 0 {
+			h.progress += fmt.Sprintf(" · %d in progress", counts.InProgress)
+		}
+	case domain.HasChildren(p.Categories, ci) && counts.Total() > 0:
+		h.progress = done
 	}
 	return h
+}
+
+// shipDate drops the year within the current one: "14 Sep", "14 Sep 2025".
+func shipDate(ts string, now time.Time) string {
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return ts
+	}
+	t, now = t.Local(), now.Local()
+	if t.Year() == now.Year() {
+		return t.Format("2 Jan")
+	}
+	return t.Format("2 Jan 2006")
 }
 
 func (m model) rowIndent(catIdx, taskIdx int) int {

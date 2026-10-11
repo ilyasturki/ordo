@@ -23,6 +23,11 @@ var normalShortcuts = []ui.Hint{
 	{Key: "q", Label: "quit"},
 }
 
+// versionShortcuts follow "A category" in a project that has versions.
+var versionShortcuts = []ui.Hint{
+	{Key: "s", Label: "ship"},
+}
+
 // The cut's status line clears on the next key, the first step to the destination.
 var cutShortcuts = []ui.Hint{
 	{Key: "p", Label: "move here"},
@@ -65,6 +70,9 @@ func (m model) renderShortcutBar() string {
 		return ""
 	}
 	hints := normalShortcuts
+	if len(m.project.VersionIndexes()) > 0 {
+		hints = slices.Concat(normalShortcuts[:3], versionShortcuts, normalShortcuts[3:])
+	}
 	switch {
 	case m.ui.Modes.IsVisual():
 		hints = visualShortcuts
@@ -77,7 +85,7 @@ func (m model) renderShortcutBar() string {
 		for i, c := range cmds {
 			commandHints[i] = ui.Hint{Key: c.Key, Label: c.Label}
 		}
-		hints = slices.Concat(normalShortcuts[:1], commandHints, normalShortcuts[1:])
+		hints = slices.Concat(hints[:1], commandHints, hints[1:])
 	}
 	return ui.RenderHintsToWidth(hints, m.ui.Screen.Width)
 }

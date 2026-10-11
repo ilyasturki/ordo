@@ -190,7 +190,7 @@ func (m *model) confirmDeleteProject() {
 			m.project = next
 			_ = m.deps.StateManager.SetProjectForDir(m.project.ID)
 			m.ui.Filter = NewFilterState()
-			m.ui.Fold = NewFoldStateFrom(m.deps.StateManager.GetFoldedCategories(m.project.ID))
+			m.ui.Fold = loadFoldState(m.deps.StateManager, m.project)
 			m.ui.History.Reset()
 			m.rebuildPositions()
 			m.applyStoredCursor()
@@ -338,7 +338,7 @@ func (m *model) selectProject() {
 
 	m.project = project
 	m.ui.Filter = NewFilterState()
-	m.ui.Fold = NewFoldStateFrom(m.deps.StateManager.GetFoldedCategories(project.ID))
+	m.ui.Fold = loadFoldState(m.deps.StateManager, project)
 	m.ui.History.Reset()
 	m.rebuildPositions()
 	m.applyStoredCursor()

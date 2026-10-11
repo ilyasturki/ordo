@@ -121,7 +121,7 @@ func TestApplyStoredCursor_InsideFoldedCategoryLandsOnHeader(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	stub := withStubStateManager(m)
 	stub.cursors["p1"] = data.Cursor{Kind: "task", CategoryID: "c1", TaskID: "t2"}
-	m.ui.Fold = NewFoldStateFrom([]string{"c1"})
+	m.ui.Fold = NewFoldStateFrom([]string{"c1"}, nil)
 	m.rebuildPositions()
 
 	m.applyStoredCursor()

@@ -735,6 +735,9 @@ func (m model) handleVisualKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "p":
 		m.visualPasteTag()
 		return m, nil
+	case "s":
+		m.visualToggleShipped()
+		return m, nil
 	}
 	return m, nil
 }

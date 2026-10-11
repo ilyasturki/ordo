@@ -42,13 +42,15 @@ func (r *recordingRepo) snapshot() (map[string]Cursor, int) {
 	return out, r.writes
 }
 
-func (r *recordingRepo) GetProjectForDir() string                   { return "" }
-func (r *recordingRepo) SetProjectForDir(string) error              { return nil }
-func (r *recordingRepo) GetProjectOrder() []string                  { return nil }
-func (r *recordingRepo) SetProjectOrder([]string) error             { return nil }
-func (r *recordingRepo) GetFoldedCategories(string) []string        { return nil }
-func (r *recordingRepo) SetFoldedCategories(string, []string) error { return nil }
-func (r *recordingRepo) DeleteFoldedCategories(string) error        { return nil }
+func (r *recordingRepo) GetProjectForDir() string                     { return "" }
+func (r *recordingRepo) SetProjectForDir(string) error                { return nil }
+func (r *recordingRepo) GetProjectOrder() []string                    { return nil }
+func (r *recordingRepo) SetProjectOrder([]string) error               { return nil }
+func (r *recordingRepo) GetFoldedCategories(string) []string          { return nil }
+func (r *recordingRepo) SetFoldedCategories(string, []string) error   { return nil }
+func (r *recordingRepo) GetUnfoldedCategories(string) []string        { return nil }
+func (r *recordingRepo) SetUnfoldedCategories(string, []string) error { return nil }
+func (r *recordingRepo) DeleteFoldedCategories(string) error          { return nil }
 
 func (r *recordingRepo) GetCursor(projectID string) Cursor {
 	r.mu.Lock()

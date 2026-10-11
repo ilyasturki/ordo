@@ -120,7 +120,7 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 		add(LayoutItem{Kind: kind, Height: 1, PositionIndex: -1, CategoryIndex: catIdx, TaskIndex: -1})
 	}
 
-	seenCategory := false
+	seenCategory, prevShelved := false, false
 	for posIndex, pos := range positions {
 		item := LayoutItem{PositionIndex: posIndex, CategoryIndex: pos.CategoryIndex, TaskIndex: pos.TaskIndex}
 		switch pos.Kind {
@@ -130,15 +130,19 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 			spacing(b.config.BlankAfterProject)
 
 		case selection.FocusCategory:
-			if seenCategory {
+			category := project.Categories[pos.CategoryIndex]
+			folded := b.fold != nil && b.fold.IsFolded(category.ID)
+			// Folded shipped versions stack like a changelog: no gap between them and no "(folded)" row.
+			shelved := folded && category.ParentID == "" && category.Shipped()
+			if seenCategory && !(shelved && prevShelved) {
 				spacing(b.config.BlankBetweenCats)
 			}
-			seenCategory = true
-			category := project.Categories[pos.CategoryIndex]
+			seenCategory, prevShelved = true, shelved
 			item.Kind, item.Height = LayoutCategory, b.rowHeight(posIndex, b.countCategoryLines(&project, pos.CategoryIndex))
 			add(item)
 			switch {
-			case b.fold != nil && b.fold.IsFolded(category.ID):
+			case shelved:
+			case folded:
 				placeholder(LayoutFolded, pos.CategoryIndex)
 			case rowOfCategory(positions, posIndex+1, pos.CategoryIndex):
 				if category.ParentID == "" {

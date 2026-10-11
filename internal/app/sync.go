@@ -203,6 +203,7 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 
 func (m *model) rebuildPositions() {
 	prev, had := m.selectedPosition()
+	m.ui.Fold.SetShipped(m.project.Categories)
 	positions := rebuildPositions(m.project.Categories, &m.ui.Filter, &m.ui.Fold, m.ui.Screen.ExpandDescriptions, m.ui.Screen.ExpandedTaskID)
 	m.ui.Selection.SetPositions(positions)
 	if had {

@@ -2,6 +2,7 @@ package app
 
 import (
 	"phasionary/internal/app/selection"
+	"phasionary/internal/data"
 	"phasionary/internal/domain"
 )
 
@@ -57,4 +58,11 @@ func (m *model) toggleExpandDescriptions() {
 
 func (m *model) saveFoldState() {
 	_ = m.deps.StateManager.SetFoldedCategories(m.project.ID, m.ui.Fold.FoldedIDs())
+	_ = m.deps.StateManager.SetUnfoldedCategories(m.project.ID, m.ui.Fold.UnfoldedIDs())
+}
+
+func loadFoldState(sm data.StateRepository, project domain.Project) FoldState {
+	f := NewFoldStateFrom(sm.GetFoldedCategories(project.ID), sm.GetUnfoldedCategories(project.ID))
+	f.SetShipped(project.Categories)
+	return f
 }
