@@ -1,5 +1,7 @@
 package app
 
+import tea "charm.land/bubbletea/v2"
+
 // wheelScrollStep is how many lines one emitted wheel tick scrolls.
 const wheelScrollStep = 1
 
@@ -50,6 +52,45 @@ func (m *model) ensureVisible() {
 		end = start + 1
 	}
 	m.ui.Screen.TopRow = viewport.ShowRows(start, end)
+}
+
+type cursorSpan struct{ position, start, end int }
+
+// shownCursorSpan is where the cursor's row lies, ok only while ensureVisible would leave the view alone.
+func (m model) shownCursorSpan() (cursorSpan, bool) {
+	if m.ui.Selection.IsEmpty() || m.selected() < 0 {
+		return cursorSpan{}, false
+	}
+	layout := m.buildLayout()
+	start, end, ok := layout.rowRange(m.selected())
+	if !ok {
+		return cursorSpan{}, false
+	}
+	viewport := NewViewport(layout, m.ui.Screen.Height, m.layoutConfig())
+	viewport.ComputeVisibility(m.ui.Screen.TopRow)
+	return cursorSpan{m.selected(), start, end}, viewport.ShowRows(start, end) == viewport.TopRow
+}
+
+// followCursorSpan scrolls to a cursor row that a key reshaped without moving
+// the cursor: a cut badge, a priority or tag mark can wrap it past the bottom.
+func followCursorSpan(next tea.Model, before cursorSpan) tea.Model {
+	switch m := next.(type) {
+	case model:
+		m.followCursorSpan(before)
+		return m
+	case *model:
+		m.followCursorSpan(before)
+	}
+	return next
+}
+
+func (m *model) followCursorSpan(before cursorSpan) {
+	if m.selected() != before.position {
+		return
+	}
+	if start, end, ok := m.buildLayout().rowRange(before.position); ok && (start != before.start || end != before.end) {
+		m.ensureVisible()
+	}
 }
 
 func (m *model) centerOnSelected() {

@@ -196,7 +196,12 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.listenSaveErrors()
 	case tea.KeyPressMsg:
 		m.ui.Screen.StatusMsg = ""
-		return m.handleKeyMsg(msg)
+		span, shown := m.shownCursorSpan()
+		next, cmd := m.handleKeyMsg(msg)
+		if shown {
+			next = followCursorSpan(next, span)
+		}
+		return next, cmd
 	default:
 		return m.forwardToInput(msg)
 	}
