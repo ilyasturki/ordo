@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 // shape renders the first category as titles, a subtask prefixed with ">".

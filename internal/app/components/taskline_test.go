@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 func TestNewTaskLineRenderer(t *testing.T) {

@@ -12,10 +12,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"phasionary/internal/app/selection"
-	"phasionary/internal/config"
-	"phasionary/internal/domain"
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/config"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 const sectionCommands = "Task commands"

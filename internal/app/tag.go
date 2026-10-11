@@ -6,10 +6,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"phasionary/internal/app/modes"
-	"phasionary/internal/app/selection"
-	"phasionary/internal/domain"
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/app/modes"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 // tagEditColors is the color picker order: the palette preceded by a leading ""

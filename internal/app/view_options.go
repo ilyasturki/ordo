@@ -6,8 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"phasionary/internal/config"
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/config"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 type optionValue struct {

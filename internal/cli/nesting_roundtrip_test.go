@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"phasionary/internal/data"
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/data"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 func nestedStoreProject(t *testing.T, dataDir string) domain.Project {

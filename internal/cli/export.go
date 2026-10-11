@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"phasionary/internal/domain"
-	"phasionary/internal/export"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/export"
 )
 
 func newExportCmd() *cobra.Command {

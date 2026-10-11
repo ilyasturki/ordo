@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"phasionary/internal/config"
+	"github.com/ilyasturki/phasionary/internal/config"
 )
 
 func newConfigCmd() *cobra.Command {

@@ -9,10 +9,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"phasionary/internal/app/modes"
-	"phasionary/internal/app/selection"
-	"phasionary/internal/clipboard"
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/app/modes"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/clipboard"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 // An untitled separator is a bare rule; a subtask joins the nearest non-subtask row above.

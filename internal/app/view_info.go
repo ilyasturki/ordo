@@ -6,9 +6,9 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"phasionary/internal/app/selection"
-	"phasionary/internal/domain"
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 func (m model) infoView() string {

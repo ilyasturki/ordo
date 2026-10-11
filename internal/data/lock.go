@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"phasionary/internal/domain"
-	"phasionary/internal/fsutil"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/fsutil"
 )
 
 // globalLockName is the lock file used to serialize operations that span

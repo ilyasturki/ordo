@@ -9,8 +9,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"phasionary/internal/domain"
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 type TaskLineRenderer struct {

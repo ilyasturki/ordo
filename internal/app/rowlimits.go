@@ -1,9 +1,9 @@
 package app
 
 import (
-	"phasionary/internal/app/components"
-	"phasionary/internal/app/selection"
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/app/components"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 // maxFocusedDescriptionRows keeps one long body from taking the whole screen.

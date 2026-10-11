@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"phasionary/internal/clipboard"
+	"github.com/ilyasturki/phasionary/internal/clipboard"
 )
 
 func TestMain(m *testing.M) {

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 // namedPickerModel builds a picker-mode model whose projects have the given

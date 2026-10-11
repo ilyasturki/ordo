@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"phasionary/internal/app/modes"
-	"phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/app/modes"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
 )
 
 // descriptionMarkerRow renders the description textarea and returns the index of

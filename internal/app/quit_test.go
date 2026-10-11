@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"phasionary/internal/app/modes"
+	"github.com/ilyasturki/phasionary/internal/app/modes"
 )
 
 var ctrlC = tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}

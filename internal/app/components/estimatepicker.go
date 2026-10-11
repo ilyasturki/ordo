@@ -1,7 +1,7 @@
 package components
 
 import (
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 type EstimatePickerState struct {

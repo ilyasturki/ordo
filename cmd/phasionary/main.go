@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"phasionary/internal/cli"
+	"github.com/ilyasturki/phasionary/internal/cli"
 )
 
 func main() {

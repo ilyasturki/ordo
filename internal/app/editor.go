@@ -9,9 +9,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"phasionary/internal/app/selection"
-	"phasionary/internal/data"
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/data"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 type editorFinishedMsg struct {

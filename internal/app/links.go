@@ -9,8 +9,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"phasionary/internal/app/components"
-	"phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/app/components"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
 )
 
 type openURLResultMsg struct {

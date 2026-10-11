@@ -1,8 +1,8 @@
 package app
 
 import (
-	"phasionary/internal/app/components"
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/app/components"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 var estimatePresetLabels = []string{

@@ -7,7 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 const (

@@ -6,10 +6,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"phasionary/internal/app/components"
-	"phasionary/internal/app/modes"
-	"phasionary/internal/app/selection"
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/app/components"
+	"github.com/ilyasturki/phasionary/internal/app/modes"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 func (m *model) deleteSelected() {

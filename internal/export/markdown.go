@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 var (

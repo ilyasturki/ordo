@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"phasionary/internal/app/selection"
-	"phasionary/internal/data"
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/data"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 // selectTask moves the cursor onto the task with the given ID, failing the test

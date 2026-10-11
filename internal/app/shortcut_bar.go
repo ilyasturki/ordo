@@ -3,9 +3,9 @@ package app
 import (
 	"slices"
 
-	"phasionary/internal/app/modes"
-	"phasionary/internal/domain"
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/app/modes"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 // Bottom "lazygit-style" hint footer. Only keeps shortcuts that aren't

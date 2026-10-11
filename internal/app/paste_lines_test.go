@@ -6,9 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"phasionary/internal/clipboard"
-	"phasionary/internal/domain"
-	"phasionary/internal/export"
+	"github.com/ilyasturki/phasionary/internal/clipboard"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/export"
 )
 
 func task(title, status string) pastedRow {

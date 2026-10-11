@@ -31,6 +31,7 @@ Update phasionary on every machine that shares the data directory before nesting
 
 ### Changed
 
+- The Go module is `github.com/ilyasturki/phasionary`, so `go install github.com/ilyasturki/phasionary/cmd/phasionary@latest` works
 - Copies go to the clipboard through the terminal's OSC 52 by default. `copy_via: wl-copy` uses `wl-copy` instead
 - `ctrl+v` in every line input reads the system clipboard
 - `p` skips reading the system clipboard while the terminal has kept focus since phasionary's last copy

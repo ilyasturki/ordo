@@ -3,7 +3,7 @@ package components
 import (
 	"strings"
 
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 func RenderListPicker(title string, items []string, selected int, hints []ui.Hint) string {

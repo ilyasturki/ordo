@@ -3,7 +3,7 @@ package operations_test
 import (
 	"testing"
 
-	"phasionary/internal/operations"
+	"github.com/ilyasturki/phasionary/internal/operations"
 )
 
 func TestParseEstimate(t *testing.T) {

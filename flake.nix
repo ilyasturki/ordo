@@ -33,9 +33,9 @@
             ldflags = [
               "-s"
               "-w"
-              "-X phasionary/internal/version.Version=v${version}"
-              "-X phasionary/internal/version.Commit=${commit}"
-              "-X phasionary/internal/version.BuildDate=${buildDate}"
+              "-X github.com/ilyasturki/phasionary/internal/version.Version=v${version}"
+              "-X github.com/ilyasturki/phasionary/internal/version.Commit=${commit}"
+              "-X github.com/ilyasturki/phasionary/internal/version.BuildDate=${buildDate}"
             ];
             nativeBuildInputs = [ pkgs.installShellFiles ];
             postInstall = ''

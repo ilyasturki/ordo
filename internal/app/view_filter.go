@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 var filterSubHints = []ui.Hint{

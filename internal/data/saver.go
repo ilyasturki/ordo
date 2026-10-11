@@ -1,6 +1,6 @@
 package data
 
-import "phasionary/internal/domain"
+import "github.com/ilyasturki/phasionary/internal/domain"
 
 // saveJob is an immutable snapshot queued for the background writer.
 type saveJob struct {

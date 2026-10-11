@@ -1,8 +1,8 @@
 package app
 
 import (
-	"phasionary/internal/app/modes"
-	"phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/app/modes"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
 )
 
 func (m *model) moveSelection(delta int) {

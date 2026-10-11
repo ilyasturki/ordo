@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"phasionary/internal/data"
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/data"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 // versionsDir seeds v0.2.0 › ui and v0.1.0 › ui so a sub-category name repeats across parents.

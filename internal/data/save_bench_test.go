@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 func benchSaveProject(cats, tasksPer int) domain.Project {

@@ -9,15 +9,15 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
-	"phasionary/internal/app/components"
-	"phasionary/internal/app/modes"
-	"phasionary/internal/app/selection"
-	"phasionary/internal/clipboard"
-	"phasionary/internal/config"
-	"phasionary/internal/data"
-	"phasionary/internal/domain"
-	"phasionary/internal/export"
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/app/components"
+	"github.com/ilyasturki/phasionary/internal/app/modes"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/clipboard"
+	"github.com/ilyasturki/phasionary/internal/config"
+	"github.com/ilyasturki/phasionary/internal/data"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/export"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 type clipboardResultMsg struct {

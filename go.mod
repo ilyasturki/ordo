@@ -1,4 +1,4 @@
-module phasionary
+module github.com/ilyasturki/phasionary
 
 go 1.25.0
 

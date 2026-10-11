@@ -3,10 +3,10 @@ package app
 import (
 	"strings"
 
-	"phasionary/internal/app/components"
-	"phasionary/internal/app/selection"
-	"phasionary/internal/domain"
-	"phasionary/internal/ui"
+	"github.com/ilyasturki/phasionary/internal/app/components"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/ui"
 )
 
 type LayoutItemKind int

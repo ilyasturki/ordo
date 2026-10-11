@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"phasionary/internal/app/selection"
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 func TestUndo_EmptyHistorySetsStatus(t *testing.T) {

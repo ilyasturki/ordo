@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"phasionary/internal/data"
-	"phasionary/internal/domain"
-	"phasionary/internal/operations"
+	"github.com/ilyasturki/phasionary/internal/data"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/operations"
 )
 
 func newTasksCmd() *cobra.Command {

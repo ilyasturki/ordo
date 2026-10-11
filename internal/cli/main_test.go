@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"phasionary/internal/config"
+	"github.com/ilyasturki/phasionary/internal/config"
 )
 
 func TestMain(m *testing.M) {

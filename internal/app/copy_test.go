@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"phasionary/internal/app/selection"
-	"phasionary/internal/clipboard"
-	"phasionary/internal/config"
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/clipboard"
+	"github.com/ilyasturki/phasionary/internal/config"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 // copyProject has a task carrying a description so the FocusDescription row is

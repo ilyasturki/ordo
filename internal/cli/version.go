@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"phasionary/internal/version"
+	"github.com/ilyasturki/phasionary/internal/version"
 )
 
 type VersionOutput struct {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 func newCompletionCmd() *cobra.Command {

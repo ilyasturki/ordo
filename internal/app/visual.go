@@ -7,9 +7,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"phasionary/internal/app/selection"
-	"phasionary/internal/domain"
-	"phasionary/internal/export"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/export"
 )
 
 // visualTaskLevel reports whether kind is a row that belongs to the unified

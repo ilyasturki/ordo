@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"phasionary/internal/data"
+	"github.com/ilyasturki/phasionary/internal/data"
 )
 
 func writeConflict(t *testing.T, store *data.Store, name string) {

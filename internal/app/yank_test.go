@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"phasionary/internal/app/components"
-	"phasionary/internal/app/selection"
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/app/components"
+	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 func entityValues(items []components.YankItem) []string {

@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"phasionary/internal/app/modes"
-	"phasionary/internal/config"
+	"github.com/ilyasturki/phasionary/internal/app/modes"
+	"github.com/ilyasturki/phasionary/internal/config"
 )
 
 func newCommandModel(t *testing.T, cmds ...config.TaskCommand) *model {

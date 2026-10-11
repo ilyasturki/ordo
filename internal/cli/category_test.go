@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/domain"
 )
 
 func initDefault(t *testing.T) string {

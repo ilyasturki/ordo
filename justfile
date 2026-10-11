@@ -4,9 +4,9 @@
 version := trim(`cat VERSION`)
 commit := `git rev-parse --short HEAD`
 build_date := `date -u +%Y-%m-%dT%H:%M:%SZ`
-ldflags := "-X phasionary/internal/version.Version=v" + version + \
-    " -X phasionary/internal/version.Commit=" + commit + \
-    " -X phasionary/internal/version.BuildDate=" + build_date
+ldflags := "-X github.com/ilyasturki/phasionary/internal/version.Version=v" + version + \
+    " -X github.com/ilyasturki/phasionary/internal/version.Commit=" + commit + \
+    " -X github.com/ilyasturki/phasionary/internal/version.BuildDate=" + build_date
 
 # Run from source, passing args through (e.g. `just run version`).
 run *ARGS:

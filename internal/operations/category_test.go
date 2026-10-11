@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"phasionary/internal/domain"
-	"phasionary/internal/operations"
+	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/phasionary/internal/operations"
 )
 
 func projectWithCategories(names ...string) *domain.Project {
