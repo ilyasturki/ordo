@@ -61,6 +61,11 @@ if git rev-parse "v${new}" >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! scripts/release-notes.sh "$new" >/dev/null; then
+  echo "Move the Unreleased notes under '## [${new}] - $(date +%F)' and commit first" >&2
+  exit 1
+fi
+
 echo "Bumping ${current} -> ${new}"
 echo "${new}" > VERSION
 git add VERSION
