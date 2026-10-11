@@ -35,7 +35,11 @@ func renderProjectLine(name string, selected, focused, filtered, visualMode bool
 	if visualMode {
 		line += " " + ui.VisualTagStyle.Render("[visual]")
 	}
+	return withStatus(line, statusText, width)
+}
 
+// withStatus right-aligns statusText on line, truncating both to width.
+func withStatus(line, statusText string, width int) string {
 	if statusText == "" {
 		if width > 0 {
 			line = ansi.Truncate(line, width, "")

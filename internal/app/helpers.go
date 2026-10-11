@@ -91,7 +91,7 @@ func (m model) categoryRowCut(c domain.Category) bool {
 
 const (
 	prefixWidth     = 2
-	footerHeight    = 0 // No bottom status area — status text appears on the project line.
+	footerHeight    = 0 // No bottom status area: status text sits on the project line, or on "↑ more above" once that scrolls off.
 	blankAfterProj  = 1
 	blankBetweenCat = 1
 	blankAfterCat   = 1

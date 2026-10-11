@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -137,6 +138,23 @@ func TestView_FillsScreen_StatusOnProjectLine(t *testing.T) {
 	// Status sits on the project line — the first rendered row should contain it.
 	firstLine := strings.SplitN(view, "\n", 2)[0]
 	assert.Contains(t, firstLine, "Copied!", "status message should be on the project (first) line")
+}
+
+func TestView_StatusOnMoreAboveOnceTheProjectLineScrollsOff(t *testing.T) {
+	m := newTestModel(t, longProject())
+	m.ui.Screen.Width, m.ui.Screen.Height = 60, 20
+	require.True(t, m.selectItem(selection.FocusTask, "t39"))
+	m.ensureVisible()
+	require.Positive(t, m.ui.Screen.TopRow)
+	m.ui.Screen.StatusMsg = "Cut cancelled"
+
+	view := ansi.Strip(m.View().Content)
+	lines := strings.Split(view, "\n")
+	assert.Len(t, lines, 20, "the message takes no row of its own")
+	assert.Contains(t, lines[0], "more above")
+	assert.True(t, strings.HasSuffix(lines[0], "Cut cancelled"), "right-aligned like on the project line: %q", lines[0])
+	assert.Len(t, []rune(lines[0]), 60)
+	assert.Equal(t, 1, strings.Count(view, "Cut cancelled"))
 }
 
 func TestComputeVisibility_RemainingContentHeight(t *testing.T) {

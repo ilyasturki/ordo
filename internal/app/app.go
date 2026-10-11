@@ -725,7 +725,7 @@ func (m model) renderView() string {
 	var lines []string
 
 	if viewport.HasMoreAbove {
-		lines = append(lines, ui.MutedStyle.Render(scrollMoreAbove))
+		lines = append(lines, withStatus(ui.MutedStyle.Render(scrollMoreAbove), m.statusText(), m.ui.Screen.Width))
 	}
 
 	// Only the first item drawn can be entered partway through; if none fit at

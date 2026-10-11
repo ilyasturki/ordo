@@ -24,6 +24,18 @@ Sleep 200ms
 Type "j"
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/56_last.png"
+Sleep 200ms
+
+# The project line is off screen, so status messages sit on "↑ more above".
+Type "x"
+Sleep 200ms
+Escape
+Sleep 400ms
+Screenshot "/tmp/ordo-vt/vhs-out/56_status_scrolled.png"
+Sleep 200ms
+Type "vk"
+Sleep 400ms
+Screenshot "/tmp/ordo-vt/vhs-out/56_visual_scrolled.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
