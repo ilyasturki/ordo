@@ -2,7 +2,10 @@
 
 A terminal-first project planner for people who'd rather press `j` than reach for a mouse. Single binary, plain JSON on disk, no accounts, no network.
 
-![Phasionary demo](assets/demo.gif)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.gif">
+  <img alt="Phasionary demo: capture a task, send it to a version, paste a checklist, mark a range done, search, undo, filter and switch project" src="assets/demo-light.gif">
+</picture>
 
 [![CI](https://github.com/ilyasturki/phasionary/actions/workflows/ci.yml/badge.svg)](https://github.com/ilyasturki/phasionary/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/ilyasturki/phasionary)](https://github.com/ilyasturki/phasionary/releases/latest)

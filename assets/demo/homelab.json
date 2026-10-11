@@ -1,0 +1,28 @@
+{
+  "schema": 3,
+  "id": "b7d2e9f4-61a3-4f8c-a0b5-3c9d1e7f2a46",
+  "name": "homelab",
+  "created_at": "2026-02-10T09:00:00Z",
+  "updated_at": "2026-10-07T20:00:00Z",
+  "categories": [
+    {
+      "id": "h-network",
+      "name": "network",
+      "created_at": "2026-02-10T09:00:00Z",
+      "tasks": [
+        {"id": "h-1", "title": "Move the NAS to its own VLAN", "status": "in_progress", "created_at": "2026-09-01T09:00:00Z", "updated_at": "2026-10-07T20:00:00Z", "priority": "high"},
+        {"id": "h-2", "title": "Renew the wildcard certificate", "status": "completed", "created_at": "2026-09-02T09:00:00Z", "updated_at": "2026-09-30T20:00:00Z", "completion_date": "2026-09-30T20:00:00Z"},
+        {"id": "h-3", "title": "Split DNS for the VPN", "status": "todo", "created_at": "2026-09-03T09:00:00Z", "updated_at": "2026-09-03T09:00:00Z"}
+      ]
+    },
+    {
+      "id": "h-backups",
+      "name": "backups",
+      "created_at": "2026-02-10T09:01:00Z",
+      "tasks": [
+        {"id": "h-4", "title": "Test a full restore", "status": "todo", "created_at": "2026-09-04T09:00:00Z", "updated_at": "2026-09-04T09:00:00Z", "priority": "critical"},
+        {"id": "h-5", "title": "Prune snapshots older than a year", "status": "completed", "created_at": "2026-09-05T09:00:00Z", "updated_at": "2026-09-20T20:00:00Z", "completion_date": "2026-09-20T20:00:00Z"}
+      ]
+    }
+  ]
+}

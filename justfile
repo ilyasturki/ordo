@@ -26,6 +26,14 @@ fmt:
     gofmt -w cmd internal
     go mod tidy
 
+# Record the README demo GIFs and the social preview (needs vhs and nix).
+demo:
+    vhs assets/demo-dark.tape
+    vhs assets/demo-light.tape
+    vhs assets/social-preview.tape
+    nix run nixpkgs#gifsicle -- --batch -O3 --lossy=20 assets/demo-dark.gif assets/demo-light.gif
+    ls -lh assets/demo-dark.gif assets/demo-light.gif assets/social-preview.png
+
 # Bump version (X.Y.Z or major|minor|patch); updates VERSION, commits, tags.
 bump version:
     ./scripts/bump.sh {{version}}
