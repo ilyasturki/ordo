@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
@@ -118,7 +119,7 @@ func (m model) taskInfoLines(catIdx, taskIdx int) []string {
 	if task.Description != "" {
 		lines = append(lines, "", ui.DialogTitleStyle.Render("Description"), "")
 		descIndent := strings.Repeat(" ", 2)
-		for _, srcLine := range strings.Split(task.Description, "\n") {
+		for _, srcLine := range strings.Split(attachments.Display(task.Description), "\n") {
 			if strings.TrimSpace(srcLine) == "" {
 				lines = append(lines, "")
 				continue
@@ -130,7 +131,46 @@ func (m model) taskInfoLines(catIdx, taskIdx int) []string {
 		}
 	}
 
+	if images := m.taskImages(task); len(images) > 0 {
+		lines = append(lines, "", ui.DialogTitleStyle.Render("Images"), "")
+		for _, img := range images {
+			lines = append(lines, "  "+truncateText(img.ref.Label(), max(infoMaxWidth-2, 1)))
+			lines = append(lines, imageInfoLines(img, infoMaxWidth-4)...)
+		}
+	}
+
 	return lines
+}
+
+func imageInfoLines(img taskImage, width int) []string {
+	const indent = "    "
+	info, err := attachments.Describe(img.path)
+	if err != nil {
+		missing := "missing"
+		if img.ref.Internal() {
+			missing = "missing: not synced yet"
+		}
+		return []string{indent + ui.MutedStyle.Render(missing)}
+	}
+	var lines []string
+	for _, l := range strings.Split(ansi.Wrap(img.path, max(width, 1), "/"), "\n") {
+		lines = append(lines, indent+ui.MutedStyle.Render(l))
+	}
+	detail := formatSize(info.Size)
+	if info.Width > 0 {
+		detail += fmt.Sprintf(" · %d×%d", info.Width, info.Height)
+	}
+	return append(lines, indent+detail)
+}
+
+func formatSize(n int64) string {
+	switch {
+	case n < 1<<10:
+		return fmt.Sprintf("%d B", n)
+	case n < 1<<20:
+		return fmt.Sprintf("%d KB", n>>10)
+	}
+	return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
 }
 
 // infoValue keeps a value behind a 10-column label on one row: the dialog's window counts rows, not wraps.

@@ -8,6 +8,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"os"
@@ -151,6 +155,57 @@ func IsImageFile(path string) bool {
 	return Sniff(head[:n]) != ""
 }
 
+type Info struct {
+	Size int64
+	// Zero when the header can't be read.
+	Width, Height int
+}
+
+func Describe(path string) (Info, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return Info{}, err
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return Info{}, err
+	}
+	info := Info{Size: st.Size()}
+	head := make([]byte, 30)
+	n, _ := io.ReadFull(f, head)
+	if w, h, ok := webpSize(head[:n]); ok {
+		info.Width, info.Height = w, h
+		return info, nil
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return info, nil
+	}
+	if cfg, _, err := image.DecodeConfig(f); err == nil {
+		info.Width, info.Height = cfg.Width, cfg.Height
+	}
+	return info, nil
+}
+
+// webpSize reads the canvas size from the first chunk's header: VP8X, VP8L
+// or VP8, each laid out differently.
+func webpSize(b []byte) (int, int, bool) {
+	if len(b) < 30 || string(b[0:4]) != "RIFF" || string(b[8:12]) != "WEBP" {
+		return 0, 0, false
+	}
+	le24 := func(p []byte) int { return int(p[0]) | int(p[1])<<8 | int(p[2])<<16 }
+	switch string(b[12:16]) {
+	case "VP8X":
+		return le24(b[24:27]) + 1, le24(b[27:30]) + 1, true
+	case "VP8L":
+		bits := uint32(b[21]) | uint32(b[22])<<8 | uint32(b[23])<<16 | uint32(b[24])<<24
+		return int(bits&0x3fff) + 1, int(bits>>14&0x3fff) + 1, true
+	case "VP8 ":
+		return (int(b[26]) | int(b[27])<<8) & 0x3fff, (int(b[28]) | int(b[29])<<8) & 0x3fff, true
+	}
+	return 0, 0, false
+}
+
 // Ref is an image a description references as ![Name](Target).
 type Ref struct {
 	Name   string
@@ -218,12 +273,21 @@ func Split(line string) []Piece {
 
 // Display is text as it reads on screen, each reference turned into its label.
 func Display(text string) string {
+	return replaceRefs(text, Ref.Label)
+}
+
+// Strip blanks out every reference, hashes included.
+func Strip(text string) string {
+	return replaceRefs(text, func(Ref) string { return " " })
+}
+
+func replaceRefs(text string, with func(Ref) string) string {
 	return refPattern.ReplaceAllStringFunc(text, func(match string) string {
 		ref, ok := parseRef(refPattern.FindStringSubmatch(match))
 		if !ok {
 			return match
 		}
-		return ref.Label()
+		return with(ref)
 	})
 }
 

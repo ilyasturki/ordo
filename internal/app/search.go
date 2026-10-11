@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
@@ -211,12 +212,12 @@ func (m model) rowMatches(r selection.Position, query string) bool {
 		if ui.Contains(task.Title, query) {
 			return true
 		}
-		return !m.ui.Screen.ExpandDescriptions && ui.Contains(task.Description, query)
+		return !m.ui.Screen.ExpandDescriptions && ui.Contains(attachments.Display(task.Description), query)
 	case selection.FocusDescription:
 		if r.TaskIndex < 0 || r.TaskIndex >= len(cat.Tasks) {
 			return false
 		}
-		return ui.Contains(cat.Tasks[r.TaskIndex].Description, query)
+		return ui.Contains(attachments.Display(cat.Tasks[r.TaskIndex].Description), query)
 	}
 	return false
 }

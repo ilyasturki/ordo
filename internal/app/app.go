@@ -619,12 +619,12 @@ func (m model) handleURLPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.ui.URLPicker.MoveUp()
 		return m, nil
 	case "enter":
-		url := m.ui.URLPicker.SelectedURL()
+		link, ok := m.ui.URLPicker.SelectedLink()
 		m.ui.Modes.ToNormal()
-		if url == "" {
+		if !ok {
 			return m, nil
 		}
-		return m, openURL(url)
+		return m, m.openLink(link)
 	}
 	return m, nil
 }

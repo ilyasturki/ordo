@@ -7,8 +7,8 @@ import (
 
 func (m model) urlPickerView() string {
 	return components.RenderListPicker(
-		"Open URL",
-		m.ui.URLPicker.URLs,
+		"Open",
+		m.ui.URLPicker.Labels(),
 		m.ui.URLPicker.Selected,
 		[]ui.Hint{{Key: "enter", Label: "open"}, {Key: "esc", Label: "cancel"}},
 	)

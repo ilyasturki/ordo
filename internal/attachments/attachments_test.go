@@ -222,6 +222,52 @@ func TestDisplay_ShowsTheNameNotTheHash(t *testing.T) {
 	assert.Equal(t, "see ▣ Screenshot\n▣ image ![web](https://x/y.png)", Display(text))
 }
 
+func TestDescribe(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name string, data []byte) string {
+		path := filepath.Join(dir, name)
+		require.NoError(t, os.WriteFile(path, data, 0o600))
+		return path
+	}
+	img := image.NewRGBA(image.Rect(0, 0, 7, 3))
+	var jpg, gf bytes.Buffer
+	require.NoError(t, jpeg.Encode(&jpg, img, nil))
+	require.NoError(t, gif.Encode(&gf, img, nil))
+	riff := func(chunk string, body ...byte) []byte {
+		head := []byte("RIFF\x00\x00\x00\x00WEBP" + chunk + "\x00\x00\x00\x00")
+		return append(head, body...)
+	}
+	vp8l := uint32(1280-1) | uint32(640-1)<<14
+	for name, tc := range map[string]struct {
+		data []byte
+		w, h int
+	}{
+		"png":  {pngBytes(t, 7, 3), 7, 3},
+		"jpeg": {jpg.Bytes(), 7, 3},
+		"gif":  {gf.Bytes(), 7, 3},
+		"webp VP8X": {riff("VP8X", 0, 0, 0, 0,
+			0xff, 0x04, 0x00, 0x7f, 0x02, 0x00), 1280, 640},
+		"webp VP8L": {riff("VP8L", 0x2f,
+			byte(vp8l), byte(vp8l>>8), byte(vp8l>>16), byte(vp8l>>24), 0, 0, 0, 0, 0), 1280, 640},
+		"webp VP8": {riff("VP8 ", 0, 0, 0, 0x9d, 0x01, 0x2a,
+			0x00, 0x05, 0x80, 0x02), 1280, 640},
+		"not an image": {[]byte("hello"), 0, 0},
+	} {
+		t.Run(name, func(t *testing.T) {
+			info, err := Describe(write(name, tc.data))
+			require.NoError(t, err)
+			assert.Equal(t, Info{Size: int64(len(tc.data)), Width: tc.w, Height: tc.h}, info)
+		})
+	}
+	_, err := Describe(filepath.Join(dir, "gone.png"))
+	assert.Error(t, err)
+}
+
+func TestStrip_LeavesNoHashBehind(t *testing.T) {
+	hash := "0123456789abcdef0123456789abcdef"
+	assert.Equal(t, "see   and ![web](https://x/y.png)", Strip("see ![Shot 10.10](attachments/"+hash+".png) and ![web](https://x/y.png)"))
+}
+
 func TestLine(t *testing.T) {
 	assert.Equal(t, "![Screenshot 2026-10-11 10.10](attachments/x.png)", Line("Screenshot 2026-10-11 10.10", "attachments/x.png"))
 	assert.Equal(t, "![a b c](t)", Line(" a [b]\nc ", "t"), "brackets and newlines would end the reference")

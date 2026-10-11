@@ -8,6 +8,7 @@ import (
 
 	"github.com/ilyasturki/ordo/internal/app/components"
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/attachments"
 )
 
 // uuidPattern matches both the app's own NewID format and standard UUIDs.
@@ -89,7 +90,11 @@ func (m *model) buildYankItems(pos selection.Position) []components.YankItem {
 		if task.Description != "" {
 			set.add(task.Description)
 		}
-		addEntities(task.Title, task.Description)
+		for _, img := range m.taskImages(task) {
+			set.add(img.path)
+		}
+		// A hash's digits are no number worth copying.
+		addEntities(attachments.Strip(task.Title), attachments.Strip(task.Description))
 	}
 	return set.items
 }

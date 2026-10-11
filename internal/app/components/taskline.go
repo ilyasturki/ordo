@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
@@ -28,6 +29,7 @@ type TaskLineRenderer struct {
 	descriptionRows     int
 	indent              string
 	progress            string
+	imageMissing        func(target string) bool
 }
 
 // Uncapped as a row limit lets a field take every row it wraps to.
@@ -71,6 +73,11 @@ func (r *TaskLineRenderer) WithCut(c bool) *TaskLineRenderer {
 
 func (r *TaskLineRenderer) WithDescriptionExpanded(v bool) *TaskLineRenderer {
 	r.descriptionExpanded = v
+	return r
+}
+
+func (r *TaskLineRenderer) WithImages(missing func(target string) bool) *TaskLineRenderer {
+	r.imageMissing = missing
 	return r
 }
 
@@ -145,32 +152,65 @@ const descriptionBar = "▎ "
 // before truncating to a "… +N more lines" tail row.
 const DescriptionPreviewLines = 3
 
+// descriptionLine is one display row. An image's chip takes a row of its own,
+// cut to fit, so whether its file is there never changes a height.
+type descriptionLine struct {
+	text string
+	ref  *attachments.Ref
+}
+
 // wrapDescriptionLines returns the description body as the plain wrapped lines
 // it renders as with `available` content columns (<= 0 disables wrapping, so
 // each \n-separated paragraph stays one line).
-func wrapDescriptionLines(description string, available int) []string {
+func wrapDescriptionLines(description string, available int) []descriptionLine {
 	if description == "" {
 		return nil
 	}
-	var lines []string
+	var lines []descriptionLine
 	for _, paragraph := range strings.Split(description, "\n") {
-		if paragraph == "" || available <= 0 {
-			lines = append(lines, paragraph)
-			continue
+		pieces := attachments.Split(paragraph)
+		for i, p := range pieces {
+			if p.Ref != nil {
+				lines = append(lines, descriptionLine{text: p.Ref.Label(), ref: p.Ref})
+				continue
+			}
+			text := p.Text
+			if len(pieces) > 1 {
+				if i > 0 {
+					text = strings.TrimLeft(text, " \t")
+				}
+				if i < len(pieces)-1 {
+					text = strings.TrimRight(text, " \t")
+				}
+				if text == "" {
+					continue
+				}
+			}
+			lines = append(lines, wrapParagraph(text, available)...)
 		}
-		lines = append(lines, strings.Split(ansi.Wrap(paragraph, available, ""), "\n")...)
+	}
+	return lines
+}
+
+func wrapParagraph(text string, available int) []descriptionLine {
+	if text == "" || available <= 0 {
+		return []descriptionLine{{text: text}}
+	}
+	var lines []descriptionLine
+	for _, l := range strings.Split(ansi.Wrap(text, available, ""), "\n") {
+		lines = append(lines, descriptionLine{text: l})
 	}
 	return lines
 }
 
 // descriptionWindow caps only when that saves a row, since the tail takes one; focus is -1 or a line to keep in view.
-func descriptionWindow(lines []string, maxRows, focus int) (int, int) {
-	if maxRows == Uncapped || len(lines) <= maxRows+1 {
-		return 0, len(lines)
+func descriptionWindow(lines, maxRows, focus int) (int, int) {
+	if maxRows == Uncapped || lines <= maxRows+1 {
+		return 0, lines
 	}
 	start := 0
 	if focus >= maxRows {
-		start = min(focus-1, len(lines)-maxRows)
+		start = min(focus-1, lines-maxRows)
 	}
 	return start, start + maxRows
 }
@@ -188,7 +228,7 @@ func descriptionAvailable(width, indent int) int {
 // DescriptionHeight must match RenderDescription, whose window size a search match never changes.
 func DescriptionHeight(description string, width, indent, maxRows int) int {
 	lines := wrapDescriptionLines(description, descriptionAvailable(width, indent))
-	start, end := descriptionWindow(lines, maxRows, -1)
+	start, end := descriptionWindow(len(lines), maxRows, -1)
 	if end-start < len(lines) {
 		return end - start + 1
 	}
@@ -211,10 +251,12 @@ func (r *TaskLineRenderer) RenderDescription(task domain.Task, indent int, selec
 	textStyle := ui.TaskTitleStyle(task.Priority, task.Status, r.priorityColor).Italic(true)
 	barStyle := ui.DescriptionBarStyle
 	tailStyle := ui.MutedStyle.Italic(true)
+	chipStyle := ui.MutedStyle
 	if r.cut {
 		textStyle = ui.ApplyCut(textStyle)
 		barStyle = ui.ApplyCut(barStyle)
 		tailStyle = ui.ApplyCut(tailStyle)
+		chipStyle = ui.ApplyCut(chipStyle)
 	}
 
 	// When selected, every visual line gets padded to the full row width so the
@@ -223,17 +265,26 @@ func (r *TaskLineRenderer) RenderDescription(task domain.Task, indent int, selec
 	shouldPad := selected && r.width > 0
 
 	lines := wrapDescriptionLines(description, available)
-	start, end := descriptionWindow(lines, r.descriptionRows, r.firstMatchLine(lines))
+	start, end := descriptionWindow(len(lines), r.descriptionRows, r.firstMatchLine(lines))
 	shown := slices.Clone(lines[start:end])
+	for i, l := range shown {
+		if l.ref != nil {
+			shown[i].text = fitChip(l.text+r.missingSuffix(*l.ref), available)
+		}
+	}
 	if start > 0 {
 		if available > 0 {
-			shown[0] = ansi.Truncate(shown[0], available-1, "")
+			shown[0].text = ansi.Truncate(shown[0].text, available-1, "")
 		}
-		shown[0] = ui.Ellipsis + shown[0]
+		shown[0].text = ui.Ellipsis + shown[0].text
 	}
 	out := make([]string, 0, len(shown)+1)
 	for _, l := range shown {
-		out = append(out, r.styleDescriptionLine(indentStr, l, textStyle, barStyle, selected, shouldPad))
+		style := textStyle
+		if l.ref != nil {
+			style = chipStyle
+		}
+		out = append(out, r.styleDescriptionLine(indentStr, l.text, style, barStyle, selected, shouldPad))
 	}
 	if len(shown) < len(lines) {
 		tail := fmt.Sprintf("… +%d more lines", len(lines)-end)
@@ -249,16 +300,33 @@ func (r *TaskLineRenderer) RenderDescription(task domain.Task, indent int, selec
 }
 
 // firstMatchLine is the index of the first line holding a search match, or -1.
-func (r *TaskLineRenderer) firstMatchLine(lines []string) int {
+func (r *TaskLineRenderer) firstMatchLine(lines []descriptionLine) int {
 	if r.searchQuery == "" {
 		return -1
 	}
 	for i, l := range lines {
-		if ui.FirstMatchIndex(l, r.searchQuery) >= 0 {
+		if ui.FirstMatchIndex(l.text, r.searchQuery) >= 0 {
 			return i
 		}
 	}
 	return -1
+}
+
+func (r *TaskLineRenderer) missingSuffix(ref attachments.Ref) string {
+	switch {
+	case r.imageMissing == nil || !r.imageMissing(ref.Target):
+		return ""
+	case ref.Internal():
+		return " (not synced yet)"
+	}
+	return " (missing)"
+}
+
+func fitChip(s string, width int) string {
+	if width <= 0 {
+		return s
+	}
+	return ansi.Truncate(s, width, ui.Ellipsis)
 }
 
 // fitWidth treats width <= 0 as no wrapping, so no limit.
@@ -298,7 +366,7 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 	}
 	tagStyled := r.tagSegment(task, finished, false)
 	leading := tagStyled + iconStyled
-	descMarker := r.formatDescriptionBadge(task.Description, false)
+	descMarker := r.formatDescriptionBadge(task.Description, false) + r.formatImageBadge(task.Description, false)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, false)
 	cutBadge, _ := r.formatCutBadge(false)
 	suffix := cutBadge + r.formatProgressBadge(false) + descMarker + estimate
@@ -351,7 +419,7 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 	tagStyled := r.tagSegment(task, finished, true)
 	leading := tagStyled + iconStyled
 
-	descMarker := r.formatDescriptionBadge(task.Description, true)
+	descMarker := r.formatDescriptionBadge(task.Description, true) + r.formatImageBadge(task.Description, true)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, true)
 	cutBadge, _ := r.formatCutBadge(true)
 	suffix := cutBadge + r.formatProgressBadge(true) + descMarker + estimate
@@ -375,7 +443,7 @@ func (r *TaskLineRenderer) titleWidth(task domain.Task) int {
 		lead += icon + " "
 	}
 	_, cutText := r.formatCutBadge(false)
-	badges := cutText + r.progressBadgeText() + r.descriptionBadgeText(task.Description) + r.estimateBadgeText(task.EstimateMinutes)
+	badges := cutText + r.progressBadgeText() + r.descriptionBadgeText(task.Description) + imageBadgeText(task.Description) + r.estimateBadgeText(task.EstimateMinutes)
 	return safeWidth(r.width, ansi.StringWidth(lead+badges))
 }
 
@@ -510,6 +578,30 @@ func (r *TaskLineRenderer) formatDescriptionBadge(description string, selected b
 		return r.selectedStyle().Render(text)
 	}
 	return ui.MutedStyle.Render(text)
+}
+
+func (r *TaskLineRenderer) formatImageBadge(description string, selected bool) string {
+	text := imageBadgeText(description)
+	if text == "" {
+		return ""
+	}
+	if selected {
+		return r.selectedStyle().Render(text)
+	}
+	return r.maybeCut(ui.MutedStyle).Render(text)
+}
+
+// Shown with descriptions expanded too, unlike ¶, so a task carrying a
+// screenshot stands out while picking tasks.
+func imageBadgeText(description string) string {
+	switch n := len(attachments.Refs(description)); n {
+	case 0:
+		return ""
+	case 1:
+		return " " + attachments.Glyph
+	default:
+		return fmt.Sprintf(" %s%d", attachments.Glyph, n)
+	}
 }
 
 func (r *TaskLineRenderer) descriptionBadgeText(description string) string {

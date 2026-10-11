@@ -66,7 +66,7 @@ func TestBindTaskCommands_RejectsClashesAndUnknownKeys(t *testing.T) {
 		"built-in single key":  {[]config.TaskCommand{shCommand("d", "", "true")}, `key "d" is already bound to "delete"`},
 		"move key":             {[]config.TaskCommand{shCommand("m", "", "true")}, `key "m" is already bound to "move to a category"`},
 		"partner key":          {[]config.TaskCommand{shCommand("k", "", "true")}, `key "k" is already bound to "move up / down"`},
-		"built-in chord":       {[]config.TaskCommand{shCommand("gx", "", "true")}, `key "gx" is already bound to "open link in item"`},
+		"built-in chord":       {[]config.TaskCommand{shCommand("gx", "", "true")}, `key "gx" is already bound to "open a link or image"`},
 		"chord prefix alone":   {[]config.TaskCommand{shCommand("g", "", "true")}, `key "g" starts built-in shortcuts`},
 		"foreign chord prefix": {[]config.TaskCommand{shCommand("cr", "", "true")}, `unknown key "cr"`},
 		"too long":             {[]config.TaskCommand{shCommand("ctrl+o", "", "true")}, `unknown key "ctrl+o"`},

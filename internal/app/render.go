@@ -231,7 +231,8 @@ func (m model) renderTaskDescription(catIdx, taskIdx int, descriptionRows int, s
 		WithVisualMode(visualMode).
 		WithCursor(isCursor).
 		WithCut(cut).
-		WithRowLimits(ui.MaxLineRows, descriptionRows)
+		WithRowLimits(ui.MaxLineRows, descriptionRows).
+		WithImages(m.imageMissing)
 	if q := m.searchQuery(); q != "" {
 		renderer = renderer.WithSearch(q, m.searchMatchStyle(selected))
 	}
