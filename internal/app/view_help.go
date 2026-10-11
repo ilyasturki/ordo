@@ -96,7 +96,6 @@ var helpModeSections = []helpSection{
 			{keys: "y / Y", desc: "copy / copy as markdown"},
 			{keys: "x", desc: "cut (p moves it, esc cancels)"},
 			{keys: "d", desc: "delete (asks first)"},
-			{keys: "s", desc: "ship / reopen the selected versions"},
 			{keys: "M", desc: "move the selection to a version"},
 			{keys: "esc", desc: "leave visual mode"},
 		},

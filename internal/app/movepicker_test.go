@@ -29,7 +29,7 @@ func moveProject() domain.Project {
 				{ID: "a1", Title: "Menu", Status: domain.StatusTodo},
 			}},
 			{ID: "v91ui", Name: "ui", ParentID: "v91", Tasks: []domain.Task{}},
-			{ID: "v90", Name: "v0.9.0", ReleasedAt: shippedAt, Tasks: []domain.Task{
+			{ID: "v90", Name: "archive", Tasks: []domain.Task{
 				{ID: "b1", Title: "Left over", Status: domain.StatusTodo},
 			}},
 			{ID: "fut", Name: "FUTURE", Tasks: []domain.Task{}},
@@ -60,7 +60,7 @@ func TestMovePickerListsInboxAndOpenVersionsWithAreas(t *testing.T) {
 	m.startMoveToVersion()
 
 	require.True(t, m.ui.Modes.IsMovePicker())
-	assert.Equal(t, []string{"v0.10.0", "v0.9.1", "  ui"}, targetLabels(m), "no inbox (the source), no shipped version, no plain category")
+	assert.Equal(t, []string{"v0.10.0", "v0.9.1", "  ui"}, targetLabels(m), "no inbox (the source), no plain category")
 	assert.Equal(t, 1, m.ui.MovePicker.selected, "the lowest open version is the next to ship")
 	assert.Equal(t, "Move 2 task(s) to", m.ui.MovePicker.title, "a parent brings its subtask")
 }

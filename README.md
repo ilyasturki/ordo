@@ -1,6 +1,6 @@
 # Ordo
 
-A local-only project planner for the terminal, built around versions. Ideas land in `next`, get planned into `v1.3.0`, and the version folds away once it ships. It is a single binary that keeps each project in a plain JSON file and never touches the network.
+A local-only project planner for the terminal, built around versions. Ideas land in `next` and get planned into `v1.3.0`. It is a single binary that keeps each project in a plain JSON file and never touches the network.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.gif">
@@ -74,7 +74,7 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 
 ## Features
 
-- A top-level category named `vX.Y.Z` is a version, and a label may follow the number (`v1.3.0 - polish`). `s` ships it: the version folds, dims and records the date, and one shipped with open tasks keeps a red `! 2 open`. `s` again reopens it, and `ordo versions` lists every version with its ship date.
+- A top-level category named `vX.Y.Z` is a version, and a label may follow the number (`v1.3.0 - polish`). `ordo versions` lists every version with its ship date.
 - A category called `next` is the inbox for whatever hasn't been planned. `M` sends the focused task, or a whole visual range, to an open version or back to the inbox.
 - Categories take one level of sub-categories and tasks one level of subtasks. `>` nests a row under the one above it and `<` takes it back out.
 - The keys are vim's where vim has one: `j`/`k`, `gg`/`G`, `{`/`}` between categories, `/` then `n`/`N`, `v` for a visual range, `za` to fold or unfold a category and `zc`/`zo` for all of them, `zz` to center. `ze` shows a long row in full.

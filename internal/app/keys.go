@@ -127,8 +127,6 @@ var normalBindings = []keyBinding{
 		action: func(m *model) tea.Cmd { m.nestSelected(true); return nil }},
 	{keys: []string{"<"}, section: sectionOrganise,
 		action: func(m *model) tea.Cmd { m.nestSelected(false); return nil }},
-	{keys: []string{"s"}, desc: "ship / reopen a version", section: sectionOrganise,
-		action: void((*model).toggleShippedSelected)},
 	{keys: []string{"M"}, desc: "move to an open version or the inbox", section: sectionOrganise,
 		action: void((*model).startMoveToVersion)},
 	{keys: []string{"S"}, desc: "reverse category order", section: sectionOrganise,

@@ -11,16 +11,14 @@ import (
 )
 
 type stubStateManager struct {
-	folded   map[string][]string
-	unfolded map[string][]string
-	cursors  map[string]data.Cursor
+	folded  map[string][]string
+	cursors map[string]data.Cursor
 }
 
 func newStubStateManager() *stubStateManager {
 	return &stubStateManager{
-		folded:   make(map[string][]string),
-		unfolded: make(map[string][]string),
-		cursors:  make(map[string]data.Cursor),
+		folded:  make(map[string][]string),
+		cursors: make(map[string]data.Cursor),
 	}
 }
 
@@ -35,16 +33,8 @@ func (s *stubStateManager) SetFoldedCategories(projectID string, categoryIDs []s
 	s.folded[projectID] = append([]string(nil), categoryIDs...)
 	return nil
 }
-func (s *stubStateManager) GetUnfoldedCategories(projectID string) []string {
-	return s.unfolded[projectID]
-}
-func (s *stubStateManager) SetUnfoldedCategories(projectID string, categoryIDs []string) error {
-	s.unfolded[projectID] = append([]string(nil), categoryIDs...)
-	return nil
-}
 func (s *stubStateManager) DeleteFoldedCategories(projectID string) error {
 	delete(s.folded, projectID)
-	delete(s.unfolded, projectID)
 	return nil
 }
 func (s *stubStateManager) GetCursor(projectID string) data.Cursor {

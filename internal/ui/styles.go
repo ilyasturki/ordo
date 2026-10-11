@@ -44,7 +44,6 @@ var (
 
 	// CutBadgeStyle marks rows whose item is staged for cut/paste.
 	CutBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
-	WarningStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
 
 	// Search highlight: matched substrings during `/` search read as black on
 	// yellow — the conventional search-highlight look, legible on both light and

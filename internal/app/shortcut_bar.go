@@ -4,7 +4,6 @@ import (
 	"slices"
 
 	"github.com/ilyasturki/ordo/internal/app/modes"
-	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
@@ -22,12 +21,6 @@ var normalShortcuts = []ui.Hint{
 	{Key: "u/^r", Label: "undo/redo"},
 	{Key: ",", Label: "options"},
 	{Key: "q", Label: "quit"},
-}
-
-// versionShortcuts follow "A category" in a project that has versions.
-var versionShortcuts = []ui.Hint{
-	{Key: "s", Label: "ship"},
-	{Key: "M", Label: "move to"},
 }
 
 // The cut's status line clears on the next key, the first step to the destination.
@@ -72,13 +65,7 @@ func (m model) renderShortcutBar() string {
 		return ""
 	}
 	hints := normalShortcuts
-	hasVersions := slices.ContainsFunc(m.project.Categories, func(c domain.Category) bool { return c.IsVersion() })
-	if hasVersions {
-		hints = slices.Concat(normalShortcuts[:3], versionShortcuts, normalShortcuts[3:])
-	}
 	switch {
-	case m.ui.Modes.IsVisual() && hasVersions:
-		hints = slices.Concat(visualShortcuts[:1], []ui.Hint{{Key: "M", Label: "move to"}}, visualShortcuts[1:])
 	case m.ui.Modes.IsVisual():
 		hints = visualShortcuts
 	case m.ui.Clipboard.IsCut:

@@ -355,87 +355,50 @@ func (p *ProjectPickerState) cancelFiltering(visible int) {
 	p.ensureVisible(visible)
 }
 
-// A shipped version folds unless it sits in unfolded; everything else folds only from folded.
 type FoldState struct {
-	folded   map[string]bool
-	unfolded map[string]bool
-	shipped  map[string]bool
+	folded map[string]bool
 }
 
 func NewFoldState() FoldState {
-	return NewFoldStateFrom(nil, nil)
+	return NewFoldStateFrom(nil)
 }
 
-func NewFoldStateFrom(foldedIDs, unfoldedIDs []string) FoldState {
-	f := FoldState{
-		folded:   make(map[string]bool, len(foldedIDs)),
-		unfolded: make(map[string]bool, len(unfoldedIDs)),
-		shipped:  make(map[string]bool),
-	}
+func NewFoldStateFrom(foldedIDs []string) FoldState {
+	f := FoldState{folded: make(map[string]bool, len(foldedIDs))}
 	for _, id := range foldedIDs {
 		f.folded[id] = true
-	}
-	for _, id := range unfoldedIDs {
-		f.unfolded[id] = true
 	}
 	return f
 }
 
 func (f FoldState) Clone() FoldState {
-	return FoldState{folded: maps.Clone(f.folded), unfolded: maps.Clone(f.unfolded), shipped: maps.Clone(f.shipped)}
-}
-
-func (f *FoldState) SetShipped(categories []domain.Category) {
-	clear(f.shipped)
-	for _, c := range categories {
-		if c.ParentID == "" && c.Shipped() {
-			f.shipped[c.ID] = true
-		}
-	}
+	return FoldState{folded: maps.Clone(f.folded)}
 }
 
 func (f *FoldState) FoldedIDs() []string {
 	return slices.Collect(maps.Keys(f.folded))
 }
 
-func (f *FoldState) UnfoldedIDs() []string {
-	return slices.Collect(maps.Keys(f.unfolded))
-}
-
 func (f *FoldState) IsFolded(id string) bool {
-	return f.folded[id] || (f.shipped[id] && !f.unfolded[id])
+	return f.folded[id]
 }
 
-// Toggle leaves a shipped version out of folded, so reopening it unfolds what was never hand-folded.
 func (f *FoldState) Toggle(id string) {
-	if f.IsFolded(id) {
+	if f.folded[id] {
 		delete(f.folded, id)
-		if f.shipped[id] {
-			f.unfolded[id] = true
-		}
 		return
 	}
-	delete(f.unfolded, id)
-	if !f.shipped[id] {
-		f.folded[id] = true
-	}
-}
-
-// ResetShipped forgets a hand-unfold, so a version folds again as it ships.
-func (f *FoldState) ResetShipped(id string) {
-	delete(f.unfolded, id)
+	f.folded[id] = true
 }
 
 func (f *FoldState) FoldAll(categoryIDs []string) {
 	for _, id := range categoryIDs {
 		f.folded[id] = true
-		delete(f.unfolded, id)
 	}
 }
 
 func (f *FoldState) UnfoldAll() {
 	f.folded = make(map[string]bool)
-	f.unfolded = maps.Clone(f.shipped)
 }
 
 func (f *FoldState) HasFolded() bool {

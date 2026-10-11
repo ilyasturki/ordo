@@ -14,6 +14,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Folded categories in a row stack one header per row, with no blank line between them and no `(folded)` row. Folded sub-categories under the same parent stack at their indent
 - Category headers no longer show counts unless "Category Counts" is on, versions included, and the `· N in progress` suffix is gone: the `[/]` badge says it
 
+### Removed
+
+- Shipping a version: `s`, the ship date on its header, the dimming and auto-folding of shipped versions and the red `! N open`
+
 ### Fixed
 
 - `A` on a version adds an empty category right after it again, like on any other category, instead of proposing the next patch at the top or the end of the project

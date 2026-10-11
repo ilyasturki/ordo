@@ -83,9 +83,6 @@ func renderCategoryLine(h categoryHeader, selected bool, width int, focused bool
 		prefix = "> " + strings.Repeat(" ", h.indent)
 	}
 	style := ui.CategoryStyle
-	if h.shipped {
-		style = ui.MutedStyle
-	}
 	if selected {
 		switch {
 		case visualMode && isCursor:
@@ -116,8 +113,6 @@ func renderCategoryLine(h categoryHeader, selected bool, width int, focused bool
 			statusBadge = ui.GetVisualSelectedStyle(focused).Render(statusBadgeText)
 		case selected:
 			statusBadge = ui.GetSelectedStatusStyle(aggregateStatus, focused).Render(statusBadgeText)
-		case h.shipped:
-			statusBadge = ui.MutedStyle.Render(statusBadgeText)
 		default:
 			statusBadge = ui.StatusStyle(aggregateStatus).Render(statusBadgeText)
 		}
@@ -135,21 +130,6 @@ func renderCategoryLine(h categoryHeader, selected bool, width int, focused bool
 			progressBadge = ui.GetSelectedStyle(focused).Render(text)
 		default:
 			progressBadge = ui.MutedStyle.Render(text)
-		}
-	}
-
-	warningBadge := ""
-	if h.warning != "" {
-		text := " " + h.warning
-		switch {
-		case selected && visualMode && isCursor:
-			warningBadge = ui.GetVisualCursorStyle(focused).Render(text)
-		case selected && visualMode:
-			warningBadge = ui.GetVisualSelectedStyle(focused).Render(text)
-		case selected:
-			warningBadge = ui.GetSelectedStyle(focused).Render(text)
-		default:
-			warningBadge = ui.WarningStyle.Render(text)
 		}
 	}
 
@@ -180,7 +160,7 @@ func renderCategoryLine(h categoryHeader, selected bool, width int, focused bool
 		}
 	}
 
-	suffix := cutBadge + statusBadge + progressBadge + warningBadge + estimateBadge
+	suffix := cutBadge + statusBadge + progressBadge + estimateBadge
 
 	if width <= 0 {
 		return style.Render(prefix+foldIndicator) + ui.HighlightMatches(name, searchQuery, style, searchMatch) + suffix
@@ -217,9 +197,6 @@ func categoryNameWidth(width int, h categoryHeader) int {
 	}
 	if h.progress != "" {
 		badges += ansi.StringWidth(" " + h.progress)
-	}
-	if h.warning != "" {
-		badges += ansi.StringWidth(" " + h.warning)
 	}
 	if h.estimate > 0 {
 		badges += ansi.StringWidth(" ~" + FormatEstimate(h.estimate))

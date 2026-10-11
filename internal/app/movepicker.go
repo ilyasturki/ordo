@@ -105,9 +105,6 @@ func (m *model) moveTargets(exclude string) []moveTarget {
 		out = append(out, moveTarget{cats[i].ID, cats[i].Name})
 	}
 	for _, i := range m.project.VersionIndexes() {
-		if cats[i].Shipped() {
-			continue
-		}
 		listed := cats[i].ID != exclude
 		if listed {
 			out = append(out, moveTarget{cats[i].ID, cats[i].Name})
