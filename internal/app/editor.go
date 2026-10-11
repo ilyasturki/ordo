@@ -142,6 +142,8 @@ func (m *model) startExternalEdit() tea.Cmd {
 }
 
 func (m *model) handleEditorFinished(msg editorFinishedMsg) {
+	// The editor owned the terminal, so a copy made in it or a focus loss sent no BlurMsg.
+	m.distrustClipboardWrites()
 	defer func() {
 		os.Remove(msg.tempFile)
 		m.ui.ExternalEdit.reset()

@@ -127,7 +127,7 @@ type UIState struct {
 	// Writes of Clipboard.Text not yet answered: until they land, p trusts the copy unread.
 	ClipboardWrites int
 	LastWrite       clipboardWrite
-	// Blurs counts focus losses, so a write answered after one never counts as fresh.
+	// Blurs counts focus losses and child programs run, so a write answered after one never counts as fresh.
 	Blurs int
 	// FocusReported: a terminal that never reports focus can't vouch that no other app copied since.
 	FocusReported bool

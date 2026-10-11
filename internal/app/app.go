@@ -66,6 +66,12 @@ func (m *model) writeClipboard(result clipboardResultMsg) tea.Cmd {
 	}
 }
 
+// distrustClipboardWrites marks a moment another program may have replaced our last write.
+func (m *model) distrustClipboardWrites() {
+	m.ui.Blurs++
+	m.ui.LastWrite.fresh = false
+}
+
 func (m *model) handleClipboardResult(msg clipboardResultMsg) {
 	if msg.ofCopy {
 		m.ui.ClipboardWrites = max(0, m.ui.ClipboardWrites-1)
@@ -176,8 +182,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.BlurMsg:
 		m.ui.Screen.WindowFocused = false
 		m.ui.FocusReported = true
-		m.ui.Blurs++
-		m.ui.LastWrite.fresh = false
+		m.distrustClipboardWrites()
 	case tea.MouseWheelMsg:
 		m.handleMouseWheel(msg)
 		return m, nil

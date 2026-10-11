@@ -92,3 +92,18 @@ func TestPaste_ANewWriteAfterABlurIsFreshAgain(t *testing.T) {
 	assert.Nil(t, m.paste())
 	assert.Equal(t, []string{"Alpha", "Delta", "Beta", "Gamma"}, taskTitles(m.project.Categories[0]))
 }
+
+func TestPaste_ATaskCommandMayHaveCopiedSoPReadsAgain(t *testing.T) {
+	m := copiedWhileFocused(t)
+	m = sendMsg(m, taskCommandResultMsg{label: "copy branch"})
+
+	assert.NotNil(t, m.paste(), "the command may have written the clipboard")
+}
+
+func TestPaste_TheExternalEditorMayHaveCopiedSoPReadsAgain(t *testing.T) {
+	m := copiedWhileFocused(t)
+	m.handleEditorFinished(editorFinishedMsg{err: assert.AnError})
+
+	require.True(t, m.selectTaskIdx(1, 0))
+	assert.NotNil(t, m.paste(), "no BlurMsg reaches us while the editor holds the terminal")
+}

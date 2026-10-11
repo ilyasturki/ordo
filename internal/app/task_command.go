@@ -202,6 +202,7 @@ func runTaskCommand(c config.TaskCommand, env []string) tea.Cmd {
 }
 
 func (m *model) handleTaskCommandResult(msg taskCommandResultMsg) {
+	m.distrustClipboardWrites()
 	if msg.err != nil {
 		detail := firstOutputLine(msg.stderr)
 		if detail == "" {
