@@ -130,7 +130,7 @@ func (m *model) startTaskCommand(c taskCommand) tea.Cmd {
 	}
 	if c.Prompt == "" {
 		m.ui.Screen.StatusMsg = c.Label + "…"
-		return runTaskCommand(c.TaskCommand, taskCommandEnv(m.project, ci, task, ""))
+		return runTaskCommand(c.TaskCommand, taskCommandEnv(m.project, ci, task, m.imagePaths(task), ""))
 	}
 	ti := newTextInput()
 	ti.Prompt = ""
@@ -161,7 +161,8 @@ func (m model) handleCommandPromptKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 			return m, nil
 		}
 		m.ui.Screen.StatusMsg = s.command.Label + "…"
-		return m, runTaskCommand(s.command.TaskCommand, taskCommandEnv(m.project, ci, m.project.Categories[ci].Tasks[ti], input))
+		task := m.project.Categories[ci].Tasks[ti]
+		return m, runTaskCommand(s.command.TaskCommand, taskCommandEnv(m.project, ci, task, m.imagePaths(task), input))
 	}
 	var cmd tea.Cmd
 	s.input, cmd = s.input.Update(msg)
@@ -175,13 +176,14 @@ func (m model) renderCommandPrompt() string {
 }
 
 // A sub-category's name repeats across parents, so the category goes by its path, which -C resolves.
-func taskCommandEnv(p domain.Project, ci int, t domain.Task, input string) []string {
+func taskCommandEnv(p domain.Project, ci int, t domain.Task, images []string, input string) []string {
 	return append(os.Environ(),
 		"ORDO_PROJECT_ID="+p.ID,
 		"ORDO_PROJECT_NAME="+p.Name,
 		"ORDO_TASK_ID="+t.ID,
 		"ORDO_TASK_TITLE="+t.Title,
 		"ORDO_TASK_DESCRIPTION="+t.Description,
+		"ORDO_TASK_IMAGES="+strings.Join(images, "\n"),
 		"ORDO_CATEGORY="+p.CategoryPath(ci),
 		"ORDO_CATEGORY_ID="+p.Categories[ci].ID,
 		"ORDO_INPUT="+input,

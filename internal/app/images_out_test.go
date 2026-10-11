@@ -12,6 +12,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/clipboard"
+	"github.com/ilyasturki/ordo/internal/config"
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
@@ -104,6 +105,20 @@ func TestVisualCopy_SelectedDescriptionCarriesItsImagesOnce(t *testing.T) {
 		"  ![Screenshot 2026-10-11 10.12.03]("+crash+")\n"+
 		"  - [ ] Check it on the light theme\n"+
 		"    ![light.png]("+theme+")", text)
+}
+
+func TestTaskCommand_GetsTheImagePaths(t *testing.T) {
+	m, crash, theme := imagesOutModel(t)
+	bound, err := bindTaskCommands([]config.TaskCommand{shCommand("w", "", `printf '%s' "$ORDO_TASK_IMAGES" | tr '\n' '|'`)})
+	require.NoError(t, err)
+	m.deps.setTaskCommands(bound)
+	tasks := m.project.Categories[0].Tasks
+	tasks[0].Description += "\n" + tasks[1].Description
+	selectRow(t, m, selection.FocusTask, "crash")
+
+	m, cmd := pressKeys(m, "w")
+	m = runCmd(t, m, cmd)
+	assert.Equal(t, crash+"|"+theme, m.ui.Screen.StatusMsg)
 }
 
 func TestCopyCategory_PointsImagesAtTheirFile(t *testing.T) {

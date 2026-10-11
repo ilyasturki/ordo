@@ -147,6 +147,15 @@ func (m *model) taskImages(task domain.Task) []taskImage {
 	return images
 }
 
+func (m *model) imagePaths(task domain.Task) []string {
+	images := m.taskImages(task)
+	paths := make([]string, len(images))
+	for i, img := range images {
+		paths[i] = img.path
+	}
+	return paths
+}
+
 func (m model) imageMissing(target string) bool {
 	return m.deps.Attachments != nil && m.deps.Attachments.Missing(target)
 }

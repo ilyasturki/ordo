@@ -193,7 +193,7 @@ func TestTaskCommand_ListedInHelpAndBarOnlyWhenConfigured(t *testing.T) {
 
 func TestTaskCommandEnvNamesASubCategoryByPath(t *testing.T) {
 	p := nestedProject()
-	env := taskCommandEnv(p, 1, p.Categories[1].Tasks[0], "")
+	env := taskCommandEnv(p, 1, p.Categories[1].Tasks[0], nil, "")
 	assert.Contains(t, env, "ORDO_CATEGORY=v0.2.0 / ui")
 	assert.Contains(t, env, "ORDO_CATEGORY_ID=ui")
 }

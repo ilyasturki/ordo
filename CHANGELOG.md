@@ -16,6 +16,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Text that leaves ordo points an image at its absolute path, so an agent handed it can open the file: `y` on a task, `Y` on a category and `ordo export -f markdown`. A visual `y` or `Y` lists each task's images under its bullet. The project file keeps the relative reference, and `ordo export -f json` too
 - `ordo task attach <task> <file>` attaches an image from the command line, and `-` reads it from stdin: `wl-paste -t image/png | ordo task attach <task> -`. `--name` names it
 - `ordo task show` lists the task's images with their absolute path, marking a missing one, and `ordo attachments path` prints the directory they live in
+- Task commands get `ORDO_TASK_IMAGES`, the absolute paths of the task's images, one per line
 
 ### Changed
 
