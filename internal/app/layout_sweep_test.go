@@ -186,7 +186,8 @@ func TestLayoutSweep_CursorStaysOnScreen(t *testing.T) {
 		keys("z", "b"), keys("z", "z"), keys("z", "t"),
 		keys("ctrl+d", "ctrl+d", "ctrl+d", "ctrl+u", "ctrl+u", "ctrl+u"),
 		keys("{", "}", "}", "{"),
-		keys("l", "l"), keys("h", "h"), keys(" ", " "), keys("t"), keys("s"),
+		keys("l", "l"), keys("h", "h"), keys(" ", " "), keys("t"),
+		keys("m", "enter"), keys("m", "G", "enter"), keys("v", "j", "m", "enter"), keys("ctrl+a"), keys("g", "m"),
 		keys("T", "esc"), keys("E", "esc"), keys("g", "i", "esc"),
 	}
 	for _, c := range sweepCases() {
