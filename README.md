@@ -4,7 +4,20 @@ A terminal-first project planner for people who'd rather press `j` than reach fo
 
 ![Phasionary demo](assets/demo.gif)
 
+[![CI](https://github.com/ilyasturki/phasionary/actions/workflows/ci.yml/badge.svg)](https://github.com/ilyasturki/phasionary/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ilyasturki/phasionary)](https://github.com/ilyasturki/phasionary/releases/latest)
+[![AUR version](https://img.shields.io/aur/version/phasionary)](https://aur.archlinux.org/packages/phasionary)
+[![License: MIT](https://img.shields.io/github/license/ilyasturki/phasionary)](LICENSE)
+
 ## Install
+
+Phasionary runs on Linux and macOS.
+
+### Homebrew
+
+```bash
+brew install ilyasturki/phasionary/phasionary
+```
 
 ### Arch Linux (AUR)
 
@@ -21,16 +34,22 @@ Run without installing:
 nix run github:ilyasturki/phasionary
 ```
 
-Or pin it in your system flake:
+Or pin it in your system flake (x86_64-linux, aarch64-linux and aarch64-darwin):
 
 ```nix
 inputs.phasionary.url = "github:ilyasturki/phasionary";
-# environment.systemPackages = [ inputs.phasionary.packages.x86_64-linux.default ];
+# environment.systemPackages = [ inputs.phasionary.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+```
+
+### Go
+
+```bash
+go install github.com/ilyasturki/phasionary/cmd/phasionary@latest
 ```
 
 ### Prebuilt binary
 
-Grab the latest `phasionary-linux-x64` or `phasionary-linux-arm64` from the [releases page](https://github.com/ilyasturki/phasionary/releases), `chmod +x`, drop in `$PATH`.
+Grab `phasionary-linux-x64`, `phasionary-linux-arm64`, `phasionary-darwin-x64` or `phasionary-darwin-arm64` from the [releases page](https://github.com/ilyasturki/phasionary/releases), `chmod +x` it and put it in your `$PATH`. On macOS, a binary downloaded with a browser also needs `xattr -d com.apple.quarantine <file>`.
 
 ### From source
 
