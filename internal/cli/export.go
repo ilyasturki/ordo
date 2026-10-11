@@ -53,7 +53,11 @@ func newExportCmd() *cobra.Command {
 					return err
 				}
 			case "markdown", "md":
-				if err := export.ExportMarkdown(project, w); err != nil {
+				images, err := attachmentStore()
+				if err != nil {
+					return err
+				}
+				if err := export.ExportMarkdown(project, w, export.Options{Rewrite: images.Absolute}); err != nil {
 					return err
 				}
 			default:

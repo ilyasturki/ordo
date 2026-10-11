@@ -57,7 +57,7 @@ func outline(p domain.Project) []string {
 
 func TestExportNesting(t *testing.T) {
 	var buf bytes.Buffer
-	require.NoError(t, ExportMarkdown(nestedFixture(), &buf))
+	require.NoError(t, ExportMarkdown(nestedFixture(), &buf, Options{}))
 	out := buf.String()
 
 	assert.Contains(t, out, "## v0.2.0\n")
@@ -69,7 +69,7 @@ func TestExportNesting(t *testing.T) {
 func TestNestingRoundTrip(t *testing.T) {
 	project := nestedFixture()
 	var buf bytes.Buffer
-	require.NoError(t, ExportMarkdown(project, &buf))
+	require.NoError(t, ExportMarkdown(project, &buf, Options{}))
 
 	back, err := ImportMarkdown(&buf, "")
 	require.NoError(t, err)
@@ -79,11 +79,11 @@ func TestNestingRoundTrip(t *testing.T) {
 
 func TestCategoryMarkdownTakesTheAreas(t *testing.T) {
 	project := nestedFixture()
-	out := CategoryMarkdown(project, 0)
+	out := CategoryMarkdown(project, 0, Options{})
 	assert.True(t, strings.HasPrefix(out, "## v0.2.0\n"))
 	assert.Contains(t, out, "## v0.2.0 / ui\\/ux")
 	assert.NotContains(t, out, "v0.1.0")
-	assert.True(t, strings.HasPrefix(CategoryMarkdown(project, 1), "## v0.2.0 / ui\\/ux\n"))
+	assert.True(t, strings.HasPrefix(CategoryMarkdown(project, 1, Options{}), "## v0.2.0 / ui\\/ux\n"))
 }
 
 func TestImportNestingRules(t *testing.T) {
@@ -123,7 +123,7 @@ func TestImportNestingRules(t *testing.T) {
 			{ID: "cicd", Name: "CI/CD", Tasks: []domain.Task{{ID: "c", Title: "c", Status: domain.StatusTodo}}},
 		}}
 		var buf bytes.Buffer
-		require.NoError(t, ExportMarkdown(project, &buf))
+		require.NoError(t, ExportMarkdown(project, &buf, Options{}))
 		back, err := ImportMarkdown(&buf, "")
 		require.NoError(t, err)
 		assert.Equal(t, outline(project), outline(back))
@@ -136,7 +136,7 @@ func TestImportNestingRules(t *testing.T) {
 			{ID: "odd", Name: `back\/slash`, Tasks: []domain.Task{{ID: "d1", Title: "d", Status: domain.StatusTodo}}},
 		}}
 		var buf bytes.Buffer
-		require.NoError(t, ExportMarkdown(project, &buf))
+		require.NoError(t, ExportMarkdown(project, &buf, Options{}))
 		assert.Contains(t, buf.String(), "## A \\/ B\n")
 		back, err := ImportMarkdown(&buf, "")
 		require.NoError(t, err)

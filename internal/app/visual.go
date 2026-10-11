@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/export"
 )
@@ -318,6 +319,7 @@ func (m model) visualMarkdownText(selPositions []selection.Position, checkboxes 
 			described[id] = true
 		}
 	}
+	absolute := m.deps.Attachments.Absolute
 	var lines []string
 	for _, task := range m.visualTaskRows(selPositions) {
 		if task.IsSeparator() {
@@ -327,15 +329,36 @@ func (m model) visualMarkdownText(selPositions []selection.Position, checkboxes 
 		if task.ParentID != "" && picked[task.ParentID] {
 			indent = "  "
 		}
-		if picked[task.ID] || indent != "" {
+		body := indent + "  "
+		listed := picked[task.ID] || indent != ""
+		if listed {
+			task.Title = absolute(task.Title)
 			lines = append(lines, indent+markdownItem(task, checkboxes))
 		}
-		if described[task.ID] {
-			body := indent + "  "
-			lines = append(lines, body+strings.ReplaceAll(task.Description, "\n", "\n"+body))
+		switch {
+		case described[task.ID]:
+			lines = append(lines, body+strings.ReplaceAll(absolute(task.Description), "\n", "\n"+body))
+		case listed:
+			for _, line := range m.imageLines(task.Description) {
+				lines = append(lines, body+line)
+			}
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+func (m model) imageLines(description string) []string {
+	store := m.deps.Attachments
+	if store == nil {
+		return nil
+	}
+	var lines []string
+	for _, ref := range attachments.Refs(description) {
+		if path, ok := store.Path(ref.Target); ok {
+			lines = append(lines, attachments.Line(ref.Name, path))
+		}
+	}
+	return lines
 }
 
 func markdownItem(task domain.Task, checkboxes bool) string {

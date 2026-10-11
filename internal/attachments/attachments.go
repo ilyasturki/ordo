@@ -326,3 +326,18 @@ func Line(name, target string) string {
 	}, name)
 	return "![" + strings.Join(strings.Fields(name), " ") + "](" + target + ")"
 }
+
+// Absolute is for text leaving ordo: the project files keep the relative form.
+func (s *Store) Absolute(text string) string {
+	if s == nil || !strings.Contains(text, "![") {
+		return text
+	}
+	return refPattern.ReplaceAllStringFunc(text, func(match string) string {
+		ref, _ := parseRef(refPattern.FindStringSubmatch(match))
+		if !ref.Internal() {
+			return match
+		}
+		path, _ := s.Path(ref.Target)
+		return Line(ref.Name, path)
+	})
+}

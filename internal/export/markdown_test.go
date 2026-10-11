@@ -29,7 +29,7 @@ func TestExportMarkdown(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		err := ExportMarkdown(project, &buf)
+		err := ExportMarkdown(project, &buf, Options{})
 		require.NoError(t, err)
 
 		output := buf.String()
@@ -58,7 +58,7 @@ func TestExportMarkdown(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		err := ExportMarkdown(project, &buf)
+		err := ExportMarkdown(project, &buf, Options{})
 		require.NoError(t, err)
 
 		output := buf.String()
@@ -78,7 +78,7 @@ func TestExportMarkdown(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		err := ExportMarkdown(project, &buf)
+		err := ExportMarkdown(project, &buf, Options{})
 		require.NoError(t, err)
 
 		output := buf.String()
@@ -97,7 +97,7 @@ func TestExportMarkdown(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		err := ExportMarkdown(project, &buf)
+		err := ExportMarkdown(project, &buf, Options{})
 		require.NoError(t, err)
 
 		output := buf.String()
@@ -311,7 +311,7 @@ func TestRoundTrip(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		err := ExportMarkdown(original, &buf)
+		err := ExportMarkdown(original, &buf, Options{})
 		require.NoError(t, err)
 
 		imported, err := ImportMarkdown(&buf, "")
@@ -351,7 +351,7 @@ func TestDescriptionRoundTrip(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		require.NoError(t, ExportMarkdown(project, &buf))
+		require.NoError(t, ExportMarkdown(project, &buf, Options{}))
 		output := buf.String()
 
 		assert.Contains(t, output, "- [ ] With body\n    Line one.\n    Line two.\n")
@@ -412,7 +412,7 @@ func TestDescriptionRoundTrip(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		require.NoError(t, ExportMarkdown(original, &buf))
+		require.NoError(t, ExportMarkdown(original, &buf, Options{}))
 
 		imported, err := ImportMarkdown(&buf, "")
 		require.NoError(t, err)
@@ -488,8 +488,26 @@ func TestExportMarkdown_TagLeavesTitleAlone(t *testing.T) {
 		}},
 	}
 	var buf bytes.Buffer
-	require.NoError(t, ExportMarkdown(project, &buf))
+	require.NoError(t, ExportMarkdown(project, &buf, Options{}))
 	assert.Contains(t, buf.String(), "- [ ] Ship it (high)\n")
+}
+
+func TestExportMarkdown_RewritesTitlesAndDescriptions(t *testing.T) {
+	project := domain.Project{
+		Name: "P",
+		Categories: []domain.Category{{
+			Name: "Feature",
+			Tasks: []domain.Task{
+				{ID: "a", Title: "Crash", Status: domain.StatusTodo, Description: "seen\nshot"},
+				{ID: "b", ParentID: "a", Title: "Light theme", Status: domain.StatusTodo, Description: "shot"},
+			},
+		}},
+	}
+	opts := Options{Rewrite: func(s string) string { return strings.ReplaceAll(s, "shot", "/abs/shot.png") }}
+
+	assert.Equal(t, "## Feature\n\n- [ ] Crash\n    seen\n    /abs/shot.png\n  - [ ] Light theme\n      /abs/shot.png\n",
+		CategoryMarkdown(project, 0, opts))
+	assert.Equal(t, "seen\nshot", project.Categories[0].Tasks[0].Description)
 }
 
 // Titles used to lose a trailing " #word" to the removed tag-label suffix.

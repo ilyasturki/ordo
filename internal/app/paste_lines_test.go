@@ -119,7 +119,7 @@ func TestParsePastedRows_TheAppsOwnCopiesComeBackWhole(t *testing.T) {
 		subtask("one list item", domain.StatusTodo),
 		sep("Later"),
 		{title: "Ship", status: domain.StatusTodo, description: "on friday\n---\nafter review"},
-	}, parsePastedRows(export.CategoryMarkdown(domain.Project{Categories: []domain.Category{cat}}, 0)),
+	}, parsePastedRows(export.CategoryMarkdown(domain.Project{Categories: []domain.Category{cat}}, 0, export.Options{})),
 		"Y: descriptions fold back, a list inside one splits off as subtasks")
 
 	m := newTestModelWithDescription(t)

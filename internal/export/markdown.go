@@ -55,13 +55,25 @@ const (
 	subtaskIndent     = "  "
 )
 
-func CategoryMarkdown(project domain.Project, i int) string {
+type Options struct {
+	// Rewrite maps each task's title and description on the way out; nil keeps them.
+	Rewrite func(string) string
+}
+
+func (o Options) text(s string) string {
+	if o.Rewrite == nil {
+		return s
+	}
+	return o.Rewrite(s)
+}
+
+func CategoryMarkdown(project domain.Project, i int, opts Options) string {
 	var sb strings.Builder
 	for c := i; c < domain.BlockEnd(project.Categories, i); c++ {
 		if c > i {
 			sb.WriteByte('\n')
 		}
-		writeCategory(&sb, CategoryHeading(project, c), project.Categories[c])
+		writeCategory(&sb, CategoryHeading(project, c), project.Categories[c], opts)
 	}
 	return sb.String()
 }
@@ -85,7 +97,7 @@ func unescapeSlashes(s string) string {
 	return strings.TrimSpace(strings.ReplaceAll(s, `\/`, "/"))
 }
 
-func writeCategory(sb *strings.Builder, heading string, cat domain.Category) {
+func writeCategory(sb *strings.Builder, heading string, cat domain.Category, opts Options) {
 	fmt.Fprintf(sb, "## %s\n\n", heading)
 	for _, task := range cat.Tasks {
 		if task.IsSeparator() {
@@ -101,14 +113,14 @@ func writeCategory(sb *strings.Builder, heading string, cat domain.Category) {
 			indent = subtaskIndent
 		}
 		marker := statusToMarker(task.Status)
-		line := fmt.Sprintf("%s- [%s] %s", indent, marker, task.Title)
+		line := fmt.Sprintf("%s- [%s] %s", indent, marker, opts.text(task.Title))
 		if task.Priority != "" {
 			line += fmt.Sprintf(" (%s)", task.Priority)
 		}
 		sb.WriteString(line)
 		sb.WriteByte('\n')
 		if task.Description != "" {
-			for _, dline := range strings.Split(task.Description, "\n") {
+			for _, dline := range strings.Split(opts.text(task.Description), "\n") {
 				if dline == "" {
 					sb.WriteByte('\n')
 					continue
@@ -121,12 +133,12 @@ func writeCategory(sb *strings.Builder, heading string, cat domain.Category) {
 	}
 }
 
-func ExportMarkdown(project domain.Project, w io.Writer) error {
+func ExportMarkdown(project domain.Project, w io.Writer, opts Options) error {
 	if _, err := fmt.Fprintf(w, "# %s\n", project.Name); err != nil {
 		return err
 	}
 	for i := 0; i < len(project.Categories); i = domain.BlockEnd(project.Categories, i) {
-		if _, err := fmt.Fprintf(w, "\n%s", CategoryMarkdown(project, i)); err != nil {
+		if _, err := fmt.Fprintf(w, "\n%s", CategoryMarkdown(project, i, opts)); err != nil {
 			return err
 		}
 	}

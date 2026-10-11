@@ -28,7 +28,7 @@ func TestExportSeparators(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	require.NoError(t, ExportMarkdown(project, &buf))
+	require.NoError(t, ExportMarkdown(project, &buf, Options{}))
 	out := buf.String()
 
 	assert.Contains(t, out, "### v0.9")
@@ -91,7 +91,7 @@ func TestSeparatorRoundTrip(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	require.NoError(t, ExportMarkdown(project, &buf))
+	require.NoError(t, ExportMarkdown(project, &buf, Options{}))
 
 	reimported, err := ImportMarkdown(&buf, "")
 	require.NoError(t, err)

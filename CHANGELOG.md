@@ -13,6 +13,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - An image reads `▣ name` in the description, or `▣ name (not synced yet)` before its file arrives, and the title row counts them as `▣` or `▣2`, with descriptions expanded too. `gi` lists each image's path, size and pixel size, and `gy` offers its path
 - `gx` opens the URLs in the description as well as the title's, and opens an image in the desktop's viewer
 - `ordo attachments prune` lists the images no project references any more and that are over 30 days old, conflict copies counted; `--yes` removes them. Nothing else ever deletes an image
+- Text that leaves ordo points an image at its absolute path, so an agent handed it can open the file: `y` on a task, `Y` on a category and `ordo export -f markdown`. A visual `y` or `Y` lists each task's images under its bullet. The project file keeps the relative reference, and `ordo export -f json` too
 
 ### Changed
 

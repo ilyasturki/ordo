@@ -281,3 +281,15 @@ func TestLine(t *testing.T) {
 	require.Len(t, ref, 1)
 	assert.Equal(t, "weird name", ref[0].Name)
 }
+
+func TestAbsolute_PointsStoredImagesAtTheirFile(t *testing.T) {
+	projects := t.TempDir()
+	s := NewStore(projects)
+	hash := "0123456789abcdef0123456789abcdef"
+	text := "see ![Shot](attachments/" + hash + ".png)\n![ext]( /home/me/a.png ) and ![web](https://x/y.png)"
+
+	assert.Equal(t,
+		"see ![Shot]("+filepath.Join(projects, "attachments", hash+".png")+")\n![ext]( /home/me/a.png ) and ![web](https://x/y.png)",
+		s.Absolute(text), "other references stay as written")
+	assert.Equal(t, text, (*Store)(nil).Absolute(text))
+}

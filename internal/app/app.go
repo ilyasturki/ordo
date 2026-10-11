@@ -668,12 +668,13 @@ func (m *model) copyTextForPosition(pos selection.Position) string {
 		return m.project.Categories[pos.CategoryIndex].Name
 	case selection.FocusTask, selection.FocusSeparator:
 		task := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
+		text := task.Title
 		if pos.Kind == selection.FocusTask && task.Description != "" {
-			return task.Title + "\n\n" + task.Description
+			text += "\n\n" + task.Description
 		}
-		return task.Title
+		return m.deps.Attachments.Absolute(text)
 	case selection.FocusDescription:
-		return m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].Description
+		return m.deps.Attachments.Absolute(m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].Description)
 	}
 	return ""
 }
@@ -699,7 +700,7 @@ func (m *model) copyCategoryContent() tea.Cmd {
 	if !ok || pos.Kind == selection.FocusProject {
 		return nil
 	}
-	return m.copyToClipboard(export.CategoryMarkdown(m.project, pos.CategoryIndex), "")
+	return m.copyToClipboard(export.CategoryMarkdown(m.project, pos.CategoryIndex, export.Options{Rewrite: m.deps.Attachments.Absolute}), "")
 }
 
 func (m model) View() tea.View {

@@ -33,6 +33,14 @@ func newAttachmentsCmd() *cobra.Command {
 	return cmd
 }
 
+func attachmentStore() (*attachments.Store, error) {
+	dataDir, err := config.ResolveDataDir(viper.GetString("data"))
+	if err != nil {
+		return nil, err
+	}
+	return attachments.NewStore(dataDir), nil
+}
+
 func newAttachmentsPruneCmd() *cobra.Command {
 	var yes bool
 	days := int(attachments.PruneAge / (24 * time.Hour))
@@ -47,11 +55,10 @@ func newAttachmentsPruneCmd() *cobra.Command {
 			"referenced it in an edit this one hasn't received.", days, days),
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dataDir, err := config.ResolveDataDir(viper.GetString("data"))
+			store, err := attachmentStore()
 			if err != nil {
 				return err
 			}
-			store := attachments.NewStore(dataDir)
 			orphans, err := store.Unreferenced(time.Now())
 			if err != nil {
 				return err
