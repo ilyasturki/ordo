@@ -1,8 +1,8 @@
 package app
 
 import (
-	"github.com/ilyasturki/phasionary/internal/app/components"
-	"github.com/ilyasturki/phasionary/internal/ui"
+	"github.com/ilyasturki/ordo/internal/app/components"
+	"github.com/ilyasturki/ordo/internal/ui"
 )
 
 func (m model) urlPickerView() string {

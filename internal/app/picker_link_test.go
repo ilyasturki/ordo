@@ -6,9 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ilyasturki/phasionary/internal/config"
-	"github.com/ilyasturki/phasionary/internal/data"
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/config"
+	"github.com/ilyasturki/ordo/internal/data"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 // linkTrackingState records dir-link reads/writes so tests can assert whether

@@ -68,7 +68,7 @@ func TestPaste_OurLastWriteOfOtherTextPastesThatText(t *testing.T) {
 	m := copiedWhileFocused(t)
 	m.handleClipboardResult(clipboardResultMsg{text: "9652ac64-1187"})
 
-	assert.Nil(t, m.paste(), "phasionary itself put the ID there")
+	assert.Nil(t, m.paste(), "ordo itself put the ID there")
 	assert.Equal(t, []string{"Delta", "9652ac64-1187", "Epsilon"}, taskTitles(m.project.Categories[1]))
 	assert.True(t, m.ui.Clipboard.empty(), "the clipboard no longer holds the copy, so the copy retires")
 }

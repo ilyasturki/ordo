@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ilyasturki/phasionary/internal/domain"
-	"github.com/ilyasturki/phasionary/internal/operations"
+	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 func projectWithTasks(ids ...string) *domain.Project {

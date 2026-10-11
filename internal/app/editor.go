@@ -9,9 +9,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/ilyasturki/phasionary/internal/app/selection"
-	"github.com/ilyasturki/phasionary/internal/data"
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/data"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 type editorFinishedMsg struct {
@@ -110,7 +110,7 @@ func (m *model) startExternalEdit() tea.Cmd {
 		itemType = selection.FocusTask
 	}
 
-	tempFile, err := os.CreateTemp("", "phasionary-edit-*.txt")
+	tempFile, err := os.CreateTemp("", "ordo-edit-*.txt")
 	if err != nil {
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Failed to create temp file: %v", err)
 		return nil

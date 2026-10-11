@@ -4,12 +4,12 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 
-	"github.com/ilyasturki/phasionary/internal/app/components"
-	"github.com/ilyasturki/phasionary/internal/app/modes"
-	"github.com/ilyasturki/phasionary/internal/app/selection"
-	"github.com/ilyasturki/phasionary/internal/config"
-	"github.com/ilyasturki/phasionary/internal/data"
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/app/components"
+	"github.com/ilyasturki/ordo/internal/app/modes"
+	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/config"
+	"github.com/ilyasturki/ordo/internal/data"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 type DescriptionEditState struct {

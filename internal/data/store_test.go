@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 func TestDeleteProject(t *testing.T) {

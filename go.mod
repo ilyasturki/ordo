@@ -1,4 +1,4 @@
-module github.com/ilyasturki/phasionary
+module github.com/ilyasturki/ordo
 
 go 1.25.0
 

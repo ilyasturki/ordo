@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 func TestParseTaskEdit(t *testing.T) {

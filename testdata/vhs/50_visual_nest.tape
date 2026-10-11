@@ -1,13 +1,13 @@
-Output "/tmp/phas-vt/vhs-out/50_visual_nest.gif"
+Output "/tmp/ordo-vt/vhs-out/50_visual_nest.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 900
 Set FontSize 16
-Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
-Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
+Env ORDO_DATA_PATH "/tmp/ordo-vt/data"
+Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
 
 Hide
-Type "./phasionary import testdata/vhs/nested.json -q && clear && ./phasionary -p Versions"
+Type "./ordo import testdata/vhs/nested.json -q && clear && ./ordo -p Versions"
 Enter
 Sleep 800ms
 Show
@@ -19,17 +19,17 @@ Sleep 200ms
 Type "v"
 Type "j"
 Sleep 300ms
-Screenshot "/tmp/phas-vt/vhs-out/50_selected.png"
+Screenshot "/tmp/ordo-vt/vhs-out/50_selected.png"
 Sleep 300ms
 Type ">"
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/50_nested.png"
+Screenshot "/tmp/ordo-vt/vhs-out/50_nested.png"
 Sleep 300ms
 
 # < takes the selected subtasks back out, still selected.
 Type "<"
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/50_unnested.png"
+Screenshot "/tmp/ordo-vt/vhs-out/50_unnested.png"
 Sleep 300ms
 
 # A selected sub-category refuses >, since nesting goes one level deep.
@@ -41,7 +41,7 @@ Type "v"
 Sleep 200ms
 Type ">"
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/50_refused.png"
+Screenshot "/tmp/ordo-vt/vhs-out/50_refused.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 Escape

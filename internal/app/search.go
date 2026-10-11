@@ -8,9 +8,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/ilyasturki/phasionary/internal/app/selection"
-	"github.com/ilyasturki/phasionary/internal/domain"
-	"github.com/ilyasturki/phasionary/internal/ui"
+	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/ui"
 )
 
 // SearchState backs the `/` text search: an incremental, vim/less-style

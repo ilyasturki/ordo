@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ilyasturki/phasionary/internal/app/selection"
-	"github.com/ilyasturki/phasionary/internal/domain"
-	"github.com/ilyasturki/phasionary/internal/ui"
+	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/ui"
 )
 
 func press(t *testing.T, m model, keys ...string) model {

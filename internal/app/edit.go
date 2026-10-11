@@ -8,10 +8,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/ilyasturki/phasionary/internal/app/modes"
-	"github.com/ilyasturki/phasionary/internal/app/selection"
-	"github.com/ilyasturki/phasionary/internal/data"
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/app/modes"
+	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/data"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 // editOrFocusDescription is the shift+enter handler. From a task with a

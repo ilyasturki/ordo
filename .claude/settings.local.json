@@ -7,8 +7,8 @@
       "Bash(go doc:*)",
       "Bash(go list:*)",
       "Bash(go get:*)",
-      "Read(~/.local/share/phasionary)",
-      "Bash(./phasionary:*)"
+      "Read(~/.local/share/ordo)",
+      "Bash(./ordo:*)"
     ]
   }
 }

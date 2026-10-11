@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 // CreateCategory fails with ErrNameRequired, or the domain's ErrDuplicateCategoryName, ErrCategoryNotFound or ErrNestDepth.

@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ilyasturki/phasionary/internal/data"
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/data"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 // stubCursorSaver records what the background writer was handed. The throttling

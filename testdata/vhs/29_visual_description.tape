@@ -1,13 +1,13 @@
-Output "/tmp/phas-vt/vhs-out/29_visual_description.gif"
+Output "/tmp/ordo-vt/vhs-out/29_visual_description.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
 Set FontSize 16
-Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
-Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
+Env ORDO_DATA_PATH "/tmp/ordo-vt/data"
+Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
 
 Hide
-Type "clear && ./phasionary -p Default"
+Type "clear && ./ordo -p Default"
 Enter
 Sleep 800ms
 Show
@@ -22,17 +22,17 @@ Type "v"
 Sleep 300ms
 Type "j"
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/29_visual_desc_in_range.png"
+Screenshot "/tmp/ordo-vt/vhs-out/29_visual_desc_in_range.png"
 
 # Extend one more row (next task) — the band covers task, description, task.
 Type "j"
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/29_visual_desc_swept.png"
+Screenshot "/tmp/ordo-vt/vhs-out/29_visual_desc_swept.png"
 
 # Shift the block down and back up; the description travels with its task.
 Type "J"
 Sleep 800ms
-Screenshot "/tmp/phas-vt/vhs-out/29_visual_desc_shift_down.png"
+Screenshot "/tmp/ordo-vt/vhs-out/29_visual_desc_shift_down.png"
 
 Type "K"
 Sleep 400ms
@@ -51,7 +51,7 @@ Type "j"
 Sleep 200ms
 Type "v"
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/29_visual_anchor_on_desc.png"
+Screenshot "/tmp/ordo-vt/vhs-out/29_visual_anchor_on_desc.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 

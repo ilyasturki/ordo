@@ -1,17 +1,19 @@
 # Changelog
 
-All notable changes to phasionary are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+All notable changes to ordo are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Update phasionary on every machine that shares the data directory before nesting anything or shipping a version. A project with a sub-category or subtask is saved as schema 2, one with a shipped version as schema 3, and older builds refuse to open both.
+Update ordo on every machine that shares the data directory before nesting anything or shipping a version. A project with a sub-category or subtask is saved as schema 2, one with a shipped version as schema 3, and older builds refuse to open both.
+
+phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and the directories are renamed, and nothing reads the old ones: move `~/.config/phasionary` to `~/.config/ordo` and `~/.local/share/phasionary` to `~/.local/share/ordo` on every machine.
 
 ### Added
 
 - Versions: a `vX.Y.Z` category is a version. `s` ships or reopens it; a shipped version folds and dims, and shows a red `! N open` while tasks are left in it. Open versions show done, total and in-progress counts
 - `M` sends the task, or a visual range, to an open version or to the `next` inbox
 - `A` on a version proposes the next patch version as the new category's name
-- `phasionary versions [--json]` lists versions with their progress and ship date, and `phasionary category ship|unship` ships or reopens one
+- `ordo versions [--json]` lists versions with their progress and ship date, and `ordo category ship|unship` ships or reopens one
 - One level of sub-categories and subtasks. `>` nests the row under the one above it and `<` un-nests it; `a`, `A` and `-` add at the cursor's depth
 - `--parent` on `category add` and `task add`, and `parent/child` paths wherever the CLI takes a category
 - Markdown export and import keep the nesting, and indented bullets in a paste become subtasks
@@ -31,10 +33,11 @@ Update phasionary on every machine that shares the data directory before nesting
 
 ### Changed
 
-- The Go module is `github.com/ilyasturki/phasionary`, so `go install github.com/ilyasturki/phasionary/cmd/phasionary@latest` works
+- phasionary is now ordo: the `ordo` command, the `ordo` and `ordo-bin` AUR packages, `ORDO_*` environment variables, `~/.config/ordo` and `~/.local/share/ordo`
+- The Go module is `github.com/ilyasturki/ordo`, so `go install github.com/ilyasturki/ordo/cmd/ordo@latest` works
 - Copies go to the clipboard through the terminal's OSC 52 by default. `copy_via: wl-copy` uses `wl-copy` instead
 - `ctrl+v` in every line input reads the system clipboard
-- `p` skips reading the system clipboard while the terminal has kept focus since phasionary's last copy
+- `p` skips reading the system clipboard while the terminal has kept focus since ordo's last copy
 - A hung `wl-copy` or `wl-paste` is killed with its process group after two seconds
 - Tags are coloured marks only; labels are gone
 - Category names only need to be unique among siblings. Imports, pastes and the CLI keep them unique, and a JSON import suffixes a clashing name

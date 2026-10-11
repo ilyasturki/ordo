@@ -3,9 +3,9 @@ package app
 import (
 	"slices"
 
-	"github.com/ilyasturki/phasionary/internal/app/modes"
-	"github.com/ilyasturki/phasionary/internal/app/selection"
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/app/modes"
+	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 func (m *model) moveSelectedRow(dir int) {

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ilyasturki/phasionary/internal/config"
+	"github.com/ilyasturki/ordo/internal/config"
 )
 
 func currentOptionValue(t *testing.T, m *model, i int) string {

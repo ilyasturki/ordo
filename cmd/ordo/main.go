@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/ilyasturki/phasionary/internal/cli"
+	"github.com/ilyasturki/ordo/internal/cli"
 )
 
 func main() {

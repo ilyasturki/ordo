@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run VHS tapes against an isolated Phasionary data dir.
+# Run VHS tapes against an isolated Ordo data dir.
 #
 # Usage: ./testdata/vhs/run.sh [tape-name ...]
 #   ./testdata/vhs/run.sh                  # run all
@@ -13,20 +13,20 @@
 set -euo pipefail
 
 root=$(git rev-parse --show-toplevel 2>/dev/null) || {
-    echo "run.sh must be invoked from within the phasionary git repo" >&2
+    echo "run.sh must be invoked from within the ordo git repo" >&2
     exit 1
 }
 cd "$root"
 
-DATA="/tmp/phas-vt/data"
-CFG="/tmp/phas-vt/cfg"
-OUT="/tmp/phas-vt/vhs-out"
+DATA="/tmp/ordo-vt/data"
+CFG="/tmp/ordo-vt/cfg"
+OUT="/tmp/ordo-vt/vhs-out"
 # Stands in for the desktop clipboard, which wl-copy and wl-paste can only
 # reach with keyboard focus on GNOME. Tapes seed it and read it back.
-export PHASIONARY_CLIPBOARD_FILE="/tmp/phas-vt/clipboard"
+export ORDO_CLIPBOARD_FILE="/tmp/ordo-vt/clipboard"
 
 rm -rf "$OUT" && mkdir -p "$OUT"
-go build -o phasionary ./cmd/phasionary
+go build -o ordo ./cmd/ordo
 
 mapfile -t TAPES < <(
     if [ "$#" -gt 0 ]; then
@@ -43,11 +43,11 @@ mapfile -t TAPES < <(
 # them. Import is cheap, and an unconditional reset can't go stale the way a
 # hand-maintained "these tapes mutate" list does.
 seed() {
-    if ! BIN="$(pwd)/phasionary" ./testdata/vhs/seed.sh "$DATA" "$CFG" >/dev/null; then
+    if ! BIN="$(pwd)/ordo" ./testdata/vhs/seed.sh "$DATA" "$CFG" >/dev/null; then
         echo "seed failed for $DATA; aborting" >&2
         exit 1
     fi
-    rm -f "$PHASIONARY_CLIPBOARD_FILE"
+    rm -f "$ORDO_CLIPBOARD_FILE"
 }
 
 for tape in "${TAPES[@]}"; do

@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ilyasturki/phasionary/internal/config"
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/config"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 // badgedProject has a task and a category carrying every badge that eats title

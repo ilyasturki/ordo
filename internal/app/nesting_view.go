@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 const nestIndent = 2

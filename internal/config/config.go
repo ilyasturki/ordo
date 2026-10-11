@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	EnvDataPath   = "PHASIONARY_DATA_PATH"
-	EnvConfigPath = "PHASIONARY_CONFIG_PATH"
+	EnvDataPath   = "ORDO_DATA_PATH"
+	EnvConfigPath = "ORDO_CONFIG_PATH"
 
 	StatusDisplayText  = "text"
 	StatusDisplayIcons = "icons"
@@ -36,7 +36,7 @@ type Config struct {
 	TaskCommands []TaskCommand `json:"task_commands,omitempty"`
 }
 
-// Run is executed directly, never through a shell; the task arrives as PHASIONARY_* variables.
+// Run is executed directly, never through a shell; the task arrives as ORDO_* variables.
 type TaskCommand struct {
 	Key    string   `json:"key"`
 	Label  string   `json:"label"`
@@ -109,7 +109,7 @@ func resolveDir(input, env, xdg, sub string, home ...string) (string, error) {
 }
 
 func ResolveDataDir(input string) (string, error) {
-	dir, err := resolveDir(input, EnvDataPath, "", "", ".local", "share", "phasionary")
+	dir, err := resolveDir(input, EnvDataPath, "", "", ".local", "share", "ordo")
 	if err != nil {
 		return "", err
 	}
@@ -125,7 +125,7 @@ func configDirFromPath(p string) string {
 }
 
 func ResolveConfigDir(input string) (string, error) {
-	dir, err := resolveDir(input, EnvConfigPath, "XDG_CONFIG_HOME", "phasionary", ".config", "phasionary")
+	dir, err := resolveDir(input, EnvConfigPath, "XDG_CONFIG_HOME", "ordo", ".config", "ordo")
 	if err != nil {
 		return "", err
 	}

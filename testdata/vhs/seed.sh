@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Seed an isolated Phasionary data dir for visual testing.
+# Seed an isolated Ordo data dir for visual testing.
 # Usage: ./seed.sh <data-dir> <config-dir>
 set -euo pipefail
 
@@ -10,13 +10,13 @@ fi
 
 DATA="$1"
 CFG="$2"
-BIN="${BIN:-./phasionary}"
+BIN="${BIN:-./ordo}"
 FIXTURE="$(dirname "$0")/seed.json"
 
 rm -rf "$DATA" "$CFG"
 mkdir -p "$DATA" "$CFG"
 
-export PHASIONARY_DATA_PATH="$DATA"
-export PHASIONARY_CONFIG_PATH="$CFG"
+export ORDO_DATA_PATH="$DATA"
+export ORDO_CONFIG_PATH="$CFG"
 
 "$BIN" import "$FIXTURE" -q

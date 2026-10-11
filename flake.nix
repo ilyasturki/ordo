@@ -1,5 +1,5 @@
 {
-  description = "Phasionary - Terminal-first project planning tool";
+  description = "Ordo - Terminal-first project planning tool";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -24,42 +24,42 @@
           pkgs = nixpkgs.legacyPackages.${system};
         in
         {
-          phasionary = pkgs.buildGoModule {
-            pname = "phasionary";
+          ordo = pkgs.buildGoModule {
+            pname = "ordo";
             inherit version;
             src = ./.;
             vendorHash = "sha256-VIeI6W8ybid5Bq6nIp0K4DPfZVLomE486Je8dMPmwjc=";
-            subPackages = [ "cmd/phasionary" ];
+            subPackages = [ "cmd/ordo" ];
             ldflags = [
               "-s"
               "-w"
-              "-X github.com/ilyasturki/phasionary/internal/version.Version=v${version}"
-              "-X github.com/ilyasturki/phasionary/internal/version.Commit=${commit}"
-              "-X github.com/ilyasturki/phasionary/internal/version.BuildDate=${buildDate}"
+              "-X github.com/ilyasturki/ordo/internal/version.Version=v${version}"
+              "-X github.com/ilyasturki/ordo/internal/version.Commit=${commit}"
+              "-X github.com/ilyasturki/ordo/internal/version.BuildDate=${buildDate}"
             ];
             nativeBuildInputs = [ pkgs.installShellFiles ];
             postInstall = ''
-              installShellCompletion --cmd phasionary \
-                --bash <($out/bin/phasionary completion bash) \
-                --zsh <($out/bin/phasionary completion zsh) \
-                --fish <($out/bin/phasionary completion fish)
+              installShellCompletion --cmd ordo \
+                --bash <($out/bin/ordo completion bash) \
+                --zsh <($out/bin/ordo completion zsh) \
+                --fish <($out/bin/ordo completion fish)
             '';
             meta = {
               description = "Terminal-first, single-user project planning tool";
-              homepage = "https://github.com/ilyasturki/phasionary";
+              homepage = "https://github.com/ilyasturki/ordo";
               license = pkgs.lib.licenses.mit;
-              mainProgram = "phasionary";
+              mainProgram = "ordo";
               platforms = pkgs.lib.platforms.linux ++ pkgs.lib.platforms.darwin;
             };
           };
-          default = self.packages.${system}.phasionary;
+          default = self.packages.${system}.ordo;
         }
       );
 
       apps = forAllSystems (system: {
         default = {
           type = "app";
-          program = "${self.packages.${system}.phasionary}/bin/phasionary";
+          program = "${self.packages.${system}.ordo}/bin/ordo";
           meta.description = "Terminal-first, single-user project planning tool";
         };
       });

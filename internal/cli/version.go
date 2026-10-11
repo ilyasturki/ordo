@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ilyasturki/phasionary/internal/version"
+	"github.com/ilyasturki/ordo/internal/version"
 )
 
 type VersionOutput struct {
@@ -27,7 +27,7 @@ func newVersionCmd() *cobra.Command {
 					Built:   version.BuildDate,
 				})
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "phasionary %s (commit: %s, built: %s)\n",
+			fmt.Fprintf(cmd.OutOrStdout(), "ordo %s (commit: %s, built: %s)\n",
 				version.Version, version.Commit, version.BuildDate)
 			return nil
 		},

@@ -4,17 +4,17 @@
 version := trim(`cat VERSION`)
 commit := `git rev-parse --short HEAD`
 build_date := `date -u +%Y-%m-%dT%H:%M:%SZ`
-ldflags := "-X github.com/ilyasturki/phasionary/internal/version.Version=v" + version + \
-    " -X github.com/ilyasturki/phasionary/internal/version.Commit=" + commit + \
-    " -X github.com/ilyasturki/phasionary/internal/version.BuildDate=" + build_date
+ldflags := "-X github.com/ilyasturki/ordo/internal/version.Version=v" + version + \
+    " -X github.com/ilyasturki/ordo/internal/version.Commit=" + commit + \
+    " -X github.com/ilyasturki/ordo/internal/version.BuildDate=" + build_date
 
 # Run from source, passing args through (e.g. `just run version`).
 run *ARGS:
-    go run -ldflags "{{ldflags}}" ./cmd/phasionary {{ARGS}}
+    go run -ldflags "{{ldflags}}" ./cmd/ordo {{ARGS}}
 
 # Build the binary.
 build:
-    go build -ldflags "{{ldflags}}" -o phasionary ./cmd/phasionary
+    go build -ldflags "{{ldflags}}" -o ordo ./cmd/ordo
 
 # Run every test, then the nix build.
 test:

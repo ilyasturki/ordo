@@ -1,7 +1,7 @@
 package components
 
 import (
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 type EstimatePickerState struct {

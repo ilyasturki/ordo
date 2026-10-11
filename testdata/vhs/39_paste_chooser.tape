@@ -1,19 +1,19 @@
-Output "/tmp/phas-vt/vhs-out/39_paste_chooser.gif"
+Output "/tmp/ordo-vt/vhs-out/39_paste_chooser.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
 Set FontSize 16
-Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
-Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
-Env PHASIONARY_CLIPBOARD_FILE "/tmp/phas-vt/clipboard"
+Env ORDO_DATA_PATH "/tmp/ordo-vt/data"
+Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
+Env ORDO_CLIPBOARD_FILE "/tmp/ordo-vt/clipboard"
 
 # Seeds the clipboard file with a note, then lands it each way the chooser
 # offers besides one task per line (34_paste_lines).
 Hide
-Type "clear && printf 'Call the bank\n\n  ask about the fees\n  and the new card\n' > /tmp/phas-vt/clipboard"
+Type "clear && printf 'Call the bank\n\n  ask about the fees\n  and the new card\n' > /tmp/ordo-vt/clipboard"
 Enter
 Sleep 500ms
-Type "clear && ./phasionary -p Default"
+Type "clear && ./ordo -p Default"
 Enter
 Sleep 800ms
 Show
@@ -25,12 +25,12 @@ Type "jj"
 Sleep 300ms
 Type "p"
 Sleep 700ms
-Screenshot "/tmp/phas-vt/vhs-out/39_chooser.png"
+Screenshot "/tmp/ordo-vt/vhs-out/39_chooser.png"
 
 # d: one task, the first line its title and the rest its description.
 Type "d"
 Sleep 500ms
-Screenshot "/tmp/phas-vt/vhs-out/39_title_and_description.png"
+Screenshot "/tmp/ordo-vt/vhs-out/39_title_and_description.png"
 Type "u"
 Sleep 300ms
 
@@ -39,7 +39,7 @@ Type "p"
 Sleep 700ms
 Type "o"
 Sleep 500ms
-Screenshot "/tmp/phas-vt/vhs-out/39_joined.png"
+Screenshot "/tmp/ordo-vt/vhs-out/39_joined.png"
 Type "u"
 Sleep 300ms
 
@@ -48,7 +48,7 @@ Type "p"
 Sleep 700ms
 Type "a"
 Sleep 500ms
-Screenshot "/tmp/phas-vt/vhs-out/39_appended.png"
+Screenshot "/tmp/ordo-vt/vhs-out/39_appended.png"
 Type "u"
 Sleep 300ms
 
@@ -59,10 +59,10 @@ Sleep 300ms
 Type "Note: "
 Ctrl+V
 Sleep 700ms
-Screenshot "/tmp/phas-vt/vhs-out/39_editor_chooser.png"
+Screenshot "/tmp/ordo-vt/vhs-out/39_editor_chooser.png"
 Type "o"
 Sleep 500ms
-Screenshot "/tmp/phas-vt/vhs-out/39_editor_joined.png"
+Screenshot "/tmp/ordo-vt/vhs-out/39_editor_joined.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 

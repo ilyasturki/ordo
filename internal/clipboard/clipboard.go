@@ -17,7 +17,7 @@ import (
 
 // EnvFile names a file that stands in for the clipboard, so tests and tapes
 // never reach the desktop.
-const EnvFile = "PHASIONARY_CLIPBOARD_FILE"
+const EnvFile = "ORDO_CLIPBOARD_FILE"
 
 // ErrNoBackend reports that no clipboard utility could be reached.
 var ErrNoBackend = errors.New("no clipboard utility available")

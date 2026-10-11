@@ -5,24 +5,24 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 func newCompletionCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "completion [bash|zsh|fish]",
 		Short: "Generate shell completion script",
-		Long: `Generate shell completion script for phasionary.
+		Long: `Generate shell completion script for ordo.
 
 Bash:
-  $ source <(phasionary completion bash)
-  # Persist: phasionary completion bash > /etc/bash_completion.d/phasionary
+  $ source <(ordo completion bash)
+  # Persist: ordo completion bash > /etc/bash_completion.d/ordo
 
 Zsh:
-  $ phasionary completion zsh > "${fpath[1]}/_phasionary"
+  $ ordo completion zsh > "${fpath[1]}/_ordo"
 
 Fish:
-  $ phasionary completion fish > ~/.config/fish/completions/phasionary.fish
+  $ ordo completion fish > ~/.config/fish/completions/ordo.fish
 `,
 		ValidArgs:             []string{"bash", "zsh", "fish"},
 		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),

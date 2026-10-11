@@ -28,10 +28,10 @@ func TestResolveConfigDir(t *testing.T) {
 		t.Setenv("XDG_CONFIG_HOME", "/xdg/config")
 		dir, err := ResolveConfigDir("")
 		require.NoError(t, err)
-		assert.Equal(t, "/xdg/config/phasionary", dir)
+		assert.Equal(t, "/xdg/config/ordo", dir)
 	})
 
-	t.Run("falls back to ~/.config/phasionary", func(t *testing.T) {
+	t.Run("falls back to ~/.config/ordo", func(t *testing.T) {
 		t.Setenv(EnvConfigPath, "")
 		t.Setenv("XDG_CONFIG_HOME", "")
 		home, err := os.UserHomeDir()
@@ -39,7 +39,7 @@ func TestResolveConfigDir(t *testing.T) {
 
 		dir, err := ResolveConfigDir("")
 		require.NoError(t, err)
-		assert.Equal(t, filepath.Join(home, ".config", "phasionary"), dir)
+		assert.Equal(t, filepath.Join(home, ".config", "ordo"), dir)
 	})
 }
 

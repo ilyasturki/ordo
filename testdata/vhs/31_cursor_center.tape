@@ -1,13 +1,13 @@
-Output "/tmp/phas-vt/vhs-out/31_cursor_center.gif"
+Output "/tmp/ordo-vt/vhs-out/31_cursor_center.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 360
 Set FontSize 16
-Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
-Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
+Env ORDO_DATA_PATH "/tmp/ordo-vt/data"
+Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
 
 Hide
-Type "clear && ./phasionary -p Default"
+Type "clear && ./ordo -p Default"
 Enter
 Sleep 800ms
 Show
@@ -18,7 +18,7 @@ Type "gg"
 Sleep 300ms
 Type "jjjjjjjjjj"
 Sleep 500ms
-Screenshot "/tmp/phas-vt/vhs-out/31_before_quit_at_edge.png"
+Screenshot "/tmp/ordo-vt/vhs-out/31_before_quit_at_edge.png"
 Sleep 500ms
 
 # Reopening has no record of where the view sat, so the restored row should come
@@ -26,12 +26,12 @@ Sleep 500ms
 Hide
 Type "q"
 Sleep 600ms
-Type "clear && ./phasionary -p Default"
+Type "clear && ./ordo -p Default"
 Enter
 Sleep 1s
 Show
 
-Screenshot "/tmp/phas-vt/vhs-out/31_after_restart_centered.png"
+Screenshot "/tmp/ordo-vt/vhs-out/31_after_restart_centered.png"
 Sleep 500ms
 
 Hide

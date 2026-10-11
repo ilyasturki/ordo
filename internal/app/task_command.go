@@ -12,10 +12,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/ilyasturki/phasionary/internal/app/selection"
-	"github.com/ilyasturki/phasionary/internal/config"
-	"github.com/ilyasturki/phasionary/internal/domain"
-	"github.com/ilyasturki/phasionary/internal/ui"
+	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/config"
+	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/ui"
 )
 
 const sectionCommands = "Task commands"
@@ -177,14 +177,14 @@ func (m model) renderCommandPrompt() string {
 // A sub-category's name repeats across parents, so the category goes by its path, which -C resolves.
 func taskCommandEnv(p domain.Project, ci int, t domain.Task, input string) []string {
 	return append(os.Environ(),
-		"PHASIONARY_PROJECT_ID="+p.ID,
-		"PHASIONARY_PROJECT_NAME="+p.Name,
-		"PHASIONARY_TASK_ID="+t.ID,
-		"PHASIONARY_TASK_TITLE="+t.Title,
-		"PHASIONARY_TASK_DESCRIPTION="+t.Description,
-		"PHASIONARY_CATEGORY="+p.CategoryPath(ci),
-		"PHASIONARY_CATEGORY_ID="+p.Categories[ci].ID,
-		"PHASIONARY_INPUT="+input,
+		"ORDO_PROJECT_ID="+p.ID,
+		"ORDO_PROJECT_NAME="+p.Name,
+		"ORDO_TASK_ID="+t.ID,
+		"ORDO_TASK_TITLE="+t.Title,
+		"ORDO_TASK_DESCRIPTION="+t.Description,
+		"ORDO_CATEGORY="+p.CategoryPath(ci),
+		"ORDO_CATEGORY_ID="+p.Categories[ci].ID,
+		"ORDO_INPUT="+input,
 	)
 }
 

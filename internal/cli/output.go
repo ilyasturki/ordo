@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/ilyasturki/phasionary/internal/app"
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/app"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 type OutputFormat int

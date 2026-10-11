@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 // projectWithTasks builds a one-category project holding the named tasks and

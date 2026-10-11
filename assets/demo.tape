@@ -15,7 +15,7 @@ Set TypingSpeed 40ms
 Set CursorBlink false
 
 Hide
-Type "source assets/demo/setup.sh && clear && phasionary -p ferry"
+Type "source assets/demo/setup.sh && clear && ordo -p ferry"
 Enter
 Wait+Screen@60s /shipped/
 Show

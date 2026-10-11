@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 // The final edit must always reach disk even when many edits are coalesced.

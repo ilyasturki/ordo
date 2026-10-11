@@ -9,7 +9,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/ilyasturki/phasionary/internal/fsutil"
+	"github.com/ilyasturki/ordo/internal/fsutil"
 )
 
 // Cursor records which row the TUI was focused on, addressed by stable IDs

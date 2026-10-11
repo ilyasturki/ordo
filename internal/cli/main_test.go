@@ -4,11 +4,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ilyasturki/phasionary/internal/config"
+	"github.com/ilyasturki/ordo/internal/config"
 )
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "phasionary-cli-test-")
+	dir, err := os.MkdirTemp("", "ordo-cli-test-")
 	if err != nil {
 		panic(err)
 	}

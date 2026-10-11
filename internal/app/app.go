@@ -9,15 +9,15 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/ilyasturki/phasionary/internal/app/components"
-	"github.com/ilyasturki/phasionary/internal/app/modes"
-	"github.com/ilyasturki/phasionary/internal/app/selection"
-	"github.com/ilyasturki/phasionary/internal/clipboard"
-	"github.com/ilyasturki/phasionary/internal/config"
-	"github.com/ilyasturki/phasionary/internal/data"
-	"github.com/ilyasturki/phasionary/internal/domain"
-	"github.com/ilyasturki/phasionary/internal/export"
-	"github.com/ilyasturki/phasionary/internal/ui"
+	"github.com/ilyasturki/ordo/internal/app/components"
+	"github.com/ilyasturki/ordo/internal/app/modes"
+	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/clipboard"
+	"github.com/ilyasturki/ordo/internal/config"
+	"github.com/ilyasturki/ordo/internal/data"
+	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/export"
+	"github.com/ilyasturki/ordo/internal/ui"
 )
 
 type clipboardResultMsg struct {
@@ -32,7 +32,7 @@ type clipboardResultMsg struct {
 	blurs  int
 }
 
-// clipboardWrite is what phasionary last put on the system clipboard; fresh until the terminal loses focus.
+// clipboardWrite is what ordo last put on the system clipboard; fresh until the terminal loses focus.
 type clipboardWrite struct {
 	text  string
 	fresh bool

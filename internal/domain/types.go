@@ -77,7 +77,7 @@ const ProjectSchemaVersion = 3
 // newer than this binary understands. Refusing beats loading: saving through a
 // partially-understood format would silently drop the fields the newer version
 // added. Callers wrap it with the file's identity.
-var ErrSchemaTooNew = errors.New("written by a newer phasionary; upgrade phasionary to open it")
+var ErrSchemaTooNew = errors.New("written by a newer ordo; upgrade ordo to open it")
 
 // Project is stored as a single JSON file.
 type Project struct {

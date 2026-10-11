@@ -4,11 +4,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ilyasturki/phasionary/internal/clipboard"
+	"github.com/ilyasturki/ordo/internal/clipboard"
 )
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "phasionary-app-test-")
+	dir, err := os.MkdirTemp("", "ordo-app-test-")
 	if err != nil {
 		panic(err)
 	}

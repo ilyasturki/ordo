@@ -7,9 +7,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/ilyasturki/phasionary/internal/app"
-	"github.com/ilyasturki/phasionary/internal/config"
-	"github.com/ilyasturki/phasionary/internal/version"
+	"github.com/ilyasturki/ordo/internal/app"
+	"github.com/ilyasturki/ordo/internal/config"
+	"github.com/ilyasturki/ordo/internal/version"
 )
 
 func Execute() error {
@@ -19,7 +19,7 @@ func Execute() error {
 func newRootCmd() *cobra.Command {
 	var task string
 	cmd := &cobra.Command{
-		Use:   "phasionary",
+		Use:   "ordo",
 		Short: "Terminal-first project planning tool",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			configPath, err := config.ResolveConfigPath(viper.GetString("config"))
@@ -63,7 +63,7 @@ func newRootCmd() *cobra.Command {
 	// names generic enough to already exist in a shell for unrelated reasons —
 	// silently relocating where projects are read and written. Every key that
 	// should be settable from the environment is bound explicitly below, under
-	// a PHASIONARY_ name, and BindEnv works without AutomaticEnv.
+	// a ORDO_ name, and BindEnv works without AutomaticEnv.
 	if err := viper.BindEnv("config", config.EnvConfigPath); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}

@@ -1,13 +1,13 @@
-Output "/tmp/phas-vt/vhs-out/54_next_version.gif"
+Output "/tmp/ordo-vt/vhs-out/54_next_version.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 900
 Set FontSize 16
-Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
-Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
+Env ORDO_DATA_PATH "/tmp/ordo-vt/data"
+Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
 
 Hide
-Type "./phasionary import testdata/vhs/releases.json -q && clear && ./phasionary -p Releases"
+Type "./ordo import testdata/vhs/releases.json -q && clear && ./ordo -p Releases"
 Enter
 Sleep 800ms
 Show
@@ -18,13 +18,13 @@ Type "gg}}}j"
 Sleep 200ms
 Type "A"
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/54_proposal.png"
+Screenshot "/tmp/ordo-vt/vhs-out/54_proposal.png"
 Sleep 300ms
 
 # Enter keeps the proposal.
 Enter
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/54_created.png"
+Screenshot "/tmp/ordo-vt/vhs-out/54_created.png"
 Sleep 300ms
 
 # The name stays editable: A again, then a minor bump instead.
@@ -34,7 +34,7 @@ Ctrl+U
 Type "v0.11.0"
 Enter
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/54_edited.png"
+Screenshot "/tmp/ordo-vt/vhs-out/54_edited.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 

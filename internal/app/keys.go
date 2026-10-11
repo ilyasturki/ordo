@@ -3,7 +3,7 @@ package app
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/ilyasturki/phasionary/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/app/selection"
 )
 
 type bindingAction func(*model) tea.Cmd

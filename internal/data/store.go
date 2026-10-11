@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ilyasturki/phasionary/internal/domain"
-	"github.com/ilyasturki/phasionary/internal/fsutil"
+	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/fsutil"
 )
 
 var (

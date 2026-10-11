@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 // TaskFields carries the writable fields of a task. It is the single unit the

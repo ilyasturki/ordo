@@ -1,13 +1,13 @@
-Output "/tmp/phas-vt/vhs-out/04_toggle_and_filter.gif"
+Output "/tmp/ordo-vt/vhs-out/04_toggle_and_filter.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
 Set FontSize 16
-Env PHASIONARY_DATA_PATH "/tmp/phas-vt/data"
-Env PHASIONARY_CONFIG_PATH "/tmp/phas-vt/cfg"
+Env ORDO_DATA_PATH "/tmp/ordo-vt/data"
+Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
 
 Hide
-Type "clear && ./phasionary -p Default"
+Type "clear && ./ordo -p Default"
 Enter
 Sleep 800ms
 Show
@@ -18,28 +18,28 @@ Sleep 300ms
 
 Type " "
 Sleep 400ms
-Screenshot "/tmp/phas-vt/vhs-out/04_after_toggle.png"
+Screenshot "/tmp/ordo-vt/vhs-out/04_after_toggle.png"
 
 Type "f"
 Sleep 500ms
-Screenshot "/tmp/phas-vt/vhs-out/04_filter_hub.png"
+Screenshot "/tmp/ordo-vt/vhs-out/04_filter_hub.png"
 
 # Drill into Status, toggle Todo, return to hub
 Enter
 Sleep 300ms
-Screenshot "/tmp/phas-vt/vhs-out/04_filter_status.png"
+Screenshot "/tmp/ordo-vt/vhs-out/04_filter_status.png"
 Type " "
 Sleep 300ms
 Escape
 Sleep 300ms
-Screenshot "/tmp/phas-vt/vhs-out/04_filter_hub_with_status.png"
+Screenshot "/tmp/ordo-vt/vhs-out/04_filter_hub_with_status.png"
 
 # Drill into Priority
 Type "j"
 Sleep 200ms
 Enter
 Sleep 300ms
-Screenshot "/tmp/phas-vt/vhs-out/04_filter_priority.png"
+Screenshot "/tmp/ordo-vt/vhs-out/04_filter_priority.png"
 Type " "
 Sleep 300ms
 Escape
@@ -50,7 +50,7 @@ Type "jj"
 Sleep 200ms
 Enter
 Sleep 300ms
-Screenshot "/tmp/phas-vt/vhs-out/04_filter_after_clear.png"
+Screenshot "/tmp/ordo-vt/vhs-out/04_filter_after_clear.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 

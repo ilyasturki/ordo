@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ilyasturki/phasionary/internal/data"
-	"github.com/ilyasturki/phasionary/internal/domain"
+	"github.com/ilyasturki/ordo/internal/data"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 // runCLI executes the root command with an explicit --data dir and returns the

@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ilyasturki/phasionary/internal/app/modes"
-	"github.com/ilyasturki/phasionary/internal/config"
+	"github.com/ilyasturki/ordo/internal/app/modes"
+	"github.com/ilyasturki/ordo/internal/config"
 )
 
 func newCommandModel(t *testing.T, cmds ...config.TaskCommand) *model {
@@ -91,7 +91,7 @@ func TestBindTaskCommands_AcceptsFreeKeys(t *testing.T) {
 
 func TestTaskCommand_PromptRunsWithTaskEnvironment(t *testing.T) {
 	m := newCommandModel(t, shCommand("gr", "when",
-		`printf '%s|%s|%s|%s|%s\n' "$PHASIONARY_INPUT" "$PHASIONARY_TASK_ID" "$PHASIONARY_TASK_TITLE" "$PHASIONARY_CATEGORY" "$PHASIONARY_PROJECT_NAME"; echo second line`))
+		`printf '%s|%s|%s|%s|%s\n' "$ORDO_INPUT" "$ORDO_TASK_ID" "$ORDO_TASK_TITLE" "$ORDO_CATEGORY" "$ORDO_PROJECT_NAME"; echo second line`))
 
 	m, cmd := pressKeys(m, "g", "r")
 	require.True(t, m.ui.Modes.IsCommandPrompt())
@@ -120,7 +120,7 @@ func TestTaskCommand_EscCancels(t *testing.T) {
 }
 
 func TestTaskCommand_NoPromptRunsAtOnce(t *testing.T) {
-	m := newCommandModel(t, shCommand("m", "", `printf '\033[1mqueued\033[0m %s\n' "$PHASIONARY_TASK_TITLE"`))
+	m := newCommandModel(t, shCommand("m", "", `printf '\033[1mqueued\033[0m %s\n' "$ORDO_TASK_TITLE"`))
 	m, cmd := pressKeys(m, "m")
 	m = runCmd(t, m, cmd)
 	assert.Equal(t, "queued Alpha", m.ui.Screen.StatusMsg)
@@ -141,7 +141,7 @@ func TestTaskCommand_SilentFailureShowsExitStatus(t *testing.T) {
 }
 
 func TestTaskCommand_MissingProgram(t *testing.T) {
-	m := newCommandModel(t, config.TaskCommand{Key: "m", Label: "probe", Run: []string{"phasionary-no-such-program"}})
+	m := newCommandModel(t, config.TaskCommand{Key: "m", Label: "probe", Run: []string{"ordo-no-such-program"}})
 	m, cmd := pressKeys(m, "m")
 	m = runCmd(t, m, cmd)
 	assert.True(t, strings.HasPrefix(m.ui.Screen.StatusMsg, "probe failed: exec: "), m.ui.Screen.StatusMsg)
@@ -193,6 +193,6 @@ func TestTaskCommand_ListedInHelpAndBarOnlyWhenConfigured(t *testing.T) {
 func TestTaskCommandEnvNamesASubCategoryByPath(t *testing.T) {
 	p := nestedProject()
 	env := taskCommandEnv(p, 1, p.Categories[1].Tasks[0], "")
-	assert.Contains(t, env, "PHASIONARY_CATEGORY=v0.2.0 / ui")
-	assert.Contains(t, env, "PHASIONARY_CATEGORY_ID=ui")
+	assert.Contains(t, env, "ORDO_CATEGORY=v0.2.0 / ui")
+	assert.Contains(t, env, "ORDO_CATEGORY_ID=ui")
 }
