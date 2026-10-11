@@ -13,8 +13,7 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 export PHASIONARY_DATA_PATH="$tmp/data" PHASIONARY_CONFIG_PATH="$tmp/config"
 
-# expect <pattern> <args...>: the output goes through a file, since grep -q
-# closing a pipe early would fail the command under pipefail.
+# Through a file: grep -q closing a pipe early fails the command under pipefail.
 expect() {
   local pattern="$1"
   shift

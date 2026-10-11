@@ -14,8 +14,7 @@ func init() {
 	}
 }
 
-// fromBuildInfo fills what -ldflags left unset: `go install …@vX.Y.Z` stamps
-// the module version, and a build inside a checkout the VCS revision.
+// fromBuildInfo fills only what -ldflags left unset, from the version and revision the go command stamps.
 func fromBuildInfo(info *debug.BuildInfo, version, commit string) (string, string) {
 	if version == "dev" && info.Main.Version != "" && info.Main.Version != "(devel)" {
 		version = info.Main.Version

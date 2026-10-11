@@ -27,7 +27,7 @@ Update phasionary on every machine that shares the data directory before nesting
 - `ctrl+c` quits from every mode, saving a description being edited
 - macOS release binaries for Intel and Apple silicon, and a Homebrew tap. On macOS, `gx` opens links with `open`, `p` reads the clipboard with `pbpaste` and `copy_via: wl-copy` copies with `pbcopy`
 - The Nix flake builds for aarch64-linux and aarch64-darwin as well as x86_64-linux
-- `--version` reports the module version of a `go install` build and the commit of a plain `go build`
+- `--version` reports the module version of a `go install` build, and the pseudo-version and commit of a plain `go build`
 
 ### Changed
 
