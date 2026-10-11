@@ -102,6 +102,7 @@ func newTaskCmd() *cobra.Command {
 	cmd.AddCommand(newTaskStatusCmd())
 	cmd.AddCommand(newTaskPriorityCmd())
 	cmd.AddCommand(newTaskMoveCmd())
+	cmd.AddCommand(newTaskAttachCmd())
 
 	return cmd
 }
@@ -115,12 +116,16 @@ func newTaskShowCmd() *cobra.Command {
 		Args:              exactArgs("task"),
 		ValidArgsFunction: completeTasks,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			images, err := attachmentStore()
+			if err != nil {
+				return err
+			}
 			return viewProject(projectSelector(nil), func(project domain.Project) error {
 				ref, err := resolveTask(project, args[0])
 				if err != nil {
 					return fmt.Errorf("task %q not found", args[0])
 				}
-				return writeTaskDetail(cmd.OutOrStdout(), project, ref.CategoryIndex, ref.TaskIndex)
+				return writeTaskDetail(cmd.OutOrStdout(), project, ref.CategoryIndex, ref.TaskIndex, images)
 			})
 		},
 	}

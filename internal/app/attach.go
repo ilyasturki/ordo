@@ -26,7 +26,7 @@ type pendingImage struct {
 }
 
 func clipboardImage(data []byte) pendingImage {
-	return pendingImage{name: "Screenshot " + time.Now().Format("2006-01-02 15.04.05"), data: data}
+	return pendingImage{name: attachments.ScreenshotName(time.Now()), data: data}
 }
 
 func imageFiles(paths []string) []pendingImage {

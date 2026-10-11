@@ -25,6 +25,8 @@ func argHint(name string) string {
 		return "category name, parent/name or ID (full or 4+ char prefix)"
 	case "project":
 		return "project name or ID"
+	case "file":
+		return "png, jpeg, gif or webp image, or - to read it from stdin"
 	}
 	return ""
 }

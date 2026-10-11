@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/viper"
 
 	"github.com/ilyasturki/ordo/internal/app"
+	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
@@ -222,21 +224,40 @@ type TaskDetailOutput struct {
 }
 
 type TaskDetail struct {
-	ID              string `json:"id"`
-	ParentID        string `json:"parent_id,omitempty"`
-	Title           string `json:"title"`
-	Status          string `json:"status"`
-	Priority        string `json:"priority,omitempty"`
-	Category        string `json:"category"`
-	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
-	TagColor        string `json:"tag_color,omitempty"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
-	CompletionDate  string `json:"completion_date,omitempty"`
-	Description     string `json:"description,omitempty"`
+	ID              string      `json:"id"`
+	ParentID        string      `json:"parent_id,omitempty"`
+	Title           string      `json:"title"`
+	Status          string      `json:"status"`
+	Priority        string      `json:"priority,omitempty"`
+	Category        string      `json:"category"`
+	EstimateMinutes int         `json:"estimate_minutes,omitempty"`
+	TagColor        string      `json:"tag_color,omitempty"`
+	CreatedAt       string      `json:"created_at"`
+	UpdatedAt       string      `json:"updated_at"`
+	CompletionDate  string      `json:"completion_date,omitempty"`
+	Description     string      `json:"description,omitempty"`
+	Images          []TaskImage `json:"images,omitempty"`
 }
 
-func writeTaskDetail(w io.Writer, project domain.Project, catIdx, taskIdx int) error {
+type TaskImage struct {
+	Name    string `json:"name"`
+	Path    string `json:"path"`
+	Missing bool   `json:"missing,omitempty"`
+}
+
+func taskImages(store *attachments.Store, task domain.Task) []TaskImage {
+	var images []TaskImage
+	for _, ref := range attachments.Refs(task.Title + "\n" + task.Description) {
+		path, ok := store.Path(ref.Target)
+		if !ok || slices.ContainsFunc(images, func(i TaskImage) bool { return i.Path == path }) {
+			continue
+		}
+		images = append(images, TaskImage{Name: ref.Name, Path: path, Missing: store.Missing(ref.Target)})
+	}
+	return images
+}
+
+func writeTaskDetail(w io.Writer, project domain.Project, catIdx, taskIdx int, store *attachments.Store) error {
 	cat := project.Categories[catIdx]
 	task := cat.Tasks[taskIdx]
 	detail := TaskDetail{
@@ -252,6 +273,7 @@ func writeTaskDetail(w io.Writer, project domain.Project, catIdx, taskIdx int) e
 		UpdatedAt:       task.UpdatedAt,
 		CompletionDate:  task.CompletionDate,
 		Description:     task.Description,
+		Images:          taskImages(store, task),
 	}
 
 	if getOutputFormat() == FormatJSON {
@@ -284,7 +306,19 @@ func writeTaskDetail(w io.Writer, project domain.Project, catIdx, taskIdx int) e
 		fmt.Fprintf(w, "Completed: %s\n", detail.CompletionDate)
 	}
 	if detail.Description != "" {
-		fmt.Fprintf(w, "\n%s\n", detail.Description)
+		fmt.Fprintf(w, "\n%s\n", store.Absolute(detail.Description))
+	}
+	if len(detail.Images) > 0 {
+		fmt.Fprintln(w, "\nImages:")
+		tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+		for _, img := range detail.Images {
+			path := img.Path
+			if img.Missing {
+				path += " (missing)"
+			}
+			fmt.Fprintf(tw, "  %s\t%s\n", img.Name, path)
+		}
+		return tw.Flush()
 	}
 	return nil
 }

@@ -14,6 +14,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - `gx` opens the URLs in the description as well as the title's, and opens an image in the desktop's viewer
 - `ordo attachments prune` lists the images no project references any more and that are over 30 days old, conflict copies counted; `--yes` removes them. Nothing else ever deletes an image
 - Text that leaves ordo points an image at its absolute path, so an agent handed it can open the file: `y` on a task, `Y` on a category and `ordo export -f markdown`. A visual `y` or `Y` lists each task's images under its bullet. The project file keeps the relative reference, and `ordo export -f json` too
+- `ordo task attach <task> <file>` attaches an image from the command line, and `-` reads it from stdin: `wl-paste -t image/png | ordo task attach <task> -`. `--name` names it
+- `ordo task show` lists the task's images with their absolute path, marking a missing one, and `ordo attachments path` prints the directory they live in
 
 ### Changed
 

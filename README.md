@@ -98,6 +98,9 @@ ordo task move <id> v1.3.0                     # plan it
 ordo task status <id> in_progress              # start it
 ordo export -f json -o ferry.json              # snapshot
 ordo import ferry.json -n ferry-copy           # load it back as a new project
+wl-paste -t image/png | ordo task attach <id> - # attach a screenshot (or a file instead of -)
+ordo task show <id>                            # its images, by absolute path
+ordo attachments path                          # the directory the images live in
 ordo attachments prune                         # images no task references (--yes removes them)
 ```
 

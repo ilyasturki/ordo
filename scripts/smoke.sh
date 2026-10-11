@@ -32,6 +32,15 @@ expect() {
 expect 'Smoke task' tasks -C v1.0.0
 expect '^## v1.0.0' export -f markdown
 
+# A 1x1 png.
+base64 -d > "$tmp/shot.png" <<< 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+"$bin" task attach "Smoke task" "$tmp/shot.png" > /dev/null
+"$bin" task attach "Smoke task" - --name "from stdin" < "$tmp/shot.png" > /dev/null
+store="$("$bin" attachments path)"
+expect "^  shot.png  *$store/[0-9a-f]\{32\}\.png\$" task show "Smoke task"
+expect "^    !\[from stdin\]($store/[0-9a-f]\{32\}\.png)\$" export -f markdown
+ls "$store"/*.png > /dev/null
+
 for shell in bash zsh fish; do
   expect ordo completion "$shell"
 done

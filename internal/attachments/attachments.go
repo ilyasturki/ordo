@@ -317,6 +317,10 @@ func replaceRefs(text string, with func(Ref) string) string {
 	})
 }
 
+func ScreenshotName(at time.Time) string {
+	return "Screenshot " + at.Format("2006-01-02 15.04.05")
+}
+
 func Line(name, target string) string {
 	name = strings.Map(func(r rune) rune {
 		if r == '[' || r == ']' || unicode.IsControl(r) {
