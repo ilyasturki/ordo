@@ -18,6 +18,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - `A` on a version adds an empty category right after it again, like on any other category, instead of proposing the next patch at the top or the end of the project
 - Moving onto the row just above the last one of a scrolled project shows it again. A category added or pasted at the end, a folded last category and the second-to-last task were left under `↓ more below`
+- `zb` no longer leaves the row one line below the screen when the view lands one row from the top
 
 ## [0.10.0] - 2026-10-11
 

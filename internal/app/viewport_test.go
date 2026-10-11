@@ -450,3 +450,36 @@ func TestEnsureVisible_ShowsAnyItemThatFits(t *testing.T) {
 		}
 	}
 }
+
+func TestBottomOnPosition_CountsTheMoreAboveRowItAdds(t *testing.T) {
+	l := &Layout{}
+	for i := range 40 {
+		l.Items = append(l.Items, LayoutItem{Kind: LayoutTask, Height: 1, PositionIndex: i})
+		l.TotalHeight++
+	}
+	v := NewViewport(l, 24, LayoutConfig{FooterHeight: 1})
+	// From top 0, item 22 is one row below the 22 that fit; top 1 adds "↑ more above" and still misses it.
+	top := v.BottomOnPosition(22)
+	v.ComputeVisibility(top)
+	assert.Equal(t, 2, top)
+	assert.Equal(t, 23, v.VisibleEnd)
+}
+
+func TestBottomOnPosition_PutsTheItemOnTheLastRow(t *testing.T) {
+	r := rand.New(rand.NewPCG(3, 4))
+	for range 20000 {
+		v := randomViewport(r)
+		idx := r.IntN(len(v.Layout.Items))
+		if v.Layout.Items[idx].Height > v.availableHeight()-2 {
+			continue
+		}
+
+		top := v.BottomOnPosition(idx)
+		v.ComputeVisibility(top)
+		require.True(t, shownWhole(v, idx), "item %d on %d rows: top %d", idx, v.ScreenHeight, top)
+		if top > 0 {
+			v.ComputeVisibility(top - 1)
+			require.False(t, shownWhole(v, idx), "item %d on %d rows: top %d is not the lowest", idx, v.ScreenHeight, top)
+		}
+	}
+}

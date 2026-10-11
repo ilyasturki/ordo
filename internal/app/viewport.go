@@ -178,7 +178,11 @@ func (v *Viewport) BottomOnPosition(posIndex int) int {
 	if !ok {
 		return v.TopRow
 	}
-	return max(min(end-v.windowAt(end-v.availableHeight()), start), 0)
+	top := max(end-v.availableHeight(), 0)
+	for top < start && top+v.windowAt(top) < end {
+		top++
+	}
+	return top
 }
 
 func (v *Viewport) CenterOnPosition(posIndex int) int {
