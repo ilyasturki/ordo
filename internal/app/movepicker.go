@@ -12,6 +12,8 @@ import (
 	"phasionary/internal/ui"
 )
 
+const noMoveTarget = "No open version to move to: add one with A on a version"
+
 type moveTarget struct {
 	categoryID string
 	label      string
@@ -46,6 +48,10 @@ func (m *model) visualMoveToVersion() {
 	for i, t := range rows {
 		ids[i] = t.ID
 	}
+	if len(ids) == 0 || len(m.moveTargets(m.sourceCategory(ids))) == 0 {
+		m.ui.Screen.StatusMsg = noMoveTarget
+		return
+	}
 	m.exitVisualMode()
 	m.openMovePicker(ids)
 }
@@ -56,7 +62,7 @@ func (m *model) openMovePicker(ids []string) {
 	}
 	targets := m.moveTargets(m.sourceCategory(ids))
 	if len(targets) == 0 {
-		m.ui.Screen.StatusMsg = "No open version to move to: add one with A on a version"
+		m.ui.Screen.StatusMsg = noMoveTarget
 		return
 	}
 	title := "Move to"

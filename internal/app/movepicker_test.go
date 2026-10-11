@@ -3,6 +3,7 @@ package app
 import (
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -135,6 +136,20 @@ func TestVisualMoveSendsTheRange(t *testing.T) {
 	assert.Equal(t, "n1a", pos.ID)
 }
 
+func TestVisualMoveWithNowhereToGoKeepsTheSelection(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	m.rebuildPositions()
+	require.True(t, m.selectItem(selection.FocusTask, "t1"))
+	m.enterVisualMode()
+	m.visualMoveCursor(1)
+
+	m.visualMoveToVersion()
+
+	assert.True(t, m.ui.Modes.IsVisual())
+	assert.Len(t, m.visualSelectedPositions(), 2)
+	assert.Contains(t, m.ui.Screen.StatusMsg, "No open version")
+}
+
 func TestMoveRefusals(t *testing.T) {
 	m := newMoveModel(t)
 	require.True(t, m.selectItem(selection.FocusCategory, "inbox"))
@@ -165,4 +180,7 @@ func TestMovePickerScrollsALongList(t *testing.T) {
 	assert.Contains(t, view, "> v0.1.0")
 	assert.Contains(t, view, "↑ 22 more")
 	assert.NotContains(t, view, "v0.30.0")
+
+	m = sendMsg(m, tea.WindowSizeMsg{Width: m.ui.Screen.Width, Height: 16})
+	assert.Contains(t, ansi.Strip(m.movePickerView()), "> v0.1.0", "a shrink keeps the selection on screen")
 }

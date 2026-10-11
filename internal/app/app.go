@@ -161,6 +161,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.ui.Modes.IsProjectPicker() {
 			m.ui.Picker.ensureVisible(m.pickerVisibleCount())
 		}
+		if m.ui.Modes.IsMovePicker() {
+			m.ui.MovePicker.ensureVisible(m.movePickerRows())
+		}
 	case clipboardResultMsg:
 		m.handleClipboardResult(msg)
 	case clipboardLinesMsg:
