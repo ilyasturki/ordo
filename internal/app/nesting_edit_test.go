@@ -84,9 +84,10 @@ func TestAddAtTheCursorsDepth(t *testing.T) {
 	})
 	t.Run("A on a parent category adds after its sub-categories", func(t *testing.T) {
 		m := newNestedModel(t)
+		m.project.Categories[0].Name = "areas" // a version would propose the next one at the top instead
 		selectRow(t, m, selection.FocusCategory, "v2")
 		m.startAddingCategory()
-		typeTitle(m, "v0.3.0")
+		typeTitle(m, "later")
 		assert.Equal(t, []string{"v2", "ui<v2", "api<v2", m.project.Categories[3].ID, "v1"}, categoryOrder(m.project))
 	})
 	t.Run("a sub-category may reuse a name another parent's area carries", func(t *testing.T) {
