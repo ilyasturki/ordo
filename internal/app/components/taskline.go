@@ -366,7 +366,7 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 	}
 	tagStyled := r.tagSegment(task, finished, false)
 	leading := tagStyled + iconStyled
-	descMarker := r.formatDescriptionBadge(task.Description, false) + r.formatImageBadge(task.Description, false)
+	descMarker := r.formatDescriptionBadge(task.Description, false) + r.formatImageBadge(task, false)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, false)
 	cutBadge, _ := r.formatCutBadge(false)
 	suffix := cutBadge + r.formatProgressBadge(false) + descMarker + estimate
@@ -419,7 +419,7 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 	tagStyled := r.tagSegment(task, finished, true)
 	leading := tagStyled + iconStyled
 
-	descMarker := r.formatDescriptionBadge(task.Description, true) + r.formatImageBadge(task.Description, true)
+	descMarker := r.formatDescriptionBadge(task.Description, true) + r.formatImageBadge(task, true)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, true)
 	cutBadge, _ := r.formatCutBadge(true)
 	suffix := cutBadge + r.formatProgressBadge(true) + descMarker + estimate
@@ -443,7 +443,7 @@ func (r *TaskLineRenderer) titleWidth(task domain.Task) int {
 		lead += icon + " "
 	}
 	_, cutText := r.formatCutBadge(false)
-	badges := cutText + r.progressBadgeText() + r.descriptionBadgeText(task.Description) + imageBadgeText(task.Description) + r.estimateBadgeText(task.EstimateMinutes)
+	badges := cutText + r.progressBadgeText() + r.descriptionBadgeText(task.Description) + imageBadgeText(task) + r.estimateBadgeText(task.EstimateMinutes)
 	return safeWidth(r.width, ansi.StringWidth(lead+badges))
 }
 
@@ -580,8 +580,8 @@ func (r *TaskLineRenderer) formatDescriptionBadge(description string, selected b
 	return ui.MutedStyle.Render(text)
 }
 
-func (r *TaskLineRenderer) formatImageBadge(description string, selected bool) string {
-	text := imageBadgeText(description)
+func (r *TaskLineRenderer) formatImageBadge(task domain.Task, selected bool) string {
+	text := imageBadgeText(task)
 	if text == "" {
 		return ""
 	}
@@ -592,9 +592,9 @@ func (r *TaskLineRenderer) formatImageBadge(description string, selected bool) s
 }
 
 // Shown with descriptions expanded too, unlike ¶, so a task carrying a
-// screenshot stands out while picking tasks.
-func imageBadgeText(description string) string {
-	switch n := len(attachments.Refs(description)); n {
+// screenshot stands out while picking tasks. It counts what gi lists.
+func imageBadgeText(task domain.Task) string {
+	switch n := len(attachments.Refs(task.Title + "\n" + task.Description)); n {
 	case 0:
 		return ""
 	case 1:

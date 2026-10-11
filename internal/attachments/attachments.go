@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -255,7 +256,8 @@ func Refs(text string) []Ref {
 	}
 	var refs []Ref
 	for _, m := range refPattern.FindAllStringSubmatch(text, -1) {
-		if ref, ok := parseRef(m); ok {
+		ref, ok := parseRef(m)
+		if ok && !slices.ContainsFunc(refs, func(r Ref) bool { return r.Target == ref.Target }) {
 			refs = append(refs, ref)
 		}
 	}

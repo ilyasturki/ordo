@@ -103,6 +103,15 @@ func TestTitleRow_CountsImagesEvenWithDescriptionsExpanded(t *testing.T) {
 	}
 }
 
+func TestTitleRow_CountsEachImageOnce(t *testing.T) {
+	twice := domain.Task{Title: "T ![t](/tmp/t.png)", Status: domain.StatusTodo,
+		Description: "![a](" + shotTarget + ")\nagain ![same](" + shotTarget + ")"}
+	r := NewTaskLineRenderer(80, "text", "full", true).WithDescriptionExpanded(true)
+
+	assert.True(t, strings.HasSuffix(ansi.Strip(r.Render(twice, false)), " ▣2"),
+		"one image twice, and one in the title, as gi lists them")
+}
+
 func TestTitleRows_MakeRoomForTheImageBadge(t *testing.T) {
 	desc := "![a](" + shotTarget + ")\n![b](" + goneTarget + ")"
 	for width := 20; width <= 40; width++ {

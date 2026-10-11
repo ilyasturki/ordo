@@ -202,6 +202,8 @@ func TestRefs(t *testing.T) {
 		{Name: "", Target: "attachments/" + hash + ".gif"},
 	}, Refs(text))
 	assert.Nil(t, Refs("no images here"))
+	assert.Equal(t, []Ref{{Name: "first", Target: "/a.png"}}, Refs("![first](/a.png) ![second](/a.png)"),
+		"each file once, under its first name")
 }
 
 func TestSplit(t *testing.T) {
