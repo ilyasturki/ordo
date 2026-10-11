@@ -74,7 +74,7 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 
 ## Features
 
-- A top-level category named `vX.Y.Z` is a version, and a label may follow the number (`v1.3.0 - polish`).
+- A version written in a category's name (`v1.3.0`, `v1.3.0 - polish`) bumps in place: `ctrl+a` and `ctrl+x` add or take one from its patch, on one category or a visual range of them, and `gm` and `gM` bump its minor or major. Only the digits change.
 - `m` moves the focused task, or a whole visual range, to the end of any other category. `/` filters the list of categories.
 - Categories take one level of sub-categories and tasks one level of subtasks. `>` nests a row under the one above it and `<` takes it back out.
 - The keys are vim's where vim has one: `j`/`k`, `gg`/`G`, `{`/`}` between categories, `/` then `n`/`N`, `v` for a visual range, `za` to fold or unfold a category and `zc`/`zo` for all of them, `zz` to center. `ze` shows a long row in full.

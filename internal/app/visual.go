@@ -738,6 +738,12 @@ func (m model) handleVisualKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "m":
 		m.visualMove()
 		return m, nil
+	case "ctrl+a":
+		m.visualBump(1)
+		return m, nil
+	case "ctrl+x":
+		m.visualBump(-1)
+		return m, nil
 	}
 	return m, nil
 }

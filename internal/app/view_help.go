@@ -97,6 +97,7 @@ var helpModeSections = []helpSection{
 			{keys: "x", desc: "cut (p moves it, esc cancels)"},
 			{keys: "d", desc: "delete (asks first)"},
 			{keys: "m", desc: "move the selection to a category"},
+			{keys: "ctrl+a / ctrl+x", desc: "version patch +1 / -1 on each category"},
 			{keys: "esc", desc: "leave visual mode"},
 		},
 	},

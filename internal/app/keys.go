@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 type bindingAction func(*model) tea.Cmd
@@ -129,6 +130,14 @@ var normalBindings = []keyBinding{
 		action: func(m *model) tea.Cmd { m.nestSelected(false); return nil }},
 	{keys: []string{"m"}, desc: "move to a category", section: sectionOrganise,
 		action: void((*model).startMove)},
+	{keys: []string{"ctrl+a"}, display: "ctrl+a / ctrl+x", desc: "version patch +1 / -1", section: sectionOrganise,
+		action: func(m *model) tea.Cmd { m.bumpSelected(domain.PatchPart, 1); return nil }},
+	{keys: []string{"ctrl+x"}, section: sectionOrganise,
+		action: func(m *model) tea.Cmd { m.bumpSelected(domain.PatchPart, -1); return nil }},
+	{keys: []string{"m"}, prefix: 'g', display: "gm / gM", desc: "version minor / major +1", section: sectionOrganise,
+		action: func(m *model) tea.Cmd { m.bumpSelected(domain.MinorPart, 1); return nil }},
+	{keys: []string{"M"}, prefix: 'g', section: sectionOrganise,
+		action: func(m *model) tea.Cmd { m.bumpSelected(domain.MajorPart, 1); return nil }},
 	{keys: []string{"S"}, desc: "reverse category order", section: sectionOrganise,
 		action: void((*model).reverseCategories)},
 	{keys: []string{"v"}, desc: "select several rows", section: sectionOrganise,

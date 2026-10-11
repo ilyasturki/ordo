@@ -8,14 +8,12 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - `gc` shows this changelog in the TUI
 - A "Category Counts" option (`show_category_counts`, off by default) shows done / total on every top-level category that holds tasks, a parent counting its sub-categories
+- `ctrl+a` and `ctrl+x` add or take one from the patch of the version in a category's name, on the focused category or a visual range of them, and `gm` and `gM` bump its minor or major. Only the digits change, and a name a sibling already has is refused
 
 ### Changed
 
 - Folded categories in a row stack one header per row, with no blank line between them and no `(folded)` row. Folded sub-categories under the same parent stack at their indent
 - Category headers no longer show counts unless "Category Counts" is on, versions included, and the `· N in progress` suffix is gone: the `[/]` badge says it
-
-### Changed
-
 - `M` is now `m` and moves the task, or a visual range, to any category instead of an open version, with `/` to filter the list
 
 ### Removed
