@@ -344,42 +344,53 @@ func (m *model) pasteLinesInEdit(text string) bool {
 }
 
 type clipboardLinesMsg struct {
-	text string
-	err  error
+	text  string
+	image []byte
+	err   error
 }
 
 func readClipboardLines() tea.Cmd {
 	return func() tea.Msg {
-		text, err := clipboard.Read()
-		return clipboardLinesMsg{text: text, err: err}
+		c, err := clipboard.Read()
+		return clipboardLinesMsg{text: c.Text, image: c.Image, err: err}
 	}
 }
 
 // editorClipboardMsg answers a ctrl+v made in the editor of mode.
 type editorClipboardMsg struct {
-	mode modes.Mode
-	text string
-	err  error
+	mode  modes.Mode
+	text  string
+	image []byte
+	err   error
 }
 
 func readClipboardForEditor(mode modes.Mode) tea.Cmd {
 	return func() tea.Msg {
-		text, err := clipboard.Read()
-		return editorClipboardMsg{mode: mode, text: text, err: err}
+		c, err := clipboard.Read()
+		return editorClipboardMsg{mode: mode, text: c.Text, image: c.Image, err: err}
 	}
 }
+
+const clipboardHoldsImage = "The clipboard holds an image"
 
 // clipboardReadFailure tells a clipboard nothing can read from one that holds
 // nothing: the tools exit non-zero on an empty clipboard too.
 func clipboardReadFailure(err error) string {
-	if errors.Is(err, clipboard.ErrNoBackend) || errors.Is(err, clipboard.ErrTimeout) {
+	switch {
+	case errors.Is(err, clipboard.ErrNoBackend) || errors.Is(err, clipboard.ErrTimeout):
 		return "Can't read the clipboard: paste with the terminal instead"
+	case errors.Is(err, clipboard.ErrNotText):
+		return "The clipboard holds no text"
 	}
 	return "Nothing to paste"
 }
 
 func (m *model) handleEditorClipboard(msg editorClipboardMsg) tea.Cmd {
 	if m.ui.Modes.Current() != msg.mode {
+		return nil
+	}
+	if msg.image != nil {
+		m.ui.Screen.StatusMsg = clipboardHoldsImage
 		return nil
 	}
 	if msg.err != nil {

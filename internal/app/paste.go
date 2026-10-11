@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/clipboard"
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
@@ -28,15 +30,21 @@ func (m *model) resolvePaste(msg clipboardLinesMsg) {
 	if !m.ui.Modes.IsNormal() {
 		return
 	}
+	// Bytes other than text are another app's copy, never ordo's own.
+	notText := msg.image != nil || errors.Is(msg.err, clipboard.ErrNotText)
 	retiresCopy := false
 	if !m.ui.Clipboard.empty() {
 		// An unreadable clipboard can't contradict the copy.
-		if m.clipboardVouchedFor() || msg.err != nil || strings.TrimSpace(msg.text) == "" ||
-			sameClipboardText(msg.text, m.ui.Clipboard.Text) {
+		if m.clipboardVouchedFor() || !notText && (msg.err != nil || strings.TrimSpace(msg.text) == "" ||
+			sameClipboardText(msg.text, m.ui.Clipboard.Text)) {
 			m.pasteInternal()
 			return
 		}
 		retiresCopy = true
+	}
+	if msg.image != nil {
+		m.ui.Screen.StatusMsg = clipboardHoldsImage
+		return
 	}
 	if msg.err != nil {
 		m.ui.Screen.StatusMsg = clipboardReadFailure(msg.err)

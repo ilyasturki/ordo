@@ -8,11 +8,13 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
+	"unicode/utf8"
 )
 
 // EnvFile names a file that stands in for the clipboard, so tests and tapes
@@ -23,6 +25,9 @@ const EnvFile = "ORDO_CLIPBOARD_FILE"
 var ErrNoBackend = errors.New("no clipboard utility available")
 
 var ErrTimeout = errors.New("clipboard utility timed out")
+
+// ErrNotText reports a clipboard holding bytes that are neither text nor an image.
+var ErrNotText = errors.New("the clipboard holds no text")
 
 // On GNOME (no data-control protocol) wl-copy and wl-paste wait for a focus an unfocused session never gets.
 var timeout = 2 * time.Second
@@ -38,19 +43,40 @@ func Write(text string) error {
 	return run(strings.NewReader(text), nil, copyTool)
 }
 
-// Read returns the clipboard's text. ErrNoBackend only when no tool ran: one
-// that ran and failed most likely found the clipboard empty.
-func Read() (string, error) {
+// Content is what the clipboard holds: text, or the bytes of an image.
+type Content struct {
+	Text  string
+	Image []byte
+}
+
+// Read returns the clipboard's content, sniffed so binary bytes never pass as
+// text. ErrNoBackend only when no tool ran: one that ran and failed most likely
+// found the clipboard empty.
+func Read() (Content, error) {
 	if path := os.Getenv(EnvFile); path != "" {
 		data, err := os.ReadFile(path)
-		return string(data), err
+		if err != nil {
+			return Content{}, err
+		}
+		return sniff(data)
 	}
 	var out bytes.Buffer
 	// Not an OSC 52 read: tmux answers one from its own paste buffer, never the desktop clipboard.
 	if err := run(nil, &out, pasteTool); err != nil {
-		return "", err
+		return Content{}, err
 	}
-	return out.String(), nil
+	return sniff(out.Bytes())
+}
+
+// Text goes first: BMP's "BM" signature starts ordinary words.
+func sniff(data []byte) (Content, error) {
+	if utf8.Valid(data) && bytes.IndexByte(data, 0) < 0 {
+		return Content{Text: string(data)}, nil
+	}
+	if strings.HasPrefix(http.DetectContentType(data), "image/") {
+		return Content{Image: data}, nil
+	}
+	return Content{}, ErrNotText
 }
 
 // run kills the tool's whole process group once the timeout passes.

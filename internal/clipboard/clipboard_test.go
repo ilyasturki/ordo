@@ -3,6 +3,8 @@ package clipboard
 import (
 	"bytes"
 	"errors"
+	"image"
+	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -84,7 +86,49 @@ func TestEnvFile_StandsInForTheClipboard(t *testing.T) {
 	require.NoError(t, Write("Alpha\n\nbody"))
 	got, err := Read()
 	require.NoError(t, err)
-	assert.Equal(t, "Alpha\n\nbody", got)
+	assert.Equal(t, "Alpha\n\nbody", got.Text)
+}
+
+func TestRead_SniffsTheBytes(t *testing.T) {
+	pngData := pngBytes(t)
+	for name, tc := range map[string]struct {
+		data      []byte
+		wantText  string
+		wantImage bool
+		wantErr   error
+	}{
+		"text":                        {data: []byte("Alpha\n\nbody"), wantText: "Alpha\n\nbody"},
+		"text starting like a bitmap": {data: []byte("BMW service"), wantText: "BMW service"},
+		"a png":                       {data: pngData, wantImage: true},
+		"other binary bytes":          {data: []byte("%PDF-1.7\n\x00\xe2\xe3"), wantErr: ErrNotText},
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "clipboard")
+			require.NoError(t, os.WriteFile(path, tc.data, 0o600))
+			t.Setenv(EnvFile, path)
+
+			got, err := Read()
+
+			if tc.wantErr != nil {
+				assert.ErrorIs(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantText, got.Text)
+			if tc.wantImage {
+				assert.Equal(t, tc.data, got.Image)
+			} else {
+				assert.Nil(t, got.Image)
+			}
+		})
+	}
+}
+
+func pngBytes(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 4, 3))))
+	return buf.Bytes()
 }
 
 // fakeTools stands body in for the copy and paste tools, behind a socket name

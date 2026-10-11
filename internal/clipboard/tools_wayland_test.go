@@ -61,7 +61,7 @@ func TestRead_ReturnsWhatThePasteToolPrints(t *testing.T) {
 	got, err := Read()
 
 	require.NoError(t, err)
-	assert.Equal(t, "from the browser", got)
+	assert.Equal(t, "from the browser", got.Text)
 }
 
 // wl-copy forks a server once the selection is set; that server must live on.

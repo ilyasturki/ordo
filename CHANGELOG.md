@@ -31,6 +31,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - `ctrl+d` and `ctrl+u` move half a screen of rows, so wrapped titles and open descriptions no longer make them skip past a whole screen
 - `zb` no longer leaves the row one line below the screen when the view lands one row from the top
 
+### Fixed
+
+- `p` and `ctrl+v` with an image on the clipboard no longer paste its bytes as hundreds of garbage tasks or characters
+
 ## [0.10.0] - 2026-10-11
 
 Update ordo on every machine that shares the data directory before nesting anything or shipping a version. A project with a sub-category or subtask is saved as schema 2, one with a shipped version as schema 3, and older builds refuse to open both.
