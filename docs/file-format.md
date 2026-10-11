@@ -70,6 +70,7 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | `parent_id` | string | Optional. Makes it a sub-category of that category, see [Nesting](#nesting). |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | Optional. |
+| `released_at` | timestamp | Optional. When the version was shipped, see [Versions](#versions); missing means not shipped. |
 | `estimate_minutes` | integer | Optional. Set on the category itself, not summed from its tasks. |
 | `tasks` | array | In display order, separators included. |
 
@@ -118,6 +119,13 @@ A category can hold sub-categories, and a task can hold subtasks, one level deep
 
 Phasionary repairs a file that breaks these rules when it loads it. A child whose parent is missing, is itself a child or is a separator becomes top-level where it stands, and so does a separator with a `parent_id`. Every other child joins its parent's children, which follow the parent in the order they had in the file. The repair reaches the file on the next save.
 
+## Versions
+
+A top-level category whose name starts with `v<major>.<minor>.<patch>`, digits only, is a version: `v0.9.0`, `v0.1.0 - app polish` and `v0.1.6b` are, `v0.N.0` and `FUTURE` are not. A sub-category is never one. Nothing in the file marks a version; the name alone decides.
+
+- `released_at` marks a version shipped. Phasionary sets it on a version only, and clearing it reopens the version. A category keeps it through a rename, so a reader treats any category that has it as shipped.
+- The first top-level category named `next`, or `next` and a number (`next 2`), compared case-insensitive, is the inbox: where new tasks land before they go to a version. Phasionary leaves it where the file puts it.
+
 ## IDs and timestamps
 
 An ID is 1 to 64 characters from `A-Z`, `a-z`, `0-9`, `-` and `_`. Phasionary makes them from 16 random bytes printed as lowercase hex in 8-4-4-4-12 groups, the same for projects, categories and tasks. An ID never changes and is never reused, even after the thing it named is deleted.
@@ -126,16 +134,17 @@ Timestamps are RFC 3339 in UTC to the second: `2026-05-23T16:37:34Z`.
 
 ## Schema
 
-`schema` is the version of this format, 2 today.
+`schema` is the version of this format, 3 today.
 
 - A reader refuses a file whose `schema` is higher than the one it knows. Loading it and saving it back would drop whatever the newer version added.
-- A writer stamps, on every save, the lowest version that holds everything in the file: 2 while any category or task has a `parent_id`, 1 otherwise. A project without nesting thus stays open to a phasionary that only knows version 1, and gains version 2 with its first sub-category or subtask.
+- A writer stamps, on every save, the lowest version that holds everything in the file: 3 while any category has a `released_at`, else 2 while any category or task has a `parent_id`, else 1. A project without nesting or a shipped version thus stays open to a phasionary that only knows version 1, gains version 2 with its first sub-category or subtask, and version 3 with its first shipped version.
 - A file without the field reads as version 1.
 
 | Version | Adds |
 | --- | --- |
 | 1 | The format above, without nesting. |
 | 2 | `parent_id` on categories and tasks. |
+| 3 | `released_at` on categories. |
 
 The number goes up when an older phasionary would misread a file, or would lose data by saving it without a field it does not know (see below). A new field whose loss is harmless needs no bump.
 

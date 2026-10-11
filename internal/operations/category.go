@@ -72,3 +72,25 @@ func DeleteCategory(p *domain.Project, categoryID string) error {
 	p.RemoveCategoryBlock(idx)
 	return nil
 }
+
+// ShipVersion fails with domain.ErrNotVersion or domain.ErrAlreadyShipped.
+func ShipVersion(p *domain.Project, categoryID string) (domain.Category, error) {
+	return setShipped(p, categoryID, (*domain.Category).Ship)
+}
+
+// UnshipVersion fails with domain.ErrNotShipped.
+func UnshipVersion(p *domain.Project, categoryID string) (domain.Category, error) {
+	return setShipped(p, categoryID, (*domain.Category).Unship)
+}
+
+func setShipped(p *domain.Project, categoryID string, change func(*domain.Category) error) (domain.Category, error) {
+	idx, err := p.FindCategoryByID(categoryID)
+	if err != nil {
+		return domain.Category{}, err
+	}
+	if err := change(&p.Categories[idx]); err != nil {
+		return p.Categories[idx], err
+	}
+	p.UpdatedAt = p.Categories[idx].UpdatedAt
+	return p.Categories[idx], nil
+}

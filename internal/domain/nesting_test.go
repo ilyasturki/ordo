@@ -242,11 +242,16 @@ func TestRequiredSchema(t *testing.T) {
 	p.Categories[0].Tasks[1].ParentID = ""
 	p.Categories[1].ParentID = "v"
 	assert.Equal(t, 2, RequiredSchema(p))
+
+	p.Categories[1].ReleasedAt = "2026-10-01T09:00:00Z"
+	assert.Equal(t, 3, RequiredSchema(p))
+	p.Categories[1].ParentID = ""
+	assert.Equal(t, 3, RequiredSchema(p), "a ship date alone needs version 3")
 }
 
-func TestCheckSchemaReadsVersionTwo(t *testing.T) {
-	assert.NoError(t, CheckSchema(Project{Schema: 2}))
-	assert.ErrorIs(t, CheckSchema(Project{Schema: 3}), ErrSchemaTooNew)
+func TestCheckSchemaReadsVersionThree(t *testing.T) {
+	assert.NoError(t, CheckSchema(Project{Schema: 3}))
+	assert.ErrorIs(t, CheckSchema(Project{Schema: 4}), ErrSchemaTooNew)
 }
 
 func TestCategoryNamesAreUniqueAmongSiblings(t *testing.T) {

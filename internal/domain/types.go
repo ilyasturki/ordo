@@ -71,7 +71,7 @@ var (
 // existed carry no schema field and are read as version 1. Bump it when an
 // older binary would misread a file, or would lose data by saving it without
 // a field it does not know; never reuse a number.
-const ProjectSchemaVersion = 2
+const ProjectSchemaVersion = 3
 
 // ErrSchemaTooNew is returned when a project file declares a schema version
 // newer than this binary understands. Refusing beats loading: saving through a
@@ -108,6 +108,7 @@ type Category struct {
 	ParentID        string `json:"parent_id,omitempty"`
 	CreatedAt       string `json:"created_at"`
 	UpdatedAt       string `json:"updated_at,omitempty"`
+	ReleasedAt      string `json:"released_at,omitempty"`
 	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
 	Tasks           []Task `json:"tasks"`
 }

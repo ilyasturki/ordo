@@ -60,6 +60,8 @@ phasionary task add --parent <id> "Pick a default"    # Nest a subtask
 phasionary tasks -C v0.2.0/ui                         # Address it by path
 phasionary task edit <id> --description "Details"     # Describe
 phasionary task status <id> in_progress               # Triage
+phasionary versions                                   # Progress and ship date per vX.Y.Z category
+phasionary category ship v0.2.0                       # Mark a version shipped (unship reopens it)
 phasionary export -f json -o project.json             # Snapshot
 phasionary import project.md                          # Restore from markdown
 ```

@@ -307,19 +307,23 @@ func NormalizeNesting(p *Project) {
 	}
 }
 
-// RequiredSchema is 2 only while something nests, so older binaries keep opening flat files.
+// RequiredSchema is the lowest version holding the file, so older binaries keep opening what they can.
 func RequiredSchema(p Project) int {
+	schema := 1
 	for _, c := range p.Categories {
+		if c.ReleasedAt != "" {
+			return 3
+		}
 		if c.ParentID != "" {
-			return 2
+			schema = 2
 		}
 		for _, t := range c.Tasks {
 			if t.ParentID != "" {
-				return 2
+				schema = 2
 			}
 		}
 	}
-	return 1
+	return schema
 }
 
 func (c *Category) IndentTasks(lo, hi int) error {
