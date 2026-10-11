@@ -4,7 +4,7 @@ A local-only project planner for the terminal, run entirely from the keyboard. N
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.gif">
-  <img alt="Ordo demo: capture a task, send it to a version, paste a checklist, mark a range done, search, undo, filter and switch project" src="assets/demo-light.gif">
+  <img alt="Ordo demo: capture a task, move it to a version, paste a checklist, mark a range done, search, undo, filter, bump the version and switch project, with past versions folded one per row" src="assets/demo-light.gif">
 </picture>
 
 [![CI](https://github.com/ilyasturki/ordo/actions/workflows/ci.yml/badge.svg)](https://github.com/ilyasturki/ordo/actions/workflows/ci.yml)
