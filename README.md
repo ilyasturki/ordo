@@ -1,6 +1,6 @@
 # Ordo
 
-A local-only project planner for the terminal, built around versions. Ideas land in `next` and get planned into `v1.3.0`. It is a single binary that keeps each project in a plain JSON file and never touches the network.
+A local-only project planner for the terminal, run entirely from the keyboard. Name a category after a version (`v1.3.0`) and `ctrl+a` or `gm` bumps it in place. It is a single binary that keeps each project in a plain JSON file and never touches the network.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.gif">
@@ -74,7 +74,7 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 
 ## Features
 
-- A version written in a category's name (`v1.3.0`, `v1.3.0 - polish`) bumps in place: `ctrl+a` and `ctrl+x` add or take one from its patch, on one category or a visual range of them, and `gm` and `gM` bump its minor or major. Only the digits change.
+- `ctrl+a` and `ctrl+x` add or take one from the patch of the version in a category's name (`v1.3.0`, `v1.3.0 - polish`), on one category or a visual range. `gm` and `gM` bump the minor or the major. Only the digits change, so a label or a suffix stays.
 - `m` moves the focused task, or a whole visual range, to the end of any other category. `/` filters the list of categories.
 - Categories take one level of sub-categories and tasks one level of subtasks. `>` nests a row under the one above it and `<` takes it back out.
 - The keys are vim's where vim has one: `j`/`k`, `gg`/`G`, `{`/`}` between categories, `/` then `n`/`N`, `v` for a visual range, `za` to fold or unfold a category and `zc`/`zo` for all of them, `zz` to center. `ze` shows a long row in full.

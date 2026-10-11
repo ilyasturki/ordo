@@ -19,8 +19,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Removed
 
 - Shipping a version: `s`, `ordo category ship|unship`, the ship date on its header, the dimming and auto-folding of shipped versions and the red `! N open`. A file a 0.10.0 build saved with a ship date still opens, and the date is dropped on the next save
-- `ordo versions`: `ordo categories` lists the same task counts
-- The `next` inbox: a category named `next` is an ordinary category again
+- `ordo versions`. `ordo categories` lists the same task counts
+- The `next` inbox. A category named `next` is an ordinary category again
 
 ### Fixed
 
