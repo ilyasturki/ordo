@@ -32,17 +32,22 @@ Type "zd"
 Sleep 1200ms
 Screenshot "/tmp/ordo-vt/vhs-out/70_chips.png"
 
-Type "gi"
-Sleep 1200ms
+# g and i apart: under load VHS sometimes drops a fast pair.
+Type "g"
+Sleep 300ms
+Type "i"
+Sleep 1500ms
 Screenshot "/tmp/ordo-vt/vhs-out/70_info.png"
 
 Type "q"
-Sleep 200ms
+Sleep 300ms
 Type "/overflow"
 Enter
+Sleep 500ms
+Type "g"
 Sleep 300ms
-Type "gi"
-Sleep 1200ms
+Type "i"
+Sleep 1500ms
 Screenshot "/tmp/ordo-vt/vhs-out/70_info_missing.png"
 Sleep 500ms
 
