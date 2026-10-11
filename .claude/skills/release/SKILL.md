@@ -1,30 +1,33 @@
 ---
 name: release
-description: Bump version in flake.nix, commit, and tag the release
-argument-hint: "[major|minor|patch]"
+description: Roll the changelog's Unreleased notes into a new version, then bump VERSION and tag it
+argument-hint: "[major|minor|patch|X.Y.Z]"
 disable-model-invocation: true
-allowed-tools: Read, Edit, Bash(git add *), Bash(git commit *), Bash(git tag *)
+allowed-tools: Read, Edit, Skill, AskUserQuestion, Bash(git log *), Bash(git describe *), Bash(just test), Bash(just bump *)
 ---
 
-# Release Skill
+# Release
 
-Bump the project version, commit the change, and create a git tag.
+`VERSION` holds the version; the flake and the Go ldflags read it. `just bump` (`scripts/bump.sh`) writes it, commits, and creates the annotated `vX.Y.Z` tag. It refuses a dirty tree, an existing tag, and a version without notes in `CHANGELOG.md`. The tag push runs `.github/workflows/release.yml`, which publishes those notes as the release body.
 
-## Instructions
+## Context
 
-1. **Parse bump type**: Use `$ARGUMENTS` as the bump type. If empty or omitted, default to `patch`. Valid values: `major`, `minor`, `patch`. If the argument is not one of these, stop and tell the user.
+Current version: !`cat VERSION`
 
-2. **Read current version**: Read `flake.nix` and extract the version from the line matching `version = "X.Y.Z"` (line 13).
+Commits since the last tag:
 
-3. **Compute new version**: Parse the version as semver (MAJOR.MINOR.PATCH) and bump:
-   - `patch`: increment PATCH (e.g. 0.5.1 -> 0.5.2)
-   - `minor`: increment MINOR, reset PATCH to 0 (e.g. 0.5.1 -> 0.6.0)
-   - `major`: increment MAJOR, reset MINOR and PATCH to 0 (e.g. 0.5.1 -> 1.0.0)
+!`git log --oneline $(git describe --tags --abbrev=0)..HEAD`
 
-4. **Update flake.nix**: Use the Edit tool to replace the old version string with the new one in `flake.nix`.
+Unreleased notes:
 
-5. **Commit**: Run `git add flake.nix` then `git commit -m "chore: bump version to v{new_version}"`. Use a simple `-m "message"` flag — do NOT use heredocs or `$()` command substitution.
+!`sed -n '/^## \[Unreleased\]/,/^## \[[0-9]/p' CHANGELOG.md`
 
-6. **Tag**: Run `git tag v{new_version}` to tag the new commit.
+## Steps
 
-7. **Report**: Print the version change (e.g. `v0.5.1 -> v0.5.2`) and confirm the tag was created.
+1. **Version.** Take `$ARGUMENTS`: `major`, `minor` or `patch` bumps the current version, `X.Y.Z` is used as is. With no argument, propose a level from the notes (anything under Added, Changed or Removed is a minor before 1.0, only Fixed is a patch) and confirm it with AskUserQuestion. Done when you hold the exact `X.Y.Z`.
+2. **Notes.** Every user-facing commit since the last tag has a line under `## [Unreleased]`. Add the missing ones under Added, Changed, Removed or Fixed, written for a user (the key, flag or behaviour, no commit prefixes), merging commits that make one change; skip refactors, tests, style and CI. Keep any upgrade warning that opens the section.
+3. **Roll.** Rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` with today's date, and put an empty `## [Unreleased]` above it.
+4. **Commit** `CHANGELOG.md` through the commit skill.
+5. **Check.** Run `just test`. Stop and report on a failure; a stale `vendorHash` in `flake.nix` is the usual cause after a dependency change.
+6. **Bump.** Run `just bump X.Y.Z` with the exact version. Stop and report if it refuses.
+7. **Report** the change (`v0.9.0 -> v0.10.0`) and the push that publishes it: `git push --follow-tags`. Leave the push to the user.
