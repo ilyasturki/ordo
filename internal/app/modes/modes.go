@@ -21,6 +21,7 @@ const (
 	ModeTagEdit
 	ModeCommandPrompt
 	ModePasteChooser
+	ModeMovePicker
 )
 
 type Action int
@@ -140,6 +141,8 @@ func (m *Machine) canTransition(target Mode) bool {
 		return target == ModeNormal
 	case ModePasteChooser:
 		return target == ModeNormal || target == ModeEdit
+	case ModeMovePicker:
+		return target == ModeNormal
 	}
 	return false
 }
@@ -288,4 +291,12 @@ func (m *Machine) IsPasteChooser() bool {
 
 func (m *Machine) ToPasteChooser() bool {
 	return m.TransitionTo(ModePasteChooser)
+}
+
+func (m *Machine) IsMovePicker() bool {
+	return m.current == ModeMovePicker
+}
+
+func (m *Machine) ToMovePicker() bool {
+	return m.TransitionTo(ModeMovePicker)
 }

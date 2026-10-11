@@ -13,7 +13,7 @@ import (
 var ctrlC = tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
 
 func TestCtrlC_QuitsFromEveryMode(t *testing.T) {
-	for mode := modes.ModeNormal; mode <= modes.ModePasteChooser; mode++ {
+	for mode := modes.ModeNormal; mode <= modes.ModeMovePicker; mode++ {
 		if mode == modes.ModeExternalEdit {
 			continue
 		}

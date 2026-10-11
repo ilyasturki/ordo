@@ -738,6 +738,9 @@ func (m model) handleVisualKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "s":
 		m.visualToggleShipped()
 		return m, nil
+	case "M":
+		m.visualMoveToVersion()
+		return m, nil
 	}
 	return m, nil
 }

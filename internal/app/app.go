@@ -302,6 +302,8 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handleCommandPromptKey(msg)
 	case modes.ModePasteChooser:
 		return m.handlePasteChooserKey(msg)
+	case modes.ModeMovePicker:
+		return m.handleMovePickerKey(msg), nil
 	case modes.ModeExternalEdit:
 		return m, nil
 	default:
@@ -755,6 +757,8 @@ func (m model) renderView() string {
 		return modal.Render(content, m.tagEditView())
 	case modes.ModePasteChooser:
 		return modal.Render(content, m.pasteChooserView())
+	case modes.ModeMovePicker:
+		return modal.Render(content, m.movePickerView())
 	}
 	return content
 }
