@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"phasionary/internal/app/modes"
+	"phasionary/internal/domain"
 	"phasionary/internal/ui"
 )
 
@@ -71,11 +72,12 @@ func (m model) renderShortcutBar() string {
 		return ""
 	}
 	hints := normalShortcuts
-	if len(m.project.VersionIndexes()) > 0 {
+	hasVersions := slices.ContainsFunc(m.project.Categories, func(c domain.Category) bool { return c.IsVersion() })
+	if hasVersions {
 		hints = slices.Concat(normalShortcuts[:3], versionShortcuts, normalShortcuts[3:])
 	}
 	switch {
-	case m.ui.Modes.IsVisual() && len(m.project.VersionIndexes()) > 0:
+	case m.ui.Modes.IsVisual() && hasVersions:
 		hints = slices.Concat(visualShortcuts[:1], []ui.Hint{{Key: "M", Label: "move to"}}, visualShortcuts[1:])
 	case m.ui.Modes.IsVisual():
 		hints = visualShortcuts

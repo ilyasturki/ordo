@@ -59,8 +59,13 @@ func headerOf(p *domain.Project, ci int, fold *FoldState, cut bool) categoryHead
 		h.indent = nestIndent
 		return h
 	}
-	if domain.HasChildren(p.Categories, ci) {
+	hasChildren := domain.HasChildren(p.Categories, ci)
+	if hasChildren {
 		h.status = p.TreeAggregateStatus(ci)
+	}
+	isVersion := cat.IsVersion()
+	if !hasChildren && !isVersion && !cat.Shipped() {
+		return h
 	}
 	counts := p.TreeStatusCounts(ci)
 	done := fmt.Sprintf("%d/%d", counts.Completed+counts.Cancelled, counts.Total())
@@ -74,14 +79,14 @@ func headerOf(p *domain.Project, ci int, fold *FoldState, cut bool) categoryHead
 		if open := counts.Todo + counts.InProgress; open > 0 {
 			h.warning = fmt.Sprintf("! %d open", open)
 		}
-	case cat.IsVersion():
+	case isVersion:
 		if counts.Total() > 0 {
 			h.progress = done
 		}
 		if counts.InProgress > 0 {
 			h.progress += fmt.Sprintf(" · %d in progress", counts.InProgress)
 		}
-	case domain.HasChildren(p.Categories, ci) && counts.Total() > 0:
+	case hasChildren && counts.Total() > 0:
 		h.progress = done
 	}
 	return h

@@ -242,17 +242,7 @@ func (m *StateManager) GetFoldedCategories(projectID string) []string {
 }
 
 func (m *StateManager) SetFoldedCategories(projectID string, categoryIDs []string) error {
-	return m.update(func(s *State) bool {
-		if s.FoldedCategories == nil {
-			s.FoldedCategories = make(map[string][]string)
-		}
-		if len(categoryIDs) == 0 {
-			delete(s.FoldedCategories, projectID)
-		} else {
-			s.FoldedCategories[projectID] = slices.Clone(categoryIDs)
-		}
-		return true
-	})
+	return m.update(func(s *State) bool { return setProjectIDs(&s.FoldedCategories, projectID, categoryIDs) })
 }
 
 func (m *StateManager) GetUnfoldedCategories(projectID string) []string {
@@ -262,23 +252,25 @@ func (m *StateManager) GetUnfoldedCategories(projectID string) []string {
 	return slices.Clone(m.state.UnfoldedCategories[projectID])
 }
 
-// SetUnfoldedCategories skips the write when nothing changes: most toggles touch no shipped version.
 func (m *StateManager) SetUnfoldedCategories(projectID string, categoryIDs []string) error {
-	return m.update(func(s *State) bool {
-		prev := s.UnfoldedCategories[projectID]
-		if len(prev) == len(categoryIDs) && containsAll(prev, categoryIDs) {
-			return false
-		}
-		if len(categoryIDs) == 0 {
-			delete(s.UnfoldedCategories, projectID)
-			return true
-		}
-		if s.UnfoldedCategories == nil {
-			s.UnfoldedCategories = make(map[string][]string)
-		}
-		s.UnfoldedCategories[projectID] = slices.Clone(categoryIDs)
+	return m.update(func(s *State) bool { return setProjectIDs(&s.UnfoldedCategories, projectID, categoryIDs) })
+}
+
+// setProjectIDs reports no change for the same set in any order, so a fold toggle saves at most the list it touched.
+func setProjectIDs(byProject *map[string][]string, projectID string, ids []string) bool {
+	prev := (*byProject)[projectID]
+	if len(prev) == len(ids) && containsAll(prev, ids) {
+		return false
+	}
+	if len(ids) == 0 {
+		delete(*byProject, projectID)
 		return true
-	})
+	}
+	if *byProject == nil {
+		*byProject = make(map[string][]string)
+	}
+	(*byProject)[projectID] = slices.Clone(ids)
+	return true
 }
 
 func containsAll(set, ids []string) bool {
