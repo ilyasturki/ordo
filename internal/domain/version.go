@@ -8,10 +8,7 @@ import (
 	"strings"
 )
 
-var (
-	versionNamePattern = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)`)
-	inboxNamePattern   = regexp.MustCompile(`(?i)^next( \d+)?$`)
-)
+var versionNamePattern = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)`)
 
 type Semver struct {
 	Major, Minor, Patch int
@@ -57,20 +54,6 @@ func (c *Category) Version() (Semver, bool) {
 func (c *Category) IsVersion() bool {
 	_, ok := c.Version()
 	return ok
-}
-
-func IsInboxName(name string) bool {
-	return inboxNamePattern.MatchString(strings.TrimSpace(name))
-}
-
-// InboxIndex is the first top-level category named next or "next N", or -1.
-func (p *Project) InboxIndex() int {
-	for i, c := range p.Categories {
-		if c.ParentID == "" && IsInboxName(c.Name) {
-			return i
-		}
-	}
-	return -1
 }
 
 func (p *Project) VersionIndexes() []int {

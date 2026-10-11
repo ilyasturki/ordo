@@ -64,6 +64,7 @@ func TestBindTaskCommands_RejectsClashesAndUnknownKeys(t *testing.T) {
 		want string
 	}{
 		"built-in single key":  {[]config.TaskCommand{shCommand("d", "", "true")}, `key "d" is already bound to "delete"`},
+		"move key":             {[]config.TaskCommand{shCommand("m", "", "true")}, `key "m" is already bound to "move to a category"`},
 		"partner key":          {[]config.TaskCommand{shCommand("k", "", "true")}, `key "k" is already bound to "move up / down"`},
 		"built-in chord":       {[]config.TaskCommand{shCommand("gx", "", "true")}, `key "gx" is already bound to "open link in item"`},
 		"chord prefix alone":   {[]config.TaskCommand{shCommand("g", "", "true")}, `key "g" starts built-in shortcuts`},
@@ -81,12 +82,12 @@ func TestBindTaskCommands_RejectsClashesAndUnknownKeys(t *testing.T) {
 }
 
 func TestBindTaskCommands_AcceptsFreeKeys(t *testing.T) {
-	bound, err := bindTaskCommands([]config.TaskCommand{shCommand("gr", "", "true"), shCommand("m", "", "true")})
+	bound, err := bindTaskCommands([]config.TaskCommand{shCommand("gr", "", "true"), shCommand("w", "", "true")})
 	require.NoError(t, err)
 	assert.Equal(t, 'g', bound[0].prefix)
 	assert.Equal(t, "r", bound[0].key)
 	assert.Equal(t, rune(0), bound[1].prefix)
-	assert.Equal(t, "m", bound[1].key)
+	assert.Equal(t, "w", bound[1].key)
 }
 
 func TestTaskCommand_PromptRunsWithTaskEnvironment(t *testing.T) {
@@ -120,45 +121,45 @@ func TestTaskCommand_EscCancels(t *testing.T) {
 }
 
 func TestTaskCommand_NoPromptRunsAtOnce(t *testing.T) {
-	m := newCommandModel(t, shCommand("m", "", `printf '\033[1mqueued\033[0m %s\n' "$ORDO_TASK_TITLE"`))
-	m, cmd := pressKeys(m, "m")
+	m := newCommandModel(t, shCommand("w", "", `printf '\033[1mqueued\033[0m %s\n' "$ORDO_TASK_TITLE"`))
+	m, cmd := pressKeys(m, "w")
 	m = runCmd(t, m, cmd)
 	assert.Equal(t, "queued Alpha", m.ui.Screen.StatusMsg)
 }
 
 func TestTaskCommand_FailureShowsStderr(t *testing.T) {
-	m := newCommandModel(t, shCommand("m", "", "echo out; echo 'already exists' >&2; exit 1"))
-	m, cmd := pressKeys(m, "m")
+	m := newCommandModel(t, shCommand("w", "", "echo out; echo 'already exists' >&2; exit 1"))
+	m, cmd := pressKeys(m, "w")
 	m = runCmd(t, m, cmd)
 	assert.Equal(t, "probe failed: already exists", m.ui.Screen.StatusMsg)
 }
 
 func TestTaskCommand_SilentFailureShowsExitStatus(t *testing.T) {
-	m := newCommandModel(t, shCommand("m", "", "exit 3"))
-	m, cmd := pressKeys(m, "m")
+	m := newCommandModel(t, shCommand("w", "", "exit 3"))
+	m, cmd := pressKeys(m, "w")
 	m = runCmd(t, m, cmd)
 	assert.Equal(t, "probe failed: exit status 3", m.ui.Screen.StatusMsg)
 }
 
 func TestTaskCommand_MissingProgram(t *testing.T) {
-	m := newCommandModel(t, config.TaskCommand{Key: "m", Label: "probe", Run: []string{"ordo-no-such-program"}})
-	m, cmd := pressKeys(m, "m")
+	m := newCommandModel(t, config.TaskCommand{Key: "w", Label: "probe", Run: []string{"ordo-no-such-program"}})
+	m, cmd := pressKeys(m, "w")
 	m = runCmd(t, m, cmd)
 	assert.True(t, strings.HasPrefix(m.ui.Screen.StatusMsg, "probe failed: exec: "), m.ui.Screen.StatusMsg)
 }
 
 func TestTaskCommand_SilentSuccess(t *testing.T) {
-	m := newCommandModel(t, shCommand("m", "", "true"))
-	m, cmd := pressKeys(m, "m")
+	m := newCommandModel(t, shCommand("w", "", "true"))
+	m, cmd := pressKeys(m, "w")
 	assert.Equal(t, "probe…", m.ui.Screen.StatusMsg, "a running command says so until it finishes")
 	m = runCmd(t, m, cmd)
 	assert.Equal(t, "probe: done", m.ui.Screen.StatusMsg)
 }
 
 func TestTaskCommand_NeedsATask(t *testing.T) {
-	m := newCommandModel(t, shCommand("m", "", "echo ran"))
+	m := newCommandModel(t, shCommand("w", "", "echo ran"))
 	m.ui.Selection.SetSelected(0) // the project row
-	m, cmd := pressKeys(m, "m")
+	m, cmd := pressKeys(m, "w")
 	assert.Nil(t, cmd)
 	assert.Equal(t, "probe: focus a task first", m.ui.Screen.StatusMsg)
 	assert.Equal(t, modes.ModeNormal, m.ui.Modes.Current())

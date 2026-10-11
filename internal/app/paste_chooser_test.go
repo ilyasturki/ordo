@@ -346,8 +346,8 @@ func TestPaste_OneLineInputsFlattenIt(t *testing.T) {
 		assert.Equal(t, "Work", m.ui.Picker.projects[0].Name)
 	})
 	t.Run("task command prompt", func(t *testing.T) {
-		m := newCommandModel(t, shCommand("m", "when", "true"))
-		m, _ = pressKeys(m, "m")
+		m := newCommandModel(t, shCommand("w", "when", "true"))
+		m, _ = pressKeys(m, "w")
 		require.True(t, m.ui.Modes.IsCommandPrompt())
 		send(t, m, tea.PasteMsg{Content: "next\nfriday\n"})
 		assert.Equal(t, "next friday", m.ui.TaskCommand.input.Value())

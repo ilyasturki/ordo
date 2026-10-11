@@ -28,28 +28,3 @@ func TestSubCategoryIsNeverAVersion(t *testing.T) {
 	c := Category{ID: "c", Name: "v0.2.0", ParentID: "p"}
 	assert.False(t, c.IsVersion())
 }
-
-func TestIsInboxName(t *testing.T) {
-	for _, name := range []string{"next", "Next", "NEXT", "next 2", " next 12 "} {
-		assert.True(t, IsInboxName(name), name)
-	}
-	for _, name := range []string{"NEXT REWORK", "next2", "nexts", "v0.9.0", "next 2b"} {
-		assert.False(t, IsInboxName(name), name)
-	}
-}
-
-func projectNamed(names ...string) Project {
-	p := Project{}
-	for i, n := range names {
-		p.Categories = append(p.Categories, Category{ID: string(rune('a' + i)), Name: n})
-	}
-	return p
-}
-
-func TestInboxIndexSkipsSubCategories(t *testing.T) {
-	p := projectNamed("v0.2.0", "next", "next 2")
-	p.Categories[1].ParentID = "a"
-	assert.Equal(t, 2, p.InboxIndex())
-	none := projectNamed("todo")
-	assert.Equal(t, -1, none.InboxIndex())
-}

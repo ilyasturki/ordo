@@ -75,7 +75,7 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 ## Features
 
 - A top-level category named `vX.Y.Z` is a version, and a label may follow the number (`v1.3.0 - polish`).
-- A category called `next` is the inbox for whatever hasn't been planned. `M` sends the focused task, or a whole visual range, to an open version or back to the inbox.
+- `m` moves the focused task, or a whole visual range, to the end of any other category. `/` filters the list of categories.
 - Categories take one level of sub-categories and tasks one level of subtasks. `>` nests a row under the one above it and `<` takes it back out.
 - The keys are vim's where vim has one: `j`/`k`, `gg`/`G`, `{`/`}` between categories, `/` then `n`/`N`, `v` for a visual range, `za` to fold or unfold a category and `zc`/`zo` for all of them, `zz` to center. `ze` shows a long row in full.
 - `p` on several lines of text asks how they should land: one task per line, one task with the rest as its description, every line joined into one title, or appended to the focused task's description. A markdown checklist keeps its `[x]` and `[~]` statuses, its headings become separators and its indented bullets become subtasks. `x` cuts a task, and `p` puts it back elsewhere with the same ID.
@@ -131,7 +131,7 @@ Config lives at `~/.config/ordo/config.json`. The options screen (`,`) edits the
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `key` | yes | One character (`m`), or `g` or `z` followed by one (`gn`). A key a built-in shortcut already uses is refused at launch. |
+| `key` | yes | One character (`w`), or `g` or `z` followed by one (`gn`). A key a built-in shortcut already uses is refused at launch. |
 | `label` | yes | Name shown in `?` and the shortcut bar. |
 | `prompt` | no | Asks for one line first; Enter on an empty line cancels. |
 | `run` | yes | Program and arguments, run directly, never through a shell. |

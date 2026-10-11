@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
@@ -12,24 +14,29 @@ import (
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
-const noMoveTarget = "No open version to move to: add one with A on a version"
+const noMoveTarget = "No other category to move to"
 
 type moveTarget struct {
 	categoryID string
 	label      string
+	path       string
 }
 
 type MovePickerState struct {
-	targets  []moveTarget
-	selected int
-	offset   int
-	taskIDs  []string
-	title    string
-	// last outlives the picker, so a run of moves from the inbox keeps its target.
+	all       []moveTarget
+	targets   []moveTarget
+	selected  int
+	offset    int
+	taskIDs   []string
+	title     string
+	filtering bool
+	filter    textinput.Model
+	query     string
+	// last outlives the picker, so a run of moves from one category keeps its target.
 	last string
 }
 
-func (m *model) startMoveToVersion() {
+func (m *model) startMove() {
 	pos, ok := m.selectedPosition()
 	if !ok || !visualTaskLevel(pos.Kind) {
 		m.ui.Screen.StatusMsg = "Put the cursor on a task to move it"
@@ -38,7 +45,7 @@ func (m *model) startMoveToVersion() {
 	m.openMovePicker([]string{m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID})
 }
 
-func (m *model) visualMoveToVersion() {
+func (m *model) visualMove() {
 	if m.ui.Visual.Kind == selection.FocusCategory {
 		m.ui.Screen.StatusMsg = "Select tasks to move them"
 		return
@@ -60,7 +67,8 @@ func (m *model) openMovePicker(ids []string) {
 	if len(ids) == 0 {
 		return
 	}
-	targets := m.moveTargets(m.sourceCategory(ids))
+	source := m.sourceCategory(ids)
+	targets := m.moveTargets(source)
 	if len(targets) == 0 {
 		m.ui.Screen.StatusMsg = noMoveTarget
 		return
@@ -70,8 +78,9 @@ func (m *model) openMovePicker(ids []string) {
 		title = "Move " + rowCountLabel(countTasks(rows), len(rows)-countTasks(rows)) + " to"
 	}
 	m.ui.MovePicker = MovePickerState{
+		all:      targets,
 		targets:  targets,
-		selected: m.defaultMoveTarget(targets),
+		selected: m.defaultMoveTarget(targets, ids),
 		taskIDs:  ids,
 		title:    title,
 		last:     m.ui.MovePicker.last,
@@ -97,48 +106,41 @@ func (m *model) sourceCategory(ids []string) string {
 	return source
 }
 
-// moveTargets lists the inbox, then each open version followed by its sub-categories.
+// moveTargets lists every category but the source in project order; a sub-category whose parent is the source goes by its path.
 func (m *model) moveTargets(exclude string) []moveTarget {
 	cats := m.project.Categories
 	var out []moveTarget
-	if i := m.project.InboxIndex(); i >= 0 && cats[i].ID != exclude {
-		out = append(out, moveTarget{cats[i].ID, cats[i].Name})
-	}
-	for _, i := range m.project.VersionIndexes() {
-		listed := cats[i].ID != exclude
-		if listed {
-			out = append(out, moveTarget{cats[i].ID, cats[i].Name})
+	for i, c := range cats {
+		if c.ID == exclude {
+			continue
 		}
-		for j := i + 1; j < domain.BlockEnd(cats, i); j++ {
-			if cats[j].ID == exclude {
-				continue
+		path := m.project.CategoryPath(i)
+		label := c.Name
+		if c.ParentID != "" {
+			label = strings.Repeat(" ", nestIndent) + c.Name
+			if c.ParentID == exclude {
+				label = path
 			}
-			label := m.project.CategoryPath(j)
-			if listed {
-				label = "  " + cats[j].Name
-			}
-			out = append(out, moveTarget{cats[j].ID, label})
 		}
+		out = append(out, moveTarget{categoryID: c.ID, label: label, path: path})
 	}
 	return out
 }
 
-// defaultMoveTarget is the last target picked, else the lowest open version: the next to ship.
-func (m *model) defaultMoveTarget(targets []moveTarget) int {
-	best, bestV := -1, domain.Semver{}
+// defaultMoveTarget is the last target picked, else the category right after the rows' own, else the one before it.
+func (m *model) defaultMoveTarget(targets []moveTarget, ids []string) int {
 	for i, t := range targets {
 		if t.categoryID == m.ui.MovePicker.last {
 			return i
 		}
-		ci, err := m.project.FindCategoryByID(t.categoryID)
-		if err != nil {
-			continue
-		}
-		if v, ok := m.project.Categories[ci].Version(); ok && (best < 0 || v.Compare(bestV) < 0) {
-			best, bestV = i, v
+	}
+	from, _ := m.findTaskByID(ids[0])
+	for i, t := range targets {
+		if ci, err := m.project.FindCategoryByID(t.categoryID); err == nil && ci > from {
+			return i
 		}
 	}
-	return max(best, 0)
+	return len(targets) - 1
 }
 
 func (m *model) movedRows(ids []string) []domain.Task {
@@ -163,11 +165,16 @@ func countTasks(rows []domain.Task) int {
 	return n
 }
 
-func (m model) handleMovePickerKey(msg tea.KeyPressMsg) model {
+func (m model) handleMovePickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	p := &m.ui.MovePicker
+	if p.filtering {
+		return m.handleMovePickerFilterKey(msg)
+	}
 	switch msg.String() {
 	case "q", "esc":
 		m.ui.Modes.ToNormal()
+	case "/":
+		p.startFiltering()
 	case "j", "down":
 		p.selected = min(p.selected+1, len(p.targets)-1)
 	case "k", "up":
@@ -177,14 +184,82 @@ func (m model) handleMovePickerKey(msg tea.KeyPressMsg) model {
 	case "G", "end":
 		p.selected = len(p.targets) - 1
 	case "enter":
-		m.ui.Modes.ToNormal()
-		if p.selected >= 0 && p.selected < len(p.targets) {
-			m.moveToCategory(p.targets[p.selected].categoryID)
-		}
-		return m
+		m.pickMoveTarget()
+		return m, nil
 	}
 	p.ensureVisible(m.movePickerRows())
-	return m
+	return m, nil
+}
+
+func (m model) handleMovePickerFilterKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
+	p := &m.ui.MovePicker
+	switch msg.String() {
+	case "esc":
+		p.cancelFiltering()
+	case "enter":
+		m.pickMoveTarget()
+		return m, nil
+	case "down", "ctrl+n":
+		p.selected = max(0, min(p.selected+1, len(p.targets)-1))
+	case "up", "ctrl+p":
+		p.selected = max(p.selected-1, 0)
+	default:
+		var cmd tea.Cmd
+		p.filter, cmd = p.filter.Update(msg)
+		sanitizeInput(&p.filter)
+		p.query = p.filter.Value()
+		p.applyFilter()
+		p.ensureVisible(m.movePickerRows())
+		return m, cmd
+	}
+	p.ensureVisible(m.movePickerRows())
+	return m, nil
+}
+
+func (m *model) pickMoveTarget() {
+	p := m.ui.MovePicker
+	if p.selected < 0 || p.selected >= len(p.targets) {
+		return
+	}
+	m.ui.Modes.ToNormal()
+	m.moveToCategory(p.targets[p.selected].categoryID)
+}
+
+func (p *MovePickerState) startFiltering() {
+	p.filtering = true
+	p.query = ""
+	p.filter = newTextInput()
+	p.filter.Focus()
+}
+
+// cancelFiltering restores the whole list and keeps the highlighted target.
+func (p *MovePickerState) cancelFiltering() {
+	keep := ""
+	if p.selected >= 0 && p.selected < len(p.targets) {
+		keep = p.targets[p.selected].categoryID
+	}
+	p.filtering = false
+	p.filter = textinput.Model{}
+	p.query = ""
+	p.targets = p.all
+	for i, t := range p.targets {
+		if t.categoryID == keep {
+			p.selected = i
+		}
+	}
+}
+
+func (p *MovePickerState) applyFilter() {
+	p.targets = p.all
+	if p.query != "" {
+		p.targets = nil
+		for _, t := range p.all {
+			if ui.Contains(t.path, p.query) {
+				p.targets = append(p.targets, t)
+			}
+		}
+	}
+	p.selected, p.offset = 0, 0
 }
 
 // moveToCategory leaves the cursor where the rows were, so a run of moves can triage a list.
@@ -212,7 +287,11 @@ func (m *model) moveToCategory(categoryID string) {
 	m.selectItem(stay.Kind, stay.ID)
 	m.ensureVisible()
 	m.storeTaskUpdate()
-	m.ui.Screen.StatusMsg = strings.TrimSuffix(pastedRowsStatus(rows, true), "!") + " to " + m.project.CategoryPath(dst)
+	status := strings.TrimSuffix(pastedRowsStatus(rows, true), "!") + " to " + m.project.CategoryPath(dst)
+	if m.ui.Fold.IsFolded(categoryID) {
+		status += " (folded)"
+	}
+	m.ui.Screen.StatusMsg = status
 }
 
 // stayAnchor is the next row of the cursor's category the move leaves behind, else the row above.
@@ -242,9 +321,13 @@ func (m *model) stayAnchor(moving map[string]bool) selection.Position {
 	return selection.Position{Kind: selection.FocusProject}
 }
 
-// movePickerRows leaves room for the dialog's border, padding, title and hints.
+// movePickerRows leaves room for the dialog's border, padding, title, filter prompt and hints.
 func (m model) movePickerRows() int {
-	return max(3, m.ui.Screen.Height-12)
+	rows := m.ui.Screen.Height - 12
+	if m.ui.MovePicker.filtering {
+		rows--
+	}
+	return max(3, rows)
 }
 
 func (p *MovePickerState) ensureVisible(rows int) {
@@ -257,26 +340,49 @@ func (p *MovePickerState) ensureVisible(rows int) {
 	p.offset = max(0, min(p.offset, len(p.targets)-rows))
 }
 
+// movePickerWidth is measured over the whole list, so filtering never resizes the dialog.
+func (m model) movePickerWidth(hints []ui.Hint) int {
+	p := m.ui.MovePicker
+	width := max(ansi.StringWidth(p.title), lipgloss.Width(ui.RenderHints(hints)), 24)
+	for _, t := range p.all {
+		width = max(width, 2+ansi.StringWidth(t.label), 2+ansi.StringWidth(t.path))
+	}
+	return min(width, safeWidth(m.ui.Screen.Width, 12))
+}
+
 func (m model) movePickerView() string {
 	p := m.ui.MovePicker
-	width := safeWidth(m.ui.Screen.Width, 12)
+	hints := []ui.Hint{{Key: "enter", Label: "move"}, {Key: "/", Label: "filter"}, {Key: "esc", Label: "cancel"}}
+	width := m.movePickerWidth(hints)
+	if p.filtering {
+		hints = []ui.Hint{{Key: "enter", Label: "move"}, {Key: "esc", Label: "clear"}}
+	}
 	lines := []string{ui.DialogTitleStyle.Render(p.title), ""}
+	if p.filtering {
+		lines = append(lines, m.filterPromptRow(p.filter, p.query, len(p.targets), width))
+	}
 	end := min(len(p.targets), p.offset+m.movePickerRows())
 	if p.offset > 0 {
 		lines = append(lines, ui.MutedStyle.Render(fmt.Sprintf("  ↑ %d more", p.offset)))
 	}
 	for i := p.offset; i < end; i++ {
-		line := ansi.Truncate(p.targets[i].label, width, "…")
+		label := p.targets[i].label
+		if p.query != "" {
+			label = p.targets[i].path
+		}
+		line := ansi.Truncate(label, width-2, ui.Ellipsis)
 		if i == p.selected {
 			lines = append(lines, ui.SelectedStyle.Render("> "+line))
 			continue
+		}
+		if p.query != "" {
+			line = ui.HighlightMatches(line, p.query, lipgloss.NewStyle(), ui.SearchMatchStyle)
 		}
 		lines = append(lines, "  "+line)
 	}
 	if end < len(p.targets) {
 		lines = append(lines, ui.MutedStyle.Render(fmt.Sprintf("  ↓ %d more", len(p.targets)-end)))
 	}
-	hints := []ui.Hint{{Key: "enter", Label: "move"}, {Key: "esc", Label: "cancel"}}
 	lines = append(lines, "", ui.RenderHints(hints))
 	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
 }

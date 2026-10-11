@@ -14,10 +14,15 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Folded categories in a row stack one header per row, with no blank line between them and no `(folded)` row. Folded sub-categories under the same parent stack at their indent
 - Category headers no longer show counts unless "Category Counts" is on, versions included, and the `· N in progress` suffix is gone: the `[/]` badge says it
 
+### Changed
+
+- `M` is now `m` and moves the task, or a visual range, to any category instead of an open version, with `/` to filter the list
+
 ### Removed
 
 - Shipping a version: `s`, `ordo category ship|unship`, the ship date on its header, the dimming and auto-folding of shipped versions and the red `! N open`. A file a 0.10.0 build saved with a ship date still opens, and the date is dropped on the next save
 - `ordo versions`: `ordo categories` lists the same task counts
+- The `next` inbox: a category named `next` is an ordinary category again
 
 ### Fixed
 

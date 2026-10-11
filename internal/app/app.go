@@ -333,7 +333,7 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case modes.ModePasteChooser:
 		return m.handlePasteChooserKey(msg)
 	case modes.ModeMovePicker:
-		return m.handleMovePickerKey(msg), nil
+		return m.handleMovePickerKey(msg)
 	case modes.ModeExternalEdit:
 		return m, nil
 	default:

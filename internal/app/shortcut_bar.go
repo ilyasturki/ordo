@@ -14,6 +14,7 @@ var normalShortcuts = []ui.Hint{
 	{Key: "?", Label: "help"},
 	{Key: "a", Label: "add"},
 	{Key: "A", Label: "category"},
+	{Key: "m", Label: "move"},
 	{Key: "f", Label: "filter"},
 	{Key: "/", Label: "search"},
 	{Key: "v", Label: "visual"},
@@ -34,6 +35,7 @@ var cutShortcuts = []ui.Hint{
 
 var visualShortcuts = []ui.Hint{
 	{Key: "J/K", Label: "move"},
+	{Key: "m", Label: "move to"},
 	{Key: "y", Label: "copy"},
 	{Key: "Y", Label: "markdown"},
 	{Key: "x", Label: "cut"},
