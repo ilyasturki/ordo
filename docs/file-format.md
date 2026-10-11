@@ -12,7 +12,7 @@ Version 0.9.0, released as phasionary, carried its own sync, made of a change jo
 │   ├── <id>.json.lock           flock for that project
 │   ├── .global.lock             flock for creating and renaming projects
 │   └── attachments/             images, see Images
-│       ├── <hash>.<ext>             one image, never modified
+│       ├── <hash>.<ext>             one image, never rewritten
 │       └── .<hash>.<ext>.*.tmp      a write in progress
 └── state.json                   this device's UI state
 ```
@@ -107,7 +107,7 @@ the overflow here:
 - The target `attachments/<hash>.<ext>` resolves against the projects directory. `<hash>` is the first 32 lowercase hex digits of the sha256 of the file's bytes, and `<ext>` is `png`, `jpg`, `gif` or `webp`, from the bytes, not from the original name. Only a target of exactly that form is an image in the store, so a reference can't point outside `attachments/`.
 - The alt text is the image's name: the original file name, or `Screenshot <local time>` for a clipboard image. It holds no brackets and no newline.
 - A target that is an absolute path is an image outside the store. Ordo shows and opens it while the file exists.
-- A file in `attachments/` is written once, through a temp file renamed into place, and never modified. Two devices that add the same image write the same bytes under the same name, so Syncthing never makes a conflict copy of one. Ordo writes the image before the project that references it, but Syncthing doesn't keep that order: a reference whose file is missing means the file hasn't synced yet, and ordo shows it as `▣ name (not synced yet)`, never as an error.
+- A file in `attachments/` is written once, through a temp file renamed into place, and its bytes never change. Adding an image that is already there only sets the file's modification time to now, which keeps prune away from it. Two devices that add the same image write the same bytes under the same name, so Syncthing never makes a conflict copy of one. Ordo writes the image before the project that references it, but Syncthing doesn't keep that order: a reference whose file is missing means the file hasn't synced yet, and ordo shows it as `▣ name (not synced yet)`, never as an error.
 - Clients never delete an image on their own. Removing its reference from a description leaves the file, since undo, a cut waiting to be pasted, or a device that hasn't synced the change yet can bring the reference back. Only `ordo attachments prune --yes`, run by hand, deletes: a file whose name appears in no file of `projects/` with `.json` in its name, conflict copies and temp files included, and whose modification time is more than 30 days old, since Syncthing carries the delete to every device, including one that has just referenced the file in an edit not synced yet.
 
 Images change no field, so they need no schema bump: an older ordo keeps the reference as plain text.

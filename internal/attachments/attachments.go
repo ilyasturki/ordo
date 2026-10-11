@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/ilyasturki/ordo/internal/fsutil"
@@ -82,6 +83,9 @@ func (s *Store) Add(data []byte) (string, error) {
 	target := DirName + "/" + name
 	path := filepath.Join(s.dir, name)
 	if _, err := os.Lstat(path); err == nil {
+		// Prune spares files by age: one referenced again must look new.
+		now := time.Now()
+		_ = os.Chtimes(path, now, now)
 		return target, nil
 	}
 	if err := os.MkdirAll(s.dir, 0o755); err != nil {

@@ -56,22 +56,26 @@ func TestAdd_NamesTheFileByItsContent(t *testing.T) {
 	assert.True(t, Internal(target))
 }
 
-func TestAdd_LeavesAnExistingFileAlone(t *testing.T) {
+func TestAdd_NeverRewritesAFileButMakesItLookNew(t *testing.T) {
 	s := NewStore(t.TempDir())
 	data := pngBytes(t, 3, 3)
 	target, err := s.Add(data)
 	require.NoError(t, err)
 	path, _ := s.Path(target)
-	old := time.Now().Add(-48 * time.Hour)
+	old := time.Now().Add(-40 * 24 * time.Hour)
 	require.NoError(t, os.Chtimes(path, old, old))
+	before, err := os.Stat(path)
+	require.NoError(t, err)
 
 	again, err := s.Add(data)
 
 	require.NoError(t, err)
 	assert.Equal(t, target, again)
-	info, err := os.Stat(path)
+	after, err := os.Stat(path)
 	require.NoError(t, err)
-	assert.True(t, info.ModTime().Equal(old), "a stored file is written once")
+	assert.True(t, os.SameFile(before, after), "a stored file is written once")
+	assert.WithinDuration(t, time.Now(), after.ModTime(), time.Minute,
+		"attached again, it must not look old enough to prune")
 }
 
 func TestAdd_LeavesNoTempFileBehind(t *testing.T) {
