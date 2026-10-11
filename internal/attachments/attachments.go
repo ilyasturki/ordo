@@ -221,7 +221,6 @@ func webpSize(b []byte) (int, int, bool) {
 	return 0, 0, false
 }
 
-// Ref is an image a description references as ![Name](Target).
 type Ref struct {
 	Name   string
 	Target string
@@ -241,8 +240,6 @@ func (r Ref) Label() string {
 
 var refPattern = regexp.MustCompile(`!\[([^\[\]\n]*)\]\(([^()\n]+)\)`)
 
-// parseRef reads one refPattern match; ok is false for a target that is
-// neither internal nor an absolute path.
 func parseRef(match []string) (Ref, bool) {
 	ref := Ref{Name: strings.TrimSpace(match[1]), Target: strings.TrimSpace(match[2])}
 	return ref, ref.Internal() || filepath.IsAbs(ref.Target)
@@ -261,7 +258,6 @@ func Refs(text string) []Ref {
 	return refs
 }
 
-// Piece is a run of a line: text, or an image reference when Ref is set.
 type Piece struct {
 	Text string
 	Ref  *Ref

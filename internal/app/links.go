@@ -82,7 +82,6 @@ func (m *model) openLinksForSelected() tea.Cmd {
 	}
 }
 
-// taskLinks lists the URLs in the task's title and description, then its images.
 func (m *model) taskLinks(task domain.Task) []components.Link {
 	var links []components.Link
 	for _, u := range extractURLs(task.Title + "\n" + task.Description) {
@@ -130,7 +129,6 @@ type taskImage struct {
 	path string
 }
 
-// taskImages lists the images the task references, once per file.
 func (m *model) taskImages(task domain.Task) []taskImage {
 	store := m.deps.Attachments
 	if store == nil {

@@ -92,8 +92,6 @@ func storeImages(store *attachments.Store, msg imagesStoredMsg, images []pending
 	}
 }
 
-// handleImagesStored puts the references into the task's open description
-// editor at its cursor, or else at the end of its description.
 func (m *model) handleImagesStored(msg imagesStoredMsg) tea.Cmd {
 	if msg.err != nil {
 		m.ui.Screen.StatusMsg = attachFailure(msg.failed, msg.err)

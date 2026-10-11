@@ -1,6 +1,5 @@
 package components
 
-// Link is something gx opens: a URL, or an image's file.
 type Link struct {
 	Label  string
 	Target string
