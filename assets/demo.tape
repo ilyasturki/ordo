@@ -4,7 +4,7 @@ Set FontFamily "IosevkaTerm Nerd Font"
 Set FontSize 22
 Set LineHeight 1.2
 Set Width 1400
-Set Height 1000
+Set Height 1100
 Set Padding 28
 Set Margin 24
 Set WindowBar Colorful
@@ -109,6 +109,20 @@ Sleep 500ms
 Escape
 Sleep 500ms
 Escape
+Sleep 1.4s
+
+# Bump the version in its name: ctrl+a the patch, gm the minor.
+Type "gg"
+Sleep 200ms
+Type "}"
+Sleep 200ms
+Type "}"
+Sleep 700ms
+Ctrl+A
+Wait+Screen /v1\.3\.1/
+Sleep 1s
+Type "gm"
+Wait+Screen /v1\.4\.0/
 Sleep 1.4s
 
 # Switch project.

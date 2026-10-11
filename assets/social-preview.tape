@@ -1,7 +1,7 @@
 # GitHub social preview (Settings → Social preview), 1280×640. Run `just demo`.
 Set Shell bash
 Set FontFamily "IosevkaTerm Nerd Font"
-Set FontSize 22
+Set FontSize 18
 Set LineHeight 1.2
 Set Width 1280
 Set Height 640
@@ -17,7 +17,7 @@ Hide
 Type "source assets/demo/setup.sh && clear && ordo -p ferry"
 Enter
 Wait+Screen@60s /v1\.3\.0/
-Type "}ztj"
+Type "}jza}zakkkkkztj"
 Sleep 500ms
 Show
 Sleep 300ms

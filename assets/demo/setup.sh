@@ -10,4 +10,5 @@ export PATH="$demo_dir/bin:$PATH"
 go build -o "$demo_dir/bin/ordo" ./cmd/ordo &&
     cp assets/demo/checklist.md "$ORDO_CLIPBOARD_FILE" &&
     ordo import assets/demo/homelab.json -q &&
-    ordo import assets/demo/ferry.json -q
+    ordo import assets/demo/ferry.json -q &&
+    cp assets/demo/state.json "$ORDO_DATA_PATH/state.json"
