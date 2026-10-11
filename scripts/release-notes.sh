@@ -16,7 +16,7 @@ notes="$(awk -v heading="## [$1]" '
   found { print }
 ' CHANGELOG.md | sed '/./,$!d')"
 
-if [[ -z "$notes" ]]; then
+if ! grep -q '^[^#[:space:]]' <<< "$notes"; then
   echo "CHANGELOG.md has no notes under '## [$1]'" >&2
   exit 1
 fi
