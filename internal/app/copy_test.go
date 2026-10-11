@@ -148,7 +148,7 @@ func runSequence(t *testing.T, msg tea.Msg) []tea.Msg {
 	return msgs
 }
 
-// fakeWlCopy stands body in for wl-copy, behind a socket name no compositor answers to.
+// fakeWlCopy stands body in for wl-copy (pbcopy on macOS), behind a socket name no compositor answers to.
 func fakeWlCopy(t *testing.T, body string) {
 	t.Helper()
 	sh, err := exec.LookPath("sh")
@@ -157,7 +157,9 @@ func fakeWlCopy(t *testing.T, body string) {
 	require.NoError(t, err)
 	dir := t.TempDir()
 	script := "#!" + sh + "\nPATH=" + filepath.Dir(cat) + "\n" + body + "\n"
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "wl-copy"), []byte(script), 0o755))
+	for _, name := range []string{"wl-copy", "pbcopy"} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755))
+	}
 	t.Setenv(clipboard.EnvFile, "")
 	t.Setenv("PATH", dir)
 	t.Setenv("WAYLAND_DISPLAY", "wayland-test")
