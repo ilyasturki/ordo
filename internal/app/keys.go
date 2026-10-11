@@ -157,6 +157,8 @@ var normalBindings = []keyBinding{
 		action: func(m *model) tea.Cmd { m.ui.Info.ScrollOffset = 0; m.ui.Modes.ToInfo(); return nil }},
 	{keys: []string{"x"}, prefix: 'g', display: "gx", desc: "open link in item", section: sectionApp,
 		action: func(m *model) tea.Cmd { return m.openLinksForSelected() }},
+	{keys: []string{"c"}, prefix: 'g', display: "gc", desc: "changelog", section: sectionApp,
+		action: func(m *model) tea.Cmd { m.ui.Changelog.ScrollOffset = 0; m.ui.Modes.ToChangelog(); return nil }},
 	{keys: []string{"u"}, desc: "undo", section: sectionApp,
 		action: void((*model).undo)},
 	{keys: []string{"ctrl+r"}, desc: "redo", section: sectionApp,

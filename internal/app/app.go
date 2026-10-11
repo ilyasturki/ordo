@@ -304,6 +304,8 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handleFilterKey(msg), nil
 	case modes.ModeInfo:
 		return m.handleInfoKey(msg), nil
+	case modes.ModeChangelog:
+		return m.handleChangelogKey(msg), nil
 	case modes.ModeEstimatePicker:
 		return m.handleEstimatePickerKey(msg), nil
 	case modes.ModeURLPicker:
@@ -547,23 +549,39 @@ func (m *model) openFilterHubSelection() {
 }
 
 func (m model) handleInfoKey(msg tea.KeyPressMsg) model {
-	switch msg.String() {
-	case "q", "esc":
+	if scrollDialogKey(msg.String(), &m.ui.Info.ScrollOffset, m.infoViewportHeight(), m.infoMaxScroll()) {
 		m.ui.Modes.ToNormal()
-	case "j", "down":
-		m.scrollInfo(1)
-	case "k", "up":
-		m.scrollInfo(-1)
-	case "ctrl+d":
-		m.scrollInfo(m.infoViewportHeight() / 2)
-	case "ctrl+u":
-		m.scrollInfo(-m.infoViewportHeight() / 2)
-	case "g":
-		m.ui.Info.ScrollOffset = 0
-	case "G":
-		m.ui.Info.ScrollOffset = m.infoMaxScroll()
 	}
 	return m
+}
+
+func (m model) handleChangelogKey(msg tea.KeyPressMsg) model {
+	if scrollDialogKey(msg.String(), &m.ui.Changelog.ScrollOffset, m.changelogViewportHeight(), m.changelogMaxScroll()) {
+		m.ui.Modes.ToNormal()
+	}
+	return m
+}
+
+// scrollDialogKey moves a read-only dialog's window and reports whether key closes it.
+func scrollDialogKey(key string, offset *int, height, maxScroll int) bool {
+	switch key {
+	case "q", "esc":
+		return true
+	case "j", "down":
+		*offset++
+	case "k", "up":
+		*offset--
+	case "ctrl+d":
+		*offset += height / 2
+	case "ctrl+u":
+		*offset -= height / 2
+	case "g":
+		*offset = 0
+	case "G":
+		*offset = maxScroll
+	}
+	*offset = min(max(*offset, 0), maxScroll)
+	return false
 }
 
 func (m model) handleEstimatePickerKey(msg tea.KeyPressMsg) model {
@@ -768,6 +786,8 @@ func (m model) renderView() string {
 		return modal.Render(content, m.filterView())
 	case modes.ModeInfo:
 		return modal.Render(content, m.infoView())
+	case modes.ModeChangelog:
+		return modal.Render(content, m.changelogView())
 	case modes.ModeEstimatePicker:
 		return modal.Render(content, m.estimatePickerView())
 	case modes.ModeURLPicker:

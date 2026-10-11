@@ -91,7 +91,7 @@ type Screen struct {
 	AnnouncedConflicts []string
 }
 
-// InfoState holds the info dialog's scroll position. The dialog shows fields in
+// InfoState holds a read-only dialog's scroll position: the info dialog shows fields in
 // full that the list clamps, so its body can outgrow the screen.
 type InfoState struct {
 	ScrollOffset int
@@ -123,6 +123,7 @@ type UIState struct {
 	YankPicker     components.YankPickerState
 	Help           HelpState
 	Info           InfoState
+	Changelog      InfoState
 	Clipboard      ClipboardState
 	// Writes of Clipboard.Text not yet answered: until they land, p trusts the copy unread.
 	ClipboardWrites int

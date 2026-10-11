@@ -68,11 +68,6 @@ func (m model) infoMaxScroll() int {
 	return max(len(m.infoLines())-m.infoViewportHeight(), 0)
 }
 
-// scrollInfo moves the dialog's window by delta rows, stopping at either end.
-func (m *model) scrollInfo(delta int) {
-	m.ui.Info.ScrollOffset = min(max(m.ui.Info.ScrollOffset+delta, 0), m.infoMaxScroll())
-}
-
 func (m model) taskInfoLines(catIdx, taskIdx int) []string {
 	task := m.project.Categories[catIdx].Tasks[taskIdx]
 	category := m.project.Categories[catIdx]
