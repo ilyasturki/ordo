@@ -176,11 +176,20 @@ func TestVisualShipShipsEveryOpenVersionInRange(t *testing.T) {
 	assert.False(t, m.ui.Modes.IsVisual())
 }
 
+var testNow = time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+
+func pinClock(t *testing.T) {
+	t.Helper()
+	timeNow = func() time.Time { return testNow }
+	t.Cleanup(func() { timeNow = time.Now })
+}
+
 func TestVersionHeaders(t *testing.T) {
+	pinClock(t)
 	p := versionsProject()
 	fold := NewFoldState()
 	fold.SetShipped(p.Categories)
-	now := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+	now := testNow
 
 	open := headerOf(&p, 1, &fold, false)
 	assert.Equal(t, "1/3 · 1 in progress", open.progress)
@@ -190,7 +199,7 @@ func TestVersionHeaders(t *testing.T) {
 	shipped := headerOf(&p, 2, &fold, false)
 	assert.True(t, shipped.shipped)
 	assert.True(t, shipped.folded)
-	assert.Equal(t, "shipped "+shipDate(shippedAt, now)+" · 1/2", shipped.progress)
+	assert.Equal(t, "shipped 28 Aug · 1/2", shipped.progress)
 	assert.Equal(t, "! 1 open", shipped.warning)
 
 	clean := headerOf(&p, 3, &fold, false)
@@ -204,6 +213,7 @@ func TestVersionHeaders(t *testing.T) {
 }
 
 func TestShippedVersionsStackWithoutGaps(t *testing.T) {
+	pinClock(t)
 	m, _ := newVersionsModel(t)
 	rendered := ansi.Strip(m.renderView())
 	lines := strings.Split(rendered, "\n")

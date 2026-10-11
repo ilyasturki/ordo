@@ -72,7 +72,7 @@ func headerOf(p *domain.Project, ci int, fold *FoldState, cut bool) categoryHead
 	switch {
 	case cat.Shipped():
 		h.shipped = true
-		h.progress = "shipped " + shipDate(cat.ReleasedAt, time.Now())
+		h.progress = "shipped " + shipDate(cat.ReleasedAt, timeNow())
 		if counts.Total() > 0 {
 			h.progress += " · " + done
 		}
@@ -92,13 +92,15 @@ func headerOf(p *domain.Project, ci int, fold *FoldState, cut bool) categoryHead
 	return h
 }
 
+var timeNow = time.Now
+
 // shipDate drops the year within the current one: "14 Sep", "14 Sep 2025".
 func shipDate(ts string, now time.Time) string {
 	t, err := time.Parse(time.RFC3339, ts)
 	if err != nil {
 		return ts
 	}
-	t, now = t.Local(), now.Local()
+	t = t.In(now.Location())
 	if t.Year() == now.Year() {
 		return t.Format("2 Jan")
 	}
