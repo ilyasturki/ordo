@@ -7,10 +7,12 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Added
 
 - `gc` shows this changelog in the TUI
+- A "Category Counts" option (`show_category_counts`, off by default) shows done / total on every top-level category that holds tasks, a parent counting its sub-categories
 
 ### Changed
 
 - Folded categories in a row stack one header per row, with no blank line between them and no `(folded)` row. Folded sub-categories under the same parent stack at their indent
+- Category headers no longer show counts unless "Category Counts" is on, versions included, and the `· N in progress` suffix is gone: the `[/]` badge says it
 
 ## [0.10.0] - 2026-10-11
 

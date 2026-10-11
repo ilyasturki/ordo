@@ -32,6 +32,7 @@ type Config struct {
 	CopyVia                     string `json:"copy_via,omitempty"`
 	ShowShortcutBar             bool   `json:"show_shortcut_bar"`
 	ExpandDescriptionsByDefault bool   `json:"expand_descriptions_by_default"`
+	ShowCategoryCounts          bool   `json:"show_category_counts"`
 
 	TaskCommands []TaskCommand `json:"task_commands,omitempty"`
 }
@@ -85,6 +86,7 @@ func DefaultConfig() Config {
 		CopyVia:                     CopyViaOSC52,
 		ShowShortcutBar:             true,
 		ExpandDescriptionsByDefault: false,
+		ShowCategoryCounts:          false,
 	}
 }
 

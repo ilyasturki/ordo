@@ -74,7 +74,7 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 
 ## Features
 
-- A top-level category named `vX.Y.Z` is a version, and a label may follow the number (`v1.3.0 - polish`). Its header counts done and in-progress tasks. `s` ships it: the version folds, dims and records the date, and one shipped with open tasks keeps a red `! 2 open`. `s` again reopens it. `A` on a version proposes the next patch, and `ordo versions` lists every version with its ship date.
+- A top-level category named `vX.Y.Z` is a version, and a label may follow the number (`v1.3.0 - polish`). `s` ships it: the version folds, dims and records the date, and one shipped with open tasks keeps a red `! 2 open`. `s` again reopens it. `A` on a version proposes the next patch, and `ordo versions` lists every version with its ship date.
 - A category called `next` is the inbox for whatever hasn't been planned. `M` sends the focused task, or a whole visual range, to an open version or back to the inbox.
 - Categories take one level of sub-categories and tasks one level of subtasks. `>` nests a row under the one above it and `<` takes it back out.
 - The keys are vim's where vim has one: `j`/`k`, `gg`/`G`, `{`/`}` between categories, `/` then `n`/`N`, `v` for a visual range, `za` to fold or unfold a category and `zc`/`zo` for all of them, `zz` to center. `ze` shows a long row in full.
@@ -105,7 +105,7 @@ Run `ordo --help` for the rest: projects, categories, config and completions.
 
 ## Configuration
 
-Config lives at `~/.config/ordo/config.json`. The options screen (`,`) edits the first four keys below, and `ordo config set <key> <value>` sets `status_display` and `copy_via`.
+Config lives at `~/.config/ordo/config.json`. The options screen (`,`) edits the first five keys below, and `ordo config set <key> <value>` sets `status_display` and `copy_via`.
 
 | Key | Values | Default | Description |
 |-----|--------|---------|-------------|
@@ -113,6 +113,7 @@ Config lives at `~/.config/ordo/config.json`. The options screen (`,`) edits the
 | `priority_color` | `full`, `icon`, `none` | `full` | Color the whole title, the priority arrow alone, or nothing |
 | `show_shortcut_bar` | `true`, `false` | `true` | The key hints along the bottom of the screen |
 | `expand_descriptions_by_default` | `true`, `false` | `false` | Whether descriptions start expanded; `zd` toggles them |
+| `show_category_counts` | `true`, `false` | `false` | Done / total after each top-level category name |
 | `copy_via` | `osc52`, `wl-copy` | `osc52` | How copies reach the system clipboard: the terminal's OSC 52, or `wl-copy` (`pbcopy` on macOS) |
 | `task_commands` | list | none | Keys that run a program on the focused task, below |
 

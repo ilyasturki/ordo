@@ -46,7 +46,7 @@ type categoryHeader struct {
 	shipped  bool
 }
 
-func headerOf(p *domain.Project, ci int, fold *FoldState, cut bool) categoryHeader {
+func headerOf(p *domain.Project, ci int, fold *FoldState, cut, showCounts bool) categoryHeader {
 	cat := p.Categories[ci]
 	h := categoryHeader{
 		name:     cat.Name,
@@ -59,35 +59,24 @@ func headerOf(p *domain.Project, ci int, fold *FoldState, cut bool) categoryHead
 		h.indent = nestIndent
 		return h
 	}
-	hasChildren := domain.HasChildren(p.Categories, ci)
-	if hasChildren {
+	if domain.HasChildren(p.Categories, ci) {
 		h.status = p.TreeAggregateStatus(ci)
 	}
-	isVersion := cat.IsVersion()
-	if !hasChildren && !isVersion && !cat.Shipped() {
-		return h
-	}
 	counts := p.TreeStatusCounts(ci)
-	done := fmt.Sprintf("%d/%d", counts.Completed+counts.Cancelled, counts.Total())
-	switch {
-	case cat.Shipped():
+	done := ""
+	if showCounts && counts.Total() > 0 {
+		done = fmt.Sprintf("%d/%d", counts.Completed+counts.Cancelled, counts.Total())
+	}
+	h.progress = done
+	if cat.Shipped() {
 		h.shipped = true
 		h.progress = "shipped " + shipDate(cat.ReleasedAt, timeNow())
-		if counts.Total() > 0 {
+		if done != "" {
 			h.progress += " · " + done
 		}
 		if open := counts.Todo + counts.InProgress; open > 0 {
 			h.warning = fmt.Sprintf("! %d open", open)
 		}
-	case isVersion:
-		if counts.Total() > 0 {
-			h.progress = done
-		}
-		if counts.InProgress > 0 {
-			h.progress += fmt.Sprintf(" · %d in progress", counts.InProgress)
-		}
-	case hasChildren && counts.Total() > 0:
-		h.progress = done
 	}
 	return h
 }

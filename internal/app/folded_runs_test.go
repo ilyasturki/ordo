@@ -45,10 +45,6 @@ func newFoldedRunsModel(t *testing.T) *model {
 	return m
 }
 
-func renderedLines(m *model) []string {
-	return strings.Split(ansi.Strip(m.renderView()), "\n")
-}
-
 func lineOf(t *testing.T, lines []string, name string) int {
 	t.Helper()
 	i := slices.IndexFunc(lines, func(l string) bool {
@@ -59,7 +55,7 @@ func lineOf(t *testing.T, lines []string, name string) int {
 }
 
 func TestFoldedRunsStackOneHeaderPerRow(t *testing.T) {
-	lines := renderedLines(newFoldedRunsModel(t))
+	lines := screen(newFoldedRunsModel(t))
 	a := lineOf(t, lines, "v0.0.1")
 	assert.Equal(t, a+1, lineOf(t, lines, "v0.0.2"))
 	assert.Equal(t, a+2, lineOf(t, lines, "v0.0.3"))
@@ -70,7 +66,7 @@ func TestFoldedRunsStackOneHeaderPerRow(t *testing.T) {
 }
 
 func TestFoldedSubCategoriesStackAtTheirIndent(t *testing.T) {
-	lines := renderedLines(newFoldedRunsModel(t))
+	lines := screen(newFoldedRunsModel(t))
 	ui := lineOf(t, lines, "ui")
 	assert.Equal(t, ui+1, lineOf(t, lines, "ux"))
 	assert.True(t, strings.HasPrefix(lines[ui], "    ▶ ui"), "sub-category keeps its indent: %q", lines[ui])
@@ -79,7 +75,7 @@ func TestFoldedSubCategoriesStackAtTheirIndent(t *testing.T) {
 }
 
 func TestLoneFoldedCategoryKeepsItsGapsButNoPlaceholder(t *testing.T) {
-	lines := renderedLines(newFoldedRunsModel(t))
+	lines := screen(newFoldedRunsModel(t))
 	lone := lineOf(t, lines, "lone")
 	assert.Equal(t, "", strings.TrimSpace(lines[lone-1]), "a top-level category never stacks under another parent's sub-categories")
 	assert.Equal(t, "", strings.TrimSpace(lines[lone+1]))
@@ -90,7 +86,7 @@ func TestUnfoldingSplitsTheRun(t *testing.T) {
 	m := newFoldedRunsModel(t)
 	m.ui.Selection.MoveTo(slices.IndexFunc(m.positions(), func(p selection.Position) bool { return p.ID == "b" }))
 	m.toggleFold()
-	lines := renderedLines(m)
+	lines := screen(m)
 	a, b, c := lineOf(t, lines, "v0.0.1"), lineOf(t, lines, "v0.0.2"), lineOf(t, lines, "v0.0.3")
 	assert.Equal(t, a+2, b, "the unfolded category gets its gap back")
 	assert.Contains(t, lines[b+2], "task b1")
@@ -102,7 +98,7 @@ func TestVisualOverAFoldedRunIsOneBand(t *testing.T) {
 	m.ui.Selection.MoveTo(slices.IndexFunc(m.positions(), func(p selection.Position) bool { return p.ID == "a" }))
 	m.enterVisualMode()
 	m.visualMoveCursor(2)
-	lines := renderedLines(m)
+	lines := screen(m)
 	a := lineOf(t, lines, "v0.0.1")
 	for i := a; i <= a+2; i++ {
 		assert.Equal(t, m.ui.Screen.Width, ansi.StringWidth(lines[i]), "row %d is padded to the full width: %q", i, lines[i])

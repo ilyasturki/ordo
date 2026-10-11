@@ -69,6 +69,17 @@ var optionSpecs = []optionSpec{
 			m.rebuildPositions()
 		},
 	},
+	{
+		name:    "Category Counts",
+		detail:  "done / total after each top-level category name",
+		values:  onOff,
+		current: func(cfg config.Config) string { return onOffKey(cfg.ShowCategoryCounts) },
+		apply: func(m *model, key string) {
+			_ = m.deps.CfgManager.Update(func(cfg *config.Config) { cfg.ShowCategoryCounts = key == "on" })
+			// Counts narrow the header name, so cached row heights are stale.
+			m.invalidateLayout()
+		},
+	},
 }
 
 var onOff = []optionValue{{key: "on", label: "On"}, {key: "off", label: "Off"}}

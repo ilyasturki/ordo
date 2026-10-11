@@ -72,6 +72,22 @@ Type " "
 Sleep 200ms
 Escape
 Sleep 300ms
+Screenshot "/tmp/ordo-vt/vhs-out/05_options_counts_hidden.png"
+Sleep 300ms
+
+Type ","
+Sleep 300ms
+Type "jjjj"
+Sleep 200ms
+Type " "
+Sleep 300ms
+Screenshot "/tmp/ordo-vt/vhs-out/05_options_counts_on.png"
+Sleep 300ms
+Escape
+Sleep 300ms
+Screenshot "/tmp/ordo-vt/vhs-out/05_options_counts_shown.png"
+# Let the final capture land before quitting (see run.sh).
+Sleep 500ms
 
 Hide
 Type "q"

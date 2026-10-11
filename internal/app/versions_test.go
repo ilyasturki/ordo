@@ -1,7 +1,6 @@
 package app
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -182,54 +181,6 @@ func pinClock(t *testing.T) {
 	t.Helper()
 	timeNow = func() time.Time { return testNow }
 	t.Cleanup(func() { timeNow = time.Now })
-}
-
-func TestVersionHeaders(t *testing.T) {
-	pinClock(t)
-	p := versionsProject()
-	fold := NewFoldState()
-	fold.SetShipped(p.Categories)
-	now := testNow
-
-	open := headerOf(&p, 1, &fold, false)
-	assert.Equal(t, "1/3 · 1 in progress", open.progress)
-	assert.False(t, open.shipped)
-	assert.Empty(t, open.warning)
-
-	shipped := headerOf(&p, 2, &fold, false)
-	assert.True(t, shipped.shipped)
-	assert.True(t, shipped.folded)
-	assert.Equal(t, "shipped 28 Aug · 1/2", shipped.progress)
-	assert.Equal(t, "! 1 open", shipped.warning)
-
-	clean := headerOf(&p, 3, &fold, false)
-	assert.Empty(t, clean.warning)
-
-	inbox := headerOf(&p, 0, &fold, false)
-	assert.Empty(t, inbox.progress, "a plain category keeps its plain header")
-
-	assert.Equal(t, "28 Aug", shipDate(shippedAt, now))
-	assert.Equal(t, "28 Aug 2026", shipDate(shippedAt, now.AddDate(1, 0, 0)))
-}
-
-func TestShippedVersionsStackWithoutGaps(t *testing.T) {
-	pinClock(t)
-	m, _ := newVersionsModel(t)
-	rendered := ansi.Strip(m.renderView())
-	lines := strings.Split(rendered, "\n")
-	var v2, v1 int
-	for i, l := range lines {
-		switch {
-		case strings.Contains(l, "v0.9.0"):
-			v2 = i
-		case strings.Contains(l, "v0.8.6"):
-			v1 = i
-		}
-	}
-	require.NotZero(t, v2)
-	assert.Equal(t, v2+1, v1, "folded shipped versions sit on consecutive rows")
-	assert.Contains(t, lines[v2], "▶ v0.9.0 [/] shipped 28 Aug · 1/2 ! 1 open")
-	assert.NotContains(t, rendered, "(folded)")
 }
 
 func TestShortcutBarOffersShipOnlyWithVersions(t *testing.T) {

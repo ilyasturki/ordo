@@ -56,6 +56,7 @@ type LayoutBuilder struct {
 	statusDisplay      string
 	fold               *FoldState
 	expandDescriptions bool
+	categoryCounts     bool
 	limits             rowLimits
 	// editHeight of 0 means no editor is open on editPos.
 	editPos    int
@@ -77,6 +78,11 @@ func NewLayoutBuilder(config LayoutConfig, width int, statusDisplay string, fold
 
 func (b *LayoutBuilder) WithExpandedDescriptions(v bool) *LayoutBuilder {
 	b.expandDescriptions = v
+	return b
+}
+
+func (b *LayoutBuilder) WithCategoryCounts(v bool) *LayoutBuilder {
+	b.categoryCounts = v
 	return b
 }
 
@@ -194,7 +200,7 @@ func (b *LayoutBuilder) countCategoryLines(project *domain.Project, catIdx int) 
 	}
 	category := project.Categories[catIdx]
 	cut := b.categoryCut != nil && b.categoryCut(category)
-	available := categoryNameWidth(b.width, headerOf(project, catIdx, b.fold, cut))
+	available := categoryNameWidth(b.width, headerOf(project, catIdx, b.fold, cut, b.categoryCounts))
 	return ui.CountClamped(category.Name, available, ui.MaxLineRows)
 }
 
@@ -208,8 +214,10 @@ func (m *model) buildLayout() *Layout {
 		c.editPos == editPos && c.editHeight == editHeight && c.cut == cut {
 		return c.layout
 	}
-	builder := NewLayoutBuilder(m.layoutConfig(), w, m.deps.CfgManager.Get().StatusDisplay, &m.ui.Fold).
+	cfg := m.deps.CfgManager.Get()
+	builder := NewLayoutBuilder(m.layoutConfig(), w, cfg.StatusDisplay, &m.ui.Fold).
 		WithExpandedDescriptions(m.ui.Screen.ExpandDescriptions).
+		WithCategoryCounts(cfg.ShowCategoryCounts).
 		WithRowLimits(limits).
 		WithEditOverlay(editPos, editHeight).
 		WithCutMarks(m.taskRowCut, m.categoryRowCut)

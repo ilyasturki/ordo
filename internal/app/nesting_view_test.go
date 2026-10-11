@@ -190,6 +190,7 @@ func TestNestedRowsIndent(t *testing.T) {
 
 func TestParentsShowProgress(t *testing.T) {
 	m := newNestedModel(t)
+	m.deps.CfgManager.(*stubConfigReader).cfg.ShowCategoryCounts = true
 	selectRow(t, m, selection.FocusProject, "")
 	lines := screen(m)
 	assert.Contains(t, lineWith(t, lines, "Rest timer"), "1/2")

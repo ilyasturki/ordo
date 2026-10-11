@@ -833,7 +833,7 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 			return m.renderEditCategoryLine(indent)
 		}
 		cut := m.categoryRowCut(m.project.Categories[item.CategoryIndex])
-		header := headerOf(&m.project, item.CategoryIndex, &m.ui.Fold, cut)
+		header := headerOf(&m.project, item.CategoryIndex, &m.ui.Fold, cut, m.deps.CfgManager.Get().ShowCategoryCounts)
 		return renderCategoryLine(header, isSelected, m.ui.Screen.Width, focused, inVisualRange, isCursor, m.searchQuery(), m.searchMatchStyle(isCursor))
 
 	case LayoutTask:
