@@ -135,8 +135,7 @@ func (p *Project) NewestVersion() int {
 	return best
 }
 
-// NextVersionSlot proposes the patch after the newest version and where it goes:
-// above the newest in a newest-first project, after every category otherwise.
+// NextVersionSlot places the next patch above the newest version in a newest-first project, after every category otherwise.
 func (p *Project) NextVersionSlot() (name string, index int, ok bool) {
 	newest := p.NewestVersion()
 	if newest < 0 {

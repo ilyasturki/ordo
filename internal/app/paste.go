@@ -210,12 +210,7 @@ func pastedRowsStatus(rows []domain.Task, moved bool) string {
 		}
 		return "Pasted!"
 	}
-	tasks := 0
-	for _, t := range rows {
-		if !t.IsSeparator() {
-			tasks++
-		}
-	}
+	tasks := countTasks(rows)
 	verb := "Pasted "
 	if moved {
 		verb = "Moved "
