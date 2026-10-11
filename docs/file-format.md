@@ -10,11 +10,14 @@ Version 0.9.0, released as phasionary, carried its own sync, made of a change jo
 │   ├── <id>.json                one project per file
 │   ├── <id>.json.tmp            a write in progress
 │   ├── <id>.json.lock           flock for that project
-│   └── .global.lock             flock for creating and renaming projects
+│   ├── .global.lock             flock for creating and renaming projects
+│   └── attachments/             images, see Images
+│       ├── <hash>.<ext>             one image, never modified
+│       └── .<hash>.<ext>.*.tmp      a write in progress
 └── state.json                   this device's UI state
 ```
 
-Only `projects/` travels between devices. `state.json` holds folds, cursor positions, the project order and which directory opens which project; it belongs to one device and stays there. The config file, `~/.config/ordo/config.json`, is per device too.
+Only `projects/` travels between devices, `attachments/` included. `state.json` holds folds, cursor positions, the project order and which directory opens which project; it belongs to one device and stays there. The config file, `~/.config/ordo/config.json`, is per device too.
 
 A file in `projects/` is a project only when its name is `<id>.json`, `<id>` is a valid ID, and the `id` inside the file is that same `<id>`. Ordo ignores every other file in the directory, from the `.tmp` and `.lock` sidecars to renamed and conflict copies.
 
@@ -91,6 +94,23 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | `tag_color` | string | Optional. A mark: `green`, `blue`, `magenta` or `cyan` draw a dot, and the same names with `-diamond` appended draw a diamond. |
 
 Every string is valid UTF-8 with no control characters: nothing below U+0020, no U+007F, nothing from U+0080 to U+009F. `description` is the exception for newline and tab. Ordo strips control characters from any file it loads, since a terminal would run them as commands.
+
+## Images
+
+A task carries an image as a markdown image reference inside its `description`, usually on a line of its own:
+
+```
+the overflow here:
+![Screenshot 2026-10-11 10.10.05](attachments/3f2a9c0e5b7d41f6a8c2e9d0b1f4a7c3.png)
+```
+
+- The target `attachments/<hash>.<ext>` resolves against the projects directory. `<hash>` is the first 32 lowercase hex digits of the sha256 of the file's bytes, and `<ext>` is `png`, `jpg`, `gif` or `webp`, from the bytes, not from the original name. Only a target of exactly that form is an image in the store, so a reference can't point outside `attachments/`.
+- The alt text is the image's name: the original file name, or `Screenshot <local time>` for a clipboard image. It holds no brackets and no newline.
+- A target that is an absolute path is an image outside the store. Ordo shows and opens it while the file exists.
+- A file in `attachments/` is written once, through a temp file renamed into place, and never modified. Two devices that add the same image write the same bytes under the same name, so Syncthing never makes a conflict copy of one. Ordo writes the image before the project that references it, but Syncthing doesn't keep that order: a reference whose file is missing means the file hasn't synced yet, and ordo shows it as `▣ name (not synced yet)`, never as an error.
+- Clients never delete an image on their own. Removing its reference from a description leaves the file, since undo, a cut waiting to be pasted, or a device that hasn't synced the change yet can bring the reference back.
+
+Images change no field, so they need no schema bump: an older ordo keeps the reference as plain text.
 
 ## Nesting
 

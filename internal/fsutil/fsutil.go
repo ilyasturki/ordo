@@ -17,6 +17,35 @@ func WriteAtomic(path string, data []byte, perm os.FileMode) error {
 	if err := writeSync(tmp, data, perm); err != nil {
 		return err
 	}
+	return renameSynced(tmp, path)
+}
+
+// WriteAtomicUnique is WriteAtomic through a temp file of its own, still named
+// "*.tmp", so two processes writing the same path never share one.
+func WriteAtomicUnique(path string, data []byte, perm os.FileMode) error {
+	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	err = f.Chmod(perm)
+	if err == nil {
+		_, err = f.Write(data)
+	}
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return renameSynced(tmp, path)
+}
+
+func renameSynced(tmp, path string) error {
 	if err := os.Rename(tmp, path); err != nil {
 		_ = os.Remove(tmp)
 		return err
