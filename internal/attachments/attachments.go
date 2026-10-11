@@ -249,6 +249,9 @@ func parseRef(match []string) (Ref, bool) {
 }
 
 func Refs(text string) []Ref {
+	if !strings.Contains(text, "![") {
+		return nil
+	}
 	var refs []Ref
 	for _, m := range refPattern.FindAllStringSubmatch(text, -1) {
 		if ref, ok := parseRef(m); ok {
@@ -265,6 +268,9 @@ type Piece struct {
 }
 
 func Split(line string) []Piece {
+	if !strings.Contains(line, "![") {
+		return []Piece{{Text: line}}
+	}
 	var pieces []Piece
 	last := 0
 	for _, loc := range refPattern.FindAllStringSubmatchIndex(line, -1) {
@@ -297,6 +303,9 @@ func Strip(text string) string {
 }
 
 func replaceRefs(text string, with func(Ref) string) string {
+	if !strings.Contains(text, "![") {
+		return text
+	}
 	return refPattern.ReplaceAllStringFunc(text, func(match string) string {
 		ref, ok := parseRef(refPattern.FindStringSubmatch(match))
 		if !ok {
