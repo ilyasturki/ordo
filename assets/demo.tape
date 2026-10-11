@@ -17,11 +17,11 @@ Set CursorBlink false
 Hide
 Type "source assets/demo/setup.sh && clear && ordo -p ferry"
 Enter
-Wait+Screen@60s /shipped/
+Wait+Screen@60s /v1\.3\.0/
 Show
 Sleep 2s
 
-# Capture an idea into the next inbox.
+# Capture an idea into next.
 Type "j"
 Sleep 200ms
 Type "a"
@@ -32,10 +32,13 @@ Enter
 Wait+Screen /flaky connection/
 Sleep 700ms
 
-# Send it to the version that ships next.
-Type "M"
+# Move it to the version it belongs to: m lists the categories, / filters them.
+Type "m"
 Wait+Screen /Move to/
 Sleep 1s
+Type "/1.3"
+Wait+Screen /match/
+Sleep 700ms
 Enter
 Sleep 900ms
 
