@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestParseVersionName(t *testing.T) {
@@ -28,22 +27,6 @@ func TestParseVersionName(t *testing.T) {
 func TestSubCategoryIsNeverAVersion(t *testing.T) {
 	c := Category{ID: "c", Name: "v0.2.0", ParentID: "p"}
 	assert.False(t, c.IsVersion())
-	assert.ErrorIs(t, c.Ship(), ErrNotVersion)
-}
-
-func TestShipAndUnship(t *testing.T) {
-	c := Category{ID: "c", Name: "v0.9.0"}
-	require.NoError(t, c.Ship())
-	assert.True(t, c.Shipped())
-	assert.NotEmpty(t, c.ReleasedAt)
-	assert.ErrorIs(t, c.Ship(), ErrAlreadyShipped)
-
-	c.Name = "old stuff"
-	assert.True(t, c.Shipped(), "a rename keeps the ship date")
-	require.NoError(t, c.Unship())
-	assert.False(t, c.Shipped())
-	assert.ErrorIs(t, c.Unship(), ErrNotShipped)
-	assert.ErrorIs(t, c.Ship(), ErrNotVersion)
 }
 
 func TestIsInboxName(t *testing.T) {

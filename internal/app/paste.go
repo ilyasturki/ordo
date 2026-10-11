@@ -356,7 +356,6 @@ func copyCategory(src domain.Category) (domain.Category, error) {
 	}
 	out := src
 	out.ID = id
-	out.ReleasedAt = ""
 	out.UpdatedAt = domain.NowTimestamp()
 	out.Tasks = make([]domain.Task, len(src.Tasks))
 	fresh := make(map[string]string, len(src.Tasks))

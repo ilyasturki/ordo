@@ -74,7 +74,7 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 
 ## Features
 
-- A top-level category named `vX.Y.Z` is a version, and a label may follow the number (`v1.3.0 - polish`). `ordo versions` lists every version with its ship date.
+- A top-level category named `vX.Y.Z` is a version, and a label may follow the number (`v1.3.0 - polish`).
 - A category called `next` is the inbox for whatever hasn't been planned. `M` sends the focused task, or a whole visual range, to an open version or back to the inbox.
 - Categories take one level of sub-categories and tasks one level of subtasks. `>` nests a row under the one above it and `<` takes it back out.
 - The keys are vim's where vim has one: `j`/`k`, `gg`/`G`, `{`/`}` between categories, `/` then `n`/`N`, `v` for a visual range, `za` to fold or unfold a category and `zc`/`zo` for all of them, `zz` to center. `ze` shows a long row in full.
@@ -95,8 +95,6 @@ ordo task add --parent <id> "Decrypt on apply" # a subtask
 ordo tasks -C v1.3.0/docs                      # a sub-category by path
 ordo task move <id> v1.3.0                     # plan it
 ordo task status <id> in_progress              # start it
-ordo versions                                  # progress and ship date per version
-ordo category ship v1.3.0                      # ship it (unship reopens it)
 ordo export -f json -o ferry.json              # snapshot
 ordo import ferry.json -n ferry-copy           # load it back as a new project
 ```

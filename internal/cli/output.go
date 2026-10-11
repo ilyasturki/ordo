@@ -90,7 +90,6 @@ type CategoryListItem struct {
 	Path            string `json:"path"`
 	TaskCount       int    `json:"task_count"`
 	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
-	ReleasedAt      string `json:"released_at,omitempty"`
 }
 
 type CategoriesOutput struct {
@@ -111,7 +110,6 @@ func writeCategories(w io.Writer, project domain.Project) error {
 				Path:            cliPath(project, i),
 				TaskCount:       project.TreeTaskCount(i),
 				EstimateMinutes: c.EstimateMinutes,
-				ReleasedAt:      c.ReleasedAt,
 			})
 		}
 		return writeJSON(w, output)
@@ -354,7 +352,6 @@ type CategoryDetail struct {
 	TaskCount       int    `json:"task_count"`
 	SubCategories   int    `json:"sub_categories,omitempty"`
 	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
-	ReleasedAt      string `json:"released_at,omitempty"`
 }
 
 func writeCategoryDetail(w io.Writer, project domain.Project, i int) error {
@@ -369,7 +366,6 @@ func writeCategoryDetail(w io.Writer, project domain.Project, i int) error {
 		TaskCount:       project.TreeTaskCount(i),
 		SubCategories:   domain.ChildCount(project.Categories, i),
 		EstimateMinutes: cat.EstimateMinutes,
-		ReleasedAt:      cat.ReleasedAt,
 	}
 
 	if getOutputFormat() == FormatJSON {
@@ -392,9 +388,6 @@ func writeCategoryDetail(w io.Writer, project domain.Project, i int) error {
 	fmt.Fprintf(w, "Created: %s\n", detail.CreatedAt)
 	if detail.UpdatedAt != "" {
 		fmt.Fprintf(w, "Updated: %s\n", detail.UpdatedAt)
-	}
-	if detail.ReleasedAt != "" {
-		fmt.Fprintf(w, "Shipped: %s\n", detail.ReleasedAt)
 	}
 	return nil
 }

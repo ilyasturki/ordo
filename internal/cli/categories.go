@@ -39,8 +39,6 @@ func newCategoryCmd() *cobra.Command {
 	cmd.AddCommand(newCategoryAddCmd())
 	cmd.AddCommand(newCategoryEditCmd())
 	cmd.AddCommand(newCategoryDeleteCmd())
-	cmd.AddCommand(newCategoryShipCmd(true))
-	cmd.AddCommand(newCategoryShipCmd(false))
 
 	return cmd
 }

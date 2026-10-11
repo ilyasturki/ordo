@@ -2,7 +2,6 @@ package domain
 
 import (
 	"cmp"
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -10,9 +9,6 @@ import (
 )
 
 var (
-	ErrNotVersion      = errors.New("not a version: its name must start with vX.Y.Z")
-	ErrAlreadyShipped  = errors.New("already shipped")
-	ErrNotShipped      = errors.New("not shipped")
 	versionNamePattern = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)`)
 	inboxNamePattern   = regexp.MustCompile(`(?i)^next( \d+)?$`)
 )
@@ -61,31 +57,6 @@ func (c *Category) Version() (Semver, bool) {
 func (c *Category) IsVersion() bool {
 	_, ok := c.Version()
 	return ok
-}
-
-// Shipped follows ReleasedAt alone, so renaming a shipped version never reopens it.
-func (c *Category) Shipped() bool {
-	return c.ReleasedAt != ""
-}
-
-func (c *Category) Ship() error {
-	if !c.IsVersion() {
-		return ErrNotVersion
-	}
-	if c.Shipped() {
-		return ErrAlreadyShipped
-	}
-	now := NowTimestamp()
-	c.ReleasedAt, c.UpdatedAt = now, now
-	return nil
-}
-
-func (c *Category) Unship() error {
-	if !c.Shipped() {
-		return ErrNotShipped
-	}
-	c.ReleasedAt, c.UpdatedAt = "", NowTimestamp()
-	return nil
 }
 
 func IsInboxName(name string) bool {

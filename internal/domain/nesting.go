@@ -311,9 +311,6 @@ func NormalizeNesting(p *Project) {
 func RequiredSchema(p Project) int {
 	schema := 1
 	for _, c := range p.Categories {
-		if c.ReleasedAt != "" {
-			return 3
-		}
 		if c.ParentID != "" {
 			schema = 2
 		}

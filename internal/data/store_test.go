@@ -252,6 +252,28 @@ func TestSchemaLegacyFileLoadsAndMigrates(t *testing.T) {
 	assert.Equal(t, 1, migrated.Schema)
 }
 
+func TestSchemaThreeFileLoadsAndDropsReleasedAt(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewStore(tmpDir)
+	require.NoError(t, store.Ensure())
+
+	shipped := `{"schema":3,"id":"ship-1","name":"Old","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z","categories":[
+	  {"id":"c1","name":"v0.9.0","created_at":"2024-01-01T00:00:00Z","released_at":"2026-09-12T16:20:00Z","tasks":[]}]}`
+	path := filepath.Join(tmpDir, "ship-1.json")
+	require.NoError(t, os.WriteFile(path, []byte(shipped), 0o644))
+
+	project, err := store.LoadProjectByID("ship-1")
+	require.NoError(t, err)
+	require.NoError(t, store.SaveProjectLocked(project))
+
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), "released_at")
+	saved, err := store.LoadProjectByID("ship-1")
+	require.NoError(t, err)
+	assert.Equal(t, 1, saved.Schema)
+}
+
 // A half-upgraded machine sharing a data directory must refuse a file from a
 // newer binary instead of rewriting it through an older format.
 func TestSchemaTooNewRefused(t *testing.T) {

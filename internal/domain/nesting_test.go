@@ -242,11 +242,6 @@ func TestRequiredSchema(t *testing.T) {
 	p.Categories[0].Tasks[1].ParentID = ""
 	p.Categories[1].ParentID = "v"
 	assert.Equal(t, 2, RequiredSchema(p))
-
-	p.Categories[1].ReleasedAt = "2026-10-01T09:00:00Z"
-	assert.Equal(t, 3, RequiredSchema(p))
-	p.Categories[1].ParentID = ""
-	assert.Equal(t, 3, RequiredSchema(p), "a ship date alone needs version 3")
 }
 
 func TestCheckSchemaReadsVersionThree(t *testing.T) {

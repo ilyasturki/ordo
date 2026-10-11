@@ -30,8 +30,6 @@ expect() {
 "$bin" category add v1.0.0 > /dev/null
 "$bin" task add -C v1.0.0 "Smoke task" > /dev/null
 expect 'Smoke task' tasks -C v1.0.0
-"$bin" category ship v1.0.0 > /dev/null
-expect '"released_at"' versions --json
 expect '^## v1.0.0' export -f markdown
 
 for shell in bash zsh fish; do
