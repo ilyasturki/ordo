@@ -66,11 +66,16 @@ if ! scripts/release-notes.sh "$new" >/dev/null; then
   exit 1
 fi
 
+if ! grep -q "^\[${new}\]: " CHANGELOG.md; then
+  echo "Add the '[${new}]: .../compare/v${current}...v${new}' link at the bottom of CHANGELOG.md and commit first" >&2
+  exit 1
+fi
+
 echo "Bumping ${current} -> ${new}"
 echo "${new}" > VERSION
 git add VERSION
-git commit -m "chore: bump version to ${new}"
-git tag -a "v${new}" -m "Release v${new}"
+git commit -m "chore(release): v${new}"
+git tag -a "v${new}" -m "v${new}"
 
 echo
 echo "Created commit and tag v${new}."
