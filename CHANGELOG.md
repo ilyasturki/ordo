@@ -404,3 +404,32 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 ## [0.1.1] - 2026-02-03
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
+
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/ilyasturki/ordo/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/ilyasturki/ordo/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/ilyasturki/ordo/compare/v0.8.6...v0.9.0
+[0.8.6]: https://github.com/ilyasturki/ordo/compare/v0.8.5...v0.8.6
+[0.8.5]: https://github.com/ilyasturki/ordo/compare/v0.8.4...v0.8.5
+[0.8.4]: https://github.com/ilyasturki/ordo/compare/v0.8.3...v0.8.4
+[0.8.3]: https://github.com/ilyasturki/ordo/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/ilyasturki/ordo/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/ilyasturki/ordo/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/ilyasturki/ordo/compare/v0.7.2...v0.8.0
+[0.7.2]: https://github.com/ilyasturki/ordo/compare/v0.7.1...v0.7.2
+[0.7.1]: https://github.com/ilyasturki/ordo/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/ilyasturki/ordo/compare/v0.6.5...v0.7.0
+[0.6.5]: https://github.com/ilyasturki/ordo/compare/v0.6.4...v0.6.5
+[0.6.4]: https://github.com/ilyasturki/ordo/compare/v0.6.3...v0.6.4
+[0.6.3]: https://github.com/ilyasturki/ordo/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/ilyasturki/ordo/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/ilyasturki/ordo/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/ilyasturki/ordo/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/ilyasturki/ordo/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/ilyasturki/ordo/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/ilyasturki/ordo/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/ilyasturki/ordo/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/ilyasturki/ordo/compare/v0.2.1...v0.3.0
+[0.2.1]: https://github.com/ilyasturki/ordo/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/ilyasturki/ordo/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/ilyasturki/ordo/releases/tag/v0.1.1
