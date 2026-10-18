@@ -4,6 +4,12 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- `ordo serve`, a Material web app for the phone over the same project files: step a task's status from the list, edit its title, details, priority, tag, estimate and category, attach photos, add tasks, subtasks and separators, long-press to select several and edit them together, drag to reorder or nest, fold categories, filter open or done tasks, and undo from the snackbar. An open page refreshes when the TUI, the CLI or Syncthing changes the file, and a title or details edit made on a stale page is refused instead of overwriting the newer one
+- `ordo serve pair` prints a one-time link and QR code that pairs a device, which then stays signed in while it's used at least once a year; `ordo serve passphrase` sets a passphrase to sign in without a link, and `ordo serve devices` and `ordo serve revoke` list and sign out devices
+- A NixOS module, `nixosModules.default`, runs `ordo serve` as a hardened service
+
 ## [0.11.0] - 2026-10-11
 
 ### Added

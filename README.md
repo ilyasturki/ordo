@@ -1,6 +1,6 @@
 # Ordo
 
-A local-only project planner for the terminal, run entirely from the keyboard. Name a category after a version (`v1.3.0`) and `ctrl+a` or `gm` bumps it in place. It is a single binary that keeps each project in a plain JSON file and never touches the network.
+A local-only project planner for the terminal, run entirely from the keyboard. Name a category after a version (`v1.3.0`) and `ctrl+a` or `gm` bumps it in place. It is a single binary that keeps each project in a plain JSON file. The terminal app never touches the network; `ordo serve` adds an opt-in web app for the phone.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.gif">
@@ -84,6 +84,24 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 - Each project is one JSON file, written atomically, which Syncthing can carry between machines. If Syncthing or another program changes the file while it's open, the TUI won't overwrite it and asks you to reload; it also names any conflict copy it finds.
 - [Task commands](#task-commands) are opt-in keys that hand the focused task to a program of yours.
 
+## On the phone
+
+`ordo serve` runs a web app made for a phone, over the same project files. Tap a task's circle to step its status, open it to edit its title, details, priority, tag, estimate and images, long-press to select several, and drag to reorder or to nest under another task. Its edits run through the same code as the TUI's keys and take the same project lock, so the TUI, the CLI, Syncthing and the phone write without losing each other's changes, and an open page refreshes when the file changes.
+
+```bash
+ordo serve --base-url https://ordo.example.com   # listens on 127.0.0.1:7319
+ordo serve pair                                  # a one-time link and QR code that pairs a device
+ordo serve passphrase                            # optional: sign in without a link
+ordo serve devices                               # the paired devices; ordo serve revoke <id>
+```
+
+The app speaks plain HTTP, so keep it on loopback behind a TLS reverse proxy. A paired device stays signed in as long as it's used at least once a year. On NixOS, the flake's module runs it as a service:
+
+```nix
+imports = [ inputs.ordo.nixosModules.default ];
+services.ordo-web = { enable = true; user = "alice"; baseUrl = "https://ordo.example.com"; };
+```
+
 ## CLI
 
 Most of what the TUI does has a command, for scripts and quick edits. Every command takes `-j` for JSON output.
@@ -149,7 +167,8 @@ The command runs in the background. It gets the task through environment variabl
 ~/.local/share/ordo/
 ├── projects/
 │   └── <id>.json    one project per file
-└── state.json       this machine's folds, cursors, project order and directory links
+├── state.json       this machine's folds, cursors, project order and directory links
+└── web.json         devices paired with ordo serve
 ```
 
 Edits save in the background as you make them, and `u` / `ctrl+r` undo and redo them within a session. Only `projects/` belongs in a sync folder; add `(?d)*.tmp` and `*.lock` to `.stignore` so the write and lock sidecars stay local. [`docs/file-format.md`](docs/file-format.md) documents the format for any other app that reads or writes these files.

@@ -1,6 +1,6 @@
 # File format
 
-Version 0.9.0, released as phasionary, carried its own sync, made of a change journal, a SQLite server and a web app. Each change to the data model had to be taught to all three. The server was never deployed, and Syncthing already carried the files between machines, so the whole stack was removed. Ordo stays a terminal tool. Any other client, a phone app included, lives in its own repository and works on the files described here.
+Version 0.9.0, released as phasionary, carried its own sync, made of a change journal, a SQLite server and a web app. Each change to the data model had to be taught to all three. The server was never deployed, and Syncthing already carried the files between machines, so the whole stack was removed. Ordo syncs through these files alone. Its phone web app, `ordo serve`, lives in this repository and edits them through the same code as the TUI, under the same lock. Any other client works on the files described here.
 
 ## Layout
 
@@ -14,10 +14,11 @@ Version 0.9.0, released as phasionary, carried its own sync, made of a change jo
 │   └── attachments/             images, see Images
 │       ├── <hash>.<ext>             one image, never rewritten
 │       └── .<hash>.<ext>.*.tmp      a write in progress
-└── state.json                   this device's UI state
+├── state.json                   this device's UI state
+└── web.json                     devices paired with `ordo serve`, mode 0600
 ```
 
-Only `projects/` travels between devices, `attachments/` included. `state.json` holds folds, cursor positions, the project order and which directory opens which project; it belongs to one device and stays there. The config file, `~/.config/ordo/config.json`, is per device too.
+Only `projects/` travels between devices, `attachments/` included. `state.json` holds folds, cursor positions, the project order and which directory opens which project; it belongs to one device and stays there, and so does `web.json`, which holds hashes of the paired devices' tokens. The config file, `~/.config/ordo/config.json`, is per device too.
 
 A file in `projects/` is a project only when its name is `<id>.json`, `<id>` is a valid ID, and the `id` inside the file is that same `<id>`. Ordo ignores every other file in the directory, from the `.tmp` and `.lock` sidecars to renamed and conflict copies.
 
