@@ -7,6 +7,7 @@ import (
 
 	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 // imagesSweepProject puts chips of every shape on the sweep's rows: long names
@@ -24,9 +25,9 @@ func imagesSweepProject() domain.Project {
 			n++
 			switch n % 4 {
 			case 0:
-				t.Description = appendDescription(t.Description, ref(long, n))
+				t.Description = operations.JoinDescription(t.Description, ref(long, n))
 			case 1:
-				t.Description = appendDescription(t.Description, "see "+ref("shot", n)+" and then "+ref("other", n+100)+" after it")
+				t.Description = operations.JoinDescription(t.Description, "see "+ref("shot", n)+" and then "+ref("other", n+100)+" after it")
 			case 2:
 				t.Description = ref("only", n)
 			}

@@ -136,7 +136,7 @@ func renderCategoryLine(h categoryHeader, selected bool, width int, focused bool
 	estimateBadge := ""
 	estimateBadgeText := ""
 	if estimateMinutes > 0 {
-		estimateBadgeText = " ~" + FormatEstimate(estimateMinutes)
+		estimateBadgeText = " ~" + domain.FormatEstimate(estimateMinutes)
 		switch {
 		case selected && visualMode && isCursor:
 			estimateBadge = ui.GetVisualCursorStyle(focused).Render(estimateBadgeText)
@@ -199,7 +199,7 @@ func categoryNameWidth(width int, h categoryHeader) int {
 		badges += ansi.StringWidth(" " + h.progress)
 	}
 	if h.estimate > 0 {
-		badges += ansi.StringWidth(" ~" + FormatEstimate(h.estimate))
+		badges += ansi.StringWidth(" ~" + domain.FormatEstimate(h.estimate))
 	}
 	if h.cut {
 		badges += ansi.StringWidth(ui.CutMark)

@@ -115,45 +115,6 @@ func FormatDateWithRelative(timestamp string) string {
 	return fmt.Sprintf("%s (%s)", date, relative)
 }
 
-func FormatEstimate(minutes int) string {
-	if minutes == 0 {
-		return ""
-	}
-	if minutes < 60 {
-		return fmt.Sprintf("%dm", minutes)
-	}
-	hours := minutes / 60
-	if hours < 8 {
-		return fmt.Sprintf("%dh", hours)
-	}
-	days := hours / 8
-	return fmt.Sprintf("%dd", days)
-}
-
-func FormatEstimateLabel(minutes int) string {
-	if minutes == 0 {
-		return "None"
-	}
-	if minutes < 60 {
-		if minutes == 1 {
-			return "1 minute"
-		}
-		return fmt.Sprintf("%d minutes", minutes)
-	}
-	hours := minutes / 60
-	if hours < 8 {
-		if hours == 1 {
-			return "1 hour"
-		}
-		return fmt.Sprintf("%d hours", hours)
-	}
-	days := hours / 8
-	if days == 1 {
-		return "1 day"
-	}
-	return fmt.Sprintf("%d days", days)
-}
-
 // A negative diff (clock skew, a hand-edited file) falls into "now": an "in "
 // prefix would break the column width.
 func FormatRelativeShort(timestamp string) string {

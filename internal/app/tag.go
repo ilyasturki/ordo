@@ -9,6 +9,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/modes"
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
@@ -40,15 +41,11 @@ func (m *model) cycleTag() {
 	if !ok || position.Kind != selection.FocusTask {
 		return
 	}
-	cat := &m.project.Categories[position.CategoryIndex]
-	task := &cat.Tasks[position.TaskIndex]
+	id := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex].ID
 	m.recordHistory()
-	if task.TagColor == "" {
-		_ = task.SetTagColor(domain.FreeTagColor(cat.Tasks))
-	} else {
-		task.CycleTag()
+	if _, err := operations.CycleTags(&m.project, []string{id}); m.applied(err) {
+		m.storeTaskUpdate()
 	}
-	m.storeTaskUpdate()
 }
 
 // startTagEdit opens the tag picker for the selected task, seeded with its
@@ -134,17 +131,8 @@ func (m *model) finishTagEdit() {
 	}
 
 	m.recordHistory()
-	changed := 0
-	for _, id := range ids {
-		task := m.taskByID(id)
-		if task == nil || task.TagColor == color {
-			continue
-		}
-		_ = task.SetTagColor(color)
-		changed++
-	}
-	if changed == 0 {
-		m.discardLastHistory()
+	changed, err := operations.SetTags(&m.project, ids, color)
+	if !m.applied(err) {
 		return
 	}
 	m.storeTaskUpdate()
@@ -232,13 +220,11 @@ func (m *model) pasteTagOntoSelected() {
 		m.ui.Screen.StatusMsg = "Paste tag: focus a task first"
 		return
 	}
-	task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-	if task.TagColor == m.ui.TagClip.Color {
+	taskID := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID
+	m.recordHistory()
+	if _, err := operations.SetTags(&m.project, []string{taskID}, m.ui.TagClip.Color); !m.applied(err) {
 		return
 	}
-	taskID := task.ID
-	m.recordHistory()
-	_ = task.SetTagColor(m.ui.TagClip.Color)
 	m.storeTaskUpdate()
 	// A tag change can move the task in or out of an active tag filter.
 	m.rebuildPositions()
@@ -279,18 +265,9 @@ func (m *model) visualPasteTag() {
 		return
 	}
 	m.recordHistory()
-	changed := 0
-	for _, pos := range selPositions {
-		task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-		if task.TagColor == m.ui.TagClip.Color {
-			continue
-		}
-		_ = task.SetTagColor(m.ui.TagClip.Color)
-		changed++
-	}
+	changed, err := operations.SetTags(&m.project, positionIDs(m.project, selPositions), m.ui.TagClip.Color)
 	m.exitVisualMode()
-	if changed == 0 {
-		m.discardLastHistory()
+	if !m.applied(err) {
 		return
 	}
 	m.storeTaskUpdate()
@@ -320,36 +297,18 @@ func (m *model) visualCycleTag() {
 	if len(selPositions) == 0 {
 		return
 	}
-	first := m.project.Categories[selPositions[0].CategoryIndex].Tasks[selPositions[0].TaskIndex]
-	next := domain.NextTagColor(first.TagColor)
-	if first.TagColor == "" {
-		next = domain.FreeTagColor(m.tasksAroundSelection(selPositions))
-	}
 	m.recordHistory()
-	for _, pos := range selPositions {
-		_ = m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].SetTagColor(next)
+	if _, err := operations.CycleTags(&m.project, positionIDs(m.project, selPositions)); m.applied(err) {
+		m.storeTaskUpdate()
 	}
-	m.storeTaskUpdate()
 }
 
-// tasksAroundSelection lists the tasks of every category the selection touches,
-// minus the selected ones.
-func (m *model) tasksAroundSelection(sel []selection.Position) []domain.Task {
-	selected := make(map[[2]int]bool, len(sel))
-	cats := make(map[int]bool)
-	for _, p := range sel {
-		selected[[2]int{p.CategoryIndex, p.TaskIndex}] = true
-		cats[p.CategoryIndex] = true
+func positionIDs(p domain.Project, positions []selection.Position) []string {
+	ids := make([]string, len(positions))
+	for i, pos := range positions {
+		ids[i] = p.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID
 	}
-	var out []domain.Task
-	for ci := range cats {
-		for ti, t := range m.project.Categories[ci].Tasks {
-			if !selected[[2]int{ci, ti}] {
-				out = append(out, t)
-			}
-		}
-	}
-	return out
+	return ids
 }
 
 // visualStartTagEdit collects the selected task IDs, leaves visual mode (a modal

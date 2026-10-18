@@ -7,6 +7,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/modes"
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 func (m *model) nestSelected(in bool) {
@@ -21,47 +22,33 @@ func (m *model) nestSelected(in bool) {
 	case selection.FocusCategory:
 		m.nestCategories(pos.CategoryIndex, pos.CategoryIndex+1, in)
 	case selection.FocusTask, selection.FocusDescription:
-		m.nestTasks(pos.CategoryIndex, pos.TaskIndex, pos.TaskIndex+1, in)
+		m.nestTasks([]string{m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID}, in)
 	case selection.FocusSeparator:
 		m.ui.Screen.StatusMsg = "A separator doesn't nest"
 	}
 }
 
 func (m *model) visualNest(in bool) {
-	lo, hi, catIdx, ok := m.visualRun()
-	if !ok {
+	if m.ui.Visual.Kind != selection.FocusCategory {
+		if ids := m.visualTaskIDs(); len(ids) > 0 {
+			m.nestTasks(ids, in)
+		}
 		return
 	}
-	if m.ui.Visual.Kind == selection.FocusCategory {
+	if lo, hi, ok := m.visualCategoryRun(); ok {
 		m.nestCategories(lo, hi, in)
-		return
 	}
-	m.nestTasks(catIdx, lo, hi, in)
 }
 
-func (m *model) nestTasks(catIdx, lo, hi int, in bool) {
-	cat := &m.project.Categories[catIdx]
-	if in && lo > 0 && m.ui.Filter.HasActiveFilter() &&
-		!shownRows(*cat, &m.ui.Filter, &m.ui.Fold)[domain.BlockStart(cat.Tasks, lo-1)] {
-		m.ui.Screen.StatusMsg = "Can't nest: the filter hides the row above"
-		return
-	}
+func (m *model) nestTasks(ids []string, in bool) {
 	m.recordHistory()
-	var err error
-	if in {
-		err = cat.IndentTasks(lo, hi)
-	} else {
-		_, err = cat.OutdentTasks(lo, hi)
-	}
-	if err != nil {
-		m.discardLastHistory()
-		m.ui.Screen.StatusMsg = nestRefusal(err, cat.Tasks[lo].ParentID != "", "task", "subtask", "subtasks")
+	parentID, err := operations.NestTasks(&m.project, ids, in, tuiView{m})
+	if !m.applied(err) {
 		return
 	}
 	if in {
-		m.revealChildrenOf(cat.Tasks[lo].ParentID)
+		m.revealChildrenOf(parentID)
 	}
-	m.project.UpdatedAt = domain.NowTimestamp()
 	m.rebuildPositions()
 	m.ensureVisible()
 	m.storeTaskUpdate()
@@ -95,27 +82,9 @@ func (m *model) revealChildrenOf(parentID string) {
 	}
 }
 
-func nestRefusal(err error, nested bool, kind, child, children string) string {
-	switch {
-	case errors.Is(err, domain.ErrNothingToNest):
-		return "Nothing above to nest under"
-	case errors.Is(err, domain.ErrSeparatorNest):
-		return "A separator doesn't nest"
-	case errors.Is(err, domain.ErrNestDepth) && nested:
-		return "Already a " + child + ": nesting goes one level deep"
-	case errors.Is(err, domain.ErrNestDepth):
-		return fmt.Sprintf("A %s with %s can't nest: nesting goes one level deep", kind, children)
-	case errors.Is(err, domain.ErrNotNested):
-		return "Already at the top level"
-	case errors.Is(err, domain.ErrMixedLevels):
-		return "Can't: the selection mixes levels"
-	}
-	return err.Error()
-}
-
 func (m *model) categoryNestRefusal(err error, lo, hi int, in bool) string {
 	if !errors.Is(err, domain.ErrDuplicateCategoryName) {
-		return nestRefusal(err, m.project.Categories[lo].ParentID != "", "category", "sub-category", "sub-categories")
+		return operations.NestRefusal(err, m.project.Categories[lo].ParentID != "", "category", "sub-category", "sub-categories").Error()
 	}
 	cats := m.project.Categories
 	if !in {

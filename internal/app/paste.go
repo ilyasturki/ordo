@@ -11,6 +11,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/clipboard"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 func (m *model) pasteFromClipboard() tea.Cmd {
@@ -88,18 +89,6 @@ func (m *model) pasteDestination() (catIndex, index int, parentID string, ok boo
 	return pos.CategoryIndex, 0, "", true
 }
 
-func settleTasks(tasks, rows []domain.Task, index int, parentID string) int {
-	if domain.SettleParents(rows, parentID) || parentID == "" {
-		return index
-	}
-	for i, t := range tasks {
-		if t.ID == parentID {
-			return domain.BlockEnd(tasks, i)
-		}
-	}
-	return index
-}
-
 func (m *model) pasteTasks() {
 	catIndex, index, parentID, ok := m.pasteDestination()
 	if !ok {
@@ -139,7 +128,7 @@ func (m *model) pasteTasks() {
 		}
 		m.recordHistory()
 		cat := &m.project.Categories[catIndex]
-		index = settleTasks(cat.Tasks, rows, index, parentID)
+		index = operations.SettleTasks(cat.Tasks, rows, index, parentID)
 		cat.Tasks = slices.Insert(cat.Tasks, index, rows...)
 		cat.UpdatedAt = domain.NowTimestamp()
 	}
@@ -159,56 +148,12 @@ func (m *model) pasteTasks() {
 	m.ui.Screen.StatusMsg = pastedRowsStatus(rows, clip.IsCut)
 }
 
-// moveRows counts index before the lift and skips an ID no longer in the project.
 func (m *model) moveRows(ids []string, catIndex, index int, parentID string) []domain.Task {
-	picked := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		picked[id] = true
-	}
-	// Project order, not the cut's: a row nested since the cut follows its parent.
-	var moved []domain.Task
-	for _, cat := range m.project.Categories {
-		moved = append(moved, domain.PickBlocks(cat.Tasks, picked)...)
-	}
-	if len(moved) == 0 {
+	rows, err := operations.MoveRows(&m.project, ids, m.project.Categories[catIndex].ID, index, parentID)
+	if err != nil {
 		return nil
 	}
-	parents := make([]string, len(moved))
-	lifted := make(map[string]bool, len(moved))
-	for i, t := range moved {
-		parents[i] = t.ParentID
-		lifted[t.ID] = true
-	}
-	dst := &m.project.Categories[catIndex]
-	index = settleTasks(dst.Tasks, moved, index, parentID)
-	now := domain.NowTimestamp()
-	for i := range moved {
-		if moved[i].ParentID != parents[i] {
-			moved[i].UpdatedAt = now
-		}
-	}
-	for _, t := range dst.Tasks[:min(index, len(dst.Tasks))] {
-		if lifted[t.ID] {
-			index--
-		}
-	}
-	for i := range m.project.Categories {
-		cat := &m.project.Categories[i]
-		kept := cat.Tasks[:0]
-		for _, t := range cat.Tasks {
-			if !lifted[t.ID] {
-				kept = append(kept, t)
-			}
-		}
-		if len(kept) != len(cat.Tasks) {
-			cat.Tasks = kept
-			cat.UpdatedAt = now
-		}
-	}
-	index = max(0, min(index, len(dst.Tasks)))
-	dst.Tasks = slices.Insert(dst.Tasks, index, moved...)
-	dst.UpdatedAt, m.project.UpdatedAt = now, now
-	return moved
+	return rows
 }
 
 func pastedRowsStatus(rows []domain.Task, moved bool) string {

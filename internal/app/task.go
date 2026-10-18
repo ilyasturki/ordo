@@ -10,6 +10,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/modes"
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 func (m *model) deleteSelected() {
@@ -43,7 +44,9 @@ func (m *model) deleteSeparator(pos selection.Position) {
 		return
 	}
 	m.recordHistory()
-	_ = cat.RemoveTask(pos.TaskIndex)
+	if _, err := operations.DeleteTasks(&m.project, []string{cat.Tasks[pos.TaskIndex].ID}, false); !m.applied(err) {
+		return
+	}
 	m.rebuildAndClamp()
 	m.storeTaskUpdate()
 }
@@ -103,23 +106,22 @@ func (m model) deletedChildren(pos selection.Position) int {
 }
 
 func (m *model) deleteTask(position selection.Position, keepChildren bool) {
-	cat := &m.project.Categories[position.CategoryIndex]
-	taskIndex := position.TaskIndex
-
+	id := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex].ID
 	// Snapshot BEFORE stashing the task in the clipboard, so that undo
 	// restores both the project (task back) AND the clipboard (back to its
 	// pre-delete contents). Otherwise `d`→`u`→`p` would paste a duplicate of
 	// the just-restored task.
 	m.recordHistory()
-
-	if keepChildren {
-		cat.ReleaseSubtasks(taskIndex)
+	removed, err := operations.DeleteTasks(&m.project, []string{id}, keepChildren)
+	if !m.applied(err) {
+		return
 	}
-	removed, ids := m.taskBlock(position)
+	ids := make([]string, len(removed))
+	for i, t := range removed {
+		ids[i] = t.ID
+	}
 	m.ui.Clipboard = ClipboardState{Tasks: removed, TaskIDs: ids}
 	m.ui.TagCopiedLast = false
-
-	cat.RemoveTaskBlock(taskIndex)
 	m.rebuildAndClamp()
 	m.storeTaskUpdate()
 }
@@ -160,19 +162,11 @@ func (m *model) cycleSelectedTask(reverse bool) {
 	if !ok || position.Kind != selection.FocusTask {
 		return
 	}
-	task := &m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
+	id := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex].ID
 	m.recordHistory()
-	var changed bool
-	if reverse {
-		changed = task.CycleStatusReverse()
-	} else {
-		changed = task.CycleStatus()
-	}
-	if changed {
+	if _, _, err := operations.CycleStatus(&m.project, []string{id}, reverse); m.applied(err) {
 		m.storeTaskUpdate()
-		return
 	}
-	m.discardLastHistory()
 }
 
 func (m *model) increasePriority() {
@@ -183,13 +177,11 @@ func (m *model) increasePriority() {
 	if !ok || position.Kind != selection.FocusTask {
 		return
 	}
-	task := &m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
+	id := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex].ID
 	m.recordHistory()
-	if task.IncreasePriority() {
+	if m.applied(operations.StepPriority(&m.project, id, true)) {
 		m.storeTaskUpdate()
-		return
 	}
-	m.discardLastHistory()
 }
 
 func (m *model) decreasePriority() {
@@ -200,13 +192,11 @@ func (m *model) decreasePriority() {
 	if !ok || position.Kind != selection.FocusTask {
 		return
 	}
-	task := &m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
+	id := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex].ID
 	m.recordHistory()
-	if task.DecreasePriority() {
+	if m.applied(operations.StepPriority(&m.project, id, false)) {
 		m.storeTaskUpdate()
-		return
 	}
-	m.discardLastHistory()
 }
 
 func (m *model) openEstimatePicker() {
@@ -246,14 +236,16 @@ func (m *model) selectEstimate(minutes int) {
 	}
 
 	m.recordHistory()
+	cat := m.project.Categories[position.CategoryIndex]
+	var err error
 	if position.Kind == selection.FocusTask {
-		task := &m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
-		task.SetEstimate(minutes)
+		_, err = operations.SetEstimates(&m.project, []string{cat.Tasks[position.TaskIndex].ID}, minutes)
 	} else {
-		category := &m.project.Categories[position.CategoryIndex]
-		category.SetEstimate(minutes)
+		err = operations.SetCategoryEstimate(&m.project, cat.ID, minutes)
 	}
-	m.storeTaskUpdate()
+	if m.applied(err) {
+		m.storeTaskUpdate()
+	}
 }
 
 func (m *model) reverseCategories() {

@@ -14,6 +14,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/clipboard"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 // An untitled separator is a bare rule; a subtask joins the nearest non-subtask row above.
@@ -195,14 +196,6 @@ func linkSubtasks(tasks []domain.Task, rows []pastedRow, parentID string) {
 	}
 }
 
-func appendDescription(existing, text string) string {
-	existing = strings.TrimRight(existing, "\n")
-	if existing == "" || text == "" {
-		return existing + text
-	}
-	return existing + "\n" + text
-}
-
 func describeRows(rows []pastedRow, withDescriptions bool) string {
 	tasks, subtasks, seps, descs := 0, 0, 0, 0
 	for _, r := range rows {
@@ -306,7 +299,7 @@ func (m *model) pasteLinesInEdit(text string) bool {
 		edited.Title = typed
 	}
 	if fold {
-		edited.Description = appendDescription(edited.Description, rows[0].description)
+		edited.Description = operations.JoinDescription(edited.Description, rows[0].description)
 	}
 	edited.UpdatedAt = domain.NowTimestamp()
 	editedID := edited.ID
@@ -318,7 +311,7 @@ func (m *model) pasteLinesInEdit(text string) bool {
 		linkSubtasks(newRows, rest, "")
 	}
 	if edited.ParentID != "" || edited.IsSeparator() {
-		at = settleTasks(cat.Tasks, newRows, at, edited.ParentID)
+		at = operations.SettleTasks(cat.Tasks, newRows, at, edited.ParentID)
 	}
 	tookSubtasks := slices.ContainsFunc(newRows, func(t domain.Task) bool { return t.ParentID == editedID })
 	cat.Tasks = slices.Insert(cat.Tasks, at, newRows...)
@@ -449,7 +442,7 @@ func (m *model) insertPastedRows(rows []pastedRow, retiresCopy bool) {
 	}
 	linkSubtasks(newRows, rows, "")
 	cat := &m.project.Categories[catIndex]
-	taskIndex = settleTasks(cat.Tasks, newRows, taskIndex, parentID)
+	taskIndex = operations.SettleTasks(cat.Tasks, newRows, taskIndex, parentID)
 	cat.Tasks = slices.Insert(cat.Tasks, taskIndex, newRows...)
 	cat.UpdatedAt = domain.NowTimestamp()
 

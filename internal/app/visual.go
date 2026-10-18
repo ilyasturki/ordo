@@ -11,6 +11,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/export"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 // visualTaskLevel reports whether kind is a row that belongs to the unified
@@ -462,20 +463,9 @@ func (m *model) visualCycleStatus(reverse bool) {
 	if len(selPositions) == 0 {
 		return
 	}
-	first := m.project.Categories[selPositions[0].CategoryIndex].Tasks[selPositions[0].TaskIndex]
-	next := domain.NextStatus(first.Status, reverse)
 	m.recordHistory()
-	changed := 0
-	for _, pos := range selPositions {
-		task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-		if task.Status == next {
-			continue
-		}
-		_ = task.SetStatus(next)
-		changed++
-	}
-	if changed == 0 {
-		m.discardLastHistory()
+	next, changed, err := operations.CycleStatus(&m.project, positionIDs(m.project, selPositions), reverse)
+	if !m.applied(err) {
 		return
 	}
 	m.storeTaskUpdate()
@@ -514,18 +504,13 @@ func (m *model) confirmDeleteVisualRange() {
 	// Track real tasks and separators separately so the message reflects tasks,
 	// while `removed` still gates whether the edit is worth keeping in history.
 	deletedTasks, deletedSeps, removed := 0, 0, 0
-	for _, id := range taskIDs {
-		isSep := false
-		if t := m.taskByID(id); t != nil {
-			isSep = t.IsSeparator()
-		}
-		if m.removeTaskByIDIfExists(id) {
-			removed++
-			if isSep {
-				deletedSeps++
-			} else {
-				deletedTasks++
-			}
+	rows, _ := operations.DeleteTasks(&m.project, taskIDs, false)
+	for _, t := range rows {
+		removed++
+		if t.IsSeparator() {
+			deletedSeps++
+		} else {
+			deletedTasks++
 		}
 	}
 	deletedCats := 0
@@ -560,18 +545,6 @@ func (m *model) confirmDeleteVisualRange() {
 	}
 }
 
-func (m *model) removeTaskByIDIfExists(id string) bool {
-	for catIdx := range m.project.Categories {
-		for taskIdx, task := range m.project.Categories[catIdx].Tasks {
-			if task.ID == id {
-				_ = m.project.Categories[catIdx].RemoveTask(taskIdx)
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // visualMoveDown/visualMoveUp shift the visual selection block one row through
 // the shared engine in move.go, mirroring the single-row J/K behavior.
 func (m *model) visualMoveDown() {
@@ -583,55 +556,50 @@ func (m *model) visualMoveUp() {
 }
 
 func (m *model) visualShift(dir int) {
-	lo, hi, catIdx, ok := m.visualRun()
+	if m.ui.Visual.Kind != selection.FocusCategory {
+		if ids := m.visualTaskIDs(); len(ids) > 0 {
+			m.shiftTasks(ids, dir)
+		}
+		return
+	}
+	lo, hi, ok := m.visualCategoryRun()
 	if !ok {
 		return
 	}
-	var reason string
-	if m.ui.Visual.Kind == selection.FocusCategory {
-		reason = m.shiftCategories(lo, hi, dir)
-	} else {
-		reason = m.shiftTasks(catIdx, lo, hi, dir)
-	}
-	if reason != "" {
+	if reason := m.shiftCategories(lo, hi, dir); reason != "" {
 		m.ui.Screen.StatusMsg = reason
 	}
 }
 
-// visualRun returns the selection's sibling blocks as [lo, hi); refusals go to the status line.
-func (m *model) visualRun() (lo, hi, catIdx int, ok bool) {
-	selPositions := visualRoundUpPositions(m.visualSelectedPositions())
-	if len(selPositions) == 0 {
-		return 0, 0, 0, false
+// visualTaskIDs lists the task-level selection's rows, a description standing for its task.
+func (m *model) visualTaskIDs() []string {
+	var ids []string
+	for _, p := range visualRoundUpPositions(m.visualSelectedPositions()) {
+		ids = append(ids, m.project.Categories[p.CategoryIndex].Tasks[p.TaskIndex].ID)
 	}
-	catIdx = selPositions[0].CategoryIndex
+	return ids
+}
+
+// visualCategoryRun returns the selected categories' sibling blocks as [lo, hi); refusals go to the status line.
+func (m *model) visualCategoryRun() (lo, hi int, ok bool) {
+	selPositions := m.visualSelectedPositions()
+	if len(selPositions) == 0 {
+		return 0, 0, false
+	}
 	idxs := make([]int, 0, len(selPositions))
 	for _, p := range selPositions {
-		if m.ui.Visual.Kind == selection.FocusCategory {
-			idxs = append(idxs, p.CategoryIndex)
-			continue
-		}
-		if p.CategoryIndex != catIdx {
-			m.ui.Screen.StatusMsg = "Can't: selection spans multiple categories"
-			return 0, 0, 0, false
-		}
-		idxs = append(idxs, p.TaskIndex)
+		idxs = append(idxs, p.CategoryIndex)
 	}
-	var err error
-	if m.ui.Visual.Kind == selection.FocusCategory {
-		lo, hi, err = domain.CoverBlocks(m.project.Categories, idxs)
-	} else {
-		lo, hi, err = domain.CoverBlocks(m.project.Categories[catIdx].Tasks, idxs)
-	}
+	lo, hi, err := domain.CoverBlocks(m.project.Categories, idxs)
 	switch {
 	case errors.Is(err, domain.ErrNotContiguous):
 		m.ui.Screen.StatusMsg = "Can't: selection isn't contiguous (rows hidden by filter)"
-		return 0, 0, 0, false
+		return 0, 0, false
 	case err != nil:
 		m.ui.Screen.StatusMsg = "Can't: the selection mixes levels"
-		return 0, 0, 0, false
+		return 0, 0, false
 	}
-	return lo, hi, catIdx, true
+	return lo, hi, true
 }
 
 func (m *model) selectTaskLevelRow(id string) {

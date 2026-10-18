@@ -15,6 +15,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/clipboard"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 // pendingImage is an image on its way into the store: the clipboard's bytes,
@@ -124,7 +125,7 @@ func (m *model) handleImagesStored(msg imagesStoredMsg) tea.Cmd {
 	if msg.retiresCopy {
 		m.ui.Clipboard = ClipboardState{}
 	}
-	task.Description = appendDescription(task.Description, block)
+	task.Description = operations.JoinDescription(task.Description, block)
 	task.UpdatedAt = domain.NowTimestamp()
 	m.rebuildPositions()
 	m.storeTaskUpdate()

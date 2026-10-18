@@ -9,6 +9,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/components"
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
@@ -162,7 +163,7 @@ func (m *model) appendToFocusedDescription(text string, retiresCopy bool) {
 		m.ui.Clipboard = ClipboardState{}
 	}
 	task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-	task.Description = appendDescription(task.Description, pasteBlock(text))
+	task.Description = operations.JoinDescription(task.Description, pasteBlock(text))
 	task.UpdatedAt = domain.NowTimestamp()
 	m.rebuildPositions()
 	m.storeTaskUpdate()
@@ -180,7 +181,7 @@ func (m *model) appendToEditedDescription(text string) {
 		m.recordHistory()
 	}
 	task := &m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
-	task.Description = appendDescription(task.Description, pasteBlock(text))
+	task.Description = operations.JoinDescription(task.Description, pasteBlock(text))
 	if !adding {
 		task.UpdatedAt = domain.NowTimestamp()
 		m.storeTaskUpdate()
@@ -209,7 +210,7 @@ func (m *model) pasteTitleAndDescriptionInEdit(text string) {
 	if adding {
 		_ = task.SetStatus(row.status)
 	}
-	task.Description = appendDescription(task.Description, row.description)
+	task.Description = operations.JoinDescription(task.Description, row.description)
 	task.UpdatedAt = domain.NowTimestamp()
 	id := task.ID
 	m.ui.Modes.ToNormal()
