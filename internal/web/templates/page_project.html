@@ -45,10 +45,10 @@
         {{end}}
       </div>
       <div class="sheet-actions">
-        <button class="button text" type="submit" formaction="/p/{{$pid}}/do/separator.add" formnovalidate>{{icon "separator" "small"}}Separator</button>
-        <span class="spacer"></span>
-        <button class="button text" type="button" data-sheet-close>Cancel</button>
         <button class="button filled" type="submit">Add</button>
+        <button class="button text" type="button" data-sheet-close>Cancel</button>
+        <span class="spacer"></span>
+        <button class="button text" type="submit" formaction="/p/{{$pid}}/do/separator.add" formnovalidate>{{icon "separator" "small"}}Separator</button>
       </div>
     </form>
   </dialog>
@@ -88,8 +88,8 @@
         </div>
       </div>
       <div class="sheet-actions">
-        <button type="submit" class="button text danger" form="bulk" formaction="/p/{{$pid}}/do/task.delete">{{icon "delete" "small"}}Delete</button>
         <button class="button tonal" type="button" data-sheet-close>Close</button>
+        <button type="submit" class="button text danger" form="bulk" formaction="/p/{{$pid}}/do/task.delete">{{icon "delete" "small"}}Delete</button>
       </div>
     </div>
   </dialog>
