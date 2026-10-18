@@ -391,7 +391,10 @@ func TestSplitDescriptionTakesOnlyTrailingImages(t *testing.T) {
 
 func TestPlaceDropsARowUnderAParent(t *testing.T) {
 	f := newFixture(t)
-	f.action("task.place", url.Values{"id": {f.ids["three"]}, "cat": {f.cat}, "parent": {f.ids["one"]}, "before": {""}})
+	rec := f.action("task.place", url.Values{"id": {f.ids["three"]}, "cat": {f.cat}, "parent": {f.ids["one"]}, "before": {""}})
+	if got := snackOf(t, rec).Msg; got != "Nested under “one”" {
+		t.Fatalf("snack %q", got)
+	}
 	p := f.project()
 	if got := strings.Join(titles(p.Categories[0]), ","); got != "one,>three,two" {
 		t.Fatalf("after nesting drop: %s", got)

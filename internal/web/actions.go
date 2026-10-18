@@ -567,8 +567,12 @@ func place(s *Server, p *domain.Project, r *http.Request, ids []string) (actionR
 			index = bi
 		}
 	}
-	if _, err := operations.MoveRows(p, ids, p.Categories[ci].ID, index, parent); err != nil {
+	rows, err := operations.MoveRows(p, ids, p.Categories[ci].ID, index, parent)
+	if err != nil {
 		return actionResult{}, err
+	}
+	if t, _, err := taskByID(p, rows[0].ParentID); err == nil && rows[0].ParentID != "" {
+		return actionResult{Msg: "Nested under " + quote(t.Title)}, nil
 	}
 	return actionResult{Msg: "Moved"}, nil
 }
