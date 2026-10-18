@@ -56,6 +56,8 @@
         }
       );
 
+      nixosModules.default = import ./nix/module.nix { inherit self; };
+
       apps = forAllSystems (system: {
         default = {
           type = "app";
