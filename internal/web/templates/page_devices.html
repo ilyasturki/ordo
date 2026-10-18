@@ -1,0 +1,29 @@
+{{define "content"}}
+<div id="app" class="app" data-page="devices">
+  <header class="top-app-bar" data-appbar>
+    <a class="icon-button" href="/" aria-label="Back">{{icon "arrow_back"}}</a>
+    <h1 class="top-app-bar-title">Devices</h1>
+  </header>
+  <main class="content">
+    <p class="intro">Each device below stays signed in while it's used at least once a year.</p>
+    <ul class="list card-list">
+      {{range .Data}}
+      <li class="list-item device-item">
+        <span class="leading-icon">{{icon "smartphone"}}</span>
+        <span class="item-body">
+          <span class="headline">{{.Name}}{{if eq .ID $.Device.ID}} <span class="badge">This device</span>{{end}}</span>
+          <span class="supporting">Paired {{day .CreatedAt}} · last used {{day .LastSeen}}</span>
+        </span>
+        <form method="post" action="/devices/{{.ID}}/revoke">
+          <button class="button text danger" type="submit">Revoke</button>
+        </form>
+      </li>
+      {{end}}
+    </ul>
+    <p class="intro muted">To add a device, run <kbd>ordo serve pair</kbd> on the server.</p>
+    <form method="post" action="/logout" class="logout">
+      <button class="button outlined" type="submit">{{icon "logout" "small"}}Sign out of this device</button>
+    </form>
+  </main>
+</div>
+{{end}}

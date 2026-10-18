@@ -1,0 +1,119 @@
+{{define "content"}}{{with .Data}}{{$pid := .P.ID}}{{$t := .Row}}{{$back := printf "/p/%s/t/%s" .P.ID $t.ID}}{{$do := printf "/p/%s/do" .P.ID}}
+<div id="app" class="app" data-project="{{$pid}}" data-stamp="{{.Stamp}}" data-page="task" data-task="{{$t.ID}}">
+  <header class="top-app-bar" data-appbar>
+    <a class="icon-button" href="{{.Back}}" aria-label="Back to the list" data-back>{{icon "arrow_back"}}</a>
+    <span class="top-app-bar-title small">{{.CatPath}}</span>
+    <form method="post" action="{{$do}}/task.delete">
+      <input type="hidden" name="id" value="{{$t.ID}}">{{template "back" $back}}
+      <button class="icon-button" aria-label="Delete task">{{icon "delete"}}</button>
+    </form>
+  </header>
+
+  <main class="content editor">
+    {{if .Parent}}<a class="parent-link" href="/p/{{$pid}}/t/{{.Parent.ID}}">{{icon "subtask" "small"}}Subtask of {{.Parent.Title}}</a>{{end}}
+
+    <form method="post" action="{{$do}}/task.title" class="title-form" data-autosave hx-swap="none">
+      <input type="hidden" name="id" value="{{$t.ID}}">{{template "back" $back}}
+      <input type="hidden" name="base" value="{{$t.Title}}" data-base>
+      <label class="visually-hidden" for="title">Title</label>
+      <textarea id="title" name="title" class="title-input{{if finished $t.Status}} done{{end}}" rows="1" required maxlength="500" enterkeyhint="done" data-autogrow data-single-line>{{$t.Title}}</textarea>
+    </form>
+
+    <form method="post" action="{{$do}}/status.set" class="controls">
+      <input type="hidden" name="id" value="{{$t.ID}}">{{template "back" $back}}
+      {{template "status-segments" dict "Cur" $t.Status "Action" $do}}
+
+      <section class="field-section">
+        <h3 class="section-label">{{icon "flag" "small"}}Priority</h3>
+        {{template "priority-chips" dict "Cur" $t.Priority "Action" $do "Mark" true}}
+      </section>
+      <section class="field-section">
+        <h3 class="section-label">{{icon "label" "small"}}Tag</h3>
+        {{template "tag-swatches" dict "Cur" $t.TagColor "Action" $do "Mark" true}}
+      </section>
+      <section class="field-section">
+        <h3 class="section-label">{{icon "schedule" "small"}}Estimate</h3>
+        {{template "estimate-chips" dict "Cur" $t.EstimateMinutes "Action" $do "Mark" true}}
+      </section>
+    </form>
+
+    <section class="field-section">
+      <form method="post" action="{{$do}}/task.description" class="details-form" data-autosave hx-swap="none">
+        <input type="hidden" name="id" value="{{$t.ID}}">{{template "back" $back}}
+        <input type="hidden" name="base" value="{{$t.Description}}" data-base>
+        {{range .ImageLines}}<input type="hidden" name="image" value="{{.}}">{{end}}
+        <label class="text-field outlined area">
+          <textarea name="text" rows="3" placeholder=" " data-autogrow>{{.Text}}</textarea>
+          <span class="text-field-label">Details</span>
+        </label>
+      </form>
+      {{if or .Images (not .Lossless)}}
+      <div class="images">
+        {{range .Images}}
+        <figure class="image-tile">
+          {{if .Served}}<a href="{{imgURL $pid .Target}}" target="_blank" rel="noopener"><img src="{{imgURL $pid .Target}}" alt="{{.Name}}" loading="lazy"></a>
+          {{else}}<span class="image-missing">{{icon "image"}}</span>{{end}}
+          <figcaption>{{.Name}}</figcaption>
+          <form method="post" action="{{$do}}/task.description">
+            <input type="hidden" name="id" value="{{$t.ID}}">{{template "back" $back}}
+            <input type="hidden" name="base" value="{{$t.Description}}">
+            <input type="hidden" name="text" value="{{$.Data.Text}}">
+            {{range $.Data.ImageLines}}<input type="hidden" name="image" value="{{.}}">{{end}}
+            <button class="icon-button small-button" name="drop" value="{{.Target}}" aria-label="Remove {{.Name}}">{{icon "close" "small"}}</button>
+          </form>
+        </figure>
+        {{end}}
+      </div>
+      {{end}}
+      <form method="post" action="{{$do}}/task.attach" enctype="multipart/form-data" class="attach-form" data-attach>
+        <input type="hidden" name="id" value="{{$t.ID}}">{{template "back" $back}}
+        <label class="button tonal">{{icon "add_photo" "small"}}Add image<input type="file" name="image" accept="image/png,image/jpeg,image/gif,image/webp" multiple class="visually-hidden" data-attach-input></label>
+      </form>
+    </section>
+
+    {{if not $t.ParentID}}
+    <section class="field-section">
+      <h3 class="section-label">{{icon "subtask" "small"}}Subtasks{{if $t.ChildTotal}} · {{$t.ChildDone}}/{{$t.ChildTotal}}{{end}}</h3>
+      <ul class="rows flat">
+        {{range $t.Children}}{{template "row" dict "R" . "PID" $pid "Back" $back}}{{end}}
+      </ul>
+      <form method="post" action="{{$do}}/task.add" class="subtask-form">
+        <input type="hidden" name="parent" value="{{$t.ID}}">{{template "back" $back}}
+        <span class="subtask-icon">{{icon "add"}}</span>
+        <label class="visually-hidden" for="new-subtask">New subtask</label>
+        <input id="new-subtask" name="title" required placeholder="Add a subtask" autocomplete="off" enterkeyhint="done" maxlength="500">
+      </form>
+    </section>
+    {{end}}
+
+    <section class="field-section">
+      <h3 class="section-label">{{icon "move" "small"}}Category</h3>
+      <form method="post" action="{{$do}}/task.move" class="select-form" data-autosubmit>
+        <input type="hidden" name="id" value="{{$t.ID}}">{{template "back" $back}}
+        <label class="text-field outlined select">
+          <select name="value" aria-label="Category">
+            {{range .Targets}}<option value="{{.ID}}"{{if eq .ID $.Data.Cat.ID}} selected{{end}}>{{.Name}}</option>{{end}}
+          </select>
+          {{icon "expand_more" "select-icon"}}
+        </label>
+      </form>
+    </section>
+
+    <section class="field-section">
+      <h3 class="section-label">Structure</h3>
+      <form method="post" action="{{$do}}/task.shift" class="list">
+        <input type="hidden" name="id" value="{{$t.ID}}">{{template "back" $back}}
+        <button class="list-button" name="dir" value="up">{{icon "arrow_upward"}}<span>Move up</span></button>
+        <button class="list-button" name="dir" value="down">{{icon "arrow_downward"}}<span>Move down</span></button>
+        {{if $t.ParentID}}
+        <button class="list-button" formaction="{{$do}}/task.unnest">{{icon "outdent"}}<span>Un-nest</span></button>
+        {{else if not $t.Children}}
+        <button class="list-button" formaction="{{$do}}/task.nest">{{icon "indent"}}<span>Nest under the task above</span></button>
+        {{end}}
+      </form>
+    </section>
+
+    <p class="footnote">Created {{date $t.CreatedAt}}{{if $t.CompletionDate}} · Completed {{date $t.CompletionDate}}{{end}}<br>Updated {{date $t.UpdatedAt}}</p>
+  </main>
+</div>
+{{end}}{{end}}

@@ -1,0 +1,218 @@
+{
+  "schema": 2,
+  "id": "0rd0-web-fixture",
+  "name": "Ordo",
+  "created_at": "2026-10-12T09:00:00Z",
+  "updated_at": "2026-10-12T09:00:00Z",
+  "categories": [
+    {
+      "id": "cccccccc-0000-4000-8000-000000000008",
+      "name": "Feature",
+      "created_at": "2026-10-12T09:00:00Z",
+      "updated_at": "2026-10-12T09:00:00Z",
+      "tasks": [
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000001",
+          "title": "Web UI for the phone",
+          "status": "in_progress",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "priority": "high",
+          "tag_color": "blue",
+          "estimate_minutes": 960,
+          "description": "Reach Ordo from the phone without a terminal.\nMaterial look, shares the action layer with the TUI."
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000002",
+          "title": "Shared action layer",
+          "status": "completed",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "completion_date": "2026-10-15T18:20:00Z",
+          "estimate_minutes": 480,
+          "parent_id": "aaaaaaaa-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000003",
+          "title": "Pairing link login",
+          "status": "in_progress",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "estimate_minutes": 240,
+          "parent_id": "aaaaaaaa-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000004",
+          "title": "Drag to reorder",
+          "status": "todo",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "estimate_minutes": 120,
+          "parent_id": "aaaaaaaa-0000-4000-8000-000000000001"
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000005",
+          "title": "Export a project as Markdown",
+          "status": "todo",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "priority": "low",
+          "estimate_minutes": 60
+        },
+        {
+          "id": "bbbbbbbb-0000-4000-8000-000000000006",
+          "title": "Later",
+          "status": "todo",
+          "kind": "separator",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z"
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000007",
+          "title": "Recurring tasks",
+          "status": "todo",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "priority": "trivial"
+        }
+      ]
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000012",
+      "name": "Fix",
+      "created_at": "2026-10-12T09:00:00Z",
+      "updated_at": "2026-10-12T09:00:00Z",
+      "tasks": [
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000009",
+          "title": "Cursor jumps after a sync reload",
+          "status": "todo",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "priority": "critical",
+          "tag_color": "magenta-diamond",
+          "estimate_minutes": 60,
+          "description": "After Syncthing rewrites the file, the cursor lands on the first row instead of the task it was on.\nRepro: edit on the laptop, wait for sync, look at the desktop."
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000010",
+          "title": "Wrapped titles overflow the tag column",
+          "status": "completed",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "completion_date": "2026-10-15T18:20:00Z",
+          "priority": "medium",
+          "estimate_minutes": 30
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000011",
+          "title": "Crash on an empty clipboard",
+          "status": "cancelled",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "completion_date": "2026-10-15T18:20:00Z"
+        }
+      ]
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000014",
+      "name": "Ergonomy",
+      "created_at": "2026-10-12T09:00:00Z",
+      "updated_at": "2026-10-12T09:00:00Z",
+      "tasks": [
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000013",
+          "title": "Tap a row to focus it",
+          "status": "todo",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "priority": "medium",
+          "tag_color": "green",
+          "estimate_minutes": 120
+        }
+      ]
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000019",
+      "name": "Documentation",
+      "created_at": "2026-10-12T09:00:00Z",
+      "updated_at": "2026-10-12T09:00:00Z",
+      "tasks": [
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000015",
+          "title": "Write the install guide",
+          "status": "completed",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "completion_date": "2026-10-15T18:20:00Z"
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000016",
+          "title": "Document the file format",
+          "status": "completed",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "completion_date": "2026-10-15T18:20:00Z"
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000017",
+          "title": "Screenshots for the README",
+          "status": "completed",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "completion_date": "2026-10-15T18:20:00Z"
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000018",
+          "title": "Explain the web app pairing",
+          "status": "todo",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "estimate_minutes": 60
+        }
+      ]
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000021",
+      "name": "API",
+      "created_at": "2026-10-12T09:00:00Z",
+      "updated_at": "2026-10-12T09:00:00Z",
+      "tasks": [
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000020",
+          "title": "List the endpoints",
+          "status": "todo",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "tag_color": "cyan",
+          "estimate_minutes": 30
+        }
+      ],
+      "parent_id": "cccccccc-0000-4000-8000-000000000019"
+    },
+    {
+      "id": "cccccccc-0000-4000-8000-000000000024",
+      "name": "Research",
+      "created_at": "2026-10-12T09:00:00Z",
+      "updated_at": "2026-10-12T09:00:00Z",
+      "tasks": [
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000022",
+          "title": "Compare htmx and plain fetch",
+          "status": "todo",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "estimate_minutes": 120
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000023",
+          "title": "Material 3 motion specs",
+          "status": "todo",
+          "created_at": "2026-10-12T09:00:00Z",
+          "updated_at": "2026-10-12T09:00:00Z",
+          "priority": "low"
+        }
+      ]
+    }
+  ]
+}

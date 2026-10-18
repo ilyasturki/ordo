@@ -1,0 +1,97 @@
+{{define "content"}}{{with .Data}}{{$pid := .P.ID}}{{$back := printf "/p/%s" .P.ID}}
+<div id="app" class="app" data-project="{{$pid}}" data-stamp="{{.Stamp}}" data-page="project">
+  <header class="top-app-bar" data-appbar>
+    <button class="icon-button" type="button" data-sheet-open="drawer" aria-label="Open navigation">{{icon "menu"}}</button>
+    <h1 class="top-app-bar-title">{{.P.Name}}</h1>
+    <button class="icon-button" type="button" data-select-start aria-label="Select tasks">{{icon "checklist"}}</button>
+  </header>
+  <header class="top-app-bar contextual" data-selectbar hidden>
+    <button class="icon-button" type="button" data-select-end aria-label="Stop selecting">{{icon "close"}}</button>
+    <h1 class="top-app-bar-title"><span data-select-count>0</span> selected</h1>
+    <button class="icon-button" type="submit" form="bulk" formaction="/p/{{$pid}}/do/status.cycle" aria-label="Cycle status">{{icon "completed"}}</button>
+    <button class="icon-button" type="button" data-sheet-open="bulk-sheet" aria-label="Edit selected">{{icon "edit"}}</button>
+    <button class="icon-button" type="submit" form="bulk" formaction="/p/{{$pid}}/do/task.delete" aria-label="Delete selected">{{icon "delete"}}</button>
+  </header>
+
+  <nav class="filter-bar" aria-label="Filter tasks">
+    <a class="chip filter{{if eq .Filter "open"}} selected{{end}}" href="/p/{{$pid}}?f=open">{{if eq .Filter "open"}}{{icon "check" "small"}}{{end}}Open<span class="chip-count">{{.Counts.Open}}</span></a>
+    <a class="chip filter{{if eq .Filter "done"}} selected{{end}}" href="/p/{{$pid}}?f=done">{{if eq .Filter "done"}}{{icon "check" "small"}}{{end}}Done<span class="chip-count">{{.Counts.Done}}</span></a>
+    <a class="chip filter{{if eq .Filter "all"}} selected{{end}}" href="/p/{{$pid}}?f=all">{{if eq .Filter "all"}}{{icon "check" "small"}}{{end}}All<span class="chip-count">{{.Counts.Total}}</span></a>
+  </nav>
+
+  <main class="content" data-filter="{{.Filter}}">
+    {{range .Cats}}{{template "category" dict "C" . "PID" $pid "Back" $back "Filter" $.Data.Filter}}{{end}}
+    {{if not .Cats}}<p class="empty page-empty">This project has no categories yet. Add one in the terminal with <kbd>A</kbd>.</p>{{end}}
+  </main>
+
+  {{if .Cats}}
+  <button class="fab extended" type="button" data-add-to="{{(index .Cats 0).ID}}" data-fab>{{icon "add"}}<span class="fab-label">Task</span></button>
+  {{end}}
+
+  {{template "drawer" dict "Projects" .Projects "Current" $pid}}
+
+  <dialog class="sheet" id="add-sheet" aria-labelledby="add-title">
+    <form method="post" action="/p/{{$pid}}/do/task.add" class="sheet-body" data-add-form>
+      {{template "back" $back}}
+      <span class="drag-handle" aria-hidden="true"></span>
+      <h2 class="sheet-title" id="add-title">New task</h2>
+      <label class="text-field filled">
+        <input name="title" required autocomplete="off" enterkeyhint="done" placeholder=" " maxlength="500">
+        <span class="text-field-label">Title</span>
+      </label>
+      <div class="chip-set scroll" role="radiogroup" aria-label="Category">
+        {{range .Targets}}
+        <label class="chip filter radio{{if .Sub}} sub{{end}}"><input type="radio" name="cat" value="{{.ID}}">{{icon "check" "small"}}<span>{{.Name}}</span></label>
+        {{end}}
+      </div>
+      <div class="sheet-actions">
+        <button class="button text" type="submit" formaction="/p/{{$pid}}/do/separator.add" formnovalidate>{{icon "separator" "small"}}Separator</button>
+        <span class="spacer"></span>
+        <button class="button text" type="button" data-sheet-close>Cancel</button>
+        <button class="button filled" type="submit">Add</button>
+      </div>
+    </form>
+  </dialog>
+
+  <form id="bulk" method="post" action="/p/{{$pid}}/do/status.cycle" data-bulk-form>{{template "back" $back}}</form>
+  <dialog class="sheet" id="bulk-sheet" aria-labelledby="bulk-title" autofocus>
+    <div class="sheet-body">
+      <span class="drag-handle" aria-hidden="true"></span>
+      <h2 class="sheet-title" id="bulk-title">Edit <span data-select-count>0</span> selected</h2>
+      <div class="sheet-scroll">
+        <h3 class="section-label">Status</h3>
+        <div class="segmented" role="group" aria-label="Status">
+          {{range statuses}}<button type="submit" class="segment" form="bulk" name="value" value="{{.}}" formaction="/p/{{$pid}}/do/status.set"><span>{{statusLabel .}}</span></button>{{end}}
+        </div>
+        <h3 class="section-label">Priority</h3>
+        <div class="chip-set" role="group" aria-label="Priority">
+          {{range priorities}}<button type="submit" class="chip filter pri-{{.}}" form="bulk" name="value" value="{{.}}" formaction="/p/{{$pid}}/do/priority.set">{{icon (priorityIcon .) "small"}}{{priorityLabel .}}</button>{{end}}
+        </div>
+        <h3 class="section-label">Tag</h3>
+        <div class="swatches" role="group" aria-label="Tag">
+          {{range tags}}<button type="submit" class="swatch" form="bulk" name="value" value="{{.}}" formaction="/p/{{$pid}}/do/tag.set" aria-label="{{tagName .}}">{{if .}}<span class="tag tag-{{hue .}}{{if diamond .}} diamond{{end}}"></span>{{else}}{{icon "close" "small"}}{{end}}</button>{{end}}
+        </div>
+        <h3 class="section-label">Estimate</h3>
+        <div class="chip-set" role="group" aria-label="Estimate">
+          {{range presets}}<button type="submit" class="chip filter" form="bulk" name="value" value="{{.}}" formaction="/p/{{$pid}}/do/estimate.set">{{if .}}{{est .}}{{else}}None{{end}}</button>{{end}}
+        </div>
+        <h3 class="section-label">Structure</h3>
+        <div class="list">
+          <button type="submit" class="list-button" form="bulk" name="dir" value="up" formaction="/p/{{$pid}}/do/task.shift">{{icon "arrow_upward"}}<span>Move up</span></button>
+          <button type="submit" class="list-button" form="bulk" name="dir" value="down" formaction="/p/{{$pid}}/do/task.shift">{{icon "arrow_downward"}}<span>Move down</span></button>
+          <button type="submit" class="list-button" form="bulk" formaction="/p/{{$pid}}/do/task.nest">{{icon "indent"}}<span>Nest under the task above</span></button>
+          <button type="submit" class="list-button" form="bulk" formaction="/p/{{$pid}}/do/task.unnest">{{icon "outdent"}}<span>Un-nest</span></button>
+        </div>
+        <h3 class="section-label">Move to</h3>
+        <div class="list">
+          {{range .Targets}}<button type="submit" class="list-button{{if .Sub}} sub{{end}}" form="bulk" name="value" value="{{.ID}}" formaction="/p/{{$pid}}/do/task.move">{{icon "move"}}<span>{{.Name}}</span></button>{{end}}
+        </div>
+      </div>
+      <div class="sheet-actions">
+        <button type="submit" class="button text danger" form="bulk" formaction="/p/{{$pid}}/do/task.delete">{{icon "delete" "small"}}Delete</button>
+        <button class="button tonal" type="button" data-sheet-close>Close</button>
+      </div>
+    </div>
+  </dialog>
+</div>
+{{end}}{{end}}

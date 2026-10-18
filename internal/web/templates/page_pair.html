@@ -1,0 +1,22 @@
+{{define "content"}}{{with .Data}}
+<div id="app" class="app auth-page" data-page="auth">
+  <main class="auth-card">
+    <img class="auth-icon" src="{{asset "icon.svg"}}" alt="" width="56" height="56">
+    <h1 class="auth-title">Pair this device</h1>
+    {{if .Error}}
+    <p class="auth-error" role="alert">{{.Error}}</p>
+    {{if .HasPass}}<a class="button text" href="/login">Sign in with the passphrase</a>{{end}}
+    {{else}}
+    <p class="auth-text">This device stays signed in to Ordo while you use it. Revoke it any time from Devices.</p>
+    <form method="post" action="/pair" hx-boost="false" class="auth-form">
+      <input type="hidden" name="token" value="{{.Token}}">
+      <label class="text-field outlined">
+        <input name="name" value="{{.Name}}" placeholder=" " maxlength="60" autocomplete="off">
+        <span class="text-field-label">Device name</span>
+      </label>
+      <button class="button filled wide" type="submit">Pair</button>
+    </form>
+    {{end}}
+  </main>
+</div>
+{{end}}{{end}}

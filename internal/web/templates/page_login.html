@@ -1,0 +1,25 @@
+{{define "content"}}{{with .Data}}
+<div id="app" class="app auth-page" data-page="auth">
+  <main class="auth-card">
+    <img class="auth-icon" src="{{asset "icon.svg"}}" alt="" width="56" height="56">
+    <h1 class="auth-title">Sign in to Ordo</h1>
+    {{if .Error}}<p class="auth-error" role="alert">{{.Error}}</p>{{end}}
+    {{if .HasPass}}
+    <form method="post" action="/login" hx-boost="false" class="auth-form">
+      <label class="text-field outlined">
+        <input type="password" name="passphrase" required autocomplete="current-password" placeholder=" " autofocus>
+        <span class="text-field-label">Passphrase</span>
+      </label>
+      <label class="text-field outlined">
+        <input name="name" value="{{.Name}}" placeholder=" " maxlength="60" autocomplete="off">
+        <span class="text-field-label">Device name</span>
+      </label>
+      <button class="button filled wide" type="submit">Sign in</button>
+    </form>
+    <p class="auth-text muted">Or pair with a link: run <kbd>ordo serve pair</kbd> on the server and scan the code.</p>
+    {{else}}
+    <p class="auth-text">Run <kbd>ordo serve pair</kbd> where Ordo runs, then scan the code or open the link it prints.</p>
+    {{end}}
+  </main>
+</div>
+{{end}}{{end}}

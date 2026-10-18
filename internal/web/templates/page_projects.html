@@ -1,0 +1,28 @@
+{{define "content"}}
+<div id="app" class="app" data-page="projects">
+  <header class="top-app-bar" data-appbar>
+    <span class="app-mark" aria-hidden="true"><img src="{{asset "icon.svg"}}" alt=""></span>
+    <h1 class="top-app-bar-title">Ordo</h1>
+    <a class="icon-button" href="/devices" aria-label="Devices">{{icon "devices"}}</a>
+  </header>
+  <main class="content">
+    <h2 class="page-heading">Projects</h2>
+    <ul class="list card-list">
+      {{range .Data}}
+      <li>
+        <a class="list-item project-item" href="/p/{{.ID}}">
+          <span class="avatar" aria-hidden="true">{{.Initial}}</span>
+          <span class="item-body">
+            <span class="headline">{{.Name}}</span>
+            <span class="supporting">{{.Counts.Open}} open{{if .Counts.Doing}} · {{.Counts.Doing}} doing{{end}} · {{.Counts.Done}} done</span>
+          </span>
+          <span class="trailing-text">{{.Percent}}%</span>
+        </a>
+      </li>
+      {{else}}
+      <li class="empty">No projects yet. Create one in the terminal with <kbd>ordo</kbd>.</li>
+      {{end}}
+    </ul>
+  </main>
+</div>
+{{end}}

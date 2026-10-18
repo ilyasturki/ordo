@@ -28,7 +28,7 @@
             pname = "ordo";
             inherit version;
             src = ./.;
-            vendorHash = "sha256-VIeI6W8ybid5Bq6nIp0K4DPfZVLomE486Je8dMPmwjc=";
+            vendorHash = "sha256-y6cR7/CISh9WTtW+g4SfqbbSlpGcYTxoJP0cycCF4bo=";
             subPackages = [ "cmd/ordo" ];
             ldflags = [
               "-s"
