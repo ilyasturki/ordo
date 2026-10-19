@@ -507,6 +507,7 @@
     const now = performance.now();
     s.samples.push([now, s.axis === "y" ? dy : dx]);
     while (now - s.samples[0][0] > 100) s.samples.shift();
+    s.moved = Math.max(s.moved || 0, Math.hypot(dx, dy));
     if (s.kind === "sheet") s.off = Math.max(0, dy);
     else if (s.kind === "snack") s.off = dx;
     else s.off = Math.min(0, Math.max(-s.size, dx - (s.kind === "edge" ? s.size : 0)));
@@ -597,7 +598,8 @@
     if (!swipe || !Array.from(e.changedTouches).some((q) => q.identifier === swipe.id)) return;
     if (swipe.axis) {
       settleSwipe(swipe);
-      swallowUntil = performance.now() + 400;
+      // Within a tap's slop the browser still clicks, and that tap was meant.
+      if (swipe.moved > 16) swallowUntil = performance.now() + 400;
     }
     swipe = null;
   }
