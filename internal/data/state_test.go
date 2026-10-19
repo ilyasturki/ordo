@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -233,6 +234,83 @@ func TestLoadStateWithoutCursorsIsNotAnError(t *testing.T) {
 	}
 	if got := m.GetProjectForDir(); got != "p1" {
 		t.Fatalf("legacy dir link lost: %q", got)
+	}
+}
+
+func TestFilterRoundTripsThroughDisk(t *testing.T) {
+	dir := t.TempDir()
+	m := newLoadedStateManager(t, dir, "")
+
+	want := Filter{Statuses: []string{"todo"}, Priorities: []string{"none", "high"}, Categories: []string{"c1"}, Tags: []string{"green"}}
+	if err := m.SetFilter("p1", want); err != nil {
+		t.Fatalf("set filter: %v", err)
+	}
+
+	fresh := newLoadedStateManager(t, dir, "")
+	if got := fresh.GetFilter("p1"); !got.sameAs(want) {
+		t.Fatalf("filter: want %+v, got %+v", want, got)
+	}
+	if got := fresh.GetFilter("p2"); !got.IsZero() {
+		t.Fatalf("unset project should have no filter, got %+v", got)
+	}
+}
+
+func TestSetFilterEmptyClearsProject(t *testing.T) {
+	dir := t.TempDir()
+	m := newLoadedStateManager(t, dir, "")
+
+	if err := m.SetFilter("p1", Filter{Statuses: []string{"todo"}}); err != nil {
+		t.Fatalf("set filter: %v", err)
+	}
+	if err := m.SetFilter("p1", Filter{}); err != nil {
+		t.Fatalf("clear filter: %v", err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(dir, "state.json"))
+	if err != nil {
+		t.Fatalf("read state: %v", err)
+	}
+	if strings.Contains(string(raw), "filters") {
+		t.Fatalf("a cleared filter left an entry:\n%s", raw)
+	}
+}
+
+func TestDeleteFilterRemovesEntry(t *testing.T) {
+	dir := t.TempDir()
+	m := newLoadedStateManager(t, dir, "")
+
+	if err := m.SetFilter("p1", Filter{Tags: []string{"none"}}); err != nil {
+		t.Fatalf("set filter: %v", err)
+	}
+	if err := m.DeleteFilter("p1"); err != nil {
+		t.Fatalf("delete filter: %v", err)
+	}
+
+	if got := newLoadedStateManager(t, dir, "").GetFilter("p1"); !got.IsZero() {
+		t.Fatalf("filter survived delete: %+v", got)
+	}
+}
+
+func TestFilterAndCursorWritersDoNotClobber(t *testing.T) {
+	dir := t.TempDir()
+	tui := newLoadedStateManager(t, dir, "")
+	other := newLoadedStateManager(t, dir, "")
+
+	filter := Filter{Statuses: []string{"todo"}}
+	if err := tui.SetFilter("p1", filter); err != nil {
+		t.Fatalf("set filter: %v", err)
+	}
+	cursor := Cursor{Kind: "task", CategoryID: "c1", TaskID: "t1"}
+	if err := other.SetCursor("p1", cursor); err != nil {
+		t.Fatalf("set cursor: %v", err)
+	}
+
+	fresh := newLoadedStateManager(t, dir, "")
+	if got := fresh.GetFilter("p1"); !got.sameAs(filter) {
+		t.Fatalf("filter clobbered by a cursor write: %+v", got)
+	}
+	if got := fresh.GetCursor("p1"); got != cursor {
+		t.Fatalf("cursor clobbered by a filter write: %+v", got)
 	}
 }
 

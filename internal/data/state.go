@@ -27,11 +27,39 @@ func (c Cursor) IsZero() bool {
 	return c.Kind == ""
 }
 
+// Filter is the TUI's task filter for one project. A list holds the values to
+// keep, any of which matches; a task must match every non-empty list.
+type Filter struct {
+	Statuses   []string `json:"statuses,omitempty"`
+	Priorities []string `json:"priorities,omitempty"`
+	Categories []string `json:"categories,omitempty"`
+	Tags       []string `json:"tags,omitempty"`
+}
+
+func (f Filter) IsZero() bool {
+	return len(f.Statuses) == 0 && len(f.Priorities) == 0 && len(f.Categories) == 0 && len(f.Tags) == 0
+}
+
+func (f Filter) sameAs(o Filter) bool {
+	return sameSet(f.Statuses, o.Statuses) && sameSet(f.Priorities, o.Priorities) &&
+		sameSet(f.Categories, o.Categories) && sameSet(f.Tags, o.Tags)
+}
+
+func (f Filter) clone() Filter {
+	return Filter{
+		Statuses:   slices.Clone(f.Statuses),
+		Priorities: slices.Clone(f.Priorities),
+		Categories: slices.Clone(f.Categories),
+		Tags:       slices.Clone(f.Tags),
+	}
+}
+
 type State struct {
 	DirectoryProjects map[string]string   `json:"directory_projects,omitempty"`
 	ProjectOrder      []string            `json:"project_order,omitempty"`
 	FoldedCategories  map[string][]string `json:"folded_categories,omitempty"`
 	Cursors           map[string]Cursor   `json:"cursors,omitempty"`
+	Filters           map[string]Filter   `json:"filters,omitempty"`
 }
 
 // StateRepository abstracts persistence of UI state. Implemented by *StateManager.
@@ -46,6 +74,9 @@ type StateRepository interface {
 	GetCursor(projectID string) Cursor
 	SetCursor(projectID string, cursor Cursor) error
 	DeleteCursor(projectID string) error
+	GetFilter(projectID string) Filter
+	SetFilter(projectID string, filter Filter) error
+	DeleteFilter(projectID string) error
 }
 
 // StateManager reads and writes state.json. Multiple processes may share that
@@ -97,6 +128,7 @@ func (m *StateManager) load() error {
 		ProjectOrder      []string            `json:"project_order,omitempty"`
 		FoldedCategories  map[string][]string `json:"folded_categories,omitempty"`
 		Cursors           map[string]Cursor   `json:"cursors,omitempty"`
+		Filters           map[string]Filter   `json:"filters,omitempty"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -106,6 +138,7 @@ func (m *StateManager) load() error {
 	m.state.ProjectOrder = raw.ProjectOrder
 	m.state.FoldedCategories = raw.FoldedCategories
 	m.state.Cursors = raw.Cursors
+	m.state.Filters = raw.Filters
 	if m.state.DirectoryProjects == nil {
 		m.state.DirectoryProjects = make(map[string]string)
 	}
@@ -256,6 +289,10 @@ func setProjectIDs(byProject *map[string][]string, projectID string, ids []strin
 	return true
 }
 
+func sameSet(a, b []string) bool {
+	return len(a) == len(b) && containsAll(a, b)
+}
+
 func containsAll(set, ids []string) bool {
 	for _, id := range ids {
 		if !slices.Contains(set, id) {
@@ -326,6 +363,47 @@ func (m *StateManager) DeleteCursor(projectID string) error {
 			return false
 		}
 		delete(s.Cursors, projectID)
+		return true
+	})
+}
+
+// GetFilter re-reads state.json first, like GetFoldedCategories: the TUI reads
+// it at project open, and a second instance may have changed it since.
+func (m *StateManager) GetFilter(projectID string) Filter {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	_ = m.load()
+	return m.state.Filters[projectID].clone()
+}
+
+// SetFilter clears the entry for an empty filter, so a cleared filter leaves nothing behind.
+func (m *StateManager) SetFilter(projectID string, filter Filter) error {
+	return m.update(func(s *State) bool {
+		prev, ok := s.Filters[projectID]
+		if filter.IsZero() {
+			if !ok {
+				return false
+			}
+			delete(s.Filters, projectID)
+			return true
+		}
+		if ok && prev.sameAs(filter) {
+			return false
+		}
+		if s.Filters == nil {
+			s.Filters = make(map[string]Filter)
+		}
+		s.Filters[projectID] = filter.clone()
+		return true
+	})
+}
+
+func (m *StateManager) DeleteFilter(projectID string) error {
+	return m.update(func(s *State) bool {
+		if _, ok := s.Filters[projectID]; !ok {
+			return false
+		}
+		delete(s.Filters, projectID)
 		return true
 	})
 }

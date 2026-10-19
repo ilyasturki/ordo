@@ -531,6 +531,7 @@ func (m model) handleFilterKey(msg tea.KeyPressMsg) model {
 			m.openFilterHubSelection()
 		} else {
 			m.ui.Filter.ToggleSelected(m.project.Categories)
+			m.saveFilter()
 			m.rebuildPositions()
 			m.ensureVisible()
 		}
@@ -551,6 +552,7 @@ func (m *model) openFilterHubSelection() {
 	case FilterHubClearAll:
 		if m.ui.Filter.HasActiveFilter() {
 			m.ui.Filter.ClearAll()
+			m.saveFilter()
 			m.rebuildPositions()
 			m.ensureVisible()
 		}
@@ -988,8 +990,9 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	}
 
 	foldState := loadFoldState(stateManager, project)
+	filterState := loadFilterState(stateManager, project)
 	expandDescriptions := cfgManager.Get().ExpandDescriptionsByDefault
-	positions := rebuildPositions(project.Categories, nil, &foldState, expandDescriptions, "")
+	positions := rebuildPositions(project.Categories, &filterState, &foldState, expandDescriptions, "")
 	initialSelection := findFirstTaskIndex(positions)
 	selMgr := selection.NewManager(positions, initialSelection)
 	modeMachine := modes.NewMachine(startMode)
@@ -1005,6 +1008,7 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 		deps:    deps,
 	}
 	m.ui.Fold = foldState
+	m.ui.Filter = filterState
 	m.ui.Screen.ExpandDescriptions = expandDescriptions
 	if startMode == modes.ModeNormal {
 		m.announceConflicts("")

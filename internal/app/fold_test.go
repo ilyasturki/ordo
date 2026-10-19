@@ -13,12 +13,14 @@ import (
 type stubStateManager struct {
 	folded  map[string][]string
 	cursors map[string]data.Cursor
+	filters map[string]data.Filter
 }
 
 func newStubStateManager() *stubStateManager {
 	return &stubStateManager{
 		folded:  make(map[string][]string),
 		cursors: make(map[string]data.Cursor),
+		filters: make(map[string]data.Filter),
 	}
 }
 
@@ -50,6 +52,21 @@ func (s *stubStateManager) SetCursor(projectID string, cursor data.Cursor) error
 }
 func (s *stubStateManager) DeleteCursor(projectID string) error {
 	delete(s.cursors, projectID)
+	return nil
+}
+func (s *stubStateManager) GetFilter(projectID string) data.Filter {
+	return s.filters[projectID]
+}
+func (s *stubStateManager) SetFilter(projectID string, filter data.Filter) error {
+	if filter.IsZero() {
+		delete(s.filters, projectID)
+		return nil
+	}
+	s.filters[projectID] = filter
+	return nil
+}
+func (s *stubStateManager) DeleteFilter(projectID string) error {
+	delete(s.filters, projectID)
 	return nil
 }
 

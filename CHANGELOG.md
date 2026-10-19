@@ -11,6 +11,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Devices → Pair a new device shows a one-time pairing QR code and link on a device already signed in, after the passphrase when one is set. Devices shows which device paired which
 - The sign-in page moves on by itself once the device is paired in another tab, and the pair page opened in a browser tab suggests pasting the link into the installed app instead
 - While a filter hides some of a category's tasks, the category ends with an `(N hidden by the filter)` row the cursor stops on, and `enter` or `space` there clears the filter. It replaces the `(no tasks)` such a category showed, and the shortcut bar reads `f filtered` while a filter is on
+- The TUI remembers each project's filter across restarts, in this machine's `state.json`. A new project starts unfiltered, and the web app keeps its own filter
 
 ### Changed
 
@@ -27,6 +28,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - A visual `y` or `Y` copies the separators in the range as those same lines, in order, so pasting the text into another ordo keeps them
 - Visual mode from a task moves onto folded categories instead of stopping above them, and never unfolds them. A folded header in the range stands for its whole category, sub-categories included: `y`, `Y`, `x`, `d` and `m` take its tasks and separators along, status and tag edits leave them alone, and the status line counts them (`1 task + 1 folded category (2 tasks) selected`). A range that ran past folded categories used to leave their tasks out. `J`, `K`, `>` and `<` refuse such a range
 - The visual delete prompt no longer counts separators as tasks
+- A filter on a category that was then deleted, from the TUI, the CLI or another machine, hid every task until "Clear all". The filter now drops a category that no longer exists
 
 ## [0.12.0] - 2026-10-19
 

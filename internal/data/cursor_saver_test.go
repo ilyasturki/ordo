@@ -49,6 +49,9 @@ func (r *recordingRepo) SetProjectOrder([]string) error             { return nil
 func (r *recordingRepo) GetFoldedCategories(string) []string        { return nil }
 func (r *recordingRepo) SetFoldedCategories(string, []string) error { return nil }
 func (r *recordingRepo) DeleteFoldedCategories(string) error        { return nil }
+func (r *recordingRepo) GetFilter(string) Filter                    { return Filter{} }
+func (r *recordingRepo) SetFilter(string, Filter) error             { return nil }
+func (r *recordingRepo) DeleteFilter(string) error                  { return nil }
 
 func (r *recordingRepo) GetCursor(projectID string) Cursor {
 	r.mu.Lock()

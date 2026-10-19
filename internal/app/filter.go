@@ -1,6 +1,25 @@
 package app
 
-import "github.com/ilyasturki/ordo/internal/app/selection"
+import (
+	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/data"
+	"github.com/ilyasturki/ordo/internal/domain"
+)
+
+func loadFilterState(sm data.StateRepository, project domain.Project) FilterState {
+	f := filterStateFrom(sm.GetFilter(project.ID))
+	if f.pruneCategories(project.Categories) {
+		_ = sm.SetFilter(project.ID, f.saved())
+	}
+	return f
+}
+
+func (m *model) saveFilter() {
+	if m.deps.StateManager == nil || m.project.ID == "" {
+		return
+	}
+	_ = m.deps.StateManager.SetFilter(m.project.ID, m.ui.Filter.saved())
+}
 
 func (m *model) onHiddenRow() bool {
 	pos, ok := m.selectedPosition()
@@ -13,6 +32,7 @@ func (m *model) showHiddenTasks() bool {
 		return false
 	}
 	m.ui.Filter.ClearAll()
+	m.saveFilter()
 	m.rebuildPositions()
 	m.ensureVisible()
 	m.ui.Screen.StatusMsg = "Filter cleared"

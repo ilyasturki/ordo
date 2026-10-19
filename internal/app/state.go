@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
@@ -237,6 +238,64 @@ func (f *FilterState) releaseHeld()             { f.held = nil }
 // FilteredOut is false for a held task an edit brought back into the filter.
 func (f *FilterState) FilteredOut(task domain.Task, categoryID, parentCategoryID string) bool {
 	return f.holds(task.ID) && !f.TaskVisible(task, categoryID, parentCategoryID)
+}
+
+// savedNone stands for the "" no-priority and untagged buckets in state.json, which stays readable that way.
+const savedNone = "none"
+
+func (f *FilterState) saved() data.Filter {
+	return data.Filter{
+		Statuses:   savedValues(f.statuses),
+		Priorities: savedValues(f.priorities),
+		Categories: savedValues(f.categories),
+		Tags:       savedValues(f.tags),
+	}
+}
+
+func savedValues(set map[string]bool) []string {
+	values := slices.Collect(maps.Keys(set))
+	for i, v := range values {
+		if v == "" {
+			values[i] = savedNone
+		}
+	}
+	slices.Sort(values)
+	return values
+}
+
+// filterStateFrom drops a value no filter row offers, since nothing could untick it.
+func filterStateFrom(saved data.Filter) FilterState {
+	f := NewFilterState()
+	restoreValues(f.statuses, saved.Statuses, filterStatuses)
+	restoreValues(f.priorities, saved.Priorities, filterPriorities)
+	restoreValues(f.tags, saved.Tags, filterTagColors)
+	for _, id := range saved.Categories {
+		f.categories[id] = true
+	}
+	return f
+}
+
+func restoreValues(set map[string]bool, saved, offered []string) {
+	for _, v := range saved {
+		if v == savedNone {
+			v = ""
+		}
+		if slices.Contains(offered, v) {
+			set[v] = true
+		}
+	}
+}
+
+// pruneCategories drops deleted categories, which would otherwise hide every task.
+func (f *FilterState) pruneCategories(categories []domain.Category) bool {
+	pruned := false
+	for id := range f.categories {
+		if !slices.ContainsFunc(categories, func(c domain.Category) bool { return c.ID == id }) {
+			delete(f.categories, id)
+			pruned = true
+		}
+	}
+	return pruned
 }
 
 func (f *FilterState) ClearAll() {

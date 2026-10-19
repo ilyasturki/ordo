@@ -18,7 +18,7 @@ Version 0.9.0, released as phasionary, carried its own sync, made of a change jo
 └── web.json                     devices paired with `ordo serve` and who paired them, mode 0600
 ```
 
-Only `projects/` travels between devices, `attachments/` included. `state.json` holds folds, cursor positions, the project order and which directory opens which project; it belongs to one device and stays there, and so does `web.json`, which holds hashes of the paired devices' tokens and of the pending pairing codes, and which device paired which so that revoking one revokes those it paired. The config file, `~/.config/ordo/config.json`, is per device too.
+Only `projects/` travels between devices, `attachments/` included. `state.json` holds folds, cursor positions, each project's TUI filter, the project order and which directory opens which project; it belongs to one device and stays there, and so does `web.json`, which holds hashes of the paired devices' tokens and of the pending pairing codes, and which device paired which so that revoking one revokes those it paired. The config file, `~/.config/ordo/config.json`, is per device too.
 
 A file in `projects/` is a project only when its name is `<id>.json`, `<id>` is a valid ID, and the `id` inside the file is that same `<id>`. Ordo ignores every other file in the directory, from the `.tmp` and `.lock` sidecars to renamed and conflict copies.
 

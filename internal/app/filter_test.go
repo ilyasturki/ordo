@@ -373,3 +373,136 @@ func TestHeldRowsGoOnFilterChangeUndoAndRedo(t *testing.T) {
 		assert.NotContains(t, rowIDs(m), "task:"+first)
 	})
 }
+
+func TestSavedFilterNamesTheEmptyBucketsNone(t *testing.T) {
+	f := NewFilterState()
+	f.statuses[domain.StatusTodo] = true
+	f.priorities[""] = true
+	f.priorities[domain.PriorityHigh] = true
+	f.tags[""] = true
+	f.categories["c1"] = true
+
+	saved := f.saved()
+
+	assert.Equal(t, data.Filter{Statuses: []string{"todo"}, Priorities: []string{"high", "none"}, Categories: []string{"c1"}, Tags: []string{"none"}}, saved)
+	back := filterStateFrom(saved)
+	assert.Equal(t, f.saved(), back.saved())
+	assert.True(t, back.IsPriorityEnabled(""))
+	assert.True(t, back.IsTagEnabled(""))
+}
+
+func TestRestoredFilterDropsValuesNoRowOffers(t *testing.T) {
+	f := filterStateFrom(data.Filter{Statuses: []string{"todo", "someday"}, Tags: []string{"purple"}})
+
+	assert.Equal(t, 1, f.StatusCount())
+	assert.Zero(t, f.TagCount(), "a value no row could untick is dropped")
+}
+
+func TestFilterSavesOnEveryChange(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	stub := withStubStateManager(m)
+	m.ui.Modes.ToFilter()
+
+	m.handleFilterKey(keyPress("enter")) // Status
+	m.handleFilterKey(keyPress("space")) // Todo
+	assert.Equal(t, data.Filter{Statuses: []string{"todo"}}, stub.filters["p1"])
+
+	m.ui.Filter.SetView(FilterViewHub)
+	m.ui.Filter.hubSelected = FilterHubClearAll
+	m.handleFilterKey(keyPress("enter"))
+	assert.NotContains(t, stub.filters, "p1", "clear all leaves nothing behind")
+
+	m = newTodoFilteredModel(t)
+	stub = m.deps.StateManager.(*stubStateManager)
+	m.saveFilter()
+	require.Contains(t, stub.filters, "p1")
+	selectRow(t, m, selection.FocusHidden, "c1")
+	dispatchKeys(m, "enter")
+	assert.NotContains(t, stub.filters, "p1", "enter on a hidden row saves the cleared filter")
+}
+
+func TestFilterAndItsCursorSurviveARestart(t *testing.T) {
+	dir := t.TempDir()
+	before := data.NewStateManager(dir, "")
+	require.NoError(t, before.Load())
+	m := newTestModel(t, sampleProject())
+	m.deps.StateManager = before
+	m.ui.Modes.ToFilter()
+	m.handleFilterKey(keyPress("enter"))
+	m.handleFilterKey(keyPress("space"))
+	m.handleFilterKey(keyPress("q"))
+	selectRow(t, m, selection.FocusHidden, "c1")
+	m.saveCursorState()
+
+	after := data.NewStateManager(dir, "")
+	require.NoError(t, after.Load())
+	restarted := newTestModel(t, sampleProject())
+	restarted.deps.StateManager = after
+	restarted.ui.Filter = loadFilterState(after, restarted.project)
+	restarted.rebuildPositions()
+	restarted.applyStoredCursor()
+
+	assert.True(t, restarted.ui.Filter.IsStatusEnabled(domain.StatusTodo))
+	assert.Equal(t, "hidden:c1", cursorItem(t, restarted), "the cursor lands on a row only the filter makes")
+}
+
+func TestEachProjectOpensWithItsOwnFilter(t *testing.T) {
+	store := data.NewStore(t.TempDir())
+	require.NoError(t, store.Ensure())
+	alpha, err := store.ImportProject(domain.Project{Name: "Alpha", Categories: []domain.Category{{ID: "ca", Name: "Cat"}}})
+	require.NoError(t, err)
+	beta, err := store.ImportProject(domain.Project{Name: "Beta", Categories: []domain.Category{{ID: "cb", Name: "Cat"}}})
+	require.NoError(t, err)
+
+	m := newTestModel(t, alpha)
+	stub := withStubStateManager(m)
+	m.deps.Store = store
+	stub.filters[beta.ID] = data.Filter{Statuses: []string{"todo"}}
+	open := func(target int) {
+		m.ui.Picker = ProjectPickerState{projects: []domain.Project{alpha, beta}, selected: target}
+		m.selectProject()
+	}
+
+	open(1)
+	assert.True(t, m.ui.Filter.IsStatusEnabled(domain.StatusTodo))
+	open(0)
+	assert.False(t, m.ui.Filter.HasActiveFilter())
+
+	open(1)
+	m.ui.Picker.startAdding()
+	m.ui.Picker.input.SetValue("Gamma")
+	m.createProjectFromPicker()
+	assert.False(t, m.ui.Filter.HasActiveFilter(), "a new project starts clean")
+
+	m.ui.Picker = ProjectPickerState{projects: []domain.Project{alpha, beta}, selected: 1}
+	m.ui.ConfirmDelete = ConfirmDeleteState{Kind: ConfirmDeleteProject, ProjectID: beta.ID}
+	m.confirmDeleteProject()
+	assert.NotContains(t, stub.filters, beta.ID)
+}
+
+func TestDeletedCategoryLeavesTheFilter(t *testing.T) {
+	t.Run("on load", func(t *testing.T) {
+		m := newTestModel(t, sampleProject())
+		stub := withStubStateManager(m)
+		stub.filters["p1"] = data.Filter{Categories: []string{"gone", "c2"}}
+
+		f := loadFilterState(stub, m.project)
+
+		assert.Equal(t, 1, f.CategoryCount())
+		assert.Equal(t, []string{"c2"}, stub.filters["p1"].Categories)
+	})
+	t.Run("on delete", func(t *testing.T) {
+		m := newTestModel(t, sampleProject())
+		stub := withStubStateManager(m)
+		m.ui.Filter.categories["c1"] = true
+		m.saveFilter()
+		m.rebuildPositions()
+		selectRow(t, m, selection.FocusCategory, "c1")
+
+		m.confirmDeleteAction()
+
+		assert.False(t, m.ui.Filter.HasActiveFilter())
+		assert.NotContains(t, stub.filters, "p1")
+		assert.Contains(t, rowIDs(m), "task:t4", "the rest of the project shows again")
+	})
+}

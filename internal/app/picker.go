@@ -184,6 +184,7 @@ func (m *model) confirmDeleteProject() {
 	m.removeProjectFromOrder(deleteID)
 	_ = m.deps.StateManager.DeleteFoldedCategories(deleteID)
 	_ = m.deps.StateManager.DeleteCursor(deleteID)
+	_ = m.deps.StateManager.DeleteFilter(deleteID)
 	m.forgetPendingCursor(deleteID)
 
 	if m.project.ID == deleteID {
@@ -204,7 +205,7 @@ func (m *model) confirmDeleteProject() {
 			}
 			m.project = next
 			_ = m.deps.StateManager.SetProjectForDir(m.project.ID)
-			m.ui.Filter = NewFilterState()
+			m.ui.Filter = loadFilterState(m.deps.StateManager, m.project)
 			m.ui.Fold = loadFoldState(m.deps.StateManager, m.project)
 			m.ui.History.Reset()
 			m.rebuildPositions()
@@ -356,7 +357,7 @@ func (m *model) openPickedProject(status string) {
 	m.saveCursorState()
 
 	m.project = project
-	m.ui.Filter = NewFilterState()
+	m.ui.Filter = loadFilterState(m.deps.StateManager, project)
 	m.ui.Fold = loadFoldState(m.deps.StateManager, project)
 	m.ui.History.Reset()
 	m.rebuildPositions()
