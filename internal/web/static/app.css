@@ -464,7 +464,7 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
 }
 .composer-input::placeholder { color: var(--on-surface-variant); opacity: 1; }
 .category-body:has(.composer:not([hidden])) > .empty { display: none; }
-.app:has(.composer:focus-within) .fab { display: none; }
+.app:has(.composer:focus-within, .separator.editing:focus-within) .fab { display: none; }
 
 .empty { margin: 0; padding: 4px 16px 12px 56px; font-size: 0.875rem; color: var(--on-surface-variant); }
 .page-empty { padding: 48px 24px; text-align: center; }
