@@ -22,6 +22,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Changed
 
 - The web app's task page is laid out like Google Tasks: the category name in the top bar moves the task, and `⋮` holds Move up, Move down, Nest or Un-nest and Delete. Status, priority, tag and estimate are one row each showing the current value, and tapping a row opens a sheet with the choices. Details and images follow, then the subtasks with an "Add subtask" row, and a "Mark done" or "Mark open" button sits at the bottom. The created and updated dates are gone from the page
+- Dragging in the web app works like Google Tasks. A long-press lifts the row, with a haptic tap where the browser allows, and moving it drags it; sliding it about 40px right nests it under the task above and left un-nests it, the gap it leaves showing the indent before the drop. Letting go without moving selects the row, in place of the old long-press timer that cut drags short. A row no longer nests by accident, a place the drop can't keep isn't offered, an empty category takes a drop, the list scrolls at the screen's edge, a drop never opens the task, and a live refresh waits for the finger to lift. A mouse still drags at once, and Escape cancels
 
 ### Fixed
 

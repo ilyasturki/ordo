@@ -67,6 +67,13 @@ const shots = [
     "document.querySelectorAll('.content .row .item-body')[0].click()",
     "document.querySelector('[data-sheet-open=bulk-sheet]').click()",
   ], gesture: { at: "#bulk-sheet .drag-handle", moves: [[0, 40], [0, 80], [0, 80]] } },
+  { name: "drag_lift", path: P, gesture: { at: "#t-aaaaaaaa-0000-4000-8000-000000000005 > .list-item", hold: 600 } },
+  { name: "drag_nest", path: P, gesture: { at: "#t-aaaaaaaa-0000-4000-8000-000000000005 > .list-item", hold: 600, moves: [[20, 0], [30, 4], [20, 0]] } },
+  { name: "drag_separator", path: P, gesture: { at: "#t-bbbbbbbb-0000-4000-8000-000000000006", hold: 600, moves: [[0, -20], [0, -40], [0, -10]] } },
+  { name: "drag_empty", path: P, steps: [
+    "document.querySelector('#c-cccccccc-0000-4000-8000-000000000014 .category-body > .rows').replaceChildren()",
+    "document.querySelector('#t-aaaaaaaa-0000-4000-8000-000000000009').scrollIntoView({ block: 'center' })",
+  ], gesture: { at: "#t-aaaaaaaa-0000-4000-8000-000000000009 > .list-item", hold: 600, moves: [[0, 16], [0, 16]] } },
   { name: "snackbar", path: P, steps: ["document.querySelector('.status-button').click()"], wait: 900,
     after: ["document.querySelector('.snackbar-action').click()"] },
   { name: "devices", path: "/devices" },

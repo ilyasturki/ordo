@@ -7,7 +7,6 @@
 
   const selected = new Set();
   let selecting = false;
-  let dragging = false;
   let staleStamp = "";
   let snackTimer = 0;
   let lingering = false;
@@ -43,7 +42,7 @@
 
   function busy() {
     const a = document.activeElement;
-    return dragging || lingering || swipe || $("dialog[open]") || (a && a.matches("input:not([type=hidden]), textarea, select"));
+    return press || lingering || swipe || $("dialog[open]") || (a && a.matches("input:not([type=hidden]), textarea, select"));
   }
 
   function refresh() {
@@ -124,7 +123,6 @@
       const only = selected.size === 1 && document.getElementById("t-" + [...selected][0]);
       below.disabled = !only || !!only.closest(".completed");
     }
-    for (const s of sortables) s.option("disabled", selecting);
   }
 
   function startSelecting(id) {
@@ -569,6 +567,11 @@
   }, { passive: true });
 
   document.addEventListener("touchmove", (e) => {
+    if (press && press.clone) {
+      swipe = null;
+      if (e.cancelable) e.preventDefault();
+      return;
+    }
     if (!swipe) return;
     const p = Array.from(e.changedTouches).find((q) => q.identifier === swipe.id);
     if (!p) return;
@@ -606,65 +609,233 @@
     el.style.height = el.scrollHeight + "px";
   }
 
-  let sortables = [];
-  function setupSortable(root) {
-    sortables = [];
-    if (!window.Sortable || root.dataset.page !== "project") return;
-    for (const list of $$(".content .rows", root)) {
-      if (list.closest(".completed")) continue;
-      sortables.push(Sortable.create(list, {
-        group: "rows",
-        draggable: ".row, .separator",
-        filter: ".status-button",
-        preventOnFilter: false,
-        delay: 300,
-        delayOnTouchOnly: true,
-        touchStartThreshold: 6,
-        animation: 150,
-        fallbackOnBody: true,
-        swapThreshold: 0.6,
-        invertSwap: true,
-        onChoose: () => { if (navigator.vibrate) navigator.vibrate(10); },
-        onStart: () => { dragging = true; document.body.classList.add("dragging"); },
-        onEnd: (e) => {
-          dragging = false;
-          document.body.classList.remove("dragging");
-          const id = e.item.dataset.id;
-          if (e.from === e.to && e.oldIndex === e.newIndex) {
-            refreshWhenIdle();
-            return;
-          }
-          let next = e.item.nextElementSibling;
-          while (next && !next.dataset.id) next = next.nextElementSibling;
-          const cat = e.to.closest("[data-cat]").dataset.cat;
-          htmx.ajax("POST", "/p/" + app().dataset.project + "/do/task.place", {
-            target: "#app", select: "#app", swap: "outerHTML",
-            values: { id, cat, parent: e.to.dataset.parent || "", before: next ? next.dataset.id : "", back: location.pathname + location.search },
-          });
-        },
-      }));
-    }
+  // A row lifts on a long-press, or on the first move of a mouse; then it follows the pointer, and sliding it
+  // NEST_DX sideways nests it under the task above or un-nests it. Let go without moving and it starts a selection.
+  const LIFT_MS = 400;
+  const SLOP = 8;
+  const NEST_DX = 40;
+  let press = null;
+
+  function draggableAt(t) {
+    const el = t.closest(".row, .separator");
+    if (!el || t.closest(".status-button")) return null;
+    const list = el.closest(".category-body > .rows");
+    return list && list === list.parentElement.querySelector(":scope > .rows") ? el : null;
   }
 
-  let pressTimer = 0;
-  let pressOrigin = null;
-  document.addEventListener("pointerdown", (e) => {
-    const row = e.target.closest(".content .row");
-    if (!row || e.target.closest(".status-button") || e.pointerType === "mouse") return;
-    pressOrigin = { x: e.clientX, y: e.clientY, id: row.dataset.id };
-    clearTimeout(pressTimer);
-    pressTimer = setTimeout(() => {
-      if (pressOrigin && !dragging) {
-        pressOrigin.fired = true;
-        if (!selecting) startSelecting(pressOrigin.id);
+  const lineOf = (li) => (li.matches(".row") ? li.querySelector(":scope > .list-item") : li);
+  const subOf = (li) => li.matches(".row") && li.querySelector(":scope > .rows.sub");
+
+  // The category's rows top to bottom, each subtask under its parent, without the dragged block.
+  function linesOf(list) {
+    const lines = [];
+    for (const li of list.children) {
+      if (li === press.el || !li.matches(".row, .separator")) continue;
+      lines.push({ li, top: true });
+      const sub = subOf(li);
+      if (sub) for (const k of sub.children) if (k !== press.el && k.matches(".row")) lines.push({ li: k, top: false, parent: li });
+    }
+    return lines;
+  }
+
+  // Where the dragged block lands in the gap above lines[gap], at depth 0 or 1, or null when the server would undo it.
+  function spotAt(list, lines, gap, depth) {
+    const el = press.el;
+    const above = lines[gap - 1];
+    const below = lines[gap];
+    const flat = !below || below.top ? { ul: list, before: below ? below.li : null } : null;
+    let nested = null;
+    if (above && el.matches(".row") && !el.querySelector(".rows.sub > .row")) {
+      const sub = subOf(above.top ? above.li : above.parent);
+      if (sub) nested = { ul: sub, before: below && !below.top ? below.li : null };
+    }
+    return depth ? nested || flat : flat || nested;
+  }
+
+  function place(x, y) {
+    const el = press.el;
+    const hit = document.elementFromPoint(x, y);
+    const cat = hit && hit.closest(".content .category");
+    if (!cat || cat.classList.contains("folded")) return;
+    const list = $(".category-body > .rows", cat);
+    if (!list) return;
+    const lines = linesOf(list);
+    let gap = lines.length;
+    if (el.contains(hit)) {
+      gap = lines.filter((l) => l.li.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).length;
+    } else if (hit.closest(".category-header")) {
+      gap = 0;
+    } else {
+      const owner = hit.closest(".row, .separator");
+      const i = owner ? lines.findIndex((l) => l.li === owner) : -1;
+      if (i >= 0) {
+        const box = lineOf(owner);
+        if (box.getAnimations().length) return;
+        const r = box.getBoundingClientRect();
+        gap = y < r.top + r.height / 2 ? i : i + 1;
       }
-    }, 550);
+    }
+    const dx = x - press.x;
+    const depth = Math.max(0, Math.min(1, press.depth + (dx >= NEST_DX) - (dx <= -NEST_DX)));
+    const spot = spotAt(list, lines, gap, depth);
+    const child = spot && spot.ul !== list;
+    if (!spot || (el.parentElement === spot.ul && el.nextElementSibling === spot.before && el.classList.contains("child") === child)) return;
+    flip(() => {
+      spot.ul.insertBefore(el, spot.before);
+      el.classList.toggle("child", child);
+    });
+  }
+
+  // Rows the slot pushed aside slide to their new place instead of jumping.
+  function flip(change) {
+    const boxes = $$(".content .row > .list-item, .content .separator").filter((n) => !press.el.contains(n));
+    const tops = boxes.map((n) => n.getBoundingClientRect().top);
+    change();
+    boxes.forEach((n, i) => {
+      const d = tops[i] - n.getBoundingClientRect().top;
+      if (d) n.animate([{ transform: `translateY(${d}px)` }, { transform: "none" }], { duration: 150, easing: "cubic-bezier(0.2, 0, 0, 1)" });
+    });
+  }
+
+  function lift() {
+    const el = press.el;
+    if (!el.isConnected) return endPress();
+    const r = el.getBoundingClientRect();
+    const clone = el.cloneNode(true);
+    clone.removeAttribute("id");
+    for (const n of clone.querySelectorAll("[id]")) n.removeAttribute("id");
+    clone.classList.add("drag-clone");
+    clone.setAttribute("aria-hidden", "true");
+    clone.style.left = r.left + "px";
+    clone.style.top = r.top + "px";
+    clone.style.width = r.width + "px";
+    document.body.append(clone);
+    el.classList.add("drag-slot");
+    Object.assign(press, { clone, rect: r, from: { ul: el.parentElement, next: el.nextElementSibling, child: el.classList.contains("child") } });
+    press.depth = press.from.child ? 1 : 0;
+    if (!press.mouse && navigator.vibrate) navigator.vibrate(20);
+  }
+
+  function dragTo(x, y) {
+    if (!press.drag) {
+      press.drag = true;
+      document.body.classList.add("dragging");
+      press.raf = requestAnimationFrame(autoscroll);
+    }
+    press.lastX = x;
+    press.lastY = y;
+    const dx = Math.max(-NEST_DX, Math.min(NEST_DX, x - press.x));
+    press.clone.style.transform = `translate(${dx}px, ${y - press.y}px)`;
+    place(x, y);
+  }
+
+  function autoscroll() {
+    if (!press || !press.drag) return;
+    const bar = $("[data-appbar]:not([hidden]), [data-selectbar]:not([hidden])");
+    const top = bar ? bar.getBoundingClientRect().bottom : 0;
+    const zone = 64;
+    const y = press.lastY;
+    const over = y < top + zone ? y - top - zone : y > innerHeight - zone ? y - innerHeight + zone : 0;
+    if (over) {
+      const before = scrollY;
+      scrollBy(0, Math.sign(over) * Math.ceil((Math.min(Math.abs(over), zone) / zone) * 16));
+      if (scrollY !== before) place(press.lastX, press.lastY);
+    }
+    press.raf = requestAnimationFrame(autoscroll);
+  }
+
+  // The lifted copy glides onto the slot, then the slot shows the row again.
+  function land() {
+    const { el, clone, rect } = press;
+    const r = el.getBoundingClientRect();
+    const to = `translate(${r.left - rect.left}px, ${r.top - rect.top}px)`;
+    const done = () => {
+      clone.remove();
+      el.classList.remove("drag-slot");
+    };
+    clone.animate([{ transform: clone.style.transform || "none" }, { transform: to }], { duration: 150, easing: "cubic-bezier(0.2, 0, 0, 1)", fill: "forwards" }).finished.then(done, done);
+  }
+
+  function drop() {
+    const { el, from } = press;
+    const ul = el.parentElement;
+    land();
+    swallowUntil = performance.now() + 400;
+    if (ul === from.ul && el.nextElementSibling === from.next) return;
+    let next = el.nextElementSibling;
+    while (next && !next.dataset.id) next = next.nextElementSibling;
+    htmx.ajax("POST", "/p/" + app().dataset.project + "/do/task.place", {
+      target: "#app", select: "#app", swap: "outerHTML",
+      values: { id: el.dataset.id, cat: el.closest("[data-cat]").dataset.cat, parent: ul.dataset.parent || "", before: next ? next.dataset.id : "", back: location.pathname + location.search },
+    });
+  }
+
+  function cancelDrag() {
+    const { el, from } = press;
+    if (from.ul.isConnected) {
+      from.ul.insertBefore(el, from.next && from.next.parentElement === from.ul ? from.next : null);
+      el.classList.toggle("child", from.child);
+    }
+    land();
+  }
+
+  function endPress() {
+    if (!press) return;
+    clearTimeout(press.timer);
+    cancelAnimationFrame(press.raf);
+    document.body.classList.remove("dragging");
+    press = null;
+    setTimeout(refreshWhenIdle, 50);
+  }
+
+  document.addEventListener("pointerdown", (e) => {
+    if (press || selecting || !e.isPrimary || e.button !== 0) return;
+    const el = draggableAt(e.target);
+    if (!el) return;
+    press = { el, pointer: e.pointerId, x: e.clientX, y: e.clientY, mouse: e.pointerType === "mouse" };
+    if (!press.mouse) press.timer = setTimeout(lift, LIFT_MS);
   });
+
   document.addEventListener("pointermove", (e) => {
-    if (pressOrigin && Math.hypot(e.clientX - pressOrigin.x, e.clientY - pressOrigin.y) > 8) clearTimeout(pressTimer);
+    if (!press || e.pointerId !== press.pointer) return;
+    if (!press.el.isConnected) {
+      if (press.clone) press.clone.remove();
+      endPress();
+      return;
+    }
+    if (!press.drag && Math.hypot(e.clientX - press.x, e.clientY - press.y) <= SLOP) return;
+    if (press.mouse && !press.clone) lift();
+    if (press.clone) dragTo(e.clientX, e.clientY);
+    else endPress();
   });
-  document.addEventListener("pointerup", () => clearTimeout(pressTimer));
-  document.addEventListener("pointercancel", () => clearTimeout(pressTimer));
+
+  document.addEventListener("pointerup", (e) => {
+    if (!press || e.pointerId !== press.pointer) return;
+    if (press.drag) {
+      drop();
+    } else if (press.clone) {
+      press.clone.remove();
+      press.el.classList.remove("drag-slot");
+      swallowUntil = performance.now() + 400;
+      if (press.el.matches(".row")) startSelecting(press.el.dataset.id);
+    }
+    endPress();
+  });
+
+  document.addEventListener("pointercancel", (e) => {
+    if (!press || e.pointerId !== press.pointer) return;
+    if (press.clone) cancelDrag();
+    endPress();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !press || !press.clone) return;
+    cancelDrag();
+    endPress();
+  });
+
+  document.addEventListener("dragstart", (e) => { if (e.target.closest && e.target.closest(".category-body")) e.preventDefault(); });
+
   let lastPointer = "mouse";
   document.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType; }, true);
   document.addEventListener("contextmenu", (e) => {
@@ -679,15 +850,6 @@
       e.stopPropagation();
       return;
     }
-    if (pressOrigin && pressOrigin.fired) {
-      pressOrigin = null;
-      if (t.closest(".content .row")) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-    }
-    pressOrigin = null;
     const statusButton = t.closest(".content .status-button");
     if (statusButton && app().dataset.page === "project") {
       e.preventDefault();
@@ -1344,7 +1506,6 @@
     setupPairing(root);
     for (const t of $$("[data-autogrow]", root)) grow(t);
     adoptForms(root);
-    setupSortable(root);
     syncSelection();
     listen();
   }

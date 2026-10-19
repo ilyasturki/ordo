@@ -567,6 +567,32 @@ func TestPlaceDropsARowUnderAParent(t *testing.T) {
 	}
 }
 
+func TestPlaceLandsWhereTheDragSlotShows(t *testing.T) {
+	f := newFixture(t)
+	place := func(id, parent, before string) {
+		t.Helper()
+		if rec := f.action("task.place", url.Values{"id": {f.ids[id]}, "cat": {f.cat}, "parent": {f.ids[parent]}, "before": {f.ids[before]}}); rec.Code != http.StatusOK {
+			t.Fatalf("place %s: %d", id, rec.Code)
+		}
+	}
+	steps := []struct {
+		id, parent, before, want string
+	}{
+		{"two", "one", "", "one,>two,three"},
+		{"three", "one", "two", "one,>three,>two"},
+		{"three", "", "", "one,>two,three"},
+		{"two", "", "three", "one,two,three"},
+		{"two", "one", "", "one,>two,three"},
+		{"one", "", "", "three,one,>two"},
+	}
+	for _, s := range steps {
+		place(s.id, s.parent, s.before)
+		if got := strings.Join(titles(f.project().Categories[0]), ","); got != s.want {
+			t.Fatalf("place %s under %q before %q: %s, want %s", s.id, s.parent, s.before, got, s.want)
+		}
+	}
+}
+
 func TestNestAndShiftReportRefusals(t *testing.T) {
 	f := newFixture(t)
 	if got := snackOf(t, f.action("task.nest", url.Values{"id": {f.ids["one"]}})).Msg; got != "Nothing above to nest under" {

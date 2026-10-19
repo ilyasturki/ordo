@@ -32,7 +32,7 @@ handlers and `internal/web` (`ordo serve`) both call it; the TUI keeps only its
 cursor, modes, undo history and status line around the call. `TestWebCoversItsActions`
 goes red when a `Web` action has no handler in `webActions`.
 
-The web app is server-rendered `html/template` with vendored htmx and SortableJS
+The web app is server-rendered `html/template` with vendored htmx and jsQR
 at pinned versions, one hand-written `app.js`, and a hand-written Material 3
 `app.css` whose colors are tokens on `:root`, redefined for dark mode. Its CSP
 allows only same-origin scripts and styles, so markup carries no inline script or
