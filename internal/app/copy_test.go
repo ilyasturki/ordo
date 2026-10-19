@@ -47,12 +47,58 @@ func TestCopyTextForPosition(t *testing.T) {
 		{"category", selection.Position{Kind: selection.FocusCategory, CategoryIndex: 0}, "Cat A"},
 		{"task", selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 0}, "Alpha\n\nthe body of alpha"},
 		{"description", selection.Position{Kind: selection.FocusDescription, CategoryIndex: 0, TaskIndex: 0}, "the body of alpha"},
-		{"separator", selection.Position{Kind: selection.FocusSeparator, CategoryIndex: 0, TaskIndex: 1}, "— divider —"},
+		{"separator", selection.Position{Kind: selection.FocusSeparator, CategoryIndex: 0, TaskIndex: 1}, "### — divider —"},
 		{"task without description", selection.Position{Kind: selection.FocusTask, CategoryIndex: 0, TaskIndex: 2}, "Bravo"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, tc.want, m.copyTextForPosition(tc.pos))
+		})
+	}
+
+	m.project.Categories[0].Tasks[1].Title = "  "
+	assert.Equal(t, "---", m.copyTextForPosition(selection.Position{Kind: selection.FocusSeparator, CategoryIndex: 0, TaskIndex: 1}), "bare separator")
+}
+
+func TestCopySelected_SeparatorPastesBackAsSeparator(t *testing.T) {
+	for _, tc := range []struct {
+		name, label, text string
+		copiedTaskBefore  bool
+	}{
+		{"bare after a task copy", "", "---", true},
+		{"labelled", "mid", "### mid", false},
+		{"labelled after a task copy", "mid", "### mid", true},
+		{"bare", "", "---", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := separatorProject()
+			p.Categories[0].Tasks[1].Title = tc.label
+			m := newTestModel(t, p)
+			if tc.copiedTaskBefore {
+				require.True(t, m.selectTaskIdx(0, 0))
+				m.copySelected()
+				landWrite(m)
+			}
+			require.True(t, m.selectSeparator(0, 1))
+			require.NotNil(t, m.copySelected())
+			assert.Equal(t, tc.text, m.ui.Clipboard.Text)
+			landWrite(m)
+
+			require.True(t, m.selectTaskIdx(0, 2))
+			m.resolvePaste(clipboardLinesMsg{text: tc.text})
+
+			tasks := m.project.Categories[0].Tasks
+			require.Len(t, tasks, 4)
+			assert.True(t, tasks[3].IsSeparator(), "pasted %+v", tasks[3])
+			assert.Equal(t, tc.label, tasks[3].Title)
+			assert.NotEqual(t, "s1", tasks[3].ID)
+
+			other := newTestModel(t, sampleProject())
+			require.True(t, other.selectTaskIdx(0, 0))
+			other.resolvePaste(clipboardLinesMsg{text: tc.text})
+			got := other.project.Categories[0].Tasks[1]
+			assert.True(t, got.IsSeparator(), "another session pastes %+v", got)
+			assert.Equal(t, tc.label, got.Title)
 		})
 	}
 }

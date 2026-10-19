@@ -8,6 +8,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - `l` in the project picker links this directory to the highlighted project and opens it, so the next launch here opens it too. The picker marks the linked project `(linked)`
 
+### Fixed
+
+- `y` on a separator copies it as `### label`, or `---` for a bare one, so `p` pastes a separator, here or in another ordo, instead of a task, or instead of the task copied before. `gy` on a separator offers the plain label
+
 ## [0.12.0] - 2026-10-19
 
 ### Added

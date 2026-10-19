@@ -50,6 +50,18 @@ func TestExtractEntities(t *testing.T) {
 	}
 }
 
+func TestBuildYankItemsSeparatorOffersItsLabel(t *testing.T) {
+	m := newTestModel(t, separatorProject())
+	pos := selection.Position{Kind: selection.FocusSeparator, CategoryIndex: 0, TaskIndex: 1}
+	if got := entityValues(m.buildYankItems(pos)); !reflect.DeepEqual(got, []string{"mid"}) {
+		t.Errorf("labelled separator = %#v, want the plain label", got)
+	}
+	m.project.Categories[0].Tasks[1].Title = ""
+	if got := m.buildYankItems(pos); len(got) != 0 {
+		t.Errorf("bare separator = %#v, want nothing", got)
+	}
+}
+
 func TestBuildYankItemsTask(t *testing.T) {
 	project := domain.Project{
 		ID:   "p1",

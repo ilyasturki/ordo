@@ -657,19 +657,22 @@ func (m model) handleNormalKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 // copyTextForPosition returns the plain text that `y` copies for the item at
-// pos: the name for a project/category, the title for a separator, the title
-// plus description (blank-line separated) for a task, and the body alone for a
-// description row. Empty when there is nothing to copy.
+// pos: the name for a project/category, the exporter's line for a separator,
+// which paste reads back as one, the title plus description (blank-line
+// separated) for a task, and the body alone for a description row. Empty when
+// there is nothing to copy.
 func (m *model) copyTextForPosition(pos selection.Position) string {
 	switch pos.Kind {
 	case selection.FocusProject:
 		return m.project.Name
 	case selection.FocusCategory:
 		return m.project.Categories[pos.CategoryIndex].Name
-	case selection.FocusTask, selection.FocusSeparator:
+	case selection.FocusSeparator:
+		return export.SeparatorLine(m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex])
+	case selection.FocusTask:
 		task := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
 		text := task.Title
-		if pos.Kind == selection.FocusTask && task.Description != "" {
+		if task.Description != "" {
 			text += "\n\n" + task.Description
 		}
 		return m.deps.Attachments.Absolute(text)
@@ -684,10 +687,10 @@ func (m *model) copySelected() tea.Cmd {
 	if !ok {
 		return nil
 	}
-	// A task copy also stashes the whole task for paste; other kinds (category,
-	// description, separator) only put text on the system clipboard.
+	// A task or separator copy also stashes the row for paste; other kinds
+	// (category, description) only put text on the system clipboard.
 	text := m.copyTextForPosition(pos)
-	if pos.Kind == selection.FocusTask {
+	if pos.Kind == selection.FocusTask || pos.Kind == selection.FocusSeparator {
 		tasks, ids := m.taskBlock(pos)
 		m.ui.Clipboard = ClipboardState{Tasks: tasks, TaskIDs: ids, Text: text, Written: true}
 		m.ui.TagCopiedLast = false

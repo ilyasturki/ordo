@@ -84,6 +84,10 @@ func (m *model) buildYankItems(pos selection.Position) []components.YankItem {
 		cat := m.project.Categories[pos.CategoryIndex]
 		set.add(cat.Name)
 		addEntities(cat.Name)
+	case selection.FocusSeparator:
+		label := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].Title
+		set.add(label)
+		addEntities(label)
 	case selection.FocusTask, selection.FocusDescription:
 		task := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
 		set.add(task.Title)

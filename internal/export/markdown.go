@@ -97,15 +97,19 @@ func unescapeSlashes(s string) string {
 	return strings.TrimSpace(strings.ReplaceAll(s, `\/`, "/"))
 }
 
+func SeparatorLine(task domain.Task) string {
+	if label := strings.TrimSpace(task.Title); label != "" {
+		return "### " + label
+	}
+	return "---"
+}
+
 func writeCategory(sb *strings.Builder, heading string, cat domain.Category, opts Options) {
 	fmt.Fprintf(sb, "## %s\n\n", heading)
 	for _, task := range cat.Tasks {
 		if task.IsSeparator() {
-			if label := strings.TrimSpace(task.Title); label != "" {
-				fmt.Fprintf(sb, "### %s\n", label)
-			} else {
-				sb.WriteString("---\n")
-			}
+			sb.WriteString(SeparatorLine(task))
+			sb.WriteByte('\n')
 			continue
 		}
 		indent := ""
