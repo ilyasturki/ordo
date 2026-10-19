@@ -434,6 +434,40 @@
     syncSelection();
   }
 
+  const slideOf = (d) => d.getAnimations().find((a) => a.transitionProperty === "transform");
+
+  // A closed dialog leaves the top layer at once and Firefox has no `overlay` to keep it there, so it slides out while still open.
+  function dismiss(d) {
+    if (!d || !d.open) return 0;
+    if (!d.classList.contains("closing")) {
+      if (d.contains(document.activeElement)) document.activeElement.blur();
+      d.classList.remove("tracking");
+      d.style.removeProperty("transform");
+      d.style.removeProperty("--shown");
+      d.classList.add("closing");
+      const done = () => {
+        if (!d.classList.contains("closing")) return;
+        d.classList.remove("closing");
+        d.close();
+      };
+      const slide = slideOf(d);
+      if (!slide) {
+        done();
+        return 0;
+      }
+      slide.finished.then(done, done);
+      setTimeout(done, 400);
+    }
+    const slide = slideOf(d);
+    return slide ? Math.max(0, slide.effect.getComputedTiming().endTime - (slide.currentTime || 0)) : 0;
+  }
+
+  document.addEventListener("cancel", (e) => {
+    if (!(e.target instanceof HTMLDialogElement) || !e.cancelable) return;
+    e.preventDefault();
+    dismiss(e.target);
+  }, true);
+
   function grow(el) {
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
@@ -564,6 +598,15 @@
       stopSelecting();
       return;
     }
+    const nav = t.closest(".drawer-item[href]");
+    if (nav) {
+      if (nav.matches("[aria-current]")) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      dismiss(nav.closest("dialog"));
+      return;
+    }
     const open = t.closest("[data-sheet-open]");
     if (open) {
       const d = document.getElementById(open.dataset.sheetOpen);
@@ -576,13 +619,13 @@
       return;
     }
     if (t.closest("[data-sheet-close]")) {
-      t.closest("dialog").close();
+      dismiss(t.closest("dialog"));
       return;
     }
     if (t instanceof HTMLDialogElement && t.open) {
       const r = t.getBoundingClientRect();
       if (e.clientY < r.top || e.clientY > r.bottom || e.clientX < r.left || e.clientX > r.right) {
-        t.close();
+        dismiss(t);
       }
       return;
     }
@@ -946,16 +989,16 @@
       staleStamp = "pending";
       return;
     }
-    if (e.detail.target && e.detail.target.id === "app") stashDrafts();
-    const sheet = $("dialog[open]");
-    if (sheet && e.detail.target && e.detail.target.id === "app") sheet.close();
-    if (e.detail.target && e.detail.target.id === "app") {
-      for (const c of $$(".composer")) closeComposer(c);
-      for (const s of $$(".separator.editing")) {
-        s.closed = true;
-        if (s.watcher) s.watcher.destroy();
-      }
+    if (!e.detail.target || e.detail.target.id !== "app") return;
+    stashDrafts();
+    for (const c of $$(".composer")) closeComposer(c);
+    for (const s of $$(".separator.editing")) {
+      s.closed = true;
+      if (s.watcher) s.watcher.destroy();
     }
+    const sheet = $("dialog[open]");
+    const left = Math.ceil(dismiss(sheet));
+    if (left) e.detail.swapOverride = (e.detail.swapOverride || "outerHTML") + ` swap:${left}ms`;
   });
 
   // scannedToken returns the pairing token a scanned code carries, or "" for any other text.

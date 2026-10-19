@@ -36,6 +36,7 @@
   --shadow-3: 0 4px 8px 3px rgb(0 0 0 / 0.15), 0 1px 3px rgb(0 0 0 / 0.3);
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-in: cubic-bezier(0.3, 0, 0.8, 0.15);
   --font: Roboto, "Roboto Flex", "Google Sans Text", system-ui, -apple-system, "Segoe UI", sans-serif;
   /* Not redefined for dark mode: a camera reads a QR code dark on light. */
   --paper: #ffffff;
@@ -567,10 +568,12 @@ body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-a
   box-shadow: var(--shadow);
   overflow: hidden;
 }
-.sheet[open] { display: flex; flex-direction: column; animation: sheet-in 300ms var(--ease-out); }
-.sheet::backdrop { background: rgb(0 0 0 / 0.32); animation: fade-in 200ms linear; }
-@keyframes sheet-in { from { transform: translateY(100%); } }
-@keyframes fade-in { from { opacity: 0; } }
+.sheet[open] { display: flex; flex-direction: column; transition: transform 300ms var(--ease-out); }
+@starting-style { .sheet[open] { transform: translateY(100%); } }
+.sheet.closing { transform: translateY(100%); transition: transform 200ms var(--ease-in); }
+.sheet::backdrop, .drawer::backdrop { background: rgb(0 0 0 / 0.32); opacity: var(--shown, 1); transition: opacity 200ms linear; }
+@starting-style { .sheet[open]::backdrop, .drawer[open]::backdrop { opacity: 0; } }
+.sheet.closing::backdrop, .drawer.closing::backdrop { opacity: 0; }
 .sheet-body { display: flex; flex-direction: column; gap: 16px; min-height: 0; padding: 0 24px calc(16px + env(safe-area-inset-bottom)); }
 .drag-handle { align-self: center; width: 32px; height: 4px; margin: 16px 0 6px; border-radius: 2px; background: var(--on-surface-variant); opacity: 0.4; }
 .sheet-title { margin: 0; font-size: 1.375rem; line-height: 1.75rem; font-weight: 400; }
@@ -594,9 +597,10 @@ body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-a
   background: var(--surface-container-low);
   color: var(--on-surface);
 }
-.drawer[open] { animation: drawer-in 300ms var(--ease-out); }
-.drawer::backdrop { background: rgb(0 0 0 / 0.32); animation: fade-in 200ms linear; }
-@keyframes drawer-in { from { transform: translateX(-100%); } }
+.drawer[open] { transition: transform 300ms var(--ease-out); }
+@starting-style { .drawer[open] { transform: translateX(-100%); } }
+.drawer.closing { transform: translateX(-100%); transition: transform 200ms var(--ease-in); }
+.sheet.tracking, .drawer.tracking, .sheet.tracking::backdrop, .drawer.tracking::backdrop { transition: none; }
 .drawer-body { display: flex; flex-direction: column; padding: calc(12px + env(safe-area-inset-top)) 12px 12px; }
 .drawer-headline { margin: 0; padding: 18px 16px; font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; letter-spacing: 0.006rem; color: var(--on-surface-variant); }
 .drawer-item {

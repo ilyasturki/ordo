@@ -33,6 +33,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - A save still queued when `r` reloads can no longer land after the reload and overwrite the change it showed: `r` waits for it, and each save is checked against the load it came from
 - After a cut whose paste was refused, `r` gives the cut back, so `p` moves the rows instead of leaving a second copy
 - On the phone, a title or details edit refused because the task changed elsewhere no longer loses the typed text to Reload: the field keeps it and offers Keep mine or Use theirs, and a refresh, an action or leaving the page and coming back keeps it too
+- The web app's drawer and bottom sheets slide away when they close, by a tap outside, Escape, Android back or a drawer item, instead of vanishing in one frame, Firefox for Android included. A drawer item closes the drawer before the next page shows, and the current project just closes it
 
 ### Changed
 
