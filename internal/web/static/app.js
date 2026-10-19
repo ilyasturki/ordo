@@ -118,6 +118,11 @@
       }
     }
     for (const b of $$("[form=bulk]")) b.disabled = selected.size === 0;
+    const below = $("[data-separator-below]");
+    if (below) {
+      const only = selected.size === 1 && document.getElementById("t-" + [...selected][0]);
+      below.disabled = !only || !!only.closest(".completed");
+    }
     for (const s of sortables) s.option("disabled", selecting);
   }
 
@@ -240,6 +245,125 @@
     if (close) closeComposer(li);
   }
 
+  const doURL = (action) => "/p/" + app().dataset.project + "/do/" + action;
+
+  // openSeparatorEditor puts a label field in place and focuses it within the tap, like the add row.
+  function openSeparatorEditor(place, base) {
+    const li = $("#separator-editor").content.firstElementChild.cloneNode(true);
+    place(li);
+    const input = $("input", li);
+    input.value = base;
+    li.dataset.base = base;
+    li.scrollIntoView({ block: "nearest" });
+    input.focus({ preventScroll: true });
+    if (window.CloseWatcher) {
+      try {
+        li.watcher = new CloseWatcher();
+        li.watcher.onclose = () => finishSeparator(li, false);
+      } catch {}
+    }
+    return li;
+  }
+
+  // newSeparator adds a bare separator first in the category, or below the block of row, then opens its label.
+  function newSeparator(section, row) {
+    unfold(section);
+    const li = openSeparatorEditor((el) => {
+      if (row) row.closest(".category-body > .rows > li").after(el);
+      else $(".category-body > .rows", section).prepend(el);
+    }, "");
+    const values = { cat: section.dataset.cat, back: location.pathname };
+    if (row) values.id = row.dataset.id;
+    li.pending = send(doURL("separator.add"), values, "row").then((html) => {
+      li.row = html && rowFrom(html);
+      if (li.row) li.dataset.id = li.row.dataset.id;
+    });
+  }
+
+  function relabelSeparator(sep) {
+    const li = openSeparatorEditor((el) => {
+      sep.hidden = true;
+      sep.after(el);
+    }, $(".separator-label", sep).textContent);
+    li.dataset.id = sep.dataset.id;
+    li.row = sep;
+  }
+
+  function finishSeparator(li, save) {
+    if (li.closed) return;
+    li.closed = true;
+    if (li.watcher) li.watcher.destroy();
+    const input = $("input", li);
+    if (document.activeElement === input) input.blur();
+    const title = input.value.trim();
+    (li.pending || Promise.resolve()).then(() => {
+      if (!li.isConnected) return;
+      if (save && li.row && title !== li.dataset.base) {
+        htmx.ajax("POST", doURL("task.title"), { target: "#app", select: "#app", swap: "outerHTML", values: { id: li.dataset.id, title, base: li.dataset.base, back: location.pathname } });
+        return;
+      }
+      if (!li.row) {
+        li.remove();
+        return;
+      }
+      li.row.hidden = false;
+      li.replaceWith(li.row);
+    });
+  }
+
+  // reopenBlocked: the press that light-dismissed the menu was on its own ⋮, so that tap only closes it.
+  let reopenBlocked = false;
+  function openMenu(button, byKeyboard) {
+    const menu = $("#cat-menu");
+    if (!menu || !menu.showPopover || reopenBlocked) return;
+    const section = button.closest(".category");
+    menu.opener = button;
+    menu.section = section;
+    const folded = section.classList.contains("folded");
+    $("[data-menu=fold]", menu).hidden = folded;
+    $("[data-menu=unfold]", menu).hidden = !folded;
+    $("[data-menu=select]", menu).disabled = !$(".completed-rows .row", section);
+    menu.showPopover();
+    const r = button.getBoundingClientRect();
+    const w = menu.offsetWidth;
+    const h = menu.offsetHeight;
+    menu.style.top = (r.bottom + h > window.innerHeight - 8 ? Math.max(8, r.top - h) : r.bottom) + "px";
+    menu.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + "px";
+    const first = $(".menu-item:not([hidden]):not(:disabled)", menu);
+    if (first && byKeyboard) first.focus();
+  }
+
+  function menuAction(item) {
+    const menu = $("#cat-menu");
+    const section = menu.section;
+    menu.hidePopover();
+    if (!section || !section.isConnected) return;
+    switch (item.dataset.menu) {
+      case "separator":
+        newSeparator(section, null);
+        break;
+      case "fold":
+      case "unfold":
+        $("[data-fold]", section).click();
+        break;
+      case "select":
+        selectCompleted(section);
+        break;
+    }
+  }
+
+  function selectCompleted(section) {
+    const fold = $(".completed", section);
+    if (!fold) return;
+    if (!fold.open) {
+      fold.open = true;
+      fetch("/fold/" + encodeURIComponent($("[data-completed-fold]", fold).dataset.completedFold), { method: "POST", credentials: "same-origin" });
+    }
+    selecting = true;
+    for (const row of $$(".completed-rows .row", fold)) selected.add(row.dataset.id);
+    syncSelection();
+  }
+
   function grow(el) {
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
@@ -339,6 +463,23 @@
       openComposer(topCategory());
       return;
     }
+    const menuButton = t.closest("[data-cat-menu]");
+    if (menuButton) {
+      openMenu(menuButton, e.detail === 0);
+      return;
+    }
+    const menuItem = t.closest("[data-menu]");
+    if (menuItem) {
+      menuAction(menuItem);
+      return;
+    }
+    if (t.closest("[data-separator-below]")) {
+      const row = document.getElementById("t-" + [...selected][0]);
+      t.closest("dialog").close();
+      stopSelecting();
+      if (row) newSeparator(row.closest(".category"), row);
+      return;
+    }
     if (t.closest("[data-select-start]")) {
       startSelecting();
       return;
@@ -362,6 +503,11 @@
       if (e.clientY < r.top || e.clientY > r.bottom || e.clientX < r.left || e.clientX > r.right) {
         t.close();
       }
+      return;
+    }
+    const sep = t.closest(".content .separator[data-sep]");
+    if (sep && !selecting) {
+      relabelSeparator(sep);
       return;
     }
     if (selecting) {
@@ -390,6 +536,11 @@
       e.preventDefault();
       closeComposer(composer);
     }
+    const label = t.closest(".separator.editing");
+    if (label && (e.key === "Enter" && !e.isComposing || e.key === "Escape")) {
+      e.preventDefault();
+      finishSeparator(label, e.key === "Enter");
+    }
   });
 
   // A tap on an add button leaves the focus in the open composer, so the keyboard stays up between the two rows.
@@ -400,7 +551,14 @@
   document.addEventListener("focusout", (e) => {
     const composer = e.target.closest && e.target.closest(".composer");
     if (composer && !composer.closed && !composer.contains(e.relatedTarget) && document.hasFocus()) submitComposer(composer, true);
+    const label = e.target.closest && e.target.closest(".separator.editing");
+    if (label && !label.closed && document.hasFocus()) finishSeparator(label, true);
   });
+
+  document.addEventListener("pointerdown", (e) => {
+    const menu = $("#cat-menu");
+    reopenBlocked = !!menu && menu.matches(":popover-open") && e.target.closest("[data-cat-menu]") === menu.opener;
+  }, true);
 
   document.addEventListener("input", (e) => {
     const t = e.target;
@@ -534,7 +692,13 @@
     }
     const sheet = $("dialog[open]");
     if (sheet && e.detail.target && e.detail.target.id === "app") sheet.close();
-    if (e.detail.target && e.detail.target.id === "app") for (const c of $$(".composer")) closeComposer(c);
+    if (e.detail.target && e.detail.target.id === "app") {
+      for (const c of $$(".composer")) closeComposer(c);
+      for (const s of $$(".separator.editing")) {
+        s.closed = true;
+        if (s.watcher) s.watcher.destroy();
+      }
+    }
   });
 
   // scannedToken returns the pairing token a scanned code carries, or "" for any other text.

@@ -57,6 +57,7 @@
       {{icon "expand_more" "fold-icon"}}
     </button>
     <button class="icon-button" type="button" data-add-to="{{$c.ID}}" aria-label="Add a task to {{$c.Name}}">{{icon "add"}}</button>
+    <button class="icon-button" type="button" data-cat-menu aria-haspopup="menu" aria-controls="cat-menu" aria-label="More for {{$c.Name}}">{{icon "more_vert"}}</button>
   </div>
   <div class="category-body" id="rows-{{$c.ID}}">
     <ul class="rows" data-parent="">

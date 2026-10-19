@@ -33,6 +33,19 @@
     </li>
   </template>
 
+  <template id="separator-editor">
+    <li class="separator editing">
+      <input class="separator-input" name="title" autocomplete="off" enterkeyhint="done" maxlength="500" placeholder="Section label (optional)" aria-label="Section label">
+    </li>
+  </template>
+
+  <div class="menu" id="cat-menu" popover role="menu" aria-label="Category">
+    <button class="menu-item" type="button" role="menuitem" data-menu="separator">{{icon "separator"}}<span>Add separator</span></button>
+    <button class="menu-item" type="button" role="menuitem" data-menu="fold">{{icon "unfold_less"}}<span>Fold</span></button>
+    <button class="menu-item" type="button" role="menuitem" data-menu="unfold">{{icon "unfold_more"}}<span>Unfold</span></button>
+    <button class="menu-item" type="button" role="menuitem" data-menu="select">{{icon "checklist"}}<span>Select completed</span></button>
+  </div>
+
   <form id="bulk" method="post" action="/p/{{$pid}}/do/status.cycle" data-bulk-form>{{template "back" $back}}</form>
   <dialog class="sheet" id="bulk-sheet" aria-labelledby="bulk-title" autofocus>
     <div class="sheet-body">
@@ -61,6 +74,7 @@
           <button type="submit" class="list-button" form="bulk" name="dir" value="down" formaction="/p/{{$pid}}/do/task.shift">{{icon "arrow_downward"}}<span>Move down</span></button>
           <button type="submit" class="list-button" form="bulk" formaction="/p/{{$pid}}/do/task.nest">{{icon "indent"}}<span>Nest under the task above</span></button>
           <button type="submit" class="list-button" form="bulk" formaction="/p/{{$pid}}/do/task.unnest">{{icon "outdent"}}<span>Un-nest</span></button>
+          <button type="button" class="list-button" data-separator-below>{{icon "separator"}}<span>Separator below</span></button>
         </div>
         <h3 class="section-label">Move to</h3>
         <div class="list">

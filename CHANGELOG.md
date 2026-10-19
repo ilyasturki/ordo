@@ -36,6 +36,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The web app no longer shows progress the terminal app lacks: no bar or "N of M done" under a category, no percentage or done count on the projects page. A category keeps its `~` estimate
 - A web row shows the first two lines of its task's details in grey, without the images, instead of a notes icon
 - `+` on a web category opens an add row at the top of that category with the keyboard up, in place of the New task sheet. Enter adds the task there and opens the next row below it, so a batch keeps its typing order and the keyboard stays up between tasks. Escape or back closes the row; tapping away adds what it holds, then closes it. The Task button opens the row in the category at the top of the screen
+- A web category's ⋮ menu offers Add separator, which puts one at the top of the category, Fold, and Select completed, which selects its finished tasks for the bulk actions. With one task selected, the edit sheet offers Separator below, like `-` in the terminal. A new separator opens its label in place, and leaving it empty keeps a bare rule; tapping a separator edits its label
 - An empty category on the web reads "No tasks yet", and one whose tasks are all finished "All tasks complete" above its Completed row
 
 ## [0.12.0] - 2026-10-19

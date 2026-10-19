@@ -9,6 +9,8 @@ const P = "/p/0rd0-web-fixture";
 const T = (n) => `${P}/t/aaaaaaaa-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const C = (n) => `cccccccc-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const folded = C(24);
+// A pointer click (detail 1), unlike element.click(), which reads as a keyboard press.
+const tap = (sel) => `document.querySelector('${sel}').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }))`;
 
 // Each shot: a page, then optional script steps run in the page before the capture. fold: the ordo_fold cookie.
 const shots = [
@@ -29,6 +31,15 @@ const shots = [
   { name: "task_menu", path: T(3), steps: ["document.querySelector('[data-sheet-open=task-menu]').click()"] },
   { name: "task_typing", path: T(1), steps: ["document.querySelector('#new-subtask').focus()"] },
   { name: "add_row", path: P, steps: ["document.querySelector('[data-add-fab]').click()", "document.querySelector('.composer-input').value = 'Offline mode'"] },
+  { name: "cat_menu", path: P, steps: [tap(`#c-${C(12)} [data-cat-menu]`)] },
+  { name: "separator_label", path: P, steps: [
+    tap(`#c-${C(8)} [data-cat-menu]`),
+    "document.querySelector('[data-menu=separator]').click()",
+    "document.querySelector('.separator-input').value = 'Next release'",
+  ], wait: 600, after: [
+    "{ const i = document.querySelector('.separator-input'); i.value = ''; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); }",
+    "document.querySelector('.snackbar-action').click()",
+  ] },
   { name: "select", path: P, steps: [
     "document.querySelector('[data-select-start]').click()",
     "document.querySelectorAll('.content .row .item-body')[0].click()",
