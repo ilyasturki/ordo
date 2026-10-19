@@ -482,8 +482,15 @@
     const bar = t.closest("#snackbar");
     if (bar) return { d: bar, kind: "snack" };
     const drawer = $("#drawer");
-    if (drawer && !drawer.open && x <= 40 && !selecting && !t.closest("input, textarea, select")) return { d: drawer, kind: "edge" };
+    if (drawer && !drawer.open && x <= 40 && !selecting && !t.closest("input, textarea, select") && !scrollsSideways(t)) return { d: drawer, kind: "edge" };
     return null;
+  }
+
+  function scrollsSideways(el) {
+    for (; el && el !== document.body; el = el.parentElement) {
+      if (el.scrollWidth > el.clientWidth && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true;
+    }
+    return false;
   }
 
   function beginSwipe(s) {
@@ -658,7 +665,11 @@
   });
   document.addEventListener("pointerup", () => clearTimeout(pressTimer));
   document.addEventListener("pointercancel", () => clearTimeout(pressTimer));
-  document.addEventListener("contextmenu", (e) => { if (e.target.closest(".content .row")) e.preventDefault(); });
+  let lastPointer = "mouse";
+  document.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType; }, true);
+  document.addEventListener("contextmenu", (e) => {
+    if (e.target.closest(".content .row, .content .separator") || (lastPointer !== "mouse" && e.target.closest(".drawer-item"))) e.preventDefault();
+  });
 
   document.addEventListener("click", (e) => {
     const t = e.target;

@@ -95,6 +95,9 @@ body {
   overscroll-behavior-y: none;
 }
 
+html { overscroll-behavior: none; scrollbar-gutter: stable; }
+html:has(dialog:modal) { overflow: hidden; }
+
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 button { cursor: pointer; }
@@ -128,6 +131,15 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
 }
 .icon-button:active::after, .button:active::after, .chip:active::after, .segment:active::after, .list-button:active::after, .item-body:active::after, .category-toggle:active::after, .swatch:active::after, .fab:active::after, .snackbar-action:active::after, .project-item:active::after { opacity: 0.12; }
 :focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.chip::before, .button::before, .segment::before, .small-button::before, .snackbar-action::before, .parent-link::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 48px);
+  height: max(100%, 48px);
+  transform: translate(-50%, -50%);
+}
 
 .app { min-height: 100dvh; display: flex; flex-direction: column; padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .app { touch-action: pan-y pinch-zoom; }
@@ -205,7 +217,7 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
 .button .icon { margin-left: -8px; }
 .button.text .icon { margin-left: -4px; }
 
-.chip-set { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-set { display: flex; flex-wrap: wrap; gap: 16px 8px; }
 .chip {
   display: inline-flex;
   align-items: center;
@@ -233,7 +245,7 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
 .chip.pri-low .icon, .chip.pri-trivial .icon { fill: var(--pri-down); }
 .chip.selected .icon { fill: currentColor; }
 
-.segmented { display: flex; width: 100%; height: 40px; border: 1px solid var(--outline); border-radius: 20px; overflow: hidden; }
+.segmented { display: flex; width: 100%; height: 40px; border: 1px solid var(--outline); border-radius: 20px; }
 .segment {
   flex: 1 1 0;
   min-width: 0;
@@ -250,7 +262,8 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
   font-weight: 500;
   letter-spacing: 0.006rem;
 }
-.segment:first-child { border-left: 0; }
+.segment:first-child { border-left: 0; border-radius: 19px 0 0 19px; }
+.segment:last-child { border-radius: 0 19px 19px 0; }
 .segment span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .segment.selected { background: var(--secondary-container); color: var(--on-secondary-container); }
 @media (max-width: 380px) { .segment .icon { display: none; } }
@@ -337,6 +350,7 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
 .completed-rows { list-style: none; margin: 0; padding: 0; }
 
 .rows { list-style: none; margin: 0; padding: 0; }
+.content .rows, .drawer-item { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .rows.sub { margin: 0; }
 .rows.sub:empty { min-height: 0; }
 .dragging .rows.sub:empty { min-height: 8px; }
@@ -584,6 +598,7 @@ body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-a
 .sheet-scroll > * { flex: none; }
 .sheet-scroll:focus-visible, .sheet:focus-visible, .drawer:focus-visible { outline: none; }
 .sheet-scroll { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; margin: 0 -24px; padding: 0 24px 8px; }
+.sheet, .sheet-scroll, .drawer { overscroll-behavior: contain; }
 .sheet-actions { display: flex; flex-direction: row-reverse; align-items: center; gap: 8px; }
 .sheet-actions .spacer { flex: 1; }
 .section-label { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; letter-spacing: 0.006rem; color: var(--on-surface-variant); }
@@ -718,6 +733,9 @@ body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-a
 
 .editor { padding: 0 12px 24px; }
 .parent-link { display: inline-flex; align-items: center; gap: 6px; margin: 4px 4px 4px; font-size: 0.875rem; font-weight: 500; color: var(--primary); }
+.parent-link { position: relative; border-radius: 8px; }
+.parent-link::after { content: ""; position: absolute; inset: -4px -8px; border-radius: inherit; background: currentColor; opacity: 0; transition: opacity 150ms linear; }
+.parent-link:active::after { opacity: 0.12; }
 .title-input {
   display: block;
   width: 100%;
