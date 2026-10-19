@@ -228,6 +228,7 @@ func (m model) renderTaskLine(catIdx, taskIdx int, selected bool, width int, foc
 		WithVisualMode(visualMode).
 		WithCursor(isCursor).
 		WithCut(cut).
+		WithFilteredOut(m.ui.Filter.FilteredOut(task, cat.ID, cat.ParentID)).
 		WithDescriptionExpanded(m.ui.Screen.ExpandDescriptions).
 		WithRowLimits(m.rowLimits().titleRows(task.ID), components.DescriptionPreviewLines)
 	if q := m.searchQuery(); q != "" {

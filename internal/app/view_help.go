@@ -106,6 +106,7 @@ var helpModeSections = []helpSection{
 		title: "While a filter is on (f)",
 		entries: []helpEntry{
 			{keys: "enter / space", desc: "on \"N hidden by the filter\": clear it"},
+			{keys: "j / k", desc: "leave a filtered-out row to hide it"},
 		},
 	},
 }

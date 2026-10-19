@@ -22,6 +22,7 @@ type TaskLineRenderer struct {
 	visualMode          bool
 	isCursor            bool
 	cut                 bool
+	filteredOut         bool
 	descriptionExpanded bool
 	searchQuery         string
 	searchMatch         lipgloss.Style
@@ -71,6 +72,11 @@ func (r *TaskLineRenderer) WithCut(c bool) *TaskLineRenderer {
 	return r
 }
 
+func (r *TaskLineRenderer) WithFilteredOut(v bool) *TaskLineRenderer {
+	r.filteredOut = v
+	return r
+}
+
 func (r *TaskLineRenderer) WithDescriptionExpanded(v bool) *TaskLineRenderer {
 	r.descriptionExpanded = v
 	return r
@@ -102,6 +108,13 @@ func (r *TaskLineRenderer) highlightLine(line string, base lipgloss.Style) strin
 func (r *TaskLineRenderer) maybeCut(s lipgloss.Style) lipgloss.Style {
 	if r.cut {
 		return ui.ApplyCut(s)
+	}
+	return s
+}
+
+func (r *TaskLineRenderer) muteFilteredOut(s lipgloss.Style) lipgloss.Style {
+	if r.filteredOut {
+		return s.Faint(true)
 	}
 	return s
 }
@@ -361,7 +374,7 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 		if finished {
 			iconStyle = iconStyle.Faint(true)
 		}
-		iconStyle = r.maybeCut(iconStyle)
+		iconStyle = r.muteFilteredOut(r.maybeCut(iconStyle))
 		iconStyled = iconStyle.Render(priorityIcon) + " "
 	}
 	tagStyled := r.tagSegment(task, finished, false)
@@ -369,8 +382,8 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 	descMarker := r.formatDescriptionBadge(task.Description, false) + r.formatImageBadge(task, false)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, false)
 	cutBadge, _ := r.formatCutBadge(false)
-	suffix := cutBadge + r.formatProgressBadge(false) + descMarker + estimate
-	titleStyle := r.maybeCut(ui.TaskTitleStyle(task.Priority, task.Status, r.priorityColor))
+	suffix := cutBadge + r.formatProgressBadge(false) + descMarker + estimate + r.formatFilteredOutBadge(false)
+	titleStyle := r.muteFilteredOut(r.maybeCut(ui.TaskTitleStyle(task.Priority, task.Status, r.priorityColor)))
 	prefixPart := fmt.Sprintf("%s[%s] ", prefix, status)
 
 	if r.width <= 0 {
@@ -394,7 +407,7 @@ func (r *TaskLineRenderer) tagSegment(task domain.Task, finished, selected bool)
 		return r.maybeCut(style).Render(seg)
 	}
 	style, _ := ui.TagDotStyle(task.TagColor, finished)
-	return r.maybeCut(style).Render(seg)
+	return r.muteFilteredOut(r.maybeCut(style)).Render(seg)
 }
 
 func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon string) string {
@@ -422,7 +435,7 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 	descMarker := r.formatDescriptionBadge(task.Description, true) + r.formatImageBadge(task, true)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, true)
 	cutBadge, _ := r.formatCutBadge(true)
-	suffix := cutBadge + r.formatProgressBadge(true) + descMarker + estimate
+	suffix := cutBadge + r.formatProgressBadge(true) + descMarker + estimate + r.formatFilteredOutBadge(true)
 
 	prefixPart := selectedStyle.Render(prefix+"[") +
 		statusStyle.Render(statusText) +
@@ -443,7 +456,7 @@ func (r *TaskLineRenderer) titleWidth(task domain.Task) int {
 		lead += icon + " "
 	}
 	_, cutText := r.formatCutBadge(false)
-	badges := cutText + r.progressBadgeText() + r.descriptionBadgeText(task.Description) + imageBadgeText(task) + r.estimateBadgeText(task.EstimateMinutes)
+	badges := cutText + r.progressBadgeText() + r.descriptionBadgeText(task.Description) + imageBadgeText(task) + r.estimateBadgeText(task.EstimateMinutes) + r.filteredOutBadgeText()
 	return safeWidth(r.width, ansi.StringWidth(lead+badges))
 }
 
@@ -487,7 +500,25 @@ func (r *TaskLineRenderer) formatStatus(status string, selected bool) string {
 	if selected {
 		return label
 	}
-	return ui.StatusStyle(status).Render(label)
+	return r.muteFilteredOut(ui.StatusStyle(status)).Render(label)
+}
+
+func (r *TaskLineRenderer) filteredOutBadgeText() string {
+	if !r.filteredOut {
+		return ""
+	}
+	return " (filtered out)"
+}
+
+func (r *TaskLineRenderer) formatFilteredOutBadge(selected bool) string {
+	text := r.filteredOutBadgeText()
+	if text == "" {
+		return ""
+	}
+	if selected {
+		return r.selectedStyle().Render(text)
+	}
+	return ui.MutedStyle.Render(text)
 }
 
 func (r *TaskLineRenderer) statusLabel(status string) string {

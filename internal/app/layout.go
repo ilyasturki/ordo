@@ -65,6 +65,8 @@ type LayoutBuilder struct {
 	// A cut row carries a ✂ badge that narrows its title.
 	taskCut     func(domain.Task) bool
 	categoryCut func(domain.Category) bool
+	// A filtered-out row carries a trailing mark that narrows its title.
+	filter *FilterState
 }
 
 func NewLayoutBuilder(config LayoutConfig, width int, statusDisplay string, fold *FoldState) *LayoutBuilder {
@@ -94,6 +96,11 @@ func (b *LayoutBuilder) WithRowLimits(l rowLimits) *LayoutBuilder {
 
 func (b *LayoutBuilder) WithCutMarks(taskCut func(domain.Task) bool, categoryCut func(domain.Category) bool) *LayoutBuilder {
 	b.taskCut, b.categoryCut = taskCut, categoryCut
+	return b
+}
+
+func (b *LayoutBuilder) WithFilter(f *FilterState) *LayoutBuilder {
+	b.filter = f
 	return b
 }
 
@@ -195,6 +202,7 @@ func (b *LayoutBuilder) countTaskLines(cat domain.Category, taskIdx int) int {
 		WithNesting(taskIndent(cat, taskIdx), taskProgress(cat, taskIdx, b.fold)).
 		WithDescriptionExpanded(b.expandDescriptions).
 		WithCut(b.taskCut != nil && b.taskCut(task)).
+		WithFilteredOut(b.filter != nil && b.filter.FilteredOut(task, cat.ID, cat.ParentID)).
 		WithRowLimits(b.limits.titleRows(task.ID), components.DescriptionPreviewLines).
 		TitleRows(task)
 }
@@ -225,7 +233,8 @@ func (m *model) buildLayout() *Layout {
 		WithCategoryCounts(cfg.ShowCategoryCounts).
 		WithRowLimits(limits).
 		WithEditOverlay(editPos, editHeight).
-		WithCutMarks(m.taskRowCut, m.categoryRowCut)
+		WithCutMarks(m.taskRowCut, m.categoryRowCut).
+		WithFilter(&m.ui.Filter)
 	layout := builder.Build(m.project, m.positions())
 	m.ui.layout = layoutCache{width: w, limits: limits, editPos: editPos, editHeight: editHeight, cut: cut, layout: &layout}
 	return &layout

@@ -90,6 +90,7 @@ func (m *model) reloadProject() {
 
 	m.project = project
 	m.ui.History.Reset()
+	m.ui.Filter.releaseHeld()
 	m.rebuildPositions()
 
 	if hadSel && !m.restoreCursor(prev) {
@@ -121,7 +122,7 @@ func taskRowVisible(filter *FilterState, task domain.Task, categoryID, parentCat
 	if task.IsSeparator() {
 		return filter == nil || !filter.HasActiveFilter()
 	}
-	return filter == nil || filter.TaskVisible(task, categoryID, parentCategoryID)
+	return filter == nil || filter.holds(task.ID) || filter.TaskVisible(task, categoryID, parentCategoryID)
 }
 
 func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool {

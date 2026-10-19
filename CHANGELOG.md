@@ -15,6 +15,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Changed
 
 - Revoking a device, from Devices or `ordo serve revoke`, also signs out the devices it paired, and lists them; `ordo serve devices` shows which device paired each
+- A task an edit takes out of the filter stays where it is, marked `(filtered out)`, until the cursor leaves it, so `space` can walk it through every status under a status filter. Status, priority and tag edits all behave this way, in visual mode too, where the rows go once visual mode ends and the cursor moves off them. Before, the tag picker and a pasted tag hid the task at once, and the other edits left it unmarked until the next fold or move
 
 ### Changed
 

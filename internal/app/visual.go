@@ -507,11 +507,13 @@ func (m *model) visualCycleStatus(reverse bool) {
 		return
 	}
 	m.recordHistory()
-	next, changed, err := operations.CycleStatus(&m.project, positionIDs(m.project, selPositions), reverse)
+	ids := positionIDs(m.project, selPositions)
+	next, changed, err := operations.CycleStatus(&m.project, ids, reverse)
 	if !m.applied(err) {
 		return
 	}
 	m.storeTaskUpdate()
+	m.holdFilteredOut(ids)
 	m.ui.Screen.StatusMsg = fmt.Sprintf("Set %d task(s) to %s", changed, formatStatusLabel(next))
 }
 

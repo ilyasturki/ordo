@@ -169,6 +169,7 @@ func (m *model) cycleSelectedTask(reverse bool) {
 	m.recordHistory()
 	if _, _, err := operations.CycleStatus(&m.project, []string{id}, reverse); m.applied(err) {
 		m.storeTaskUpdate()
+		m.holdFilteredOut([]string{id})
 	}
 }
 
@@ -184,6 +185,7 @@ func (m *model) increasePriority() {
 	m.recordHistory()
 	if m.applied(operations.StepPriority(&m.project, id, true)) {
 		m.storeTaskUpdate()
+		m.holdFilteredOut([]string{id})
 	}
 }
 
@@ -199,6 +201,7 @@ func (m *model) decreasePriority() {
 	m.recordHistory()
 	if m.applied(operations.StepPriority(&m.project, id, false)) {
 		m.storeTaskUpdate()
+		m.holdFilteredOut([]string{id})
 	}
 }
 

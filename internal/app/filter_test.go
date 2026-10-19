@@ -203,3 +203,173 @@ func TestFilterKeyOpensTheDialogFromTheHiddenRow(t *testing.T) {
 
 	assert.Equal(t, modes.ModeFilter, m.ui.Modes.Current())
 }
+
+func taskStatus(m *model, id string) string {
+	return m.taskByID(id).Status
+}
+
+func TestStatusCycleKeepsTheRowUntilTheCursorLeaves(t *testing.T) {
+	m := newTodoFilteredModel(t)
+	selectRow(t, m, selection.FocusTask, "t1")
+
+	m, _ = pressKeys(m, "space")
+	assert.Equal(t, domain.StatusInProgress, taskStatus(m, "t1"))
+	assert.Equal(t, "task:t1", cursorItem(t, m))
+	assert.Contains(t, lineWith(t, screen(m), "Alpha"), "Alpha (filtered out)")
+	assert.Equal(t, "Hidden by the filter once you move off it", m.ui.Screen.StatusMsg)
+
+	m, _ = pressKeys(m, "space", "space")
+	assert.Equal(t, domain.StatusCancelled, taskStatus(m, "t1"), "space walks the whole cycle")
+	assert.Equal(t, "task:t1", cursorItem(t, m))
+
+	m, _ = pressKeys(m, "space")
+	assert.Equal(t, domain.StatusTodo, taskStatus(m, "t1"))
+	assert.NotContains(t, lineWith(t, screen(m), "Alpha"), "filtered out", "back in the filter, no mark")
+
+	m, _ = pressKeys(m, "space", "j")
+	assert.NotContains(t, rowIDs(m), "task:t1")
+	assert.Equal(t, "hidden:c1", cursorItem(t, m))
+	lineWith(t, screen(m), "(3 hidden by the filter)")
+}
+
+func TestEveryFilterEditKeepsTheRow(t *testing.T) {
+	green := func(m *model) {
+		m.ui.TagClip = TagClipboard{Set: true, Color: domain.TagGreen}
+		m.ui.TagCopiedLast = true
+	}
+	pickGreen := func(m *model) {
+		m.startTagEdit()
+		m.ui.TagEdit.colorIdx = tagColorIndex(domain.TagGreen)
+		m.finishTagEdit()
+	}
+	untagged := func(f *FilterState) { f.tags[""] = true }
+	cases := map[string]struct {
+		filter func(f *FilterState)
+		setup  func(m *model)
+		keys   []string
+		act    func(m *model)
+	}{
+		"priority up":    {filter: func(f *FilterState) { f.priorities[""] = true }, keys: []string{"l", "l"}},
+		"priority down":  {filter: func(f *FilterState) { f.priorities[""] = true }, keys: []string{"h"}},
+		"reverse status": {filter: func(f *FilterState) { f.statuses[domain.StatusInProgress] = true }, keys: []string{"shift+space"}},
+		"tag cycle":      {filter: untagged, keys: []string{"t", "t"}},
+		"tag picker":     {filter: untagged, act: pickGreen},
+		"tag paste":      {filter: untagged, setup: green, keys: []string{"p"}},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			m := newTestModel(t, sampleProject())
+			withStubStateManager(m)
+			tc.filter(&m.ui.Filter)
+			m.rebuildPositions()
+			if tc.setup != nil {
+				tc.setup(m)
+			}
+			selectRow(t, m, selection.FocusTask, "t2")
+			before := cloneProject(m.project)
+
+			if tc.act != nil {
+				tc.act(m)
+			}
+			m, _ = pressKeys(m, tc.keys...)
+
+			require.NotEqual(t, before, m.project, "the edit landed")
+			assert.Equal(t, "task:t2", cursorItem(t, m))
+			assert.Contains(t, lineWith(t, screen(m), "Beta"), "(filtered out)")
+
+			m, _ = pressKeys(m, "k")
+			assert.NotEqual(t, "task:t2", cursorItem(t, m))
+			assert.NotContains(t, rowIDs(m), "task:t2")
+		})
+	}
+}
+
+func TestVisualEditsKeepTheRangeUntilVisualModeEnds(t *testing.T) {
+	m := newTodoFilteredModel(t)
+	selectRow(t, m, selection.FocusTask, "t4")
+
+	m, _ = pressKeys(m, "v", "j", "space")
+	assert.True(t, m.ui.Modes.IsVisual())
+	assert.Equal(t, domain.StatusInProgress, taskStatus(m, "t5"))
+	m, _ = pressKeys(m, "k", "j")
+	assert.Len(t, m.visualSelectedPositions(), 2, "moving inside the range drops nothing")
+
+	m, _ = pressKeys(m, "esc")
+	assert.Contains(t, rowIDs(m), "task:t4", "the cursor still sits on a held row")
+	assert.Contains(t, rowIDs(m), "task:t5")
+
+	m, _ = pressKeys(m, "g", "g")
+	assert.NotContains(t, rowIDs(m), "task:t4")
+	assert.NotContains(t, rowIDs(m), "task:t5")
+	lineWith(t, screen(m), "(2 hidden by the filter)")
+}
+
+func TestVisualTagPasteKeepsTheRows(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	withStubStateManager(m)
+	m.ui.Filter.tags[""] = true
+	m.rebuildPositions()
+	m.ui.TagClip = TagClipboard{Set: true, Color: domain.TagGreen}
+	selectRow(t, m, selection.FocusTask, "t4")
+
+	m, _ = pressKeys(m, "v", "j", "p")
+
+	assert.True(t, m.ui.Modes.IsNormal())
+	assert.Equal(t, "task:t5", cursorItem(t, m))
+	assert.Contains(t, rowIDs(m), "task:t4")
+	assert.Contains(t, rowIDs(m), "task:t5")
+}
+
+func TestHeldRowMovesWithJAndKInsteadOfItsCategory(t *testing.T) {
+	m := newTodoFilteredModel(t)
+	selectRow(t, m, selection.FocusTask, "t4")
+
+	m, _ = pressKeys(m, "space", "J")
+	assert.Equal(t, []string{"t5", "t4"}, taskIDs(m.project.Categories[1]))
+	assert.Equal(t, "task:t4", cursorItem(t, m))
+
+	m, _ = pressKeys(m, "K")
+	assert.Equal(t, []string{"t4", "t5"}, taskIDs(m.project.Categories[1]))
+	assert.Equal(t, []string{"c1", "c2"}, []string{m.project.Categories[0].ID, m.project.Categories[1].ID})
+	assert.Equal(t, "task:t4", cursorItem(t, m))
+}
+
+func TestHeldRowsGoOnFilterChangeUndoAndRedo(t *testing.T) {
+	held := func(t *testing.T) *model {
+		m := newTodoFilteredModel(t)
+		selectRow(t, m, selection.FocusTask, "t1")
+		m, _ = pressKeys(m, "space")
+		require.True(t, m.ui.Filter.holding())
+		return m
+	}
+
+	t.Run("filter change", func(t *testing.T) {
+		m := held(t)
+		m.ui.Filter.SetView(FilterViewPriority)
+		m.ui.Filter.ToggleSelected(m.project.Categories)
+		assert.False(t, m.ui.Filter.holding())
+	})
+	t.Run("undo and redo", func(t *testing.T) {
+		m := held(t)
+		m, _ = pressKeys(m, "u")
+		assert.False(t, m.ui.Filter.holding())
+		assert.Equal(t, domain.StatusTodo, taskStatus(m, "t1"))
+		m, _ = pressKeys(m, "ctrl+r")
+		assert.False(t, m.ui.Filter.holding())
+		assert.NotContains(t, rowIDs(m), "task:t1")
+	})
+	t.Run("reload", func(t *testing.T) {
+		m := newStoredModel(t, sampleProject())
+		m.ui.Filter.statuses[domain.StatusTodo] = true
+		m.rebuildPositions()
+		first := m.project.Categories[0].Tasks[0].ID
+		selectRow(t, m, selection.FocusTask, first)
+		m, _ = pressKeys(m, "space")
+		require.True(t, m.ui.Filter.holding())
+
+		m.reloadProject()
+
+		assert.False(t, m.ui.Filter.holding())
+		assert.NotContains(t, rowIDs(m), "task:"+first)
+	})
+}

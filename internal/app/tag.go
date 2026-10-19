@@ -45,6 +45,7 @@ func (m *model) cycleTag() {
 	m.recordHistory()
 	if _, err := operations.CycleTags(&m.project, []string{id}); m.applied(err) {
 		m.storeTaskUpdate()
+		m.holdFilteredOut([]string{id})
 	}
 }
 
@@ -136,9 +137,7 @@ func (m *model) finishTagEdit() {
 		return
 	}
 	m.storeTaskUpdate()
-	// A tag change can move a task in or out of an active tag filter, so rebuild
-	// and keep the cursor on the first edited task.
-	m.rebuildPositions()
+	m.holdFilteredOut(ids)
 	m.selectTaskByID(s.taskIDs[0])
 	m.ensureVisible()
 	if len(ids) > 1 {
@@ -230,10 +229,7 @@ func (m *model) pasteTagOntoSelected() {
 		return
 	}
 	m.storeTaskUpdate()
-	// A tag change can move the task in or out of an active tag filter.
-	m.rebuildPositions()
-	m.selectTaskByID(taskID)
-	m.ensureVisible()
+	m.holdFilteredOut([]string{taskID})
 	m.ui.Screen.StatusMsg = "Pasted tag: " + tagClipDescription(m.ui.TagClip)
 }
 
@@ -269,14 +265,14 @@ func (m *model) visualPasteTag() {
 		return
 	}
 	m.recordHistory()
-	changed, err := operations.SetTags(&m.project, positionIDs(m.project, selPositions), m.ui.TagClip.Color)
+	ids := positionIDs(m.project, selPositions)
+	changed, err := operations.SetTags(&m.project, ids, m.ui.TagClip.Color)
 	m.exitVisualMode()
 	if !m.applied(err) {
 		return
 	}
 	m.storeTaskUpdate()
-	m.rebuildPositions()
-	m.ensureVisible()
+	m.holdFilteredOut(ids)
 	m.ui.Screen.StatusMsg = fmt.Sprintf("Pasted tag onto %d task(s)", changed)
 }
 
@@ -302,8 +298,10 @@ func (m *model) visualCycleTag() {
 		return
 	}
 	m.recordHistory()
-	if _, err := operations.CycleTags(&m.project, positionIDs(m.project, selPositions)); m.applied(err) {
+	ids := positionIDs(m.project, selPositions)
+	if _, err := operations.CycleTags(&m.project, ids); m.applied(err) {
 		m.storeTaskUpdate()
+		m.holdFilteredOut(ids)
 	}
 }
 
