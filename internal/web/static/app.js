@@ -616,11 +616,13 @@
   const NEST_DX = 40;
   let press = null;
 
+  // Only the rows of a category's first list and their subtasks move; a row held anywhere else stays put.
   function draggableAt(t) {
     const el = t.closest(".row, .separator");
     if (!el || t.closest(".status-button")) return null;
-    const list = el.closest(".category-body > .rows");
-    return list && list === list.parentElement.querySelector(":scope > .rows") ? el : null;
+    const ul = el.parentElement;
+    const list = ul.matches(".rows.sub") ? ul.parentElement.parentElement : ul;
+    return list.matches(".category-body > .rows") && list === list.parentElement.querySelector(":scope > .rows") ? el : null;
   }
 
   const lineOf = (li) => (li.matches(".row") ? li.querySelector(":scope > .list-item") : li);
