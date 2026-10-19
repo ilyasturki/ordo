@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"fmt"
 	"sort"
 	"strings"
@@ -116,6 +117,8 @@ func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		} else {
 			m.selectProject()
 		}
+	case "l":
+		m.linkSelectedProject()
 	case "d":
 		m.initiateProjectDelete()
 	case "esc", "q":
@@ -127,6 +130,18 @@ func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		m.ui.Modes.ToNormal()
 	}
 	return m, nil
+}
+
+func (m *model) linkSelectedProject() {
+	if m.ui.Picker.isOnNewProject() {
+		return
+	}
+	project := m.ui.Picker.projects[m.ui.Picker.selected]
+	if err := m.deps.StateManager.SetProjectForDir(project.ID); err != nil {
+		m.ui.Screen.StatusMsg = fmt.Sprintf("Error linking directory: %v", err)
+		return
+	}
+	m.openPickedProject(fmt.Sprintf("Linked this directory to %s", project.Name))
 }
 
 func (m *model) initiateProjectDelete() {
@@ -305,6 +320,10 @@ func (m *model) createProjectFromPicker() {
 }
 
 func (m *model) selectProject() {
+	m.openPickedProject("")
+}
+
+func (m *model) openPickedProject(status string) {
 	if m.ui.Picker.selected < 0 || m.ui.Picker.selected >= len(m.ui.Picker.projects) {
 		m.ui.Picker.reset()
 		m.ui.Modes.ToNormal()
@@ -313,7 +332,7 @@ func (m *model) selectProject() {
 
 	selectedProject := m.ui.Picker.projects[m.ui.Picker.selected]
 	if selectedProject.ID == m.project.ID {
-		m.announceConflicts("")
+		m.announceConflicts(status)
 		m.ui.Picker.reset()
 		m.ui.Modes.ToNormal()
 		return
@@ -329,7 +348,7 @@ func (m *model) selectProject() {
 
 	// Switching to an existing project is a transient, session-only view change:
 	// only establish a directory link when none exists yet, never override one.
-	// The link is changed deliberately via `project link`/`add`.
+	// The link is changed deliberately via `l` here or `project link`/`add`.
 	linkDirIfUnset(m.deps.StateManager, project.ID)
 
 	// Hand the outgoing project its cursor back before adopting the incoming
@@ -350,7 +369,7 @@ func (m *model) selectProject() {
 	// would otherwise arrive pinned to the bottom edge.
 	m.centerOnSelected()
 
-	m.announceConflicts(fmt.Sprintf("Switched to: %s", project.Name))
+	m.announceConflicts(cmp.Or(status, fmt.Sprintf("Switched to: %s", project.Name)))
 	m.ui.Picker.reset()
 	m.ui.Modes.ToNormal()
 }

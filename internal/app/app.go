@@ -897,8 +897,8 @@ func (m model) renderLayoutItemWindow(item LayoutItem, top, maxRows int) string 
 
 // linkDirIfUnset establishes the directory→project link only when the directory
 // has none yet, so a session-only project switch (--project, picker select)
-// never overrides an existing link. Deliberate relinking (`project link`/`add`)
-// calls SetProjectForDir directly.
+// never overrides an existing link. Deliberate relinking (`l` in the picker,
+// `project link`/`add`) calls SetProjectForDir directly.
 func linkDirIfUnset(sm data.StateRepository, projectID string) {
 	if sm.GetProjectForDir() == "" {
 		_ = sm.SetProjectForDir(projectID)

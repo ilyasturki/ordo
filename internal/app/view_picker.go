@@ -43,6 +43,7 @@ func (m model) pickerNormalHints() []ui.Hint {
 		{Key: "⏎", Label: "select"},
 		{Key: "a", Label: "new"},
 		{Key: "/", Label: "search"},
+		{Key: "l", Label: "link"},
 		{Key: "J/K", Label: "move"},
 		{Key: "d", Label: "delete"},
 		{Key: "esc", Label: back},
@@ -143,9 +144,13 @@ func (m model) pickerBody(contentWidth int) []string {
 		source = p.allProjects
 	}
 	cols := measurePickerColumns(source, contentWidth)
+	linkedID := ""
+	if m.deps.StateManager != nil {
+		linkedID = m.deps.StateManager.GetProjectForDir()
+	}
 	for i := start; i < end; i++ {
 		isSelected := !p.onNew && !p.isAdding && i == p.selected
-		lines = append(lines, m.renderPickerRow(i, isSelected, cols, contentWidth))
+		lines = append(lines, m.renderPickerRow(i, isSelected, linkedID, cols, contentWidth))
 	}
 	if end < n {
 		lines = append(lines, ui.DialogHintStyle.Render(scrollMoreBelow))
@@ -250,7 +255,7 @@ func pickerMetaCells(p domain.Project, cols pickerColumns, base lipgloss.Style, 
 	return out.String()
 }
 
-func (m model) renderPickerRow(i int, isSelected bool, cols pickerColumns, contentWidth int) string {
+func (m model) renderPickerRow(i int, isSelected bool, linkedID string, cols pickerColumns, contentWidth int) string {
 	p := m.ui.Picker.projects[i]
 
 	base, prefix, suffixStyle := lipgloss.NewStyle(), "  ", ui.DialogHintStyle
@@ -258,9 +263,16 @@ func (m model) renderPickerRow(i int, isSelected bool, cols pickerColumns, conte
 		base = ui.GetSelectedStyle(m.ui.Screen.WindowFocused)
 		prefix, suffixStyle = "> ", base
 	}
-	suffix := ""
+	var marks []string
 	if p.ID == m.project.ID {
-		suffix = " (current)"
+		marks = append(marks, "current")
+	}
+	if p.ID == linkedID {
+		marks = append(marks, "linked")
+	}
+	suffix := ""
+	if len(marks) > 0 {
+		suffix = " (" + strings.Join(marks, ", ") + ")"
 	}
 
 	name, gap := pickerRowLayout(p.Name, suffix, cols.width(), contentWidth)

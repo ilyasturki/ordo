@@ -4,6 +4,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- `l` in the project picker links this directory to the highlighted project and opens it, so the next launch here opens it too. The picker marks the linked project `(linked)`
+
 ## [0.12.0] - 2026-10-19
 
 ### Added

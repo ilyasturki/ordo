@@ -1,8 +1,10 @@
 package app
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -74,4 +76,47 @@ func TestSelectProject_UnlinkedDir_EstablishesLink(t *testing.T) {
 	assert.Equal(t, beta.ID, m.project.ID)
 	assert.Equal(t, beta.ID, state.link, "an unlinked dir should adopt the picked project")
 	assert.Equal(t, []string{beta.ID}, state.setCalls)
+}
+
+func TestLinkSelectedProject_RelinksAndSwitches(t *testing.T) {
+	m, state, alpha, beta := newPickerTestModel(t, "")
+	state.link = alpha.ID
+
+	m.linkSelectedProject()
+
+	assert.Equal(t, beta.ID, m.project.ID)
+	assert.Equal(t, []string{beta.ID}, state.setCalls, "l must override an existing link")
+	assert.Equal(t, "Linked this directory to Beta", m.ui.Screen.StatusMsg)
+}
+
+func TestLinkSelectedProject_CurrentProject(t *testing.T) {
+	m, state, alpha, beta := newPickerTestModel(t, "")
+	state.link = beta.ID
+	m.ui.Picker.selected = 0
+
+	m.linkSelectedProject()
+
+	assert.Equal(t, alpha.ID, m.project.ID)
+	assert.Equal(t, []string{alpha.ID}, state.setCalls)
+	assert.Equal(t, "Linked this directory to Alpha", m.ui.Screen.StatusMsg)
+}
+
+func TestLinkSelectedProject_NewProjectRowIsNoop(t *testing.T) {
+	m, state, alpha, _ := newPickerTestModel(t, "")
+	m.ui.Picker.onNew = true
+
+	m.linkSelectedProject()
+
+	assert.Equal(t, alpha.ID, m.project.ID)
+	assert.Empty(t, state.setCalls)
+}
+
+func TestPickerRow_MarksLinkedProject(t *testing.T) {
+	m, state, _, beta := newPickerTestModel(t, "")
+	state.link = beta.ID
+
+	body := ansi.Strip(strings.Join(m.pickerBody(60), "\n"))
+
+	assert.Contains(t, body, "Alpha (current)")
+	assert.Contains(t, body, "Beta (linked)")
 }
