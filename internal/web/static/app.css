@@ -702,6 +702,7 @@ body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-a
   background: var(--surface-container);
 }
 .done-pill { height: 48px; border-radius: 24px; }
+.app:has(.editor :is(input, textarea):focus) .done-band { display: none; }
 
 .menu {
   position: fixed;

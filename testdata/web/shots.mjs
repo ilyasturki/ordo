@@ -25,6 +25,7 @@ const shots = [
   { name: "task_estimate", path: T(1), steps: ["document.querySelector('[data-sheet-open=estimate-sheet]').click()"] },
   { name: "task_move", path: T(3), steps: ["document.querySelector('[data-sheet-open=move-sheet]').click()"] },
   { name: "task_menu", path: T(3), steps: ["document.querySelector('[data-sheet-open=task-menu]').click()"] },
+  { name: "task_typing", path: T(1), steps: ["document.querySelector('#new-subtask').focus()"] },
   { name: "add_sheet", path: `${P}?f=open`, steps: ["document.querySelector('[data-fab]').click()"] },
   { name: "select", path: `${P}?f=open`, steps: [
     "document.querySelector('[data-select-start]').click()",
