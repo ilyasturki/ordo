@@ -399,12 +399,7 @@ func (s *Server) task(w http.ResponseWriter, r *http.Request) {
 		parent := cat.Tasks[pi]
 		view.Parent = &parent
 	}
-	text, lines := splitDescription(t.Description)
-	view.Text, view.ImageLines = text, lines
-	view.Lossless = joinDescription(text, lines) == strings.TrimRight(t.Description, "\n")
-	if !view.Lossless {
-		view.Text, view.ImageLines = t.Description, nil
-	}
+	view.Text, view.ImageLines, view.Lossless = descriptionFields(t.Description)
 	view.Images = imagesOf(strings.Join(view.ImageLines, "\n"))
 	s.render(w, r, http.StatusOK, "task", page{Title: t.Title, Body: "task", Data: view})
 }

@@ -570,6 +570,11 @@
       if (d) d.showModal();
       return;
     }
+    const pick = t.closest("[data-conflict]");
+    if (pick) {
+      resolveConflict(pick.closest("form"), pick.dataset.conflict);
+      return;
+    }
     if (t.closest("[data-sheet-close]")) {
       t.closest("dialog").close();
       return;
@@ -646,10 +651,160 @@
     }
   });
 
+  // Text typed into a title or details field, by form, until the server has it:
+  // { mine, base } while unsent, { mine, theirs } once refused as stale.
+  const drafts = new Map(readDrafts());
+
+  // Kept for the tab, so a reload (the back button is one) still has them.
+  function readDrafts() {
+    try {
+      return JSON.parse(sessionStorage.getItem("ordo:drafts")) || [];
+    } catch {
+      return [];
+    }
+  }
+
+  function setDraft(key, draft) {
+    if (draft) drafts.set(key, draft);
+    else drafts.delete(key);
+    try {
+      sessionStorage.setItem("ordo:drafts", JSON.stringify([...drafts]));
+    } catch {}
+  }
+
+  function draftKey(form) {
+    return form.getAttribute("action") + "#" + $("input[name=id]", form).value;
+  }
+
+  function liveForm(key) {
+    return $$("[data-autosave]").find((f) => draftKey(f) === key);
+  }
+
+  function fieldOf(form) {
+    return $("textarea[name=title], textarea[name=text]", form);
+  }
+
+  function setImages(form, images) {
+    const field = fieldOf(form);
+    $$("input[name=image]", form).forEach((i) => i.remove());
+    for (const line of images || []) {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "image";
+      input.value = line;
+      field.closest("label").before(input);
+    }
+  }
+
+  function showConflict(form) {
+    const draft = drafts.get(draftKey(form));
+    const field = fieldOf(form);
+    if (field.value !== draft.mine) {
+      field.value = draft.mine;
+      grow(field);
+    }
+    form.savedValue = field.value;
+    let box = $(".conflict", form);
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "conflict";
+      box.setAttribute("role", "alert");
+      const text = document.createElement("p");
+      text.className = "conflict-text";
+      text.textContent = "Changed on another device while you typed. Theirs:";
+      const quote = document.createElement("p");
+      quote.className = "conflict-theirs";
+      const actions = document.createElement("div");
+      actions.className = "conflict-actions";
+      for (const [pick, label] of [["theirs", "Use theirs"], ["mine", "Keep mine"]]) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "button text";
+        button.dataset.conflict = pick;
+        button.textContent = label;
+        actions.append(button);
+      }
+      box.append(text, quote, actions);
+      form.append(box);
+    }
+    $(".conflict-theirs", box).textContent = draft.theirs.text.trim() || "(empty)";
+  }
+
+  function resolveConflict(form, pick) {
+    const key = draftKey(form);
+    const draft = drafts.get(key);
+    if (!draft || !draft.theirs) return;
+    setDraft(key);
+    $(".conflict", form).remove();
+    $("[data-base]", form).value = draft.theirs.base;
+    if (form.matches(".details-form")) setImages(form, draft.theirs.images);
+    const field = fieldOf(form);
+    if (pick === "mine") {
+      form.savedValue = null;
+      save(form);
+      return;
+    }
+    field.value = draft.theirs.text;
+    grow(field);
+    form.savedValue = field.value;
+    refresh();
+  }
+
+  // A swap of #app renders the fields from the file: what was typed comes back over it.
+  function stashDrafts() {
+    for (const form of $$("[data-autosave]")) {
+      const field = fieldOf(form);
+      if (!field || form.savedValue === undefined) continue;
+      const key = draftKey(form);
+      const draft = drafts.get(key);
+      if (draft) setDraft(key, { ...draft, mine: field.value });
+      else if (form.savedValue != null && field.value !== form.savedValue) setDraft(key, { mine: field.value, base: $("[data-base]", form).value });
+    }
+  }
+
+  // Runs as soon as a swap lands, so a second swap never stashes the file's text as typed.
+  function adoptForms(root) {
+    for (const form of $$("[data-autosave]", root)) {
+      if (form.savedValue !== undefined) continue;
+      const field = $("textarea", form);
+      form.savedValue = field ? field.value : "";
+      restoreDraft(form);
+    }
+  }
+
+  function restoreDraft(form) {
+    const key = draftKey(form);
+    const draft = drafts.get(key);
+    const field = fieldOf(form);
+    if (!draft || !field) return;
+    if (draft.mine === field.value) {
+      setDraft(key);
+      return;
+    }
+    if (draft.theirs) {
+      setDraft(key, { mine: draft.mine, theirs: { base: $("[data-base]", form).value, text: field.value, images: $$("input[name=image]", form).map((i) => i.value) } });
+      showConflict(form);
+      return;
+    }
+    // Still checked against the text it was typed over, so a newer one on disk is refused, not overwritten.
+    setDraft(key);
+    $("[data-base]", form).value = draft.base;
+    field.value = draft.mine;
+    grow(field);
+    form.saveTimer = setTimeout(() => save(form), 1200);
+  }
+
   function save(form) {
     clearTimeout(form.saveTimer);
-    const field = $("textarea[name=title], textarea[name=text]", form);
+    const field = fieldOf(form);
     if (!field || field.value === form.savedValue) return;
+    const key = draftKey(form);
+    const draft = drafts.get(key);
+    if (draft && draft.theirs) {
+      setDraft(key, { ...draft, mine: field.value });
+      form.savedValue = field.value;
+      return;
+    }
     if (field.name === "title" && field.value.trim() === "") {
       field.value = $("[data-base]", form).value;
       grow(field);
@@ -680,6 +835,10 @@
 
   // keepalive lets a save outlive a navigation or the page itself, up to the 64 KB it allows.
   async function post(form) {
+    const key = draftKey(form);
+    const sent = form.savedValue;
+    // Recorded before it leaves, so a refusal the page never hears of (it was closing) can't lose it.
+    setDraft(key, { mine: sent, base: $("[data-base]", form).value });
     const body = new URLSearchParams(new FormData(form));
     let res;
     try {
@@ -704,7 +863,19 @@
     const sn = trigger && JSON.parse(trigger)["ordo:snack"];
     if (sn) snack(sn.msg, sn.undo);
     adoptStamp(res.headers.get("X-Ordo-Stamp"));
-    adoptBase(form, res.headers.get("X-Ordo-Base"));
+    // The page may have been swapped while the save was out.
+    const live = liveForm(key);
+    const theirs = res.headers.get("X-Ordo-Theirs");
+    if (theirs !== null) {
+      // A swapped-in field holds the file's text unless a draft was restored into it.
+      const field = live && fieldOf(live);
+      const mine = field && (live === form || field.value !== live.savedValue) ? field.value : sent;
+      setDraft(key, { mine, theirs: JSON.parse(theirs) });
+      if (live) showConflict(live);
+    } else {
+      setDraft(key);
+      adoptBase(live || form, res.headers.get("X-Ordo-Base"));
+    }
     if (res.body) res.body.cancel();
   }
 
@@ -770,6 +941,7 @@
       staleStamp = "pending";
       return;
     }
+    if (e.detail.target && e.detail.target.id === "app") stashDrafts();
     const sheet = $("dialog[open]");
     if (sheet && e.detail.target && e.detail.target.id === "app") sheet.close();
     if (e.detail.target && e.detail.target.id === "app") {
@@ -978,14 +1150,15 @@
     updateBars();
     setupPairing(root);
     for (const t of $$("[data-autogrow]", root)) grow(t);
-    for (const f of $$("[data-autosave]", root)) {
-      const field = $("textarea", f);
-      f.savedValue = field ? field.value : "";
-    }
+    adoptForms(root);
     setupSortable(root);
     syncSelection();
     listen();
   }
+
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    if (e.detail.target && e.detail.target.id === "app") adoptForms(app());
+  });
 
   document.body.addEventListener("htmx:afterSettle", (e) => {
     if (!e.detail.target || e.detail.target.id !== "app") return;

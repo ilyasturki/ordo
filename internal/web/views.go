@@ -155,6 +155,16 @@ func splitDescription(description string) (text string, images []string) {
 	return strings.TrimRight(strings.Join(lines[:cut], "\n"), "\n"), images
 }
 
+// descriptionFields splits a description into the details field and its image lines, or
+// leaves it whole when joining them back would not give the same description.
+func descriptionFields(description string) (text string, images []string, lossless bool) {
+	text, images = splitDescription(description)
+	if joinDescription(text, images) != strings.TrimRight(description, "\n") {
+		return description, nil, false
+	}
+	return text, images, true
+}
+
 func joinDescription(text string, images []string) string {
 	text = strings.TrimRight(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
 	parts := make([]string, 0, len(images)+1)

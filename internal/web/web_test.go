@@ -502,8 +502,8 @@ func TestTitleEditRefusesAStaleBase(t *testing.T) {
 		t.Fatalf("title = %q, base header %q", f.task(f.ids["one"]).Title, rec.Header().Get("X-Ordo-Base"))
 	}
 	rec = f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"eins"}, "base": {"one"}})
-	if snackOf(t, rec).Msg != errConflict.Msg || f.task(f.ids["one"]).Title != "uno" {
-		t.Fatalf("stale base: %+v %q", snackOf(t, rec), f.task(f.ids["one"]).Title)
+	if rec.Header().Get("X-Ordo-Theirs") != `{"base":"uno","text":"uno"}` || f.task(f.ids["one"]).Title != "uno" {
+		t.Fatalf("stale base: theirs %q, title %q", rec.Header().Get("X-Ordo-Theirs"), f.task(f.ids["one"]).Title)
 	}
 	rec = f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"  "}, "base": {"uno"}})
 	if snackOf(t, rec).Msg != "A task needs a title" {
@@ -890,11 +890,44 @@ func TestStampOnlyVouchesForACurrentPage(t *testing.T) {
 	}
 }
 
-func TestStaleTitleOffersAReload(t *testing.T) {
+// The page keeps the typed text and offers Keep mine or Use theirs, so the snackbar's Reload would only lose it.
+func TestStaleTitleSendsTheirsInsteadOfAReload(t *testing.T) {
 	f := newFixture(t)
 	rec := f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"uno"}, "base": {"old"}})
-	if sn := snackOf(t, rec); sn.Undo != "reload" || rec.Header().Get("X-Ordo-Base") != "" {
+	if sn := snackOf(t, rec); sn.Msg != "" || rec.Header().Get("X-Ordo-Base") != "" {
 		t.Fatalf("snack %+v base %q", sn, rec.Header().Get("X-Ordo-Base"))
+	}
+	var got theirs
+	if err := json.Unmarshal([]byte(rec.Header().Get("X-Ordo-Theirs")), &got); err != nil || got.Base != "one" {
+		t.Fatalf("theirs %q: %v", rec.Header().Get("X-Ordo-Theirs"), err)
+	}
+	f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"uno"}, "base": {got.Base}})
+	if title := f.task(f.ids["one"]).Title; title != "uno" {
+		t.Fatalf("keep mine on their base: %q", title)
+	}
+}
+
+// Keep mine resends the typed details on their base, keeping the images they hold.
+func TestStaleDetailsKeepMineOnTheirBase(t *testing.T) {
+	f := newFixture(t)
+	img := "![shot](attachments/0123456789abcdef0123456789abcdef.png)"
+	if _, err := f.store.WithProjectLocked(f.pid, func(p *domain.Project) error {
+		p.Categories[0].Tasks[0].Description = "their text\n" + img
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rec := f.action("task.description", url.Values{"id": {f.ids["one"]}, "base": {""}, "text": {"my text"}})
+	var got theirs
+	if err := json.Unmarshal([]byte(rec.Header().Get("X-Ordo-Theirs")), &got); err != nil {
+		t.Fatalf("theirs %q: %v", rec.Header().Get("X-Ordo-Theirs"), err)
+	}
+	if got.Text != "their text" || len(got.Images) != 1 || got.Images[0] != img || f.task(f.ids["one"]).Description != "their text\n"+img {
+		t.Fatalf("theirs %+v, on disk %q", got, f.task(f.ids["one"]).Description)
+	}
+	f.action("task.description", url.Values{"id": {f.ids["one"]}, "base": {got.Base}, "text": {"my text"}, "image": got.Images})
+	if desc := f.task(f.ids["one"]).Description; desc != "my text\n"+img {
+		t.Fatalf("keep mine = %q", desc)
 	}
 }
 

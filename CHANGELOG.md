@@ -45,6 +45,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The TUI no longer drops edits silently after the phone, the CLI or Syncthing changed the project first. A refused save marks the project `[changed on disk: r drops N edits]` until `r` reloads it, the mark staying when the status line clears; `q`, `ctrl+c` and switching projects ask before dropping those edits, and quitting anyway exits with status 1, naming them on stderr
 - A save still queued when `r` reloads can no longer land after the reload and overwrite the change it showed: `r` waits for it, and each save is checked against the load it came from
 - After a cut whose paste was refused, `r` gives the cut back, so `p` moves the rows instead of leaving a second copy
+- On the phone, a title or details edit refused because the task changed elsewhere no longer loses the typed text to Reload: the field keeps it and offers Keep mine or Use theirs, and a refresh, an action or leaving the page and coming back keeps it too
 
 ## [0.12.0] - 2026-10-19
 

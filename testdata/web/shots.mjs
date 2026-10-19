@@ -22,6 +22,13 @@ const shots = [
   { name: "task", path: T(9) },
   { name: "task_parent", path: T(1) },
   { name: "task_child", path: T(3) },
+  // Another device renames the task while the title field is focused, then the typed title is saved.
+  { name: "task_conflict", path: T(9), wait: 900, steps: [
+    "window.rename = (base, title) => fetch(document.querySelector('.title-form').action, { method: 'POST', credentials: 'same-origin', headers: { 'HX-Request': 'true' }, body: new URLSearchParams({ id: document.querySelector('#app').dataset.task, base, title }) }).then((r) => r.status)",
+    "window.original = document.querySelector('.title-form [data-base]').value; document.querySelector('#title').focus()",
+    "rename(original, 'Renamed on the laptop')",
+    "(() => { const f = document.querySelector('#title'); f.value = 'Typed on the phone'; f.dispatchEvent(new Event('change', { bubbles: true })); f.blur(); })()",
+  ], after: ["rename('Renamed on the laptop', original)"] },
   { name: "task_done", path: T(2) },
   { name: "task_status", path: T(1), steps: ["document.querySelector('[data-sheet-open=status-sheet]').click()"] },
   { name: "task_priority", path: T(1), steps: ["document.querySelector('[data-sheet-open=priority-sheet]').click()"] },

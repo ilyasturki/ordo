@@ -22,7 +22,15 @@ type actionResult struct {
 	Focus string
 	Base  *string
 	// Row names the row a request sent with X-Ordo-Want: row gets back alone, instead of the page.
-	Row string
+	Row    string
+	Theirs *theirs
+}
+
+// theirs is a refused text field's value on disk, for the page to offer instead of the typed one.
+type theirs struct {
+	Base   string   `json:"base"`
+	Text   string   `json:"text"`
+	Images []string `json:"images,omitempty"`
 }
 
 type actionFunc func(s *Server, p *domain.Project, r *http.Request, ids []string) (actionResult, error)
@@ -150,6 +158,11 @@ func (s *Server) respond(w http.ResponseWriter, r *http.Request, pid string, res
 		sn.Msg = msg
 		if err == error(errConflict) {
 			sn.Undo = "reload"
+		}
+		// The page keeps the typed text and asks instead of the snackbar.
+		if err == error(errConflict) && res.Theirs != nil {
+			w.Header().Set("X-Ordo-Theirs", asciiJSON(res.Theirs))
+			sn = snack{}
 		}
 	}
 	back := backTo(r, pid)
@@ -352,7 +365,7 @@ func editTitle(s *Server, p *domain.Project, r *http.Request, ids []string) (act
 		return actionResult{}, operations.ErrNoChange
 	}
 	if t.Title != r.FormValue("base") {
-		return actionResult{}, errConflict
+		return actionResult{Theirs: &theirs{Base: t.Title, Text: t.Title}}, errConflict
 	}
 	if _, err := operations.UpdateTask(p, cat, t.ID, operations.TaskUpdate{Title: &title}); err != nil {
 		return actionResult{}, err
@@ -369,7 +382,8 @@ func editDescription(s *Server, p *domain.Project, r *http.Request, ids []string
 		return actionResult{}, err
 	}
 	if strings.TrimRight(t.Description, "\n") != strings.TrimRight(strings.ReplaceAll(r.FormValue("base"), "\r\n", "\n"), "\n") {
-		return actionResult{}, errConflict
+		text, images, _ := descriptionFields(t.Description)
+		return actionResult{Theirs: &theirs{Base: t.Description, Text: text, Images: images}}, errConflict
 	}
 	drop := r.FormValue("drop")
 	images := slices.DeleteFunc(slices.Clone(r.Form["image"]), func(line string) bool {
