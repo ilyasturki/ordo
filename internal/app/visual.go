@@ -80,6 +80,32 @@ func rowCountLabel(realTasks, separators int) string {
 	return fmt.Sprintf("%d separator(s)", separators)
 }
 
+// inVisualDomain reports whether row p belongs to the visual selection's
+// domain. In a task-level selection a folded category header joins it, like a
+// closed fold in vim, and stands for the rows foldedCategoryRows lists.
+func (m model) inVisualDomain(p selection.Position) bool {
+	if matchesVisualDomain(p.Kind, m.ui.Visual.Kind) {
+		return true
+	}
+	return m.ui.Visual.Kind == selection.FocusTask && p.Kind == selection.FocusCategory && m.ui.Fold.IsFolded(p.ID)
+}
+
+// foldedCategoryRows lists the rows of the category at i and of its
+// sub-categories, as the filter shows them.
+func (m model) foldedCategoryRows(i int) []domain.Task {
+	cats := m.project.Categories
+	var rows []domain.Task
+	for _, c := range cats[i:domain.BlockEnd(cats, i)] {
+		shown := shownRows(c, &m.ui.Filter, nil)
+		for j, t := range c.Tasks {
+			if shown[j] {
+				rows = append(rows, t)
+			}
+		}
+	}
+	return rows
+}
+
 func (m *model) enterVisualMode() {
 	if !m.ui.Modes.IsNormal() {
 		return
@@ -167,7 +193,7 @@ func (m *model) visualMoveCursor(delta int) {
 		step = -1
 	}
 	for i := 0; i < abs(delta); i++ {
-		next := nextVisualPosition(positions, cur, step, m.ui.Visual.Kind)
+		next := nextVisualPosition(positions, cur, step, m.inVisualDomain)
 		if next == cur {
 			break
 		}
@@ -177,10 +203,10 @@ func (m *model) visualMoveCursor(delta int) {
 	m.ensureVisible()
 }
 
-func nextVisualPosition(positions []selection.Position, from, step int, kind selection.FocusKind) int {
+func nextVisualPosition(positions []selection.Position, from, step int, inDomain func(selection.Position) bool) int {
 	i := from + step
 	for i >= 0 && i < len(positions) {
-		if matchesVisualDomain(positions[i].Kind, kind) {
+		if inDomain(positions[i]) {
 			return i
 		}
 		i += step
@@ -218,15 +244,16 @@ func (m model) visualRange() (lo, hi int, active bool) {
 func (m model) resolveVisualAnchor() int {
 	positions := m.ui.Selection.Positions()
 	for i, p := range positions {
-		if !matchesVisualDomain(p.Kind, m.ui.Visual.Kind) {
+		if !m.inVisualDomain(p) {
 			continue
 		}
 		if p.CategoryIndex < 0 || p.CategoryIndex >= len(m.project.Categories) {
 			continue
 		}
 		cat := m.project.Categories[p.CategoryIndex]
-		if m.ui.Visual.Kind == selection.FocusCategory {
-			if cat.ID == m.ui.Visual.AnchorCategoryID {
+		if p.Kind == selection.FocusCategory {
+			// A task-level anchor swapped onto a folded header carries no task, as a category-level one.
+			if m.ui.Visual.AnchorTaskID == "" && cat.ID == m.ui.Visual.AnchorCategoryID {
 				return i
 			}
 			continue
@@ -254,7 +281,7 @@ func (m model) visualSelectedPositions() []selection.Position {
 	positions := m.ui.Selection.Positions()
 	var result []selection.Position
 	for i := lo; i <= hi && i < len(positions); i++ {
-		if matchesVisualDomain(positions[i].Kind, m.ui.Visual.Kind) {
+		if m.inVisualDomain(positions[i]) {
 			result = append(result, positions[i])
 		}
 	}
@@ -273,7 +300,7 @@ func (m model) isInVisualRange(index int) bool {
 	if index < 0 || index >= len(positions) {
 		return false
 	}
-	return matchesVisualDomain(positions[index].Kind, m.ui.Visual.Kind)
+	return m.inVisualDomain(positions[index])
 }
 
 func (m *model) visualCopyBullets() tea.Cmd {
@@ -311,6 +338,12 @@ func (m model) visualMarkdownText(selPositions []selection.Position, checkboxes 
 	picked := make(map[string]bool)
 	described := make(map[string]bool)
 	for _, pos := range selPositions {
+		if pos.Kind == selection.FocusCategory {
+			for _, t := range m.foldedCategoryRows(pos.CategoryIndex) {
+				picked[t.ID] = true
+			}
+			continue
+		}
 		id := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID
 		switch pos.Kind {
 		case selection.FocusTask:
@@ -398,8 +431,14 @@ func (m model) visualTaskRows(selPositions []selection.Position) []domain.Task {
 	seen := make(map[string]bool)
 	var rows []domain.Task
 	for _, pos := range visualRoundUpPositions(selPositions) {
-		tasks := m.project.Categories[pos.CategoryIndex].Tasks
-		for _, t := range tasks[pos.TaskIndex:domain.BlockEnd(tasks, pos.TaskIndex)] {
+		var block []domain.Task
+		if pos.Kind == selection.FocusCategory {
+			block = m.foldedCategoryRows(pos.CategoryIndex)
+		} else {
+			tasks := m.project.Categories[pos.CategoryIndex].Tasks
+			block = tasks[pos.TaskIndex:domain.BlockEnd(tasks, pos.TaskIndex)]
+		}
+		for _, t := range block {
 			if !seen[t.ID] {
 				seen[t.ID] = true
 				rows = append(rows, t)
@@ -571,10 +610,15 @@ func (m *model) visualShift(dir int) {
 	}
 }
 
-// visualTaskIDs lists the task-level selection's rows, a description standing for its task.
+// visualTaskIDs lists the task-level selection's rows, a description standing
+// for its task, for J/K and >/<; a folded category in range refuses on the status line.
 func (m *model) visualTaskIDs() []string {
 	var ids []string
 	for _, p := range visualRoundUpPositions(m.visualSelectedPositions()) {
+		if p.Kind == selection.FocusCategory {
+			m.ui.Screen.StatusMsg = "Can't: the selection holds a folded category"
+			return nil
+		}
 		ids = append(ids, m.project.Categories[p.CategoryIndex].Tasks[p.TaskIndex].ID)
 	}
 	return ids

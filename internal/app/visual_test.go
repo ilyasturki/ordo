@@ -77,16 +77,20 @@ func TestNextVisualPosition_SkipsCategoryRows(t *testing.T) {
 		{Kind: selection.FocusTask, CategoryIndex: 1, TaskIndex: 0},
 	}
 
+	inDomain := func(kind selection.FocusKind) func(selection.Position) bool {
+		return func(p selection.Position) bool { return matchesVisualDomain(p.Kind, kind) }
+	}
+
 	// from a task, +1 with kind=Task should jump over the category row
-	got := nextVisualPosition(positions, 3, 1, selection.FocusTask)
+	got := nextVisualPosition(positions, 3, 1, inDomain(selection.FocusTask))
 	assert.Equal(t, 5, got, "should skip category row at index 4")
 
 	// from a category, +1 with kind=Category should jump over tasks
-	got = nextVisualPosition(positions, 1, 1, selection.FocusCategory)
+	got = nextVisualPosition(positions, 1, 1, inDomain(selection.FocusCategory))
 	assert.Equal(t, 4, got, "should skip task rows to next category")
 
 	// At end, stays put
-	got = nextVisualPosition(positions, 5, 1, selection.FocusTask)
+	got = nextVisualPosition(positions, 5, 1, inDomain(selection.FocusTask))
 	assert.Equal(t, 5, got)
 }
 

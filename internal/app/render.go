@@ -451,6 +451,16 @@ func (m model) statusText() string {
 			// task) and a swept-in divider never inflates the number.
 			count = countRealTasks(visualRoundUpPositions(positions))
 			noun = plural(count, "task", "tasks")
+			folded, hidden := 0, 0
+			for _, p := range positions {
+				if p.Kind == selection.FocusCategory {
+					folded++
+					hidden += countTasks(m.foldedCategoryRows(p.CategoryIndex))
+				}
+			}
+			if folded > 0 {
+				noun += fmt.Sprintf(" + %d folded categor%s (%d %s)", folded, plural(folded, "y", "ies"), hidden, plural(hidden, "task", "tasks"))
+			}
 		}
 		return fmt.Sprintf("-- VISUAL -- %d %s selected", count, noun)
 	}
