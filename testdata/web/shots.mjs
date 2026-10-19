@@ -12,7 +12,9 @@ const folded = C(24);
 // A pointer click (detail 1), unlike element.click(), which reads as a keyboard press.
 const tap = (sel) => `document.querySelector('${sel}').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }))`;
 
-// Each shot: a page, then optional script steps run in the page before the capture. fold: the ordo_fold cookie.
+// Each shot: a page, then optional script steps run in the page before the capture, then an optional
+// touch gesture held down through it: a finger on `at` (a selector's center) or `point`, held `hold` ms, moved by `moves`.
+// fold: the ordo_fold cookie.
 const shots = [
   { name: "projects", path: "/projects" },
   { name: "project", path: P },
@@ -59,6 +61,12 @@ const shots = [
     "document.querySelector('[data-sheet-open=bulk-sheet]').click()",
   ] },
   { name: "drawer", path: P, steps: ["document.querySelector('[data-sheet-open=drawer]').click()"] },
+  { name: "drawer_swipe", path: P, gesture: { point: [12, 400], moves: [[30, 0], [80, 2], [80, 2]] } },
+  { name: "sheet_swipe", path: P, steps: [
+    "document.querySelector('[data-select-start]').click()",
+    "document.querySelectorAll('.content .row .item-body')[0].click()",
+    "document.querySelector('[data-sheet-open=bulk-sheet]').click()",
+  ], gesture: { at: "#bulk-sheet .drag-handle", moves: [[0, 40], [0, 80], [0, 80]] } },
   { name: "snackbar", path: P, steps: ["document.querySelector('.status-button').click()"], wait: 900,
     after: ["document.querySelector('.snackbar-action').click()"] },
   { name: "devices", path: "/devices" },
@@ -102,6 +110,24 @@ const until = (sessionId, method) => new Promise((resolve) => {
 });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+async function gesture(sessionId, g) {
+  let [x, y] = g.point || (await send("Runtime.evaluate", {
+    expression: `(() => { const r = document.querySelector(${JSON.stringify(g.at)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`,
+    returnByValue: true,
+  }, sessionId)).result.value;
+  const touch = (type) => send("Input.dispatchTouchEvent", { type, touchPoints: [{ x, y }] }, sessionId);
+  await touch("touchStart");
+  await sleep(g.hold || 0);
+  for (const [dx, dy] of g.moves || []) {
+    for (let i = 0; i < 4; i++) {
+      x += dx / 4;
+      y += dy / 4;
+      await touch("touchMove");
+      await sleep(16);
+    }
+  }
+}
+
 const host = new URL(base).hostname;
 const violations = [];
 const [width, height] = (process.env.ORDO_WEB_SIZE || "412x915").split("x").map(Number);
@@ -128,6 +154,7 @@ for (const scheme of ["light", "dark"]) {
       await send("Runtime.evaluate", { expression: step, awaitPromise: true }, sessionId);
       await sleep(350);
     }
+    if (shot.gesture) await gesture(sessionId, shot.gesture);
     await sleep(shot.wait || 250);
     const { data } = await send("Page.captureScreenshot", { format: "png" }, sessionId);
     const file = join(out, `${shot.name}_${scheme}${width === 412 ? "" : "_" + width}.png`);
@@ -145,7 +172,7 @@ for (const scheme of ["light", "dark"]) {
 ws.close();
 chrome.kill();
 await sleep(200);
-rmSync(profile, { recursive: true, force: true });
+rmSync(profile, { recursive: true, force: true, maxRetries: 5 });
 if (violations.length) {
   console.error("Content-Security-Policy violations:\n" + violations.join("\n"));
   process.exitCode = 1;
