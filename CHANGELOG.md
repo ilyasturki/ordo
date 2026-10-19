@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-19
+
 ### Added
 
 - `ordo serve`, a Material web app for the phone over the same project files: step a task's status from the list, edit its title, details, priority, tag, estimate and category, attach photos, add tasks, subtasks and separators, long-press to select several and edit them together, drag to reorder or nest, fold categories, filter open or done tasks, and undo from the snackbar. An open page refreshes when the TUI, the CLI or Syncthing changes the file, and a title or details edit made on a stale page is refused instead of overwriting the newer one
@@ -411,7 +413,8 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
 
-[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/ilyasturki/ordo/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/ilyasturki/ordo/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/ilyasturki/ordo/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/ilyasturki/ordo/compare/v0.8.6...v0.9.0
