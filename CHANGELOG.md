@@ -40,6 +40,12 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - A web category's ⋮ menu offers Add separator, which puts one at the top of the category, Fold, and Select completed, which selects its finished tasks for the bulk actions. With one task selected, the edit sheet offers Separator below, like `-` in the terminal. A new separator opens its label in place, and leaving it empty keeps a bare rule; tapping a separator edits its label
 - An empty category on the web reads "No tasks yet", and one whose tasks are all finished "All tasks complete" above its Completed row
 
+### Fixed
+
+- The TUI no longer drops edits silently after the phone, the CLI or Syncthing changed the project first. A refused save marks the project `[changed on disk: r drops N edits]` until `r` reloads it, the mark staying when the status line clears; `q`, `ctrl+c` and switching projects ask before dropping those edits, and quitting anyway exits with status 1, naming them on stderr
+- A save still queued when `r` reloads can no longer land after the reload and overwrite the change it showed: `r` waits for it, and each save is checked against the load it came from
+- After a cut whose paste was refused, `r` gives the cut back, so `p` moves the rows instead of leaving a second copy
+
 ## [0.12.0] - 2026-10-19
 
 ### Added

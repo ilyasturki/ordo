@@ -139,7 +139,7 @@ func (m *model) pasteTasks() {
 		for i, t := range rows {
 			ids[i] = t.ID
 		}
-		m.ui.Clipboard = ClipboardState{Tasks: rows, TaskIDs: ids, Text: clip.Text, Written: clip.Written}
+		m.ui.Clipboard = ClipboardState{Tasks: rows, TaskIDs: ids, Text: clip.Text, Written: clip.Written, Moved: true}
 	}
 	m.rebuildPositions()
 	m.selectTaskLevelRow(rows[0].ID)
@@ -252,7 +252,7 @@ func (m *model) pasteCategories() {
 		for i, c := range cats {
 			ids[i] = c.ID
 		}
-		m.ui.Clipboard = cloneClipboard(ClipboardState{Categories: cats, CategoryIDs: ids, Text: clip.Text, Written: clip.Written})
+		m.ui.Clipboard = cloneClipboard(ClipboardState{Categories: cats, CategoryIDs: ids, Text: clip.Text, Written: clip.Written, Moved: true})
 	}
 	m.rebuildPositions()
 	m.selectItem(selection.FocusCategory, cats[0].ID)

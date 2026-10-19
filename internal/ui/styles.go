@@ -27,6 +27,7 @@ var (
 	ErrorStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	FilterTagStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
 	VisualTagStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("3")).Bold(true)
+	UnsavedTagStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
 
 	// VisualSelectedStyle highlights rows that are part of an active visual
 	// range. Distinct from the reverse-based cursor style so the user can

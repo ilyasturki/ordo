@@ -23,6 +23,7 @@ const (
 	ModePasteChooser
 	ModeMovePicker
 	ModeChangelog
+	ModeConfirmLeave
 )
 
 type Action int
@@ -46,6 +47,7 @@ const (
 
 type Machine struct {
 	current Mode
+	covered Mode
 }
 
 func NewMachine(initial Mode) *Machine {
@@ -146,6 +148,8 @@ func (m *Machine) canTransition(target Mode) bool {
 		return target == ModeNormal
 	case ModeChangelog:
 		return target == ModeNormal
+	case ModeConfirmLeave:
+		return target == ModeNormal || target == ModeProjectPicker
 	}
 	return false
 }
@@ -178,6 +182,22 @@ func (m *Machine) CanPerformAction(action Action) bool {
 
 func (m *Machine) ToNormal() {
 	m.current = ModeNormal
+}
+
+// ToConfirmLeave opens over whatever mode is current, which Uncover returns to.
+func (m *Machine) ToConfirmLeave() {
+	if m.current != ModeConfirmLeave {
+		m.covered = m.current
+	}
+	m.current = ModeConfirmLeave
+}
+
+func (m *Machine) IsConfirmLeave() bool {
+	return m.current == ModeConfirmLeave
+}
+
+func (m *Machine) Uncover() {
+	m.current = m.covered
 }
 
 func (m *Machine) ToEdit() bool {

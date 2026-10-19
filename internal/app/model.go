@@ -38,6 +38,8 @@ type ClipboardState struct {
 	Text string
 	// False when Text never reached the clipboard (a delete, a failed write).
 	Written bool
+	// A copy left by pasting a cut: the rows kept their IDs.
+	Moved bool
 }
 
 func (c ClipboardState) empty() bool {
@@ -115,6 +117,8 @@ type UIState struct {
 	Edit           EditState
 	Picker         ProjectPickerState
 	ConfirmDelete  ConfirmDeleteState
+	ConfirmLeave   ConfirmLeaveState
+	Save           SaveState
 	Options        OptionsState
 	Filter         FilterState
 	Fold           FoldState
@@ -156,7 +160,7 @@ type UIState struct {
 type projectSaver interface {
 	Enqueue(domain.Project)
 	Results() <-chan error
-	Close()
+	Drain()
 }
 
 // cursorSaver records the focused row off the event loop, coalescing bursts of

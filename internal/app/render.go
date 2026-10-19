@@ -14,7 +14,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
-func renderProjectLine(name string, selected, focused, filtered, visualMode bool, statusText string, width int) string {
+func renderProjectLine(name string, selected, focused, filtered, visualMode bool, unsavedMark, statusText string, width int) string {
 	prefix := "  "
 	if selected {
 		prefix = "> "
@@ -35,7 +35,14 @@ func renderProjectLine(name string, selected, focused, filtered, visualMode bool
 	if visualMode {
 		line += " " + ui.VisualTagStyle.Render("[visual]")
 	}
-	return withStatus(line, statusText, width)
+	return withStatus(withUnsavedMark(line, unsavedMark), statusText, width)
+}
+
+func withUnsavedMark(line, mark string) string {
+	if mark == "" {
+		return line
+	}
+	return line + " " + ui.UnsavedTagStyle.Render(mark)
 }
 
 func renderHiddenLine(hidden, indent int, selected, focused bool, width int) string {

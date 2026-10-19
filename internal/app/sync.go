@@ -18,6 +18,7 @@ func (m *model) storeTaskUpdate() {
 		// event loop so the keystroke returns immediately. Errors surface later
 		// via the Results subscription (see listenSaveErrors).
 		m.deps.Saver.Enqueue(m.project)
+		m.checkSaves()
 		return
 	}
 	// No async saver (tests, or a store wired without one): save synchronously
@@ -28,11 +29,12 @@ func (m *model) storeTaskUpdate() {
 	if err := m.deps.Store.SaveProjectLocked(m.project); err != nil {
 		m.ui.Screen.StatusMsg = saveFailedMessage(err)
 	}
+	m.checkSaves()
 }
 
 func saveFailedMessage(err error) string {
 	if errors.Is(err, data.ErrStaleProject) {
-		return "Project changed on disk; press r to reload (unsaved edits are dropped)"
+		return "Not saved: the project changed on disk"
 	}
 	return "Save failed: " + err.Error()
 }
@@ -79,6 +81,11 @@ func (m *model) reloadProject() {
 	if m.deps.Store == nil {
 		return
 	}
+	// A snapshot still queued must land before the load, or the reload would miss it.
+	if m.deps.Saver != nil {
+		m.deps.Saver.Drain()
+	}
+	dropped, _ := m.deps.Store.Unsaved(m.project.ID)
 
 	prev, hadSel := m.currentCursor()
 
@@ -89,8 +96,13 @@ func (m *model) reloadProject() {
 	}
 
 	m.project = project
+	m.checkSaves()
 	m.ui.History.Reset()
 	m.ui.Filter.releaseHeld()
+	// The move that used the cut up may be among the dropped edits: a copy would then duplicate the rows.
+	if dropped > 0 && m.ui.Clipboard.Moved {
+		m.ui.Clipboard.IsCut, m.ui.Clipboard.Moved = true, false
+	}
 	m.rebuildPositions()
 
 	if hadSel && !m.restoreCursor(prev) {
@@ -99,7 +111,11 @@ func (m *model) reloadProject() {
 	}
 
 	m.ensureVisible()
-	m.announceConflicts("Reloaded from disk")
+	msg := "Reloaded from disk"
+	if dropped > 0 {
+		msg = fmt.Sprintf("Reloaded from disk, dropping %d edit%s", dropped, plural(dropped, "", "s"))
+	}
+	m.announceConflicts(msg)
 }
 
 // restoreSelection moves the cursor onto the row identified by (kind, catID,

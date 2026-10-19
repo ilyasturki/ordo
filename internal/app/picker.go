@@ -204,6 +204,7 @@ func (m *model) confirmDeleteProject() {
 				return
 			}
 			m.project = next
+			m.checkSaves()
 			_ = m.deps.StateManager.SetProjectForDir(m.project.ID)
 			m.ui.Filter = loadFilterState(m.deps.StateManager, m.project)
 			m.ui.Fold = loadFoldState(m.deps.StateManager, m.project)
@@ -338,7 +339,16 @@ func (m *model) openPickedProject(status string) {
 		m.ui.Modes.ToNormal()
 		return
 	}
+	if m.holdsUnsaved() {
+		m.ui.ConfirmLeave = ConfirmLeaveState{Kind: leaveSwitch, status: status}
+		m.ui.Modes.ToConfirmLeave()
+		return
+	}
+	m.switchToPicked(status)
+}
 
+func (m *model) switchToPicked(status string) {
+	selectedProject := m.ui.Picker.projects[m.ui.Picker.selected]
 	project, err := m.deps.Store.LoadProject(selectedProject.ID)
 	if err != nil {
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Error loading project: %v", err)
@@ -357,6 +367,7 @@ func (m *model) openPickedProject(status string) {
 	m.saveCursorState()
 
 	m.project = project
+	m.checkSaves()
 	m.ui.Filter = loadFilterState(m.deps.StateManager, project)
 	m.ui.Fold = loadFoldState(m.deps.StateManager, project)
 	m.ui.History.Reset()

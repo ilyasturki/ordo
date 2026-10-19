@@ -173,7 +173,7 @@ var normalBindings = []keyBinding{
 		action: void((*model).undo)},
 	{keys: []string{"ctrl+r"}, desc: "redo", section: sectionApp,
 		action: void((*model).redo)},
-	{keys: []string{"r"}, desc: "reload from disk", section: sectionApp,
+	{keys: []string{"r"}, desc: "reload from disk, dropping unsaved edits", section: sectionApp,
 		action: void((*model).reloadProject)},
 	{keys: []string{","}, desc: "options", section: sectionApp,
 		action: func(m *model) tea.Cmd {
@@ -189,8 +189,8 @@ var normalBindings = []keyBinding{
 			}
 			return nil
 		}},
-	{keys: []string{"q"}, desc: "quit", section: sectionApp,
-		action: func(m *model) tea.Cmd { return tea.Quit }},
+	{keys: []string{"q"}, desc: "quit, asking first if edits weren't saved", section: sectionApp,
+		action: func(m *model) tea.Cmd { return m.quit() }},
 }
 
 var chordPrefixes = func() map[rune]struct{} {

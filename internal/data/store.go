@@ -31,6 +31,7 @@ type ProjectRepository interface {
 	CheckProjectName(name, excludeID string) error
 	DeleteProject(id string) error
 	ConflictFiles(id string) []string
+	Unsaved(id string) (int, error)
 }
 
 // Store manages JSON persistence in a directory.
@@ -38,7 +39,7 @@ type Store struct {
 	Dir string
 
 	mu     sync.Mutex
-	stamps map[string]os.FileInfo
+	copies map[string]*lineage
 }
 
 var _ ProjectRepository = (*Store)(nil)
@@ -157,17 +158,16 @@ func (s *Store) marshalProject(project domain.Project) ([]byte, error) {
 // writeProjectBytes atomically writes pre-marshaled bytes for id: an fsync'd
 // temp file, renamed into place, then a directory fsync so the rename survives
 // a crash. It performs no locking or existence check; callers layer those on.
-func (s *Store) writeProjectBytes(id string, data []byte) error {
+// The version it returns is nil when the file can't be stat'ed afterwards.
+func (s *Store) writeProjectBytes(id string, data []byte) (os.FileInfo, error) {
 	if err := os.MkdirAll(s.Dir, 0o755); err != nil {
-		return err
+		return nil, err
 	}
 	if err := fsutil.WriteAtomic(s.projectPath(id), data, 0o644); err != nil {
-		return err
+		return nil, err
 	}
-	if info, err := os.Stat(s.projectPath(id)); err == nil {
-		s.adopt(id, info)
-	}
-	return nil
+	info, _ := os.Stat(s.projectPath(id))
+	return info, nil
 }
 
 func (s *Store) saveProjectAtomic(project domain.Project) error {
@@ -175,7 +175,14 @@ func (s *Store) saveProjectAtomic(project domain.Project) error {
 	if err != nil {
 		return err
 	}
-	return s.writeProjectBytes(project.ID, data)
+	info, err := s.writeProjectBytes(project.ID, data)
+	if err != nil {
+		return err
+	}
+	if info != nil {
+		s.adopt(project.ID, info)
+	}
+	return nil
 }
 
 // createNewProjectLocked writes a brand-new project under the global lock,

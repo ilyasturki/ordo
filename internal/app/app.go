@@ -194,8 +194,10 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.handleMouseWheel(msg)
 		return m, nil
 	case saveErrMsg:
-		if msg.err != nil {
-			m.ui.Screen.StatusMsg = saveFailedMessage(msg.err)
+		// The message may come from a copy a reload already dropped: what counts is the open one.
+		m.checkSaves()
+		if m.ui.Save.Err != nil {
+			m.ui.Screen.StatusMsg = saveFailedMessage(m.ui.Save.Err)
 		}
 		return m, m.listenSaveErrors()
 	case tea.KeyPressMsg:
@@ -292,10 +294,13 @@ func (m model) lineInputFocused() bool {
 func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	msg = normalizeKey(msg)
 	if msg.String() == "ctrl+c" && !m.ui.Modes.IsExternalEdit() {
+		if m.ui.Modes.IsConfirmLeave() {
+			return m, tea.Quit
+		}
 		if m.ui.Modes.IsDescriptionEdit() {
 			m.finishDescriptionEdit()
 		}
-		return m, tea.Quit
+		return m, m.quit()
 	}
 	if msg.String() == "ctrl+v" && m.lineInputFocused() {
 		return m, readClipboardForEditor(m.ui.Modes.Current())
@@ -340,6 +345,8 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handleMovePickerKey(msg)
 	case modes.ModeExternalEdit:
 		return m, nil
+	case modes.ModeConfirmLeave:
+		return m.handleConfirmLeaveKey(msg)
 	default:
 		return m.handleNormalKey(msg)
 	}
@@ -740,7 +747,7 @@ func (m model) renderView() string {
 	var lines []string
 
 	if viewport.HasMoreAbove {
-		lines = append(lines, withStatus(ui.MutedStyle.Render(scrollMoreAbove), m.statusText(), m.ui.Screen.Width))
+		lines = append(lines, withStatus(withUnsavedMark(ui.MutedStyle.Render(scrollMoreAbove), m.ui.Save.mark()), m.statusText(), m.ui.Screen.Width))
 	}
 
 	// Only the first item drawn can be entered partway through; if none fit at
@@ -817,6 +824,11 @@ func (m model) renderView() string {
 		return modal.Render(content, m.pasteChooserView())
 	case modes.ModeMovePicker:
 		return modal.Render(content, m.movePickerView())
+	case modes.ModeConfirmLeave:
+		if m.ui.ConfirmLeave.Kind == leaveSwitch {
+			return modal.Render(modal.Render(content, m.projectPickerView()), m.confirmLeaveView())
+		}
+		return modal.Render(content, m.confirmLeaveView())
 	}
 	return content
 }
@@ -840,7 +852,7 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 		if m.editorOpen() && isCursor {
 			return m.renderEditProjectLine()
 		}
-		return renderProjectLine(m.project.Name, isSelected, focused, m.ui.Filter.HasActiveFilter(), visualMode, m.statusText(), m.ui.Screen.Width)
+		return renderProjectLine(m.project.Name, isSelected, focused, m.ui.Filter.HasActiveFilter(), visualMode, m.ui.Save.mark(), m.statusText(), m.ui.Screen.Width)
 
 	case LayoutCategory:
 		indent := m.rowIndent(item.CategoryIndex, -1)
@@ -915,7 +927,7 @@ func linkDirIfUnset(sm data.StateRepository, projectID string) {
 	}
 }
 
-func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader, workingDir string, forcePicker bool) error {
+func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader, workingDir string, forcePicker bool) (err error) {
 	taskCommands, err := bindTaskCommands(cfgManager.Get().TaskCommands)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
@@ -929,9 +941,10 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	// Persist off the event loop so no keystroke blocks on fsync. Deferring
 	// Close here means the final edit is flushed on exit regardless of which
 	// quit path the program took — program.Run only returns once the event loop
-	// has stopped, so no Enqueue can race this Close.
+	// has stopped, so no Enqueue can race this Close. Edits that never reached
+	// disk come back as the error ordo exits with.
 	saver := data.NewSaver(store)
-	defer saver.Close()
+	defer func() { err = errors.Join(err, saver.Close()) }()
 
 	stateManager := data.NewStateManager(filepath.Dir(dataDir), workingDir)
 	if err := stateManager.Load(); err != nil {

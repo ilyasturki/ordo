@@ -182,7 +182,9 @@ A client on the same machine as ordo takes the same locks. A client on another d
 
 ## Edits from outside
 
-The TUI keeps the open project in memory and saves snapshots of it. When it loads the file it notes its identity (inode, size, modification time), and checks it again before every save. If Syncthing, the CLI or another app has changed the file in between, the save is refused and the status line reads "Project changed on disk; press r to reload (unsaved edits are dropped)". `r` loads the file again and drops the edits made since the last save, so the other writer's change always wins.
+The TUI keeps the open project in memory and saves snapshots of it. When it loads the file it notes its identity (inode, size, modification time), each of its own saves moves the note to the version it wrote, and every snapshot is checked against the note of the load it came from. If Syncthing, the CLI, the web app or another app has changed the file in between, the save is refused, and so is every later one until a reload. The TUI then marks the project `[changed on disk: r drops N edits]`, and `q`, `ctrl+c` and switching projects ask before dropping those edits. `r` waits for any save still in flight, loads the file again and drops the refused edits, so the other writer's change always wins. Quitting anyway exits with status 1 and names the lost edits on stderr.
+
+A snapshot queued before a reload keeps the note of the load it came from, so it can't land after the reload and overwrite the change the reload just showed.
 
 The CLI does each command as one read, change and write under the lock, so it always starts from the current file. Another client should do the same: re-read before writing, or check that the file is still the one it loaded.
 

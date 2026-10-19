@@ -27,9 +27,10 @@ func (s *Store) acquireGlobalLock() (*os.File, error) {
 	return fsutil.Lock(s.globalLockPath(), 0o644)
 }
 
-// SaveProjectLocked saves a project while holding an exclusive flock on a
-// per-project lock file. Use this when multiple processes may write to the
-// same data directory (e.g. TUI + CLI at the same time).
+// SaveProjectLocked saves a snapshot of the project's open copy while holding
+// an exclusive flock on a per-project lock file. Use this when multiple
+// processes may write to the same data directory (e.g. TUI + CLI at the same
+// time).
 //
 // The lock file lives next to the project JSON at `{id}.json.lock` and is
 // kept on disk between calls; only the flock state matters. Closing the fd
@@ -40,20 +41,23 @@ func (s *Store) acquireGlobalLock() (*os.File, error) {
 // just deleted by another process. Use saveNewProjectLocked for the
 // create path.
 func (s *Store) SaveProjectLocked(project domain.Project) error {
+	l, seq := s.queue(project.ID)
 	data, err := s.marshalProject(project)
-	if err != nil {
-		return err
+	if err == nil {
+		err = s.writeSnapshot(project.ID, data, l)
 	}
-	return s.WriteProjectLocked(project.ID, data)
+	s.settle(l, seq, err)
+	return err
 }
 
-// WriteProjectLocked persists pre-marshaled project bytes under the per-project
+// writeSnapshot persists pre-marshaled project bytes under the per-project
 // flock, refusing to recreate a project whose JSON file was removed (same
-// guarantee as SaveProjectLocked). It is the write half of the asynchronous
-// save: the caller runs marshalProject to snapshot state on its own thread, and
-// this absorbs the fsync off that thread. Bytes must come from marshalProject
-// for the same id.
-func (s *Store) WriteProjectLocked(id string, data []byte) error {
+// guarantee as SaveProjectLocked), or to overwrite a version copy l was not
+// loaded from or did not write itself. It is the write half of the
+// asynchronous save: the caller runs marshalProject to snapshot state on its
+// own thread, and this absorbs the fsync off that thread. Bytes must come
+// from marshalProject for the same id.
+func (s *Store) writeSnapshot(id string, data []byte, l *lineage) error {
 	f, err := s.acquireProjectLock(id)
 	if err != nil {
 		return err
@@ -62,10 +66,19 @@ func (s *Store) WriteProjectLocked(id string, data []byte) error {
 	if _, err := os.Stat(s.projectPath(id)); errors.Is(err, fs.ErrNotExist) {
 		return ErrProjectNotFound
 	}
-	if err := s.checkFresh(id); err != nil {
+	if err := s.checkFresh(id, l); err != nil {
 		return err
 	}
-	return s.writeProjectBytes(id, data)
+	info, err := s.writeProjectBytes(id, data)
+	if err != nil {
+		return err
+	}
+	if info != nil {
+		s.mu.Lock()
+		l.version = info
+		s.mu.Unlock()
+	}
+	return nil
 }
 
 // saveNewProjectLocked writes a fresh project file under the per-project
