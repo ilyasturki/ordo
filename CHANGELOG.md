@@ -8,6 +8,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - `l` in the project picker links this directory to the highlighted project and opens it, so the next launch here opens it too. The picker marks the linked project `(linked)`
 
+### Changed
+
+- The web app's task page is laid out like Google Tasks: the category name in the top bar moves the task, and `⋮` holds Move up, Move down, Nest or Un-nest and Delete. Status, priority, tag and estimate are one row each showing the current value, and tapping a row opens a sheet with the choices. Details and images follow, then the subtasks with an "Add subtask" row, and a "Mark done" or "Mark open" button sits at the bottom. The created and updated dates are gone from the page
+
 ### Fixed
 
 - `y` on a separator copies it as `### label`, or `---` for a bare one, so `p` pastes a separator, here or in another ordo, instead of a task, or instead of the task copied before. `gy` on a separator offers the plain label

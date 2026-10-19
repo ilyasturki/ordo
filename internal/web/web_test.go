@@ -602,3 +602,43 @@ func TestBrokenFieldValuesStillRender(t *testing.T) {
 		}
 	}
 }
+
+func TestTaskPageGroupsItsFields(t *testing.T) {
+	f := newFixture(t)
+	page := func(title string) string {
+		t.Helper()
+		rec := f.do(http.MethodGet, "/p/"+f.pid+"/t/"+f.ids[title], nil, false)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: %d", title, rec.Code)
+		}
+		return rec.Body.String()
+	}
+	must := func(body, want string, has bool) {
+		t.Helper()
+		if strings.Contains(body, want) != has {
+			t.Errorf("page has %q: %v, want %v", want, !has, has)
+		}
+	}
+	body := page("two")
+	for _, sheet := range []string{"status-sheet", "priority-sheet", "tag-sheet", "estimate-sheet", "move-sheet", "task-menu"} {
+		must(body, `data-sheet-open="`+sheet+`"`, true)
+		must(body, `id="`+sheet+`"`, true)
+	}
+	must(body, `<span class="field-value">To do</span>`, true)
+	must(body, `name="value" value="completed">`, true)
+	must(body, `value="`+f.cat+`" aria-current="true"`, true)
+	must(body, "/do/task.nest", true)
+	must(body, "/do/task.unnest", false)
+
+	f.action("status.set", url.Values{"id": {f.ids["two"]}, "value": {domain.StatusCompleted}})
+	f.action("task.nest", url.Values{"id": {f.ids["two"]}})
+	body = page("two")
+	must(body, `name="value" value="todo">`, true)
+	must(body, "Mark open", true)
+	must(body, "/do/task.unnest", true)
+	must(body, `id="new-subtask"`, false)
+	body = page("one")
+	must(body, "/do/task.nest", false)
+	must(body, "/do/task.unnest", false)
+	must(body, "Subtasks · 1/1", true)
+}

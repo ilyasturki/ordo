@@ -18,6 +18,13 @@ const shots = [
   { name: "task", path: T(9) },
   { name: "task_parent", path: T(1) },
   { name: "task_child", path: T(3) },
+  { name: "task_done", path: T(2) },
+  { name: "task_status", path: T(1), steps: ["document.querySelector('[data-sheet-open=status-sheet]').click()"] },
+  { name: "task_priority", path: T(1), steps: ["document.querySelector('[data-sheet-open=priority-sheet]').click()"] },
+  { name: "task_tag", path: T(1), steps: ["document.querySelector('[data-sheet-open=tag-sheet]').click()"] },
+  { name: "task_estimate", path: T(1), steps: ["document.querySelector('[data-sheet-open=estimate-sheet]').click()"] },
+  { name: "task_move", path: T(3), steps: ["document.querySelector('[data-sheet-open=move-sheet]').click()"] },
+  { name: "task_menu", path: T(3), steps: ["document.querySelector('[data-sheet-open=task-menu]').click()"] },
   { name: "add_sheet", path: `${P}?f=open`, steps: ["document.querySelector('[data-fab]').click()"] },
   { name: "select", path: `${P}?f=open`, steps: [
     "document.querySelector('[data-select-start]').click()",

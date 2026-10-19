@@ -371,7 +371,6 @@
     const t = e.target;
     const form = t.closest("[data-autosave]");
     if (form) save(form);
-    if (t.closest("[data-autosubmit]")) t.form.requestSubmit();
     if (t.matches("[data-attach-input]") && t.files.length) {
       snack("Uploading…");
       t.form.requestSubmit();
