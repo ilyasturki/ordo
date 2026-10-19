@@ -37,6 +37,7 @@ const shots = [
   { name: "task_move", path: T(3), steps: ["document.querySelector('[data-sheet-open=move-sheet]').click()"] },
   { name: "task_menu", path: T(3), steps: ["document.querySelector('[data-sheet-open=task-menu]').click()"] },
   { name: "task_typing", path: T(1), steps: ["document.querySelector('#new-subtask').focus()"] },
+  { name: "task_swap", path: T(9), steps: ["htmx.ajax('GET', location.pathname, { target: '#app', select: '#app', swap: 'outerHTML' })"] },
   { name: "add_row", path: P, steps: ["document.querySelector('[data-add-fab]').click()", "document.querySelector('.composer-input').value = 'Offline mode'"] },
   { name: "cat_menu", path: P, steps: [tap(`#c-${C(12)} [data-cat-menu]`)] },
   { name: "separator_label", path: P, steps: [
@@ -102,6 +103,7 @@ const until = (sessionId, method) => new Promise((resolve) => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const host = new URL(base).hostname;
+const violations = [];
 const [width, height] = (process.env.ORDO_WEB_SIZE || "412x915").split("x").map(Number);
 for (const scheme of ["light", "dark"]) {
   for (const shot of shots) {
@@ -110,6 +112,9 @@ for (const scheme of ["light", "dark"]) {
     const { targetId } = await send("Target.createTarget", { url: "about:blank", browserContextId });
     const { sessionId } = await send("Target.attachToTarget", { targetId, flatten: true });
     await send("Page.enable", {}, sessionId);
+    await send("Page.addScriptToEvaluateOnNewDocument", {
+      source: "window.cspViolations = []; document.addEventListener('securitypolicyviolation', (e) => cspViolations.push(e.violatedDirective + ' ' + (e.sample || e.blockedURI)));",
+    }, sessionId);
     await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 2, mobile: true }, sessionId);
     await send("Emulation.setTouchEmulationEnabled", { enabled: true }, sessionId);
     await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: scheme }] }, sessionId);
@@ -128,6 +133,8 @@ for (const scheme of ["light", "dark"]) {
     const file = join(out, `${shot.name}_${scheme}${width === 412 ? "" : "_" + width}.png`);
     writeFileSync(file, Buffer.from(data, "base64"));
     console.log(file);
+    const { result } = await send("Runtime.evaluate", { expression: "window.cspViolations", returnByValue: true }, sessionId);
+    for (const v of result.value || []) violations.push(`${shot.name} (${scheme}): ${v}`);
     for (const step of shot.after || []) {
       await send("Runtime.evaluate", { expression: step }, sessionId);
       await sleep(600);
@@ -139,3 +146,7 @@ ws.close();
 chrome.kill();
 await sleep(200);
 rmSync(profile, { recursive: true, force: true });
+if (violations.length) {
+  console.error("Content-Security-Policy violations:\n" + violations.join("\n"));
+  process.exitCode = 1;
+}
