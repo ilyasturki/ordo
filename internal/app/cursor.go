@@ -15,6 +15,7 @@ var cursorKindNames = map[selection.FocusKind]string{
 	selection.FocusTask:        "task",
 	selection.FocusSeparator:   "separator",
 	selection.FocusDescription: "description",
+	selection.FocusHidden:      "hidden",
 }
 
 func cursorKindFromName(name string) (selection.FocusKind, bool) {
@@ -145,6 +146,8 @@ func (m *model) itemAnchors(kind selection.FocusKind, id string) []itemRef {
 	switch kind {
 	case selection.FocusProject:
 		return refs
+	case selection.FocusHidden:
+		return append(refs, m.itemAnchors(selection.FocusCategory, id)...)
 	case selection.FocusCategory:
 		if ci, err := m.project.FindCategoryByID(id); err == nil {
 			if parent := domain.ParentIndex(m.project.Categories, ci); parent >= 0 {

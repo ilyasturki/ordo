@@ -66,7 +66,7 @@ func (m model) renderShortcutBar() string {
 	if !m.shortcutBarVisible() {
 		return ""
 	}
-	hints := normalShortcuts
+	hints := m.normalHints()
 	switch {
 	case m.ui.Modes.IsVisual():
 		hints = visualShortcuts
@@ -82,6 +82,22 @@ func (m model) renderShortcutBar() string {
 		hints = slices.Concat(hints[:1], commandHints, hints[1:])
 	}
 	return ui.RenderHintsToWidth(hints, m.ui.Screen.Width)
+}
+
+func (m model) normalHints() []ui.Hint {
+	if !m.ui.Filter.HasActiveFilter() {
+		return normalShortcuts
+	}
+	hints := slices.Clone(normalShortcuts)
+	for i, h := range hints {
+		if h.Key == "f" {
+			hints[i] = ui.Hint{Key: "f", Label: "filtered", Active: true}
+		}
+	}
+	if m.onHiddenRow() {
+		hints = slices.Insert(hints, 0, ui.Hint{Key: "enter", Label: "clear filter"})
+	}
+	return hints
 }
 
 // bottomBarHeight is the rows reserved at the bottom of the screen: the search

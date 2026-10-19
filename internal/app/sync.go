@@ -109,8 +109,8 @@ func (m *model) restoreSelection(kind selection.FocusKind, catID, taskID string)
 	switch kind {
 	case selection.FocusProject:
 		return m.selectItem(selection.FocusProject, "")
-	case selection.FocusCategory:
-		return catID != "" && m.selectItem(selection.FocusCategory, catID)
+	case selection.FocusCategory, selection.FocusHidden:
+		return catID != "" && m.selectItem(kind, catID)
 	}
 	return (taskID != "" && m.selectItem(kind, taskID)) ||
 		(catID != "" && m.selectItem(selection.FocusCategory, catID))
@@ -139,6 +139,20 @@ func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool
 		i = end
 	}
 	return shown
+}
+
+// hiddenByFilter leaves out separators, which every filter hides.
+func hiddenByFilter(cat domain.Category, filter *FilterState) int {
+	if filter == nil || !filter.HasActiveFilter() {
+		return 0
+	}
+	n := 0
+	for i, shown := range shownRows(cat, filter, nil) {
+		if !shown && !cat.Tasks[i].IsSeparator() {
+			n++
+		}
+	}
+	return n
 }
 
 // expandedTaskID's description row shows even while descriptions are hidden.
@@ -196,6 +210,14 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 					ID:            task.ID,
 				})
 			}
+		}
+		if hiddenByFilter(category, filter) > 0 {
+			positions = append(positions, selection.Position{
+				Kind:          selection.FocusHidden,
+				CategoryIndex: cIndex,
+				TaskIndex:     -1,
+				ID:            category.ID,
+			})
 		}
 	}
 	return positions

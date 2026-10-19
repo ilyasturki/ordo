@@ -18,7 +18,7 @@ func (m *model) deleteSelected() {
 		return
 	}
 	pos, ok := m.selectedPosition()
-	if !ok || pos.Kind == selection.FocusProject {
+	if !ok || pos.Kind == selection.FocusProject || pos.Kind == selection.FocusHidden {
 		return
 	}
 	if pos.Kind == selection.FocusDescription {
@@ -147,6 +147,9 @@ func (m *model) rebuildAndClamp() {
 }
 
 func (m *model) toggleSelectedTask() {
+	if m.showHiddenTasks() {
+		return
+	}
 	m.cycleSelectedTask(false)
 }
 
@@ -204,7 +207,7 @@ func (m *model) openEstimatePicker() {
 		return
 	}
 	position, ok := m.selectedPosition()
-	if !ok || position.Kind == selection.FocusProject || position.Kind == selection.FocusSeparator {
+	if !ok || position.Kind == selection.FocusProject || position.Kind == selection.FocusSeparator || position.Kind == selection.FocusHidden {
 		return
 	}
 
@@ -221,7 +224,7 @@ func (m *model) openEstimatePicker() {
 
 func (m *model) selectEstimate(minutes int) {
 	position, ok := m.selectedPosition()
-	if !ok || position.Kind == selection.FocusProject || position.Kind == selection.FocusSeparator {
+	if !ok || position.Kind == selection.FocusProject || position.Kind == selection.FocusSeparator || position.Kind == selection.FocusHidden {
 		return
 	}
 

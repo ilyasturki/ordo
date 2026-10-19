@@ -89,6 +89,9 @@ var normalBindings = []keyBinding{
 		action: void((*model).startAddingSeparator)},
 	{keys: []string{"enter"}, desc: "edit", section: sectionTasks,
 		action: func(m *model) tea.Cmd {
+			if m.showHiddenTasks() {
+				return nil
+			}
 			if pos, ok := m.selectedPosition(); ok && pos.Kind == selection.FocusDescription {
 				return m.startDescriptionInlineEdit(pos.CategoryIndex, pos.TaskIndex)
 			}

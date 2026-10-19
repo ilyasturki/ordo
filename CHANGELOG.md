@@ -10,6 +10,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The web app's sign-in page pairs with a code: Scan code reads the QR code with the camera inside the app, and Pairing link or code takes a pasted link or code. Without a camera it says why and offers the paste field
 - Devices → Pair a new device shows a one-time pairing QR code and link on a device already signed in, after the passphrase when one is set. Devices shows which device paired which
 - The sign-in page moves on by itself once the device is paired in another tab, and the pair page opened in a browser tab suggests pasting the link into the installed app instead
+- While a filter hides some of a category's tasks, the category ends with an `(N hidden by the filter)` row the cursor stops on, and `enter` or `space` there clears the filter. It replaces the `(no tasks)` such a category showed, and the shortcut bar reads `f filtered` while a filter is on
 
 ### Changed
 

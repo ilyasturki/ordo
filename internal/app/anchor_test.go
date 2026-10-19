@@ -23,6 +23,7 @@ func cursorItem(t *testing.T, m *model) string {
 		selection.FocusTask:        "task",
 		selection.FocusSeparator:   "separator",
 		selection.FocusDescription: "description",
+		selection.FocusHidden:      "hidden",
 	}
 	return kinds[pos.Kind] + ":" + pos.ID
 }

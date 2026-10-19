@@ -102,6 +102,12 @@ var helpModeSections = []helpSection{
 			{keys: "esc", desc: "leave visual mode"},
 		},
 	},
+	{
+		title: "While a filter is on (f)",
+		entries: []helpEntry{
+			{keys: "enter / space", desc: "on \"N hidden by the filter\": clear it"},
+		},
+	},
 }
 
 var builtinHelpSections = buildHelpSections(nil)

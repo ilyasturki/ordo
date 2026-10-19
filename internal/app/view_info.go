@@ -48,7 +48,7 @@ func (m model) infoLines() []string {
 	switch pos.Kind {
 	case selection.FocusProject:
 		return m.projectInfoLines()
-	case selection.FocusCategory:
+	case selection.FocusCategory, selection.FocusHidden:
 		return m.categoryInfoLines(pos.CategoryIndex)
 	case selection.FocusSeparator:
 		return m.separatorInfoLines(pos.CategoryIndex, pos.TaskIndex)

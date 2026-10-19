@@ -684,7 +684,7 @@ func (m *model) copyTextForPosition(pos selection.Position) string {
 
 func (m *model) copySelected() tea.Cmd {
 	pos, ok := m.selectedPosition()
-	if !ok {
+	if !ok || pos.Kind == selection.FocusHidden {
 		return nil
 	}
 	// A task or separator copy also stashes the row for paste; other kinds
@@ -700,7 +700,7 @@ func (m *model) copySelected() tea.Cmd {
 
 func (m *model) copyCategoryContent() tea.Cmd {
 	pos, ok := m.selectedPosition()
-	if !ok || pos.Kind == selection.FocusProject {
+	if !ok || pos.Kind == selection.FocusProject || pos.Kind == selection.FocusHidden {
 		return nil
 	}
 	return m.copyToClipboard(export.CategoryMarkdown(m.project, pos.CategoryIndex, export.Options{Rewrite: m.deps.Attachments.Absolute}), "")
@@ -872,6 +872,10 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 
 	case LayoutEmptyCategory:
 		return ui.MutedStyle.Render(placeholderIndent(m.rowIndent(item.CategoryIndex, -1)) + "(no tasks)")
+
+	case LayoutHidden:
+		hidden := hiddenByFilter(m.project.Categories[item.CategoryIndex], &m.ui.Filter)
+		return renderHiddenLine(hidden, m.rowIndent(item.CategoryIndex, -1), isSelected, focused, m.ui.Screen.Width)
 
 	case LayoutSpacing:
 		return strings.Repeat("\n", item.Height-1)

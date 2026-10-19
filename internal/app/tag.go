@@ -201,6 +201,10 @@ func (m *model) copyTagFromSelected() {
 
 // paste routes the normal-mode `p`: a tag copied last wins, then the clipboard.
 func (m *model) paste() tea.Cmd {
+	if m.onHiddenRow() {
+		m.ui.Screen.StatusMsg = "Paste onto a task or a category"
+		return nil
+	}
 	if m.ui.TagCopiedLast && m.ui.TagClip.Set {
 		m.pasteTagOntoSelected()
 		return nil

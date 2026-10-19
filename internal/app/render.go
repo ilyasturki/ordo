@@ -38,6 +38,18 @@ func renderProjectLine(name string, selected, focused, filtered, visualMode bool
 	return withStatus(line, statusText, width)
 }
 
+func renderHiddenLine(hidden, indent int, selected, focused bool, width int) string {
+	text := fmt.Sprintf("(%d hidden by the filter)", hidden)
+	line := ui.MutedStyle.Render("  " + strings.Repeat(" ", indent) + text)
+	if selected {
+		line = ui.GetSelectedStyle(focused).Render("> " + strings.Repeat(" ", indent) + text)
+	}
+	if width > 0 {
+		line = ansi.Truncate(line, width, "")
+	}
+	return line
+}
+
 // withStatus right-aligns statusText on line, truncating both to width.
 func withStatus(line, statusText string, width int) string {
 	if statusText == "" {

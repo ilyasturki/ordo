@@ -11,6 +11,8 @@ const (
 	// (domain.KindSeparator). It shares the (CategoryIndex, TaskIndex) addressing
 	// of a task but gates out task-only actions (status, priority, estimate…).
 	FocusSeparator
+	// FocusHidden is a category's "N hidden by the filter" row: CategoryIndex and ID are the category's, TaskIndex is -1.
+	FocusHidden
 )
 
 type Position struct {

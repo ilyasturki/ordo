@@ -11,6 +11,8 @@ import (
 type Hint struct {
 	Key   string
 	Label string
+	// Active draws the hint in the filter color, for a mode that is on.
+	Active bool
 }
 
 const hintSeparator = "  ·  "
@@ -58,5 +60,8 @@ func RenderHintsToWidth(hints []Hint, width int) string {
 }
 
 func formatHint(h Hint) string {
+	if h.Active {
+		return FilterTagStyle.Render(h.Key + " " + h.Label)
+	}
 	return ShortcutKeyStyle.Render(h.Key) + " " + ShortcutLabelStyle.Render(h.Label)
 }

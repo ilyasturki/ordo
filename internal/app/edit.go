@@ -94,6 +94,8 @@ func (m *model) startAddingTask() {
 	case selection.FocusTask, selection.FocusDescription, selection.FocusSeparator:
 		taskIndex = domain.BlockEnd(cat.Tasks, position.TaskIndex)
 		newTask.ParentID = cat.Tasks[position.TaskIndex].ParentID
+	case selection.FocusHidden:
+		taskIndex = len(cat.Tasks)
 	}
 	// The editor writes to the cursor's row, which falls back to an ancestor when the new row is hidden.
 	if !taskRowVisible(&m.ui.Filter, newTask, cat.ID, cat.ParentID) {

@@ -18,6 +18,7 @@ const (
 	LayoutSeparator     // In-category divider row (domain.KindSeparator)
 	LayoutDescription   // Inline description block for the task above it (own focusable row)
 	LayoutEmptyCategory // "(no tasks)" placeholder
+	LayoutHidden        // "(N hidden by the filter)" row (own focusable row)
 	LayoutSpacing       // Blank lines between elements
 )
 
@@ -147,7 +148,7 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 			switch {
 			case folded:
 			case rowOfCategory(positions, posIndex+1, pos.CategoryIndex):
-				if category.ParentID == "" {
+				if category.ParentID == "" && positions[posIndex+1].Kind != selection.FocusHidden {
 					spacing(b.config.BlankAfterCatHead)
 				}
 			case !subCategoryOf(project, positions, posIndex+1, category.ID):
@@ -156,6 +157,10 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 
 		case selection.FocusSeparator:
 			item.Kind, item.Height = LayoutSeparator, b.rowHeight(posIndex, 1)
+			add(item)
+
+		case selection.FocusHidden:
+			item.Kind, item.Height = LayoutHidden, 1
 			add(item)
 
 		case selection.FocusTask:
