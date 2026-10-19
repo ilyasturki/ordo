@@ -14,9 +14,8 @@
           <span class="avatar" aria-hidden="true">{{.Initial}}</span>
           <span class="item-body">
             <span class="headline">{{.Name}}</span>
-            <span class="supporting">{{.Counts.Open}} open{{if .Counts.Doing}} · {{.Counts.Doing}} doing{{end}} · {{.Counts.Done}} done</span>
+            <span class="supporting">{{.Counts.Open}} open{{if .Counts.Doing}} · {{.Counts.Doing}} doing{{end}}</span>
           </span>
-          <span class="trailing-text">{{.Percent}}%</span>
         </a>
       </li>
       {{else}}

@@ -7,30 +7,8 @@ import (
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
-const (
-	filterOpen = "open"
-	filterAll  = "all"
-	filterDone = "done"
-)
-
-func validFilter(f string) bool {
-	return f == filterOpen || f == filterAll || f == filterDone
-}
-
 func finished(status string) bool {
 	return status == domain.StatusCompleted || status == domain.StatusCancelled
-}
-
-func passes(t domain.Task, filter string) bool {
-	switch {
-	case t.IsSeparator():
-		return filter == filterAll
-	case filter == filterOpen:
-		return !finished(t.Status)
-	case filter == filterDone:
-		return finished(t.Status)
-	}
-	return true
 }
 
 type imageView struct {
@@ -45,33 +23,35 @@ type rowView struct {
 	ChildDone  int
 	ChildTotal int
 	Images     []imageView
-	Note       bool
+	Preview    string
 }
 
 func (r rowView) Est() string { return domain.FormatEstimate(r.EstimateMinutes) }
 
 type catView struct {
-	ID         string
-	Name       string
-	ParentName string
-	Sub        bool
-	Done       int
-	Total      int
-	Est        string
-	Folded     bool
-	Rows       []rowView
-	Hidden     int
+	ID            string
+	Name          string
+	ParentName    string
+	Sub           bool
+	Est           string
+	Folded        bool
+	Rows          []rowView
+	Completed     []rowView
+	CompletedOpen bool
 }
 
-func (c catView) Percent() int {
-	if c.Total == 0 {
-		return 0
+// OpenTasks reports whether Rows holds a task, not only separators.
+func (c catView) OpenTasks() bool {
+	for _, r := range c.Rows {
+		if !r.IsSeparator() {
+			return true
+		}
 	}
-	return c.Done * 100 / c.Total
+	return false
 }
 
 type countsView struct {
-	Open, Doing, Done, Total int
+	Open, Doing int
 }
 
 func imagesOf(description string) []imageView {
@@ -84,54 +64,63 @@ func imagesOf(description string) []imageView {
 
 func newRow(t domain.Task) rowView {
 	return rowView{
-		Task:   t,
-		Images: imagesOf(t.Description),
-		Note:   strings.TrimSpace(attachments.Strip(t.Description)) != "",
+		Task:    t,
+		Images:  imagesOf(t.Description),
+		Preview: preview(t.Description),
 	}
 }
 
-// buildRows nests each category's rows, keeping a parent whose subtasks pass the filter.
-func buildRows(cat domain.Category, filter string) ([]rowView, int) {
-	var rows []rowView
-	hidden := 0
+// preview is the description's first two non-blank lines, without its images.
+func preview(description string) string {
+	var lines []string
+	for _, line := range strings.Split(attachments.Strip(description), "\n") {
+		if line = strings.Join(strings.Fields(line), " "); line != "" {
+			lines = append(lines, line)
+		}
+		if len(lines) == 2 {
+			break
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// buildRows nests each category's rows, moving a top-level task to completed once it and its subtasks are all finished.
+func buildRows(cat domain.Category) (open, completed []rowView) {
 	for i := 0; i < len(cat.Tasks); {
 		end := domain.BlockEnd(cat.Tasks, i)
 		row := newRow(cat.Tasks[i])
 		row.ChildDone, row.ChildTotal = cat.ChildProgress(i)
 		for _, child := range cat.Tasks[i+1 : end] {
-			if passes(child, filter) {
-				row.Children = append(row.Children, newRow(child))
-			} else {
-				hidden++
-			}
+			row.Children = append(row.Children, newRow(child))
 		}
-		if passes(row.Task, filter) || len(row.Children) > 0 {
-			rows = append(rows, row)
+		if !row.IsSeparator() && finished(row.Status) && row.ChildDone == row.ChildTotal {
+			completed = append(completed, row)
 		} else {
-			hidden++
+			open = append(open, row)
 		}
 		i = end
 	}
-	return rows, hidden
+	return open, completed
 }
 
-func buildCategories(p *domain.Project, filter string, folded map[string]bool) []catView {
+// completedFold is the fold-cookie key present while a category's Completed fold is open.
+func completedFold(categoryID string) string { return "done-" + categoryID }
+
+func buildCategories(p *domain.Project, folded map[string]bool) []catView {
 	cats := make([]catView, 0, len(p.Categories))
 	for i, c := range p.Categories {
-		counts := p.TreeStatusCounts(i)
 		view := catView{
-			ID:     c.ID,
-			Name:   c.Name,
-			Sub:    c.ParentID != "",
-			Done:   counts.Completed + counts.Cancelled,
-			Total:  counts.Total(),
-			Est:    domain.FormatEstimate(c.EstimateMinutes),
-			Folded: folded[c.ID],
+			ID:            c.ID,
+			Name:          c.Name,
+			Sub:           c.ParentID != "",
+			Est:           domain.FormatEstimate(c.EstimateMinutes),
+			Folded:        folded[c.ID],
+			CompletedOpen: folded[completedFold(c.ID)],
 		}
 		if parent := domain.ParentIndex(p.Categories, i); parent >= 0 {
 			view.ParentName = p.Categories[parent].Name
 		}
-		view.Rows, view.Hidden = buildRows(c, filter)
+		view.Rows, view.Completed = buildRows(c)
 		cats = append(cats, view)
 	}
 	return cats
@@ -139,7 +128,7 @@ func buildCategories(p *domain.Project, filter string, folded map[string]bool) [
 
 func projectCounts(p *domain.Project) countsView {
 	c := p.StatusCounts()
-	return countsView{Open: c.Todo + c.InProgress, Doing: c.InProgress, Done: c.Completed + c.Cancelled, Total: c.Total()}
+	return countsView{Open: c.Todo + c.InProgress, Doing: c.InProgress}
 }
 
 // splitDescription separates the trailing image-only lines from the text, when that split loses nothing.

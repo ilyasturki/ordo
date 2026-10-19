@@ -30,6 +30,13 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The visual delete prompt no longer counts separators as tasks
 - A filter on a category that was then deleted, from the TUI, the CLI or another machine, hid every task until "Clear all". The filter now drops a category that no longer exists
 
+### Changed
+
+- The web app folds finished tasks into a "Completed (n)" row at the bottom of each category, closed until you open it, and remembers it open. A task goes there once it and all its subtasks are done or cancelled; a finished subtask of an open task stays in place, struck through. The Open, Done and All chips are gone, and separators show again
+- The web app no longer shows progress the terminal app lacks: no bar or "N of M done" under a category, no percentage or done count on the projects page. A category keeps its `~` estimate
+- A web row shows the first two lines of its task's details in grey, without the images, instead of a notes icon
+- An empty category on the web reads "No tasks yet", and one whose tasks are all finished "All tasks complete" above its Completed row
+
 ## [0.12.0] - 2026-10-19
 
 ### Added

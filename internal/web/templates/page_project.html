@@ -13,14 +13,8 @@
     <button class="icon-button" type="submit" form="bulk" formaction="/p/{{$pid}}/do/task.delete" aria-label="Delete selected">{{icon "delete"}}</button>
   </header>
 
-  <nav class="filter-bar" aria-label="Filter tasks">
-    <a class="chip filter{{if eq .Filter "open"}} selected{{end}}" href="/p/{{$pid}}?f=open">{{if eq .Filter "open"}}{{icon "check" "small"}}{{end}}Open<span class="chip-count">{{.Counts.Open}}</span></a>
-    <a class="chip filter{{if eq .Filter "done"}} selected{{end}}" href="/p/{{$pid}}?f=done">{{if eq .Filter "done"}}{{icon "check" "small"}}{{end}}Done<span class="chip-count">{{.Counts.Done}}</span></a>
-    <a class="chip filter{{if eq .Filter "all"}} selected{{end}}" href="/p/{{$pid}}?f=all">{{if eq .Filter "all"}}{{icon "check" "small"}}{{end}}All<span class="chip-count">{{.Counts.Total}}</span></a>
-  </nav>
-
-  <main class="content" data-filter="{{.Filter}}">
-    {{range .Cats}}{{template "category" dict "C" . "PID" $pid "Back" $back "Filter" $.Data.Filter}}{{end}}
+  <main class="content">
+    {{range .Cats}}{{template "category" dict "C" . "PID" $pid "Back" $back}}{{end}}
     {{if not .Cats}}<p class="empty page-empty">This project has no categories yet. Add one in the terminal with <kbd>A</kbd>.</p>{{end}}
   </main>
 

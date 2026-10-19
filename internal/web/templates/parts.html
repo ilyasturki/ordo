@@ -4,12 +4,11 @@
 
 {{define "supporting"}}
 {{- $r := . -}}
-{{- if or (and $r.Priority (ne $r.Priority "medium")) $r.EstimateMinutes $r.ChildTotal $r.Note $r.Images -}}
+{{- if or (and $r.Priority (ne $r.Priority "medium")) $r.EstimateMinutes $r.ChildTotal $r.Images -}}
 <span class="supporting">
   {{- if and $r.Priority (ne $r.Priority "medium")}}<span class="meta pri pri-{{$r.Priority}}">{{icon (priorityIcon $r.Priority) "small"}}{{priorityLabel $r.Priority}}</span>{{end -}}
   {{- if $r.EstimateMinutes}}<span class="meta">{{icon "schedule" "small"}}{{$r.Est}}</span>{{end -}}
   {{- if $r.ChildTotal}}<span class="meta">{{icon "subtask" "small"}}{{$r.ChildDone}}/{{$r.ChildTotal}}</span>{{end -}}
-  {{- if $r.Note}}<span class="meta" title="Has details">{{icon "notes" "small"}}</span>{{end -}}
   {{- if $r.Images}}<span class="meta">{{icon "image" "small"}}{{len $r.Images}}</span>{{end -}}
 </span>
 {{- end -}}
@@ -31,6 +30,7 @@
     <span class="select-box" aria-hidden="true">{{icon "check"}}</span>
     <a class="item-body" href="/p/{{.PID}}/t/{{$r.ID}}">
       <span class="headline">{{$r.Title}}</span>
+      {{if $r.Preview}}<span class="preview">{{$r.Preview}}</span>{{end}}
       {{template "supporting" $r}}
     </a>
     {{template "tagmark" $r.TagColor}}
@@ -52,19 +52,25 @@
       <span class="category-text">
         {{if $c.ParentName}}<span class="overline">{{$c.ParentName}}</span>{{end}}
         <span class="category-name">{{$c.Name}}</span>
-        <span class="category-meta">{{if $c.Total}}{{$c.Done}} of {{$c.Total}} done{{else}}No tasks yet{{end}}{{if $c.Est}} · ~{{$c.Est}}{{end}}</span>
+        {{if $c.Est}}<span class="category-meta">~{{$c.Est}}</span>{{end}}
       </span>
       {{icon "expand_more" "fold-icon"}}
     </button>
     <button class="icon-button" type="button" data-add-to="{{$c.ID}}" aria-label="Add a task to {{$c.Name}}">{{icon "add"}}</button>
   </div>
-  {{if $c.Total}}<progress class="linear-progress" max="{{$c.Total}}" value="{{$c.Done}}" aria-label="{{$c.Percent}}% done"></progress>{{end}}
   <div class="category-body" id="rows-{{$c.ID}}">
     <ul class="rows" data-parent="">
       {{- range $c.Rows}}{{template "row" dict "R" . "PID" $.PID "Back" $.Back}}{{end -}}
     </ul>
-    {{if not $c.Rows}}<p class="empty">{{if $c.Hidden}}Nothing {{$.Filter}} here{{else}}Empty{{end}}</p>{{end}}
-    {{if $c.Hidden}}<a class="hidden-note" href="/p/{{$.PID}}?f=all">{{$c.Hidden}} hidden by the filter</a>{{end}}
+    {{if not $c.OpenTasks}}<p class="empty">{{if $c.Completed}}All tasks complete{{else}}No tasks yet{{end}}</p>{{end}}
+    {{- if $c.Completed}}
+    <details class="completed"{{if $c.CompletedOpen}} open{{end}}>
+      <summary class="completed-toggle" data-completed-fold="{{completedFold $c.ID}}">{{icon "expand_more" "fold-icon"}}<span>Completed ({{len $c.Completed}})</span></summary>
+      <ul class="completed-rows">
+        {{- range $c.Completed}}{{template "row" dict "R" . "PID" $.PID "Back" $.Back}}{{end -}}
+      </ul>
+    </details>
+    {{- end}}
   </div>
 </section>
 {{end}}

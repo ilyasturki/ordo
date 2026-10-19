@@ -7,14 +7,16 @@ import { join } from "node:path";
 const [base, cookie, out, ...only] = process.argv.slice(2);
 const P = "/p/0rd0-web-fixture";
 const T = (n) => `${P}/t/aaaaaaaa-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const folded = "cccccccc-0000-4000-8000-000000000024";
+const C = (n) => `cccccccc-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const folded = C(24);
 
-// Each shot: a page, then optional script steps run in the page before the capture.
+// Each shot: a page, then optional script steps run in the page before the capture. fold: the ordo_fold cookie.
 const shots = [
   { name: "projects", path: "/projects" },
-  { name: "project", path: `${P}?f=all` },
-  { name: "project_open", path: `${P}?f=open`, fold: true },
-  { name: "project_scrolled", path: `${P}?f=all`, steps: ["window.scrollTo(0, 700)"] },
+  { name: "project", path: P },
+  { name: "project_folded", path: P, fold: folded },
+  { name: "project_scrolled", path: P, steps: ["window.scrollTo(0, 700)"] },
+  { name: "completed_open", path: P, fold: `done-${C(12)}.done-${C(19)}`, steps: [`document.getElementById('c-${C(12)}').scrollIntoView()`, "window.scrollBy(0, -72)"] },
   { name: "task", path: T(9) },
   { name: "task_parent", path: T(1) },
   { name: "task_child", path: T(3) },
@@ -26,19 +28,19 @@ const shots = [
   { name: "task_move", path: T(3), steps: ["document.querySelector('[data-sheet-open=move-sheet]').click()"] },
   { name: "task_menu", path: T(3), steps: ["document.querySelector('[data-sheet-open=task-menu]').click()"] },
   { name: "task_typing", path: T(1), steps: ["document.querySelector('#new-subtask').focus()"] },
-  { name: "add_sheet", path: `${P}?f=open`, steps: ["document.querySelector('[data-fab]').click()"] },
-  { name: "select", path: `${P}?f=open`, steps: [
+  { name: "add_sheet", path: P, steps: ["document.querySelector('[data-fab]').click()"] },
+  { name: "select", path: P, steps: [
     "document.querySelector('[data-select-start]').click()",
     "document.querySelectorAll('.content .row .item-body')[0].click()",
     "document.querySelectorAll('.content .row .item-body')[4].click()",
   ] },
-  { name: "bulk_sheet", path: `${P}?f=open`, steps: [
+  { name: "bulk_sheet", path: P, steps: [
     "document.querySelector('[data-select-start]').click()",
     "document.querySelectorAll('.content .row .item-body')[0].click()",
     "document.querySelector('[data-sheet-open=bulk-sheet]').click()",
   ] },
-  { name: "drawer", path: `${P}?f=open`, steps: ["document.querySelector('[data-sheet-open=drawer]').click()"] },
-  { name: "snackbar", path: `${P}?f=open`, steps: ["document.querySelector('.status-button').click()"], wait: 900,
+  { name: "drawer", path: P, steps: ["document.querySelector('[data-sheet-open=drawer]').click()"] },
+  { name: "snackbar", path: P, steps: ["document.querySelector('.status-button').click()"], wait: 900,
     after: ["document.querySelector('.snackbar-action').click()"] },
   { name: "devices", path: "/devices" },
   { name: "devices_pair", path: "/devices", steps: ["document.querySelector('form[action=\"/devices/pair\"] button').click()"], wait: 900 },
@@ -94,7 +96,7 @@ for (const scheme of ["light", "dark"]) {
     await send("Emulation.setTouchEmulationEnabled", { enabled: true }, sessionId);
     await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: scheme }] }, sessionId);
     if (!shot.anon) await send("Network.setCookie", { name: "ordo_device", value: cookie, domain: host, path: "/" }, sessionId);
-    if (shot.fold) await send("Network.setCookie", { name: "ordo_fold", value: folded, domain: host, path: "/" }, sessionId);
+    if (shot.fold) await send("Network.setCookie", { name: "ordo_fold", value: shot.fold, domain: host, path: "/" }, sessionId);
     const loaded = until(sessionId, "Page.loadEventFired");
     await send("Page.navigate", { url: base + shot.path }, sessionId);
     await loaded;

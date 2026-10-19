@@ -638,7 +638,7 @@ func TestAttachStoresTheImage(t *testing.T) {
 
 func TestPagesRender(t *testing.T) {
 	f := newFixture(t)
-	for _, path := range []string{"/projects", "/p/" + f.pid, "/p/" + f.pid + "?f=done", "/p/" + f.pid + "/t/" + f.ids["one"], "/devices"} {
+	for _, path := range []string{"/projects", "/p/" + f.pid, "/p/" + f.pid + "/t/" + f.ids["one"], "/devices"} {
 		rec := f.do(http.MethodGet, path, nil, false)
 		if rec.Code != http.StatusOK {
 			t.Errorf("%s: %d", path, rec.Code)
@@ -654,6 +654,122 @@ func TestPagesRender(t *testing.T) {
 	for _, path := range []string{"/login", "/pair/abc", "/manifest.webmanifest", "/static/app.css"} {
 		if rec := f.do(http.MethodGet, path, nil, false); rec.Code != http.StatusOK {
 			t.Errorf("%s: %d", path, rec.Code)
+		}
+	}
+}
+
+func rowNames(rows []rowView) string {
+	var out []string
+	for _, r := range rows {
+		out = append(out, r.Title)
+		for _, c := range r.Children {
+			out = append(out, ">"+c.Title)
+		}
+	}
+	return strings.Join(out, ",")
+}
+
+func TestCompletedTakesOnlyFinishedBlocks(t *testing.T) {
+	p, err := domain.NewProject("Phone")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat, _ := p.AddCategoryUnder("", "Feature")
+	add := func(f operations.TaskFields) string {
+		task, err := operations.CreateTask(&p, cat.ID, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return task.ID
+	}
+	one := add(operations.TaskFields{Title: "one"})
+	sub := add(operations.TaskFields{Title: "sub", ParentID: one})
+	two := add(operations.TaskFields{Title: "two"})
+	add(operations.TaskFields{Kind: domain.KindSeparator, Title: "Later"})
+	three := add(operations.TaskFields{Title: "three"})
+	if _, err := operations.SetStatuses(&p, []string{one, two}, domain.StatusCompleted); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := operations.SetStatuses(&p, []string{three}, domain.StatusCancelled); err != nil {
+		t.Fatal(err)
+	}
+	c := buildCategories(&p, nil)[0]
+	if got := rowNames(c.Rows); got != "one,>sub,Later" {
+		t.Errorf("open rows: %s", got)
+	}
+	if got := rowNames(c.Completed); got != "two,three" {
+		t.Errorf("completed: %s", got)
+	}
+	if !c.OpenTasks() {
+		t.Error("a finished parent with an open subtask counts as open")
+	}
+	if _, err := operations.SetStatuses(&p, []string{sub}, domain.StatusCompleted); err != nil {
+		t.Fatal(err)
+	}
+	c = buildCategories(&p, nil)[0]
+	if got := rowNames(c.Rows); got != "Later" {
+		t.Errorf("open rows once sub is done: %s", got)
+	}
+	if got := rowNames(c.Completed); got != "one,>sub,two,three" {
+		t.Errorf("completed once sub is done: %s", got)
+	}
+	if c.OpenTasks() {
+		t.Error("a lone separator counts as an open task")
+	}
+}
+
+func TestProjectPagesShowNoProgress(t *testing.T) {
+	f := newFixture(t)
+	body := f.do(http.MethodGet, "/p/"+f.pid, nil, false).Body.String()
+	if !strings.Contains(body, "No tasks yet") || strings.Contains(body, "Completed (") {
+		t.Error("an empty category says No tasks yet, with no Completed fold")
+	}
+	f.action("status.set", url.Values{"id": {f.ids["one"], f.ids["two"], f.ids["three"]}, "value": {domain.StatusCompleted}})
+	body = f.do(http.MethodGet, "/p/"+f.pid, nil, false).Body.String()
+	for _, want := range []string{"All tasks complete", "Completed (3)", `<details class="completed">`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("project page lacks %q", want)
+		}
+	}
+	for _, gone := range []string{"<progress", "of 3 done", "hidden by the filter", "?f="} {
+		if strings.Contains(body, gone) {
+			t.Errorf("project page still shows %q", gone)
+		}
+	}
+	body = f.do(http.MethodGet, "/projects", nil, false).Body.String()
+	if !strings.Contains(body, "0 open") || strings.Contains(body, " done") || strings.Contains(body, "%<") {
+		t.Errorf("projects page counts: %s", body[strings.Index(body, "supporting"):][:80])
+	}
+}
+
+func TestCompletedFoldOpensFromTheCookie(t *testing.T) {
+	f := newFixture(t)
+	f.action("status.set", url.Values{"id": {f.ids["one"]}, "value": {domain.StatusCompleted}})
+	if rec := f.do(http.MethodPost, "/fold/"+completedFold(f.cat), nil, true); rec.Code != http.StatusNoContent {
+		t.Fatalf("fold: %d", rec.Code)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/p/"+f.pid, nil)
+	req.AddCookie(&http.Cookie{Name: deviceCookie, Value: f.cookie})
+	req.AddCookie(&http.Cookie{Name: foldCookie, Value: completedFold(f.cat)})
+	rec := httptest.NewRecorder()
+	f.h.ServeHTTP(rec, req)
+	if !strings.Contains(rec.Body.String(), `<details class="completed" open>`) {
+		t.Fatal("the Completed fold stays closed under its cookie key")
+	}
+}
+
+func TestPreviewDropsImagesAndKeepsTwoLines(t *testing.T) {
+	img := "![a](attachments/0123456789abcdef0123456789abcdef.png)"
+	cases := map[string]string{
+		"":                                     "",
+		"one":                                  "one",
+		img + "\n\nfirst  line\nsecond\nthird": "first line\nsecond",
+		"text " + img + " more":                "text more",
+		img:                                    "",
+	}
+	for desc, want := range cases {
+		if got := preview(desc); got != want {
+			t.Errorf("preview(%q) = %q, want %q", desc, got, want)
 		}
 	}
 }

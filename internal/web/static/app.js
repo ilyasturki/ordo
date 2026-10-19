@@ -165,6 +165,7 @@
     sortables = [];
     if (!window.Sortable || root.dataset.page !== "project") return;
     for (const list of $$(".content .rows", root)) {
+      if (list.closest(".completed")) continue;
       sortables.push(Sortable.create(list, {
         group: "rows",
         draggable: ".row, .separator",
@@ -237,6 +238,11 @@
       const folded = section.classList.toggle("folded");
       fold.setAttribute("aria-expanded", folded ? "false" : "true");
       fetch("/fold/" + encodeURIComponent(fold.dataset.fold), { method: "POST", credentials: "same-origin" });
+      return;
+    }
+    const completedFold = t.closest("[data-completed-fold]");
+    if (completedFold) {
+      fetch("/fold/" + encodeURIComponent(completedFold.dataset.completedFold), { method: "POST", credentials: "same-origin" });
       return;
     }
     const add = t.closest("[data-add-to]");

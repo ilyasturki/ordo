@@ -31,7 +31,6 @@ var assets embed.FS
 
 const (
 	deviceCookie = "ordo_device"
-	filterCookie = "ordo_filter"
 	foldCookie   = "ordo_fold"
 	lastCookie   = "ordo_last"
 	cookieAge    = 400 * 24 * time.Hour
@@ -274,7 +273,6 @@ type projectSummary struct {
 	Name    string
 	Initial string
 	Counts  countsView
-	Percent int
 }
 
 func (s *Server) projects(w http.ResponseWriter, r *http.Request) {
@@ -289,11 +287,7 @@ func (s *Server) projects(w http.ResponseWriter, r *http.Request) {
 func summaries(projects []domain.Project) []projectSummary {
 	list := make([]projectSummary, 0, len(projects))
 	for _, p := range projects {
-		c := projectCounts(&p)
-		sum := projectSummary{ID: p.ID, Name: p.Name, Counts: c}
-		if c.Total > 0 {
-			sum.Percent = c.Done * 100 / c.Total
-		}
+		sum := projectSummary{ID: p.ID, Name: p.Name, Counts: projectCounts(&p)}
 		if r := []rune(strings.TrimSpace(p.Name)); len(r) > 0 {
 			sum.Initial = strings.ToUpper(string(r[0]))
 		}
@@ -305,9 +299,7 @@ func summaries(projects []domain.Project) []projectSummary {
 type projectPage struct {
 	P        *domain.Project
 	Projects []projectSummary
-	Filter   string
 	Cats     []catView
-	Counts   countsView
 	Stamp    string
 	Targets  []catOption
 }
@@ -324,17 +316,6 @@ func categoryOptions(p *domain.Project) []catOption {
 		opts[i] = catOption{ID: c.ID, Name: p.CategoryPath(i), Sub: c.ParentID != ""}
 	}
 	return opts
-}
-
-func (s *Server) filterFor(w http.ResponseWriter, r *http.Request) string {
-	if f := r.URL.Query().Get("f"); validFilter(f) {
-		s.setCookie(w, r, filterCookie, f, cookieAge)
-		return f
-	}
-	if c, err := r.Cookie(filterCookie); err == nil && validFilter(c.Value) {
-		return c.Value
-	}
-	return filterOpen
 }
 
 func foldedSet(r *http.Request) map[string]bool {
@@ -356,12 +337,9 @@ func (s *Server) project(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.setCookie(w, r, lastCookie, p.ID, cookieAge)
-	filter := s.filterFor(w, r)
 	view := projectPage{
 		P:       &p,
-		Filter:  filter,
-		Cats:    buildCategories(&p, filter, foldedSet(r)),
-		Counts:  projectCounts(&p),
+		Cats:    buildCategories(&p, foldedSet(r)),
 		Stamp:   s.version(p.ID),
 		Targets: categoryOptions(&p),
 	}
@@ -540,10 +518,11 @@ func (s *Server) funcs() template.FuncMap {
 		"statuses": func() []string {
 			return []string{domain.StatusTodo, domain.StatusInProgress, domain.StatusCompleted, domain.StatusCancelled}
 		},
-		"priorities": func() []string { return append([]string{""}, domain.PriorityOrder...) },
-		"tags":       func() []string { return append([]string{""}, domain.TagColorCycle...) },
-		"presets":    func() []int { return domain.EstimatePresets },
-		"finished":   finished,
+		"priorities":    func() []string { return append([]string{""}, domain.PriorityOrder...) },
+		"tags":          func() []string { return append([]string{""}, domain.TagColorCycle...) },
+		"presets":       func() []int { return domain.EstimatePresets },
+		"finished":      finished,
+		"completedFold": completedFold,
 		"date": func(ts string) string {
 			t, err := time.Parse(time.RFC3339, ts)
 			if err != nil {
