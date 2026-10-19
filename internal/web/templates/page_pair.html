@@ -7,6 +7,10 @@
     <p class="auth-error" role="alert">{{.Error}}</p>
     {{if .HasPass}}<a class="button text" href="/login">Sign in with the passphrase</a>{{end}}
     {{else}}
+    <div class="auth-hint" data-browser-hint hidden>
+      <p>Installed Ordo as an app? Don't pair this browser tab: copy the link, open the app and paste it under Pairing link or code.</p>
+      <button class="button outlined" type="button" data-copy>{{icon "content_copy" "small"}}Copy link</button>
+    </div>
     <p class="auth-text">This device stays signed in to Ordo while you use it. Revoke it any time from Devices.</p>
     <form method="post" action="/pair" hx-boost="false" class="auth-form">
       <input type="hidden" name="token" value="{{.Token}}">

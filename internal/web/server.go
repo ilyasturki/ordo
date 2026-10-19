@@ -126,6 +126,8 @@ func (s *Server) Handler() http.Handler {
 	app.HandleFunc("POST /p/{pid}/undo/{key}", s.undoAction)
 	app.HandleFunc("POST /fold/{cid}", s.fold)
 	app.HandleFunc("GET /devices", s.devices)
+	app.HandleFunc("GET /devices/pair", s.pairCodePage)
+	app.HandleFunc("POST /devices/pair", s.pairCode)
 	app.HandleFunc("POST /devices/{id}/revoke", s.revoke)
 	app.HandleFunc("POST /logout", s.logout)
 	mux.Handle("/", s.requireDevice(app))

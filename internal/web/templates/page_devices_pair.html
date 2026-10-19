@@ -1,0 +1,33 @@
+{{define "content"}}{{with .Data}}
+<div id="app" class="app" data-page="devices-pair">
+  <header class="top-app-bar" data-appbar>
+    <a class="icon-button" href="/devices" aria-label="Back">{{icon "arrow_back"}}</a>
+    <h1 class="top-app-bar-title">Pair a new device</h1>
+  </header>
+  <main class="content pair-code">
+    {{if .Link}}
+    <p class="intro">On the new device, open Ordo, tap Scan code and point the camera here. Or send it the link to paste.</p>
+    <img class="pair-qr" src="{{.QR}}" alt="Pairing code" width="256" height="256">
+    <p class="pair-link" data-pair-link>{{.Link}}</p>
+    <div class="pair-actions">
+      <button class="button tonal" type="button" data-copy="{{.Link}}" hidden>{{icon "content_copy" "small"}}Copy</button>
+      <button class="button tonal" type="button" data-share="{{.Link}}" hidden>{{icon "share" "small"}}Share</button>
+    </div>
+    <p class="intro muted">Expires in {{.Minutes}} minutes and works once. Revoking this device also signs out the one it pairs.</p>
+    <a class="button filled pair-done" href="/devices">Done</a>
+    {{else}}
+    {{if .Error}}<p class="auth-error pair-error" role="alert">{{.Error}}</p>{{end}}
+    <p class="intro">Shows a one-time code that signs another device in. Revoking this device later signs that one out too.</p>
+    <form method="post" action="/devices/pair" hx-boost="false" class="auth-form pair-form">
+      {{if .HasPass}}
+      <label class="text-field outlined">
+        <input type="password" name="passphrase" required autocomplete="current-password" placeholder=" " autofocus>
+        <span class="text-field-label">Passphrase</span>
+      </label>
+      {{end}}
+      <button class="button filled" type="submit">{{icon "qr_code" "small"}}Show pairing code</button>
+    </form>
+    {{end}}
+  </main>
+</div>
+{{end}}{{end}}

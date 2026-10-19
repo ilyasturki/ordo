@@ -95,7 +95,9 @@ ordo serve passphrase                            # optional: sign in without a l
 ordo serve devices                               # the paired devices; ordo serve revoke <id>
 ```
 
-The app speaks plain HTTP, so keep it on loopback behind a TLS reverse proxy. A paired device stays signed in as long as it's used at least once a year. On NixOS, the flake's module runs it as a service:
+The app speaks plain HTTP, so keep it on loopback behind a TLS reverse proxy. A paired device stays signed in as long as it's used at least once a year.
+
+An app installed from the browser has no address bar, so pair it from inside: tap Scan code on its sign-in page and point the camera at the code `ordo serve pair` prints, or at the one Devices → Pair a new device shows on a device already signed in. Without a camera, paste the link under Pairing link or code. Revoking a device also signs out the devices it paired. On NixOS, the flake's module runs it as a service:
 
 ```nix
 imports = [ inputs.ordo.nixosModules.default ];

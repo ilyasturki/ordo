@@ -1,12 +1,16 @@
 package web
 
 import (
+	"encoding/base64"
 	"errors"
+	"html/template"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"rsc.io/qr"
 )
 
 type limiter struct {
@@ -108,10 +112,19 @@ func (s *Server) pairPage(w http.ResponseWriter, r *http.Request) {
 		Data: authPage{Token: r.PathValue("token"), Name: deviceName(r)}})
 }
 
+// pair answers the pair page, or the login page's pairing form when it sends from=login.
 func (s *Server) pair(w http.ResponseWriter, r *http.Request) {
+	failed := func(status int, msg string) {
+		if r.FormValue("from") == "login" {
+			s.render(w, r, status, "login", page{Title: "Sign in", Body: "auth",
+				Data: authPage{Name: deviceName(r), HasPass: s.auth.HasPassphrase(), Error: msg}})
+			return
+		}
+		s.render(w, r, status, "pair", page{Title: "Pair this device", Body: "auth",
+			Data: authPage{Error: msg, HasPass: s.auth.HasPassphrase()}})
+	}
 	if s.limiter.blocked("pair:" + clientIP(r)) {
-		s.render(w, r, http.StatusTooManyRequests, "pair", page{Title: "Pair this device", Body: "auth",
-			Data: authPage{Error: "Too many attempts. Wait a few minutes."}})
+		failed(http.StatusTooManyRequests, "Too many attempts. Wait a few minutes.")
 		return
 	}
 	cookie, err := s.auth.Pair(r.FormValue("token"), deviceName(r))
@@ -119,12 +132,11 @@ func (s *Server) pair(w http.ResponseWriter, r *http.Request) {
 		s.limiter.fail("pair:" + clientIP(r))
 		msg := "Pairing failed"
 		if errors.Is(err, ErrBadPairing) {
-			msg = "This pairing link is used or expired. Run ordo serve pair for a new one."
+			msg = "This pairing code is used or expired. Get a new one from Devices on a signed-in device, or run ordo serve pair."
 		} else {
 			s.log.Printf("pair: %v", err)
 		}
-		s.render(w, r, http.StatusForbidden, "pair", page{Title: "Pair this device", Body: "auth",
-			Data: authPage{Error: msg, HasPass: s.auth.HasPassphrase()}})
+		failed(http.StatusForbidden, msg)
 		return
 	}
 	s.setCookie(w, r, deviceCookie, cookie, cookieAge)
@@ -153,7 +165,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrBadPassphrase):
 			view.Error = "Wrong passphrase"
 		case errors.Is(err, ErrNoPassphrase):
-			view.Error = "No passphrase is set. Pair with ordo serve pair."
+			view.Error = "No passphrase is set. Pair with a code instead."
 		default:
 			s.log.Printf("login: %v", err)
 			view.Error = "Sign-in failed"
@@ -174,13 +186,108 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
+type deviceView struct {
+	Device
+	From string
+	Also string
+}
+
+type devicesPage struct {
+	Devices []deviceView
+	Also    string
+	HasPass bool
+}
+
 func (s *Server) devices(w http.ResponseWriter, r *http.Request) {
 	devs, err := s.auth.Devices()
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	s.render(w, r, http.StatusOK, "devices", page{Title: "Devices", Body: "devices", Data: devs})
+	names := make(map[string]string, len(devs))
+	for _, d := range devs {
+		names[d.ID] = d.Name
+	}
+	view := devicesPage{HasPass: s.auth.HasPassphrase()}
+	for _, d := range devs {
+		var also []string
+		for _, c := range lineage(devs, d.ID)[1:] {
+			also = append(also, c.Name)
+		}
+		v := deviceView{Device: d, From: names[d.PairedBy], Also: strings.Join(also, ", ")}
+		if d.ID == deviceFrom(r).ID {
+			view.Also = v.Also
+		}
+		view.Devices = append(view.Devices, v)
+	}
+	s.render(w, r, http.StatusOK, "devices", page{Title: "Devices", Body: "devices", Data: view})
+}
+
+type pairCodePage struct {
+	HasPass bool
+	Error   string
+	Link    string
+	QR      template.URL
+	Minutes int
+}
+
+func (s *Server) pairCodePage(w http.ResponseWriter, r *http.Request) {
+	s.render(w, r, http.StatusOK, "devices_pair", page{Title: "Pair a new device", Body: "devices",
+		Data: pairCodePage{HasPass: s.auth.HasPassphrase()}})
+}
+
+// pairCode mints a pairing link for another device, once the passphrase is entered again when one is set.
+func (s *Server) pairCode(w http.ResponseWriter, r *http.Request) {
+	view := pairCodePage{HasPass: s.auth.HasPassphrase(), Minutes: int(PairTTL.Minutes())}
+	refuse := func(status int, msg string) {
+		view.Error = msg
+		s.render(w, r, status, "devices_pair", page{Title: "Pair a new device", Body: "devices", Data: view})
+	}
+	if view.HasPass {
+		if s.limiter.blocked("login:"+clientIP(r)) || s.globalLimit.blocked("login") {
+			refuse(http.StatusTooManyRequests, "Too many attempts. Wait a few minutes.")
+			return
+		}
+		if err := s.auth.CheckPassphrase(r.FormValue("passphrase")); err != nil {
+			if !errors.Is(err, ErrBadPassphrase) {
+				s.fail(w, r, err)
+				return
+			}
+			s.limiter.fail("login:" + clientIP(r))
+			s.globalLimit.fail("login")
+			refuse(http.StatusForbidden, "Wrong passphrase")
+			return
+		}
+	}
+	token, err := s.auth.NewPairingBy(deviceFrom(r).ID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	view.Link = s.linkBase(r) + "/pair/" + token
+	code, err := qr.Encode(view.Link, qr.M)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	code.Scale = 8
+	view.QR = template.URL("data:image/png;base64," + base64.StdEncoding.EncodeToString(code.PNG()))
+	s.render(w, r, http.StatusOK, "devices_pair", page{Title: "Pair a new device", Body: "devices", Data: view})
+}
+
+// linkBase is the address a new device opens: the one serve remembers, else the one this browser uses.
+func (s *Server) linkBase(r *http.Request) string {
+	if base := s.auth.BaseURL(); base != "" {
+		return base
+	}
+	if origin := r.Header.Get("Origin"); origin != "" && origin != "null" {
+		return origin
+	}
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
 }
 
 func (s *Server) revoke(w http.ResponseWriter, r *http.Request) {

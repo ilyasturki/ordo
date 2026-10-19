@@ -37,6 +37,8 @@
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
   --font: Roboto, "Roboto Flex", "Google Sans Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Not redefined for dark mode: a camera reads a QR code dark on light. */
+  --paper: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -742,6 +744,16 @@ body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-a
 .badge { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 8px; background: var(--secondary-container); color: var(--on-secondary-container); font-size: 0.6875rem; line-height: 1rem; font-weight: 500; vertical-align: 2px; }
 .intro { margin: 8px 16px 16px; font-size: 0.875rem; line-height: 1.25rem; color: var(--on-surface-variant); }
 .logout { margin: 24px 16px; }
+.logout .intro { margin: 8px 0 0; }
+.pair-new { margin: 16px 16px 0; }
+.pair-code { display: flex; flex-direction: column; align-items: center; }
+.pair-code .intro { align-self: stretch; }
+.pair-qr { width: min(72vw, 288px); height: auto; border-radius: 16px; background: var(--paper); image-rendering: pixelated; }
+.pair-link { margin: 16px 16px 0; font: 400 0.8125rem/1.25rem ui-monospace, "SFMono-Regular", monospace; text-align: center; word-break: break-all; -webkit-user-select: all; user-select: all; color: var(--on-surface-variant); }
+.pair-actions { display: flex; gap: 8px; margin: 12px 16px 8px; }
+.pair-done { margin-top: 8px; }
+.pair-error { margin: 8px 16px; align-self: stretch; }
+.pair-form { margin: 0 16px; align-self: stretch; }
 
 .auth-page { justify-content: center; padding: 24px 16px; }
 .auth-card { width: 100%; max-width: 400px; margin: auto; padding: 32px 24px; border-radius: 28px; background: var(--surface-container-low); display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
@@ -751,6 +763,15 @@ body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-a
 .auth-error { margin: 0; padding: 12px 16px; border-radius: 12px; background: var(--error-container); color: var(--on-error-container); font-size: 0.875rem; }
 .auth-form { display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
 .auth-card .text-field.outlined .text-field-label { background: var(--surface-container-low); }
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 8px 0 0; font-size: 0.875rem; line-height: 1.25rem; color: var(--on-surface-variant); }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; border-top: 1px solid var(--outline-variant); }
+.auth-note { margin: -8px 4px 0; font-size: 0.75rem; line-height: 1rem; color: var(--on-surface-variant); }
+.auth-hint { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 16px; border-radius: 12px; background: var(--secondary-container); color: var(--on-secondary-container); font-size: 0.875rem; line-height: 1.25rem; }
+.auth-hint p { margin: 0; }
+.scan-view { position: relative; width: 100%; max-height: 55dvh; aspect-ratio: 1; border-radius: 16px; overflow: hidden; background: var(--scrim); }
+.scan-view video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.scan-frame { position: absolute; inset: 18%; border: 3px solid var(--paper); border-radius: 16px; box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.35); }
+.scan-status { margin: 0; text-align: center; font-size: 0.875rem; line-height: 1.25rem; color: var(--on-surface-variant); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }

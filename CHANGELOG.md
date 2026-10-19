@@ -7,6 +7,13 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Added
 
 - `l` in the project picker links this directory to the highlighted project and opens it, so the next launch here opens it too. The picker marks the linked project `(linked)`
+- The web app's sign-in page pairs with a code: Scan code reads the QR code with the camera inside the app, and Pairing link or code takes a pasted link or code. Without a camera it says why and offers the paste field
+- Devices → Pair a new device shows a one-time pairing QR code and link on a device already signed in, after the passphrase when one is set. Devices shows which device paired which
+- The sign-in page moves on by itself once the device is paired in another tab, and the pair page opened in a browser tab suggests pasting the link into the installed app instead
+
+### Changed
+
+- Revoking a device, from Devices or `ordo serve revoke`, also signs out the devices it paired, and lists them; `ordo serve devices` shows which device paired each
 
 ### Changed
 

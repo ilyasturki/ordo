@@ -45,7 +45,8 @@ func newServeCmd() *cobra.Command {
 		Short: "Serve the phone web app",
 		Long: "Serve Ordo's web app, made for a phone, over the same project files the terminal app uses.\n\n" +
 			"Listen on loopback (or a unix socket with unix:/path) behind a TLS reverse proxy, then\n" +
-			"pair each device once with `ordo serve pair`. Devices are kept in web.json beside state.json.",
+			"pair each device once with `ordo serve pair`, or from Devices on a device already paired.\n" +
+			"Devices are kept in web.json beside state.json.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			auth, dataDir, err := webAuth()
@@ -260,10 +261,14 @@ func newServeDevicesCmd() *cobra.Command {
 				fmt.Fprintln(cmd.OutOrStdout(), "No paired devices. Pair one with `ordo serve pair`.")
 				return nil
 			}
-			tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-			fmt.Fprintln(tw, "ID\tNAME\tPAIRED\tLAST USED")
+			names := make(map[string]string, len(devs))
 			for _, d := range devs {
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", d.ID, d.Name, d.CreatedAt.Local().Format("2006-01-02"), d.LastSeen.Local().Format("2006-01-02"))
+				names[d.ID] = d.Name
+			}
+			tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+			fmt.Fprintln(tw, "ID\tNAME\tPAIRED\tLAST USED\tPAIRED FROM")
+			for _, d := range devs {
+				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", d.ID, d.Name, d.CreatedAt.Local().Format("2006-01-02"), d.LastSeen.Local().Format("2006-01-02"), names[d.PairedBy])
 			}
 			return tw.Flush()
 		},
@@ -273,21 +278,24 @@ func newServeDevicesCmd() *cobra.Command {
 func newServeRevokeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "revoke <device>",
-		Short: "Sign a paired device out",
+		Short: "Sign a paired device out, with the devices it paired",
 		Args:  exactArgs("device"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			auth, _, err := webAuth()
 			if err != nil {
 				return err
 			}
-			found, err := auth.Revoke(args[0])
+			gone, err := auth.Revoke(args[0])
 			if err != nil {
 				return err
 			}
-			if !found {
+			if len(gone) == 0 {
 				return fmt.Errorf("no device %q: see `ordo serve devices`", args[0])
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "Revoked.")
+			fmt.Fprintf(cmd.OutOrStdout(), "Revoked %s.\n", gone[0].Name)
+			for _, d := range gone[1:] {
+				fmt.Fprintf(cmd.OutOrStdout(), "Also revoked %s (%s), which it paired.\n", d.Name, d.ID)
+			}
 			return nil
 		},
 	}

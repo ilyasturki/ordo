@@ -195,6 +195,144 @@ func TestPairingExpires(t *testing.T) {
 	}
 }
 
+func TestPairTokenTakesALinkOrAPastedCode(t *testing.T) {
+	const token = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	for _, in := range []string{
+		token,
+		" abcdefghijklmnopqrstuvwxyz\n",
+		"ABCDE-FGHIJ-KLMNO-PQRST-UVWXYZ",
+		"abcde fghij klmno pqrst uvwxyz",
+		"https://ordo.example.com/pair/" + token,
+		"http://localhost:7319/pair/" + strings.ToLower(token) + "?utm=x#y",
+		"ordo.example.com/pair/" + token + "/",
+	} {
+		if got := pairToken(in); got != token {
+			t.Errorf("pairToken(%q) = %q", in, got)
+		}
+	}
+}
+
+func TestPastedLinkPairsFromTheLoginPage(t *testing.T) {
+	f := newFixture(t)
+	f.cookie = ""
+	for _, paste := range []func(string) string{
+		func(tok string) string { return "https://elsewhere.example/pair/" + tok },
+		strings.ToLower,
+	} {
+		token, _ := f.auth.NewPairing()
+		rec := f.do(http.MethodPost, "/pair", url.Values{"token": {paste(token)}, "from": {"login"}}, false)
+		if rec.Code != http.StatusSeeOther {
+			t.Fatalf("pair %q: %d", paste(token), rec.Code)
+		}
+	}
+	rec := f.do(http.MethodPost, "/pair", url.Values{"token": {"not a code"}, "from": {"login"}}, false)
+	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "Pairing link or code") {
+		t.Fatalf("a bad code should show the login page again: %d", rec.Code)
+	}
+}
+
+func TestPairingANewDeviceNeedsADevice(t *testing.T) {
+	f := newFixture(t)
+	f.cookie = ""
+	if rec := f.do(http.MethodPost, "/devices/pair", url.Values{}, false); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous mint: %d", rec.Code)
+	}
+}
+
+func mintedToken(t *testing.T, rec *httptest.ResponseRecorder) string {
+	t.Helper()
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `src="data:image/png;base64,`) {
+		t.Fatalf("mint: %d, no QR", rec.Code)
+	}
+	_, after, ok := strings.Cut(body, "/pair/")
+	if !ok {
+		t.Fatal("mint: no link")
+	}
+	return after[:strings.IndexAny(after, `"<`)]
+}
+
+func TestADeviceMintsOneLiveCodeThatRecordsWhoPaired(t *testing.T) {
+	f := newFixture(t)
+	minter, _, _ := strings.Cut(f.cookie, ".")
+	first := mintedToken(t, f.do(http.MethodPost, "/devices/pair", url.Values{}, false))
+	second := mintedToken(t, f.do(http.MethodPost, "/devices/pair", url.Values{}, false))
+	if _, err := f.auth.Pair(first, "stale"); err != ErrBadPairing {
+		t.Fatalf("a second code should replace the first: %v", err)
+	}
+	if _, err := f.auth.Pair(second, "Laptop"); err != nil {
+		t.Fatal(err)
+	}
+	devs, _ := f.auth.Devices()
+	if len(devs) != 2 || devs[1].PairedBy != minter {
+		t.Fatalf("devices = %+v", devs)
+	}
+	if body := f.do(http.MethodGet, "/devices", nil, false).Body.String(); !strings.Contains(body, "Paired from test") || !strings.Contains(body, "also signs out Laptop") {
+		t.Fatal("devices page hides who paired whom")
+	}
+}
+
+func TestPairingANewDeviceAsksThePassphrase(t *testing.T) {
+	f := newFixture(t)
+	if err := f.auth.SetPassphrase("correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	if rec := f.do(http.MethodPost, "/devices/pair", url.Values{}, false); rec.Code != http.StatusForbidden {
+		t.Fatalf("no passphrase: %d", rec.Code)
+	}
+	mintedToken(t, f.do(http.MethodPost, "/devices/pair", url.Values{"passphrase": {"correct horse battery"}}, false))
+	for i := 0; i < 4; i++ {
+		f.do(http.MethodPost, "/devices/pair", url.Values{"passphrase": {"nope"}}, false)
+	}
+	if rec := f.do(http.MethodPost, "/devices/pair", url.Values{"passphrase": {"correct horse battery"}}, false); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("after five failures: %d", rec.Code)
+	}
+	f.cookie = ""
+	if rec := f.do(http.MethodPost, "/login", url.Values{"passphrase": {"correct horse battery"}}, false); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("login after five mint failures: %d", rec.Code)
+	}
+}
+
+func TestRevokingADeviceRevokesTheDevicesItPaired(t *testing.T) {
+	f := newFixture(t)
+	root, _, _ := strings.Cut(f.cookie, ".")
+	pairFrom := func(by, name string) string {
+		token, err := f.auth.NewPairingBy(by)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cookie, err := f.auth.Pair(token, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		id, _, _ := strings.Cut(cookie, ".")
+		return id
+	}
+	child := pairFrom(root, "child")
+	grandchild := pairFrom(child, "grandchild")
+	pending, _ := f.auth.NewPairingBy(grandchild)
+	other := pairFrom("", "other")
+
+	gone, err := f.auth.Revoke(child)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(gone) != 2 || gone[0].ID != child || gone[1].ID != grandchild {
+		t.Fatalf("revoked %+v", gone)
+	}
+	devs, _ := f.auth.Devices()
+	var left []string
+	for _, d := range devs {
+		left = append(left, d.ID)
+	}
+	if strings.Join(left, ",") != root+","+other {
+		t.Fatalf("left %v", left)
+	}
+	if _, err := f.auth.Pair(pending, "late"); err != ErrBadPairing {
+		t.Fatalf("a revoked device's code still pairs: %v", err)
+	}
+}
+
 func TestPassphraseSignsInAndLimitsGuesses(t *testing.T) {
 	f := newFixture(t)
 	if err := f.auth.SetPassphrase("correct horse battery"); err != nil {
@@ -217,8 +355,8 @@ func TestPassphraseSignsInAndLimitsGuesses(t *testing.T) {
 func TestRevokedDeviceIsSignedOut(t *testing.T) {
 	f := newFixture(t)
 	id, _, _ := strings.Cut(f.cookie, ".")
-	if ok, err := f.auth.Revoke(id); !ok || err != nil {
-		t.Fatalf("revoke: %v %v", ok, err)
+	if gone, err := f.auth.Revoke(id); len(gone) != 1 || err != nil {
+		t.Fatalf("revoke: %v %v", gone, err)
 	}
 	if rec := f.do(http.MethodGet, "/p/"+f.pid, nil, false); rec.Code != http.StatusSeeOther {
 		t.Fatalf("revoked: %d", rec.Code)

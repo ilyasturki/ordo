@@ -7,12 +7,14 @@
   <main class="content">
     <p class="intro">Each device below stays signed in while it's used at least once a year.</p>
     <ul class="list card-list">
-      {{range .Data}}
+      {{range .Data.Devices}}
       <li class="list-item device-item">
         <span class="leading-icon">{{icon "smartphone"}}</span>
         <span class="item-body">
           <span class="headline">{{.Name}}{{if eq .ID $.Device.ID}} <span class="badge">This device</span>{{end}}</span>
           <span class="supporting">Paired {{day .CreatedAt}} · last used {{day .LastSeen}}</span>
+          {{with .From}}<span class="supporting">Paired from {{.}}</span>{{end}}
+          {{with .Also}}<span class="supporting">Revoking it also signs out {{.}}</span>{{end}}
         </span>
         <form method="post" action="/devices/{{.ID}}/revoke">
           <button class="button text danger" type="submit">Revoke</button>
@@ -20,9 +22,19 @@
       </li>
       {{end}}
     </ul>
-    <p class="intro muted">To add a device, run <kbd>ordo serve pair</kbd> on the server.</p>
+    <div class="pair-new">
+      {{if .Data.HasPass}}
+      <a class="button tonal" href="/devices/pair">{{icon "qr_code" "small"}}Pair a new device</a>
+      {{else}}
+      <form method="post" action="/devices/pair" hx-boost="false">
+        <button class="button tonal" type="submit">{{icon "qr_code" "small"}}Pair a new device</button>
+      </form>
+      {{end}}
+    </div>
+    <p class="intro muted">Or run <kbd>ordo serve pair</kbd> on the server.</p>
     <form method="post" action="/logout" class="logout">
       <button class="button outlined" type="submit">{{icon "logout" "small"}}Sign out of this device</button>
+      {{with .Data.Also}}<p class="intro muted">Signing out also signs out {{.}}, paired from this device.</p>{{end}}
     </form>
   </main>
 </div>

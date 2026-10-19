@@ -424,9 +424,202 @@
     if (sheet && e.detail.target && e.detail.target.id === "app") sheet.close();
   });
 
+  // scannedToken returns the pairing token a scanned code carries, or "" for any other text.
+  function scannedToken(text) {
+    let s = text.trim();
+    let url = null;
+    try { url = new URL(s); } catch { }
+    if (url) {
+      const m = url.pathname.match(/^\/pair\/([^/]+)$/);
+      if (!m) return "";
+      s = m[1];
+    }
+    s = s.replace(/[\s-]/g, "").toUpperCase();
+    return /^[A-Z2-7]{26,}$/.test(s) ? s : "";
+  }
+
+  let scanning = null;
+  let jsQRLoad = null;
+
+  function stopScan() {
+    if (!scanning) return;
+    scanning.stopped = true;
+    clearTimeout(scanning.timer);
+    if (scanning.stream) for (const track of scanning.stream.getTracks()) track.stop();
+    const video = $("#scan-sheet video");
+    if (video) video.srcObject = null;
+    scanning = null;
+  }
+
+  function scanFailed(msg) {
+    stopScan();
+    const sheet = $("#scan-sheet");
+    if (sheet && sheet.open) sheet.close();
+    const note = $("[data-scan-note]");
+    if (note) {
+      note.textContent = msg;
+      note.hidden = false;
+    }
+    const field = $("[data-pair-token]");
+    if (field) field.focus();
+  }
+
+  function cameraError(err) {
+    switch (err && err.name) {
+      case "NotAllowedError":
+      case "SecurityError":
+        return "Camera access is blocked. Allow it in the browser's site settings, or paste the pairing link or code.";
+      case "NotFoundError":
+      case "OverconstrainedError":
+        return "No camera found. Paste the pairing link or code instead.";
+      case "NotReadableError":
+        return "Another app is using the camera. Paste the pairing link or code instead.";
+      default:
+        return "The camera didn't start. Paste the pairing link or code instead.";
+    }
+  }
+
+  // qrDecoder resolves to a function reading a QR code off a video frame, "" when there is none.
+  async function qrDecoder(sheet) {
+    if ("BarcodeDetector" in window) {
+      try {
+        if ((await BarcodeDetector.getSupportedFormats()).includes("qr_code")) {
+          const detector = new BarcodeDetector({ formats: ["qr_code"] });
+          return async (video) => {
+            const codes = await detector.detect(video);
+            return codes.length ? codes[0].rawValue : "";
+          };
+        }
+      } catch { }
+    }
+    jsQRLoad = jsQRLoad || new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = sheet.dataset.decoder;
+      script.onload = resolve;
+      script.onerror = () => { jsQRLoad = null; reject(new Error("jsQR")); };
+      document.head.append(script);
+    });
+    await jsQRLoad;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    return async (video) => {
+      const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
+      const w = Math.round(video.videoWidth * scale);
+      const h = Math.round(video.videoHeight * scale);
+      if (!w || !h) return "";
+      canvas.width = w;
+      canvas.height = h;
+      ctx.drawImage(video, 0, 0, w, h);
+      const code = jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: "dontInvert" });
+      return code ? code.data : "";
+    };
+  }
+
+  async function startScan() {
+    const sheet = $("#scan-sheet");
+    const form = $("[data-pair-form]");
+    if (!sheet || !form) return;
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      scanFailed("The camera needs a secure (https) connection. Paste the pairing link or code instead.");
+      return;
+    }
+    stopScan();
+    const run = { stopped: false };
+    scanning = run;
+    const note = $("[data-scan-note]");
+    if (note) note.hidden = true;
+    const status = $("[data-scan-status]", sheet);
+    status.textContent = "Starting the camera…";
+    sheet.showModal();
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    } catch (err) {
+      if (!run.stopped) scanFailed(cameraError(err));
+      return;
+    }
+    if (run.stopped) {
+      for (const track of stream.getTracks()) track.stop();
+      return;
+    }
+    run.stream = stream;
+    const video = $("video", sheet);
+    video.srcObject = stream;
+    video.play().catch(() => { });
+    let decode;
+    try {
+      decode = await qrDecoder(sheet);
+    } catch {
+      if (!run.stopped) scanFailed("The scanner didn't load. Paste the pairing link or code instead.");
+      return;
+    }
+    if (run.stopped) return;
+    status.textContent = "Point the camera at the pairing code";
+    const tick = async () => {
+      let text = "";
+      if (video.readyState >= 2) {
+        try { text = await decode(video); } catch { }
+      }
+      if (run.stopped) return;
+      const token = text && scannedToken(text);
+      if (token) {
+        stopScan();
+        sheet.close();
+        $("[data-pair-token]", form).value = token;
+        form.requestSubmit();
+        return;
+      }
+      if (text) status.textContent = "That's not an Ordo pairing code";
+      run.timer = setTimeout(tick, 120);
+    };
+    tick();
+  }
+
+  function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => snack("Link copied"), () => snack("Couldn't copy. Select the link instead."));
+  }
+
+  // signedInElsewhere leaves the login page once a device cookie arrived from another tab or the browser.
+  function signedInElsewhere() {
+    fetch("/projects", { credentials: "same-origin", redirect: "manual" })
+      .then((res) => { if (res.ok) location.assign("/"); }, () => { });
+  }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t.closest("[data-scan]")) startScan();
+    const copy = t.closest("[data-copy]");
+    if (copy) copyText(copy.dataset.copy || location.href);
+    const share = t.closest("[data-share]");
+    if (share) navigator.share({ title: "Pair with Ordo", url: share.dataset.share }).catch(() => { });
+  });
+  document.addEventListener("close", (e) => { if (e.target.id === "scan-sheet") stopScan(); }, true);
+  window.addEventListener("pagehide", stopScan);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      const sheet = $("#scan-sheet");
+      if (sheet && sheet.open) sheet.close();
+    } else if (app() && app().matches("[data-login]")) {
+      signedInElsewhere();
+    }
+  });
+  document.addEventListener("submit", (e) => {
+    const name = $("[data-device-name]");
+    if (name && e.target.matches("[data-pair-form]")) e.target.elements.name.value = name.value;
+  });
+
+  function setupPairing(root) {
+    for (const b of $$("[data-scan]", root)) b.hidden = false;
+    for (const b of $$("[data-copy]", root)) b.hidden = !(navigator.clipboard && navigator.clipboard.writeText);
+    for (const b of $$("[data-share]", root)) b.hidden = !navigator.share;
+    const hint = $("[data-browser-hint]", root);
+    if (hint) hint.hidden = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  }
+
   function init(root) {
     if (!root) return;
     updateBars();
+    setupPairing(root);
     for (const t of $$("[data-autogrow]", root)) grow(t);
     for (const f of $$("[data-autosave]", root)) {
       const field = $("textarea", f);

@@ -1,5 +1,5 @@
 {{define "content"}}{{with .Data}}
-<div id="app" class="app auth-page" data-page="auth">
+<div id="app" class="app auth-page" data-page="auth" data-login>
   <main class="auth-card">
     <img class="auth-icon" src="{{asset "icon.svg"}}" alt="" width="56" height="56">
     <h1 class="auth-title">Sign in to Ordo</h1>
@@ -11,15 +11,47 @@
         <span class="text-field-label">Passphrase</span>
       </label>
       <label class="text-field outlined">
-        <input name="name" value="{{.Name}}" placeholder=" " maxlength="60" autocomplete="off">
+        <input name="name" value="{{.Name}}" placeholder=" " maxlength="60" autocomplete="off" data-device-name>
         <span class="text-field-label">Device name</span>
       </label>
       <button class="button filled wide" type="submit">Sign in</button>
     </form>
-    <p class="auth-text muted">Or pair with a link: run <kbd>ordo serve pair</kbd> on the server and scan the code.</p>
+    <p class="auth-divider"><span>or pair with a code</span></p>
     {{else}}
-    <p class="auth-text">Run <kbd>ordo serve pair</kbd> where Ordo runs, then scan the code or open the link it prints.</p>
+    <p class="auth-text">Pair with a code from Devices on a signed-in device, or from <kbd>ordo serve pair</kbd> where Ordo runs.</p>
     {{end}}
+    <form method="post" action="/pair" hx-boost="false" class="auth-form" data-pair-form>
+      <input type="hidden" name="from" value="login">
+      {{if .HasPass}}
+      <input type="hidden" name="name" value="{{.Name}}">
+      {{else}}
+      <label class="text-field outlined">
+        <input name="name" value="{{.Name}}" placeholder=" " maxlength="60" autocomplete="off">
+        <span class="text-field-label">Device name</span>
+      </label>
+      {{end}}
+      <button class="button tonal wide" type="button" data-scan hidden>{{icon "qr_code_scanner" "small"}}Scan code</button>
+      <label class="text-field outlined">
+        <input name="token" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder=" " data-pair-token>
+        <span class="text-field-label">Pairing link or code</span>
+      </label>
+      <p class="auth-note" role="status" data-scan-note hidden></p>
+      <button class="button {{if .HasPass}}outlined{{else}}filled{{end}} wide" type="submit">Pair</button>
+    </form>
   </main>
+  <dialog class="sheet scan-sheet" id="scan-sheet" aria-labelledby="scan-title" data-decoder="{{asset "jsQR.min.js"}}">
+    <div class="sheet-body">
+      <span class="drag-handle" aria-hidden="true"></span>
+      <h2 class="sheet-title" id="scan-title">Scan the pairing code</h2>
+      <div class="scan-view">
+        <video muted playsinline autoplay></video>
+        <span class="scan-frame" aria-hidden="true"></span>
+      </div>
+      <p class="scan-status" role="status" data-scan-status>Starting the camera…</p>
+      <div class="sheet-actions">
+        <button class="button text" type="button" data-sheet-close>Cancel</button>
+      </div>
+    </div>
+  </dialog>
 </div>
 {{end}}{{end}}

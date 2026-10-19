@@ -37,11 +37,13 @@ type Device struct {
 	TokenHash string    `json:"token_hash"`
 	CreatedAt time.Time `json:"created_at"`
 	LastSeen  time.Time `json:"last_seen"`
+	PairedBy  string    `json:"paired_by,omitempty"`
 }
 
 type pairing struct {
 	TokenHash string    `json:"token_hash"`
 	ExpiresAt time.Time `json:"expires_at"`
+	By        string    `json:"by,omitempty"`
 }
 
 type passphrase struct {
@@ -119,57 +121,94 @@ func (a *Auth) update(fn func(*authFile) (bool, error)) error {
 
 // NewPairing mints a one-time token that pairs one device within PairTTL.
 func (a *Auth) NewPairing() (string, error) {
+	return a.NewPairingBy("")
+}
+
+// NewPairingBy mints a token on behalf of device by, replacing the one it minted before.
+func (a *Auth) NewPairingBy(by string) (string, error) {
 	token := rand.Text()
 	err := a.update(func(f *authFile) (bool, error) {
-		f.Pairings = append(f.Pairings, pairing{TokenHash: hashToken(token), ExpiresAt: a.now().Add(PairTTL)})
+		if by != "" {
+			f.Pairings = slices.DeleteFunc(f.Pairings, func(p pairing) bool { return p.By == by })
+		}
+		f.Pairings = append(f.Pairings, pairing{TokenHash: hashToken(token), ExpiresAt: a.now().Add(PairTTL), By: by})
 		return true, nil
 	})
 	return token, err
 }
 
-// Pair spends a pairing token on a new device and returns its cookie value.
+// pairToken reduces a pasted pairing link or code to the token it carries.
+func pairToken(s string) string {
+	s = strings.Join(strings.Fields(s), "")
+	if _, rest, ok := strings.Cut(s, "/pair/"); ok {
+		s = rest
+		if i := strings.IndexAny(s, "/?#"); i >= 0 {
+			s = s[:i]
+		}
+	}
+	return strings.ToUpper(strings.ReplaceAll(s, "-", ""))
+}
+
+// Pair spends a pairing token, or a link carrying one, on a new device and returns its cookie value.
 func (a *Auth) Pair(token, name string) (string, error) {
 	var cookie string
 	err := a.update(func(f *authFile) (bool, error) {
-		h := hashToken(strings.TrimSpace(token))
+		h := hashToken(pairToken(token))
 		i := slices.IndexFunc(f.Pairings, func(p pairing) bool {
 			return subtle.ConstantTimeCompare([]byte(p.TokenHash), []byte(h)) == 1
 		})
 		if i < 0 {
 			return false, ErrBadPairing
 		}
+		by := f.Pairings[i].By
 		f.Pairings = slices.Delete(f.Pairings, i, i+1)
-		cookie = a.addDevice(f, name)
+		cookie = a.addDevice(f, name, by)
 		return true, nil
 	})
 	return cookie, err
+}
+
+func checkPassphrase(f *authFile, phrase string) error {
+	if f.Passphrase == nil {
+		return ErrNoPassphrase
+	}
+	salt, _ := hex.DecodeString(f.Passphrase.Salt)
+	key, err := pbkdf2.Key(sha256.New, phrase, salt, pbkdf2Rounds, 32)
+	if err != nil {
+		return err
+	}
+	if subtle.ConstantTimeCompare([]byte(hex.EncodeToString(key)), []byte(f.Passphrase.Hash)) != 1 {
+		return ErrBadPassphrase
+	}
+	return nil
+}
+
+// CheckPassphrase verifies the passphrase without pairing anything.
+func (a *Auth) CheckPassphrase(phrase string) error {
+	f, err := a.read()
+	if err != nil {
+		return err
+	}
+	return checkPassphrase(&f, phrase)
 }
 
 // Login checks the passphrase and pairs a new device on a match.
 func (a *Auth) Login(phrase, name string) (string, error) {
 	var cookie string
 	err := a.update(func(f *authFile) (bool, error) {
-		if f.Passphrase == nil {
-			return false, ErrNoPassphrase
-		}
-		salt, _ := hex.DecodeString(f.Passphrase.Salt)
-		key, err := pbkdf2.Key(sha256.New, phrase, salt, pbkdf2Rounds, 32)
-		if err != nil {
+		if err := checkPassphrase(f, phrase); err != nil {
 			return false, err
 		}
-		if subtle.ConstantTimeCompare([]byte(hex.EncodeToString(key)), []byte(f.Passphrase.Hash)) != 1 {
-			return false, ErrBadPassphrase
-		}
-		cookie = a.addDevice(f, name)
+		cookie = a.addDevice(f, name, "")
 		return true, nil
 	})
 	return cookie, err
 }
 
-func (a *Auth) addDevice(f *authFile, name string) string {
+func (a *Auth) addDevice(f *authFile, name, pairedBy string) string {
 	id, token := rand.Text()[:10], rand.Text()
 	now := a.now()
-	f.Devices = append(f.Devices, Device{ID: id, Name: name, TokenHash: hashToken(token), CreatedAt: now, LastSeen: now})
+	f.Devices = append(f.Devices, Device{ID: id, Name: name, TokenHash: hashToken(token), CreatedAt: now, LastSeen: now, PairedBy: pairedBy})
 	return id + "." + token
 }
 
@@ -212,15 +251,42 @@ func (a *Auth) Devices() ([]Device, error) {
 	return f.Devices, err
 }
 
-func (a *Auth) Revoke(id string) (bool, error) {
-	found := false
+// Revoke signs out a device and every device it paired, theirs included, and returns them all.
+func (a *Auth) Revoke(id string) ([]Device, error) {
+	var gone []Device
 	err := a.update(func(f *authFile) (bool, error) {
-		n := len(f.Devices)
-		f.Devices = slices.DeleteFunc(f.Devices, func(d Device) bool { return d.ID == id })
-		found = len(f.Devices) != n
-		return found, nil
+		gone = lineage(f.Devices, id)
+		if len(gone) == 0 {
+			return false, nil
+		}
+		ids := make(map[string]bool, len(gone))
+		for _, d := range gone {
+			ids[d.ID] = true
+		}
+		f.Devices = slices.DeleteFunc(f.Devices, func(d Device) bool { return ids[d.ID] })
+		f.Pairings = slices.DeleteFunc(f.Pairings, func(p pairing) bool { return ids[p.By] })
+		return true, nil
 	})
-	return found, err
+	return gone, err
+}
+
+// lineage lists device id first, then the devices it paired, transitively; nil when id is unknown.
+func lineage(devs []Device, id string) []Device {
+	i := slices.IndexFunc(devs, func(d Device) bool { return d.ID == id })
+	if i < 0 {
+		return nil
+	}
+	out := []Device{devs[i]}
+	seen := map[string]bool{id: true}
+	for j := 0; j < len(out); j++ {
+		for _, d := range devs {
+			if d.PairedBy == out[j].ID && !seen[d.ID] {
+				seen[d.ID] = true
+				out = append(out, d)
+			}
+		}
+	}
+	return out
 }
 
 func (a *Auth) SetPassphrase(phrase string) error {

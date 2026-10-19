@@ -41,7 +41,9 @@ const shots = [
   { name: "snackbar", path: `${P}?f=open`, steps: ["document.querySelector('.status-button').click()"], wait: 900,
     after: ["document.querySelector('.snackbar-action').click()"] },
   { name: "devices", path: "/devices" },
+  { name: "devices_pair", path: "/devices", steps: ["document.querySelector('form[action=\"/devices/pair\"] button').click()"], wait: 900 },
   { name: "login", path: "/login", anon: true },
+  { name: "scan_nocamera", path: "/login", anon: true, steps: ["document.querySelector('[data-scan]').click()"], wait: 900 },
   { name: "pair", path: "/pair/sample-token", anon: true },
 ];
 
