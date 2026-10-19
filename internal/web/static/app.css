@@ -847,6 +847,7 @@ body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-a
   box-shadow: var(--shadow-3);
 }
 .menu[open] { animation: menu-in 150ms var(--ease-out); transform-origin: top right; }
+.menu.closing { opacity: 0; transition: opacity 100ms linear; }
 .menu::backdrop { background: transparent; }
 .menu:focus-visible { outline: none; }
 @keyframes menu-in { from { opacity: 0; transform: scale(0.9); } }

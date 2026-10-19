@@ -434,9 +434,9 @@
     syncSelection();
   }
 
-  const slideOf = (d) => d.getAnimations().find((a) => a.transitionProperty === "transform");
+  const exitOf = (d) => d.getAnimations().find((a) => a.transitionProperty === "transform" || a.transitionProperty === "opacity");
 
-  // A closed dialog leaves the top layer at once and Firefox has no `overlay` to keep it there, so it slides out while still open.
+  // A closed dialog leaves the top layer at once and Firefox has no `overlay` to keep it there, so it animates out while still open.
   function dismiss(d) {
     if (!d || !d.open) return 0;
     if (!d.classList.contains("closing")) {
@@ -449,16 +449,16 @@
         d.classList.remove("closing");
         d.close();
       };
-      const slide = slideOf(d);
-      if (!slide) {
+      const exit = exitOf(d);
+      if (!exit) {
         done();
         return 0;
       }
-      slide.finished.then(done, done);
+      exit.finished.then(done, done);
       setTimeout(done, 400);
     }
-    const slide = slideOf(d);
-    return slide ? Math.max(0, slide.effect.getComputedTiming().endTime - (slide.currentTime || 0)) : 0;
+    const exit = exitOf(d);
+    return exit ? Math.max(0, exit.effect.getComputedTiming().endTime - (exit.currentTime || 0)) : 0;
   }
 
   document.addEventListener("cancel", (e) => {
@@ -1174,14 +1174,16 @@
   function scanFailed(msg) {
     stopScan();
     const sheet = $("#scan-sheet");
-    if (sheet && sheet.open) sheet.close();
+    dismiss(sheet);
     const note = $("[data-scan-note]");
     if (note) {
       note.textContent = msg;
       note.hidden = false;
     }
     const field = $("[data-pair-token]");
-    if (field) field.focus();
+    if (!field) return;
+    if (sheet && sheet.open) sheet.addEventListener("close", () => field.focus(), { once: true });
+    else field.focus();
   }
 
   function cameraError(err) {
@@ -1284,7 +1286,7 @@
       const token = text && scannedToken(text);
       if (token) {
         stopScan();
-        sheet.close();
+        dismiss(sheet);
         $("[data-pair-token]", form).value = token;
         form.requestSubmit();
         return;
