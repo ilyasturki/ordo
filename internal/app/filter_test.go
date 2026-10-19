@@ -124,6 +124,19 @@ func TestHiddenRowRefusesRowActions(t *testing.T) {
 	}
 }
 
+func TestTerminalPasteRefusesTheHiddenRow(t *testing.T) {
+	m := onHiddenRow(t)
+	before := cloneProject(m.project)
+
+	next, cmd := m.Update(tea.PasteMsg{Content: "one\ntwo"})
+	m2 := next.(model)
+
+	assert.Nil(t, cmd)
+	assert.Equal(t, before, m2.project)
+	assert.True(t, m2.ui.Modes.IsNormal(), "no paste chooser opens")
+	assert.Equal(t, "Paste onto a task or a category", m2.ui.Screen.StatusMsg)
+}
+
 func TestEveryBindingSurvivesTheHiddenRow(t *testing.T) {
 	for _, b := range normalBindings {
 		name := fmt.Sprintf("%c%s", max(b.prefix, ' '), b.keys[0])

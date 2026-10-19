@@ -497,6 +497,10 @@ func (m *model) handlePaste(text string) tea.Cmd {
 	var cmd tea.Cmd
 	switch m.ui.Modes.Current() {
 	case modes.ModeNormal:
+		if m.onHiddenRow() {
+			m.ui.Screen.StatusMsg = "Paste onto a task or a category"
+			return nil
+		}
 		cmd = m.pasteTextOrImages(text, false)
 	case modes.ModeEdit:
 		m.pasteIntoEditor(text)
