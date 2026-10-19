@@ -333,6 +333,24 @@ func TestRevokingADeviceRevokesTheDevicesItPaired(t *testing.T) {
 	}
 }
 
+func TestRevokingTheDeviceThatPairedThisOneSignsItOut(t *testing.T) {
+	f := newFixture(t)
+	root, _, _ := strings.Cut(f.cookie, ".")
+	token, _ := f.auth.NewPairingBy(root)
+	cookie, err := f.auth.Pair(token, "child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.cookie = cookie
+	rec := f.do(http.MethodPost, "/devices/"+root+"/revoke", url.Values{}, false)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/login" {
+		t.Fatalf("revoke parent: %d %q", rec.Code, rec.Header().Get("Location"))
+	}
+	if !strings.Contains(rec.Header().Get("Set-Cookie"), "Max-Age=0") {
+		t.Fatalf("cookie kept: %q", rec.Header().Get("Set-Cookie"))
+	}
+}
+
 func TestPassphraseSignsInAndLimitsGuesses(t *testing.T) {
 	f := newFixture(t)
 	if err := f.auth.SetPassphrase("correct horse battery"); err != nil {

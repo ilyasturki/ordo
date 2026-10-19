@@ -183,7 +183,6 @@ func checkPassphrase(f *authFile, phrase string) error {
 	return nil
 }
 
-// CheckPassphrase verifies the passphrase without pairing anything.
 func (a *Auth) CheckPassphrase(phrase string) error {
 	f, err := a.read()
 	if err != nil {

@@ -430,7 +430,7 @@
     let url = null;
     try { url = new URL(s); } catch { }
     if (url) {
-      const m = url.pathname.match(/^\/pair\/([^/]+)$/);
+      const m = url.pathname.match(/\/pair\/([^/]+)\/?$/);
       if (!m) return "";
       s = m[1];
     }
@@ -533,7 +533,7 @@
     sheet.showModal();
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
     } catch (err) {
       if (!run.stopped) scanFailed(cameraError(err));
       return;
@@ -581,7 +581,7 @@
 
   // signedInElsewhere leaves the login page once a device cookie arrived from another tab or the browser.
   function signedInElsewhere() {
-    fetch("/projects", { credentials: "same-origin", redirect: "manual" })
+    fetch("/projects", { redirect: "manual" })
       .then((res) => { if (res.ok) location.assign("/"); }, () => { });
   }
 

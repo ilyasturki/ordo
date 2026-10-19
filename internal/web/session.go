@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -275,13 +276,10 @@ func (s *Server) pairCode(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, "devices_pair", page{Title: "Pair a new device", Body: "devices", Data: view})
 }
 
-// linkBase is the address a new device opens: the one serve remembers, else the one this browser uses.
+// linkBase is the address a new device opens: the one serve remembers, else the one this request reached.
 func (s *Server) linkBase(r *http.Request) string {
 	if base := s.auth.BaseURL(); base != "" {
 		return base
-	}
-	if origin := r.Header.Get("Origin"); origin != "" && origin != "null" {
-		return origin
 	}
 	scheme := "http"
 	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
@@ -291,12 +289,13 @@ func (s *Server) linkBase(r *http.Request) string {
 }
 
 func (s *Server) revoke(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if _, err := s.auth.Revoke(id); err != nil {
+	gone, err := s.auth.Revoke(r.PathValue("id"))
+	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	if id == deviceFrom(r).ID {
+	self := deviceFrom(r).ID
+	if slices.ContainsFunc(gone, func(d Device) bool { return d.ID == self }) {
 		s.setCookie(w, r, deviceCookie, "", -time.Second)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
