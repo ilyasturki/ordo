@@ -86,7 +86,7 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 
 ## On the phone
 
-`ordo serve` runs a web app made for a phone, over the same project files. Tap a task's circle to step its status, open it to edit its title, details, priority, tag, estimate and images, long-press to select several, and drag to reorder or to nest under another task. Its edits run through the same code as the TUI's keys and take the same project lock, so the TUI, the CLI, Syncthing and the phone write without losing each other's changes, and an open page refreshes when the file changes.
+`ordo serve` runs a web app made for a phone, over the same project files. Each category lists its open tasks and folds the finished ones into a Completed row. Its `+` opens a row at the top to type tasks into, Enter adding each one below the last, and its ⋮ menu adds a separator. Tap a task's circle to step its status, open it to edit its title, details, priority, tag, estimate and images, long-press to select several, and drag to reorder or to nest under another task. Its edits run through the same code as the TUI's keys and take the same project lock, so the TUI, the CLI, Syncthing and the phone write without losing each other's changes, and an open page refreshes when the file changes.
 
 ```bash
 ordo serve --base-url https://ordo.example.com   # listens on 127.0.0.1:7319
