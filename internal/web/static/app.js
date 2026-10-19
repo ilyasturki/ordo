@@ -43,7 +43,7 @@
 
   function busy() {
     const a = document.activeElement;
-    return dragging || lingering || $("dialog[open]") || (a && a.matches("input:not([type=hidden]), textarea, select"));
+    return dragging || lingering || swipe || $("dialog[open]") || (a && a.matches("input:not([type=hidden]), textarea, select"));
   }
 
   function refresh() {
@@ -442,8 +442,7 @@
     if (!d.classList.contains("closing")) {
       if (d.contains(document.activeElement)) document.activeElement.blur();
       d.classList.remove("tracking");
-      d.style.removeProperty("transform");
-      d.style.removeProperty("--shown");
+      unstyle(d);
       d.classList.add("closing");
       const done = () => {
         if (!d.classList.contains("closing")) return;
@@ -467,6 +466,133 @@
     e.preventDefault();
     dismiss(e.target);
   }, true);
+
+  let swipe = null;
+  let swallowUntil = 0;
+
+  function swipeFrom(t, x, y) {
+    const d = t.closest("dialog.drawer[open], dialog.sheet[open]");
+    if (d) {
+      if (d.classList.contains("closing")) return null;
+      if (d.matches(".drawer")) return { d, kind: "drawer" };
+      if (y < d.getBoundingClientRect().top || t.closest("input, textarea, select")) return null;
+      const scroller = t.closest(".sheet-scroll");
+      return scroller && scroller.scrollTop > 0 ? null : { d, kind: "sheet" };
+    }
+    const bar = t.closest("#snackbar");
+    if (bar) return { d: bar, kind: "snack" };
+    const drawer = $("#drawer");
+    if (drawer && !drawer.open && x <= 40 && !selecting && !t.closest("input, textarea, select")) return { d: drawer, kind: "edge" };
+    return null;
+  }
+
+  function beginSwipe(s) {
+    const d = s.d;
+    s.axis = s.kind === "sheet" ? "y" : "x";
+    d.classList.add("tracking");
+    if (s.kind === "edge") {
+      d.style.transform = "translateX(-100%)";
+      d.style.setProperty("--shown", "0");
+      d.showModal();
+    }
+    s.size = s.axis === "y" ? d.offsetHeight : d.offsetWidth;
+  }
+
+  function followSwipe(s, dx, dy) {
+    const now = performance.now();
+    s.samples.push([now, s.axis === "y" ? dy : dx]);
+    while (now - s.samples[0][0] > 100) s.samples.shift();
+    if (s.kind === "sheet") s.off = Math.max(0, dy);
+    else if (s.kind === "snack") s.off = dx;
+    else s.off = Math.min(0, Math.max(-s.size, dx - (s.kind === "edge" ? s.size : 0)));
+    s.d.style.transform = s.axis === "y" ? `translateY(${s.off}px)` : `translateX(${s.off}px)`;
+    if (s.kind !== "snack") s.d.style.setProperty("--shown", String(1 - Math.abs(s.off) / s.size));
+  }
+
+  // px/ms over the last 100ms; a finger resting before the release sends no moves, so it reads as still.
+  function velocity(samples) {
+    const now = performance.now();
+    const recent = samples.filter(([t]) => now - t <= 100);
+    if (recent.length < 2) return 0;
+    const [t0, p0] = recent[0];
+    const p1 = recent[recent.length - 1][1];
+    return (p1 - p0) / Math.max(now - t0, 16);
+  }
+
+  function unstyle(el) {
+    el.style.removeProperty("transform");
+    el.style.removeProperty("--shown");
+    if (!el.style.length) el.removeAttribute("style");
+  }
+
+  function settleSwipe(s) {
+    const v = velocity(s.samples);
+    const d = s.d;
+    if (s.kind === "snack") {
+      d.classList.remove("tracking");
+      unstyle(d);
+      const from = { transform: `translateX(${s.off}px)` };
+      if (Math.abs(v) > 0.5 || Math.abs(s.off) > d.offsetWidth * 0.4) {
+        const to = { transform: `translateX(${Math.sign(s.off) * d.offsetWidth}px)`, opacity: 0 };
+        const a = d.animate([from, to], { duration: 150, easing: "cubic-bezier(0.3, 0, 0.8, 0.15)", fill: "forwards" });
+        a.finished.then(() => { d.hidden = true; a.cancel(); }, () => {});
+      } else {
+        d.animate([from, { transform: "none" }], { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)" });
+      }
+      return;
+    }
+    const shut = s.kind === "sheet" ? v > 0.5 || (v > -0.5 && s.off > s.size / 4) : v < -0.3 || (v < 0.3 && s.off < -s.size / 2);
+    if (shut) {
+      dismiss(d);
+      return;
+    }
+    d.classList.remove("tracking");
+    unstyle(d);
+  }
+
+  document.addEventListener("touchstart", (e) => {
+    if (e.touches.length > 1) {
+      if (swipe && swipe.axis) settleSwipe(swipe);
+      swipe = null;
+      return;
+    }
+    const p = e.touches[0];
+    const s = swipeFrom(e.target, p.clientX, p.clientY);
+    swipe = s && { ...s, id: p.identifier, x: p.clientX, y: p.clientY, axis: null, samples: [] };
+  }, { passive: true });
+
+  document.addEventListener("touchmove", (e) => {
+    if (!swipe) return;
+    const p = Array.from(e.changedTouches).find((q) => q.identifier === swipe.id);
+    if (!p) return;
+    const dx = p.clientX - swipe.x;
+    const dy = p.clientY - swipe.y;
+    if (!swipe.axis) {
+      const ax = Math.abs(dx);
+      const ay = Math.abs(dy);
+      // A sheet decides on the first move: once the browser starts scrolling, it stops letting the page cancel it.
+      if (ax + ay < (swipe.kind === "sheet" ? 3 : 10)) return;
+      const ok = swipe.kind === "sheet" ? dy > 0 && ay >= ax : ax > ay * (swipe.kind === "edge" ? 1.5 : 1) && (swipe.kind !== "edge" || dx > 0);
+      if (!ok) {
+        swipe = null;
+        return;
+      }
+      beginSwipe(swipe);
+    }
+    if (e.cancelable) e.preventDefault();
+    followSwipe(swipe, dx, dy);
+  }, { passive: false });
+
+  function endSwipe(e) {
+    if (!swipe || !Array.from(e.changedTouches).some((q) => q.identifier === swipe.id)) return;
+    if (swipe.axis) {
+      settleSwipe(swipe);
+      swallowUntil = performance.now() + 400;
+    }
+    swipe = null;
+  }
+  document.addEventListener("touchend", endSwipe);
+  document.addEventListener("touchcancel", endSwipe);
 
   function grow(el) {
     el.style.height = "auto";
@@ -536,6 +662,12 @@
 
   document.addEventListener("click", (e) => {
     const t = e.target;
+    if (performance.now() < swallowUntil) {
+      swallowUntil = 0;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     if (pressOrigin && pressOrigin.fired) {
       pressOrigin = null;
       if (t.closest(".content .row")) {

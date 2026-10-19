@@ -12,6 +12,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The sign-in page moves on by itself once the device is paired in another tab, and the pair page opened in a browser tab suggests pasting the link into the installed app instead
 - While a filter hides some of a category's tasks, the category ends with an `(N hidden by the filter)` row the cursor stops on, and `enter` or `space` there clears the filter. It replaces the `(no tasks)` such a category showed, and the shortcut bar reads `f filtered` while a filter is on
 - The TUI remembers each project's filter across restarts, in this machine's `state.json`. A new project starts unfiltered, and the web app keeps its own filter
+- Touch gestures in the web app: a swipe from the left edge opens the drawer and a sideways swipe on it or outside it closes it, both following the finger and finishing with its speed; a swipe down on a bottom sheet's handle, or anywhere on it while its content is at the top, closes it; a sideways swipe dismisses the snackbar
 
 ### Changed
 
