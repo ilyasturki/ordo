@@ -621,7 +621,7 @@
   // Only the rows of a category's first list and their subtasks move; a row held anywhere else stays put.
   function draggableAt(t) {
     const el = t.closest(".row, .separator");
-    if (!el || t.closest(".status-button")) return null;
+    if (!el || !el.dataset.id || el.closest(".completed") || t.closest(".status-button")) return null;
     const ul = el.parentElement;
     const list = ul.matches(".rows.sub") ? ul.parentElement.parentElement : ul;
     return list.matches(".category-body > .rows") && list === list.parentElement.querySelector(":scope > .rows") ? el : null;
