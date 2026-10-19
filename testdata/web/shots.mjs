@@ -28,7 +28,7 @@ const shots = [
   { name: "task_move", path: T(3), steps: ["document.querySelector('[data-sheet-open=move-sheet]').click()"] },
   { name: "task_menu", path: T(3), steps: ["document.querySelector('[data-sheet-open=task-menu]').click()"] },
   { name: "task_typing", path: T(1), steps: ["document.querySelector('#new-subtask').focus()"] },
-  { name: "add_sheet", path: P, steps: ["document.querySelector('[data-fab]').click()"] },
+  { name: "add_row", path: P, steps: ["document.querySelector('[data-add-fab]').click()", "document.querySelector('.composer-input').value = 'Offline mode'"] },
   { name: "select", path: P, steps: [
     "document.querySelector('[data-select-start]').click()",
     "document.querySelectorAll('.content .row .item-body')[0].click()",

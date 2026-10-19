@@ -204,7 +204,6 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
 .button.text .icon { margin-left: -4px; }
 
 .chip-set { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip-set.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -24px; padding: 0 24px; }
 .chip {
   display: inline-flex;
   align-items: center;
@@ -223,16 +222,11 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
   flex: none;
 }
 .chip .icon { margin-left: -8px; }
-.chip.selected, .chip.radio:has(input:checked) {
+.chip.selected {
   border-color: transparent;
   background: var(--secondary-container);
   color: var(--on-secondary-container);
 }
-.chip.radio input { position: absolute; opacity: 0; pointer-events: none; }
-.chip.radio .icon { display: none; }
-.chip.radio:has(input:checked) .icon { display: block; }
-.chip.radio:has(input:focus-visible) { outline: 3px solid var(--primary); outline-offset: 2px; }
-.chip.radio.sub span::before { content: "↳ "; opacity: 0.6; }
 .chip.pri-critical .icon, .chip.pri-high .icon { fill: var(--pri-up); }
 .chip.pri-low .icon, .chip.pri-trivial .icon { fill: var(--pri-down); }
 .chip.selected .icon { fill: currentColor; }
@@ -390,6 +384,26 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
 .separator { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 4px 16px 0 20px; color: var(--on-surface-variant); }
 .separator-label { font-size: 0.75rem; line-height: 1rem; font-weight: 500; letter-spacing: 0.031rem; text-transform: uppercase; }
 .separator-rule { flex: 1; height: 1px; background: var(--outline-variant); }
+
+.composer { scroll-margin: 80px 0 16px; }
+.composer-form { display: flex; align-items: center; min-height: 56px; padding: 0 16px 0 4px; }
+.composer-mark { width: 48px; height: 48px; flex: none; display: grid; place-items: center; color: var(--outline); }
+.composer-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 2px solid var(--primary);
+  border-radius: 0;
+  background: none;
+  font-size: 1rem;
+  letter-spacing: 0.031rem;
+  outline: none;
+}
+.composer-input::placeholder { color: var(--on-surface-variant); opacity: 1; }
+.category-body:has(.composer:not([hidden])) > .empty { display: none; }
+.app:has(.composer:focus-within) .fab { display: none; }
 
 .empty { margin: 0; padding: 4px 16px 12px 56px; font-size: 0.875rem; color: var(--on-surface-variant); }
 .page-empty { padding: 48px 24px; text-align: center; }

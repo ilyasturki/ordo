@@ -9,7 +9,6 @@
   let selecting = false;
   let dragging = false;
   let staleStamp = "";
-  let keepAdding = null;
   let snackTimer = 0;
 
   function snack(msg, undo) {
@@ -141,18 +140,104 @@
     else syncSelection();
   }
 
-  function openAdd(cat) {
-    const sheet = $("#add-sheet");
-    if (!sheet) return;
-    const radio = $(`input[name=cat][value="${CSS.escape(cat)}"]`, sheet) || $("input[name=cat]", sheet);
-    if (radio) {
-      radio.checked = true;
-      radio.closest("label").scrollIntoView({ inline: "center", block: "nearest" });
+  // send posts an edit outside htmx; with want "row" the answer is that row's markup, "" when refused.
+  async function send(url, values, want) {
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        body: new URLSearchParams(values),
+        credentials: "same-origin",
+        headers: { "HX-Request": "true", "X-Ordo-Want": want || "", "X-Ordo-Page": app() ? app().dataset.stamp : "" },
+      });
+    } catch {
+      snack("Offline: the change didn't reach Ordo", "reload");
+      return null;
     }
-    sheet.showModal();
-    const input = $("input[name=title]", sheet);
-    input.value = "";
-    input.focus();
+    if (!res.ok) {
+      snack(res.status === 401 ? "Signed out" : "That didn't work. Check the connection.");
+      return null;
+    }
+    const trigger = res.headers.get("HX-Trigger");
+    const sn = trigger && JSON.parse(trigger)["ordo:snack"];
+    if (sn) snack(sn.msg, sn.undo);
+    adoptStamp(res.headers.get("X-Ordo-Stamp"));
+    return want ? res.text() : "";
+  }
+
+  function rowFrom(html) {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = html.trim();
+    const row = tpl.content.firstElementChild;
+    if (row) htmx.process(row);
+    return row;
+  }
+
+  function unfold(section) {
+    if (!section.classList.contains("folded")) return;
+    section.classList.remove("folded");
+    $("[data-fold]", section).setAttribute("aria-expanded", "true");
+    fetch("/fold/" + encodeURIComponent(section.dataset.cat), { method: "POST", credentials: "same-origin" });
+  }
+
+  function topCategory() {
+    const bar = $("[data-appbar]");
+    const top = bar ? bar.getBoundingClientRect().bottom : 0;
+    const cats = $$(".content .category");
+    return cats.find((c) => c.getBoundingClientRect().bottom > top + 48) || cats[0];
+  }
+
+  // openComposer puts the inline add row first in the category and focuses it within the tap, so the keyboard opens at once.
+  function openComposer(section) {
+    const tpl = $("#composer");
+    if (!tpl || !section) return;
+    unfold(section);
+    const li = tpl.content.firstElementChild.cloneNode(true);
+    li.dataset.cat = section.dataset.cat;
+    $(".category-body > .rows", section).prepend(li);
+    li.scrollIntoView({ block: "nearest" });
+    $("input", li).focus({ preventScroll: true });
+    if (window.CloseWatcher) {
+      try {
+        li.watcher = new CloseWatcher();
+        li.watcher.onclose = () => closeComposer(li);
+      } catch {}
+    }
+  }
+
+  function closeComposer(li) {
+    if (li.closed) return;
+    li.closed = true;
+    if (li.watcher) li.watcher.destroy();
+    const input = $("input", li);
+    if (document.activeElement === input) input.blur();
+    li.hidden = true;
+    (li.pending || Promise.resolve()).then(() => li.remove());
+  }
+
+  // submitComposer adds the typed task above the row, which then stands where the next one lands.
+  function submitComposer(li, close) {
+    const input = $("input", li);
+    const title = input.value.trim();
+    if (title) {
+      input.value = "";
+      li.pending = (li.pending || Promise.resolve()).then(async () => {
+        const values = { title, cat: li.dataset.cat, back: location.pathname };
+        if (li.dataset.after) values.id = li.dataset.after;
+        const html = await send($("form", li).action, values, "row");
+        const row = html && rowFrom(html);
+        if (!row) {
+          if (!input.value) input.value = title;
+          return;
+        }
+        li.before(row);
+        li.dataset.after = row.dataset.id;
+        const empty = $(".category-body > .empty", li.closest(".category"));
+        if (empty) empty.remove();
+        row.classList.add("flash");
+      });
+    }
+    if (close) closeComposer(li);
   }
 
   function grow(el) {
@@ -247,7 +332,11 @@
     }
     const add = t.closest("[data-add-to]");
     if (add) {
-      openAdd(add.dataset.addTo);
+      openComposer(add.closest(".category"));
+      return;
+    }
+    if (t.closest("[data-add-fab]")) {
+      openComposer(topCategory());
       return;
     }
     if (t.closest("[data-select-start]")) {
@@ -265,14 +354,12 @@
       return;
     }
     if (t.closest("[data-sheet-close]")) {
-      keepAdding = null;
       t.closest("dialog").close();
       return;
     }
     if (t instanceof HTMLDialogElement && t.open) {
       const r = t.getBoundingClientRect();
       if (e.clientY < r.top || e.clientY > r.bottom || e.clientX < r.left || e.clientX > r.right) {
-        keepAdding = null;
         t.close();
       }
       return;
@@ -294,6 +381,25 @@
       t.blur();
     }
     if (e.key === "Escape" && selecting && !$("dialog[open]")) stopSelecting();
+    const composer = t.closest(".composer");
+    if (composer && e.key === "Enter" && !e.isComposing) {
+      e.preventDefault();
+      submitComposer(composer, false);
+    }
+    if (composer && e.key === "Escape") {
+      e.preventDefault();
+      closeComposer(composer);
+    }
+  });
+
+  // A tap on an add button leaves the focus in the open composer, so the keyboard stays up between the two rows.
+  document.addEventListener("mousedown", (e) => {
+    if (e.target.closest("[data-add-to], [data-add-fab]") && document.activeElement && document.activeElement.closest(".composer")) e.preventDefault();
+  });
+
+  document.addEventListener("focusout", (e) => {
+    const composer = e.target.closest && e.target.closest(".composer");
+    if (composer && !composer.closed && !composer.contains(e.relatedTarget) && document.hasFocus()) submitComposer(composer, true);
   });
 
   document.addEventListener("input", (e) => {
@@ -395,11 +501,11 @@
 
   document.addEventListener("submit", (e) => {
     const form = e.target;
-    if (form.matches("[data-add-form]")) {
-      const cat = $("input[name=cat]:checked", form);
-      keepAdding = cat ? cat.value : null;
+    if (form.matches("[data-composer]")) {
+      e.preventDefault();
+      submitComposer(form.closest(".composer"), false);
     }
-  });
+  }, true);
 
   document.body.addEventListener("ordo:snack", (e) => snack(e.detail.msg, e.detail.undo));
   document.body.addEventListener("ordo:focus", (e) => flash(e.detail.value));
@@ -428,6 +534,7 @@
     }
     const sheet = $("dialog[open]");
     if (sheet && e.detail.target && e.detail.target.id === "app") sheet.close();
+    if (e.detail.target && e.detail.target.id === "app") for (const c of $$(".composer")) closeComposer(c);
   });
 
   // scannedToken returns the pairing token a scanned code carries, or "" for any other text.
@@ -644,12 +751,6 @@
     if (req && req.verb === "get" && !e.detail.pathInfo?.anchor) {
       if (location.hash) flash(location.hash.slice(1));
       else if (!staleStamp && req.triggeringEvent) window.scrollTo(0, 0);
-    }
-    if (keepAdding && root.dataset.page === "project") {
-      const cat = keepAdding;
-      keepAdding = null;
-      openAdd(cat);
-      keepAdding = null;
     }
   });
 

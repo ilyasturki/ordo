@@ -19,33 +19,19 @@
   </main>
 
   {{if .Cats}}
-  <button class="fab extended" type="button" data-add-to="{{(index .Cats 0).ID}}" data-fab>{{icon "add"}}<span class="fab-label">Task</span></button>
+  <button class="fab extended" type="button" data-add-fab data-fab>{{icon "add"}}<span class="fab-label">Task</span></button>
   {{end}}
 
   {{template "drawer" dict "Projects" .Projects "Current" $pid}}
 
-  <dialog class="sheet" id="add-sheet" aria-labelledby="add-title">
-    <form method="post" action="/p/{{$pid}}/do/task.add" class="sheet-body" data-add-form>
-      {{template "back" $back}}
-      <span class="drag-handle" aria-hidden="true"></span>
-      <h2 class="sheet-title" id="add-title">New task</h2>
-      <label class="text-field filled">
-        <input name="title" required autocomplete="off" enterkeyhint="done" placeholder=" " maxlength="500">
-        <span class="text-field-label">Title</span>
-      </label>
-      <div class="chip-set scroll" role="radiogroup" aria-label="Category">
-        {{range .Targets}}
-        <label class="chip filter radio{{if .Sub}} sub{{end}}"><input type="radio" name="cat" value="{{.ID}}">{{icon "check" "small"}}<span>{{.Name}}</span></label>
-        {{end}}
-      </div>
-      <div class="sheet-actions">
-        <button class="button filled" type="submit">Add</button>
-        <button class="button text" type="button" data-sheet-close>Cancel</button>
-        <span class="spacer"></span>
-        <button class="button text" type="submit" formaction="/p/{{$pid}}/do/separator.add" formnovalidate>{{icon "separator" "small"}}Separator</button>
-      </div>
-    </form>
-  </dialog>
+  <template id="composer">
+    <li class="composer">
+      <form class="composer-form" method="post" action="/p/{{$pid}}/do/task.insert" data-composer>
+        <span class="composer-mark" aria-hidden="true">{{icon "todo"}}</span>
+        <input class="composer-input" name="title" autocomplete="off" enterkeyhint="enter" maxlength="500" placeholder="New task" aria-label="New task">
+      </form>
+    </li>
+  </template>
 
   <form id="bulk" method="post" action="/p/{{$pid}}/do/status.cycle" data-bulk-form>{{template "back" $back}}</form>
   <dialog class="sheet" id="bulk-sheet" aria-labelledby="bulk-title" autofocus>
