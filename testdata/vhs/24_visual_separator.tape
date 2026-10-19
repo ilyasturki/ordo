@@ -38,6 +38,12 @@ Type "j"
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/24_visual_spans_separator.png"
 
+# Copy the band (y leaves visual mode), then select it again.
+Type "y"
+Sleep 300ms
+Type "kkvjj"
+Sleep 400ms
+
 # Shift the whole block (separator included) down one row.
 Type "J"
 Sleep 400ms
@@ -49,10 +55,15 @@ Sleep 300ms
 Type "y"
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/24_block_deleted.png"
+Sleep 300ms
+
+# The copied text carries the separator as the line paste reads back as one;
+# the shell plays another app here, reading the clipboard file.
+Type "q"
+Sleep 400ms
+Type "clear && cat /tmp/ordo-vt/clipboard"
+Enter
+Sleep 700ms
+Screenshot "/tmp/ordo-vt/vhs-out/24_clipboard_in_shell.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
-
-Hide
-Type "q"
-Enter
-Sleep 300ms

@@ -236,21 +236,53 @@ func TestVisualRange_SweepsInteriorSeparator(t *testing.T) {
 	assert.True(t, m.isInVisualRange(sepIdx))
 }
 
-func TestVisualCopyText_SkipsSeparatorButClipboardKeepsIt(t *testing.T) {
+func TestVisualCopyText_WritesSeparatorLines(t *testing.T) {
 	m := newTestModel(t, separatorProject())
 	require.True(t, m.selectTaskIdx(0, 0))
 	m.enterVisualMode()
 	m.visualMoveCursor(2) // Alpha .. Beta
 
 	sel := m.visualSelectedPositions()
-	// Copied text omits the divider row entirely.
-	assert.Equal(t, "- Alpha\n- Beta", m.visualMarkdownText(sel, false))
-	assert.Equal(t, "- [ ] Alpha\n- [ ] Beta", m.visualMarkdownText(sel, true))
+	assert.Equal(t, "- Alpha\n### mid\n- Beta", m.visualMarkdownText(sel, false))
+	assert.Equal(t, "- [ ] Alpha\n### mid\n- [ ] Beta", m.visualMarkdownText(sel, true))
 
-	// The internal clipboard still carries the separator for a faithful paste.
+	m.project.Categories[0].Tasks[1].Title = ""
+	assert.Equal(t, "- Alpha\n---\n- Beta", m.visualMarkdownText(sel, false), "bare separator")
+
 	_ = m.visualCopyBullets()
 	require.Len(t, m.ui.Clipboard.Tasks, 3)
 	assert.True(t, m.ui.Clipboard.Tasks[1].IsSeparator())
+}
+
+func TestVisualCopyText_SeparatorsOnly(t *testing.T) {
+	p := separatorProject()
+	p.Categories[0].Tasks = append(p.Categories[0].Tasks[:2], domain.Task{ID: "s2", Kind: domain.KindSeparator}, p.Categories[0].Tasks[2])
+	m := newTestModel(t, p)
+	require.True(t, m.selectSeparator(0, 1))
+	m.enterVisualMode()
+
+	assert.Equal(t, "### mid", m.visualMarkdownText(m.visualSelectedPositions(), false))
+	m.visualMoveCursor(1)
+	assert.Equal(t, "### mid\n---", m.visualMarkdownText(m.visualSelectedPositions(), true))
+}
+
+func TestVisualCopy_SeparatorSurvivesAnotherSessionsPaste(t *testing.T) {
+	m := newTestModel(t, separatorProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	m.enterVisualMode()
+	m.visualMoveCursor(2)
+	require.NotNil(t, m.visualCopyBullets())
+
+	other := newTestModel(t, sampleProject())
+	require.True(t, other.selectTaskIdx(1, 1))
+	other.resolvePaste(clipboardLinesMsg{text: m.ui.Clipboard.Text})
+	require.True(t, other.ui.Modes.IsPasteChooser())
+	send(t, other, key("enter"))
+
+	tasks := other.project.Categories[1].Tasks
+	require.Len(t, tasks, 5)
+	assert.Equal(t, []string{"Delta", "Epsilon", "Alpha", "mid", "Beta"}, taskTitles(other.project.Categories[1]))
+	assert.True(t, tasks[3].IsSeparator())
 }
 
 func TestVisualCounts_ExcludeSeparators(t *testing.T) {

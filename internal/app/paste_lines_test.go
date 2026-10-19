@@ -130,6 +130,17 @@ func TestParsePastedRows_TheAppsOwnCopiesComeBackWhole(t *testing.T) {
 		{title: "Alpha", status: domain.StatusTodo, description: "alpha details"},
 		task("Beta", domain.StatusTodo),
 	}, parsePastedRows(m.visualMarkdownText(m.visualSelectedPositions(), false)), "visual y")
+
+	m = newTestModel(t, separatorProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	m.enterVisualMode()
+	m.visualMoveCursor(2)
+	want := []pastedRow{task("Alpha", domain.StatusTodo), sep("mid"), task("Beta", domain.StatusTodo)}
+	assert.Equal(t, want, parsePastedRows(m.visualMarkdownText(m.visualSelectedPositions(), false)), "visual y over a separator")
+	assert.Equal(t, want, parsePastedRows(m.visualMarkdownText(m.visualSelectedPositions(), true)), "visual Y over a separator")
+	m.project.Categories[0].Tasks[1].Title = ""
+	want[1] = sep("")
+	assert.Equal(t, want, parsePastedRows(m.visualMarkdownText(m.visualSelectedPositions(), false)), "visual y over a bare separator")
 }
 
 func TestPasteClipboardLines_KeepsFoldedDescriptions(t *testing.T) {

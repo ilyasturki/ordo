@@ -302,9 +302,8 @@ func (m *model) visualCopyChecklist() tea.Cmd {
 
 // visualMarkdownText renders the selection as a markdown list — a bullet per
 // task ("- [ ]"/"- [x]" instead when checkboxes is set), with a selected
-// description row's body indented under its parent's item. Separators carry no
-// task content, so they are omitted from the copied text (the internal
-// clipboard still keeps them for a faithful paste).
+// description row's body indented under its parent's item. A separator is the
+// exporter's unindented line, so pasting the text anywhere rebuilds it.
 func (m model) visualMarkdownText(selPositions []selection.Position, checkboxes bool) string {
 	if m.ui.Visual.Kind == selection.FocusCategory {
 		return m.visualCategoryText(selPositions, checkboxes)
@@ -324,6 +323,7 @@ func (m model) visualMarkdownText(selPositions []selection.Position, checkboxes 
 	var lines []string
 	for _, task := range m.visualTaskRows(selPositions) {
 		if task.IsSeparator() {
+			lines = append(lines, export.SeparatorLine(task))
 			continue
 		}
 		indent := ""
