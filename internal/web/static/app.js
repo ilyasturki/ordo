@@ -10,6 +10,7 @@
   let dragging = false;
   let staleStamp = "";
   let snackTimer = 0;
+  let lingering = false;
 
   function snack(msg, undo) {
     const bar = $("#snackbar");
@@ -42,7 +43,7 @@
 
   function busy() {
     const a = document.activeElement;
-    return dragging || $("dialog[open]") || (a && a.matches("input:not([type=hidden]), textarea, select"));
+    return dragging || lingering || $("dialog[open]") || (a && a.matches("input:not([type=hidden]), textarea, select"));
   }
 
   function refresh() {
@@ -247,6 +248,75 @@
 
   const doURL = (action) => "/p/" + app().dataset.project + "/do/" + action;
 
+  const cycle = ["todo", "in_progress", "completed", "cancelled"];
+  const isFinished = (status) => status === "completed" || status === "cancelled";
+  const statusOf = (row) => cycle.find((s) => row.classList.contains("s-" + s)) || "todo";
+  const touched = new Set();
+  let lingerTimer = 0;
+  let taps = 0;
+  let statusQueue = Promise.resolve();
+  let afterRefresh = null;
+
+  function showStatus(row, status) {
+    const button = $(":scope > .list-item .status-button", row);
+    const icon = $("#status-icons").content.querySelector(`[data-status="${status}"]`);
+    for (const s of cycle) {
+      row.classList.toggle("s-" + s, s === status);
+      button.classList.toggle("s-" + s, s === status);
+    }
+    button.replaceChildren(icon.firstElementChild.cloneNode(true));
+    button.setAttribute("aria-label", icon.dataset.label + ", change status");
+  }
+
+  // stepStatus moves the row along the TUI's cycle at once; the list settles a second after the last tap.
+  function stepStatus(button) {
+    const row = button.closest(".row");
+    const next = cycle[(cycle.indexOf(statusOf(row)) + 1) % cycle.length];
+    showStatus(row, next);
+    touched.add(row.closest(".category-body > .rows > li, .completed-rows > li"));
+    const values = { id: row.dataset.id, value: next, back: location.pathname };
+    statusQueue = statusQueue.then(() => send(doURL("status.set"), values));
+    taps++;
+    lingering = true;
+    clearTimeout(lingerTimer);
+    lingerTimer = setTimeout(settleStatuses, 1000);
+  }
+
+  // settleStatuses slides out each block that now belongs on the other side of its Completed fold, then redraws.
+  async function settleStatuses() {
+    const tap = taps;
+    await statusQueue;
+    if (tap !== taps) return;
+    const moving = [...touched].filter((block) => {
+      if (!block || !block.isConnected) return false;
+      const done = [block, ...$$(".row", block)].every((r) => isFinished(statusOf(r)));
+      return done !== !!block.closest(".completed");
+    });
+    touched.clear();
+    for (const block of moving) {
+      block.style.height = block.offsetHeight + "px";
+      block.classList.add("leaving");
+    }
+    void document.body.offsetHeight;
+    for (const block of moving) block.style.height = "0px";
+    if (moving.length) await new Promise((r) => setTimeout(r, 250));
+    if (tap !== taps) return;
+    const ids = moving.map((block) => block.dataset.id);
+    afterRefresh = () => {
+      for (const id of ids) {
+        const row = document.getElementById("t-" + id);
+        const shut = row && row.closest("details.completed:not([open])");
+        const el = shut ? $(".completed-toggle", shut) : row;
+        if (!el) continue;
+        el.classList.remove("flash");
+        void el.offsetWidth;
+        el.classList.add("flash");
+      }
+    };
+    lingering = false;
+    if (app() && app().dataset.page === "project") refresh();
+  }
+
   // openSeparatorEditor puts a label field in place and focuses it within the tap, like the add row.
   function openSeparatorEditor(place, base) {
     const li = $("#separator-editor").content.firstElementChild.cloneNode(true);
@@ -441,6 +511,12 @@
       }
     }
     pressOrigin = null;
+    const statusButton = t.closest(".content .status-button");
+    if (statusButton && app().dataset.page === "project") {
+      e.preventDefault();
+      stepStatus(statusButton);
+      return;
+    }
     const fold = t.closest("[data-fold]");
     if (fold) {
       const section = fold.closest(".category");
@@ -912,9 +988,15 @@
     const root = app();
     init(root);
     const req = e.detail.requestConfig;
-    if (req && req.verb === "get" && !e.detail.pathInfo?.anchor) {
+    const refreshed = req && req.headers && req.headers["X-Ordo-Refresh"];
+    if (req && req.verb === "get" && !e.detail.pathInfo?.anchor && !refreshed) {
       if (location.hash) flash(location.hash.slice(1));
       else if (!staleStamp && req.triggeringEvent) window.scrollTo(0, 0);
+    }
+    if (afterRefresh) {
+      const done = afterRefresh;
+      afterRefresh = null;
+      done();
     }
   });
 

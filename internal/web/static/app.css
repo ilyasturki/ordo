@@ -468,7 +468,8 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
 .empty { margin: 0; padding: 4px 16px 12px 56px; font-size: 0.875rem; color: var(--on-surface-variant); }
 .page-empty { padding: 48px 24px; text-align: center; }
 
-.row.flash > .list-item { animation: flash 1.2s var(--ease); }
+.row.flash > .list-item, .completed-toggle.flash { animation: flash 1.2s var(--ease); }
+.content .row.leaving { overflow: hidden; opacity: 0; transition: height 250ms var(--ease), opacity 200ms linear; }
 @keyframes flash { from { background: color-mix(in srgb, var(--primary) 16%, transparent); } to { background: transparent; } }
 
 .selecting .status-button { display: none; }

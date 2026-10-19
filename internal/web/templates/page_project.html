@@ -33,6 +33,8 @@
     </li>
   </template>
 
+  <template id="status-icons">{{range statuses}}<span data-status="{{.}}" data-label="{{statusLabel .}}">{{icon .}}</span>{{end}}</template>
+
   <template id="separator-editor">
     <li class="separator editing">
       <input class="separator-input" name="title" autocomplete="off" enterkeyhint="done" maxlength="500" placeholder="Section label (optional)" aria-label="Section label">
