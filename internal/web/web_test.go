@@ -588,8 +588,49 @@ func TestAddTaskAndSubtask(t *testing.T) {
 	}
 	f.action("task.add", url.Values{"parent": {f.ids["one"]}, "title": {"sub"}})
 	f.action("separator.add", url.Values{"cat": {f.cat}, "title": {"Later"}})
-	if got := strings.Join(titles(f.project().Categories[0]), ","); got != "one,>sub,two,three,four,Later" {
+	f.action("separator.add", url.Values{"id": {f.ids["one"]}})
+	if got := strings.Join(titles(f.project().Categories[0]), ","); got != "Later,one,>sub,,two,three,four" {
 		t.Fatalf("rows: %s", got)
+	}
+}
+
+func (f *fixture) partial(name string, form url.Values) *httptest.ResponseRecorder {
+	f.t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/p/"+f.pid+"/do/"+name, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	req.Header.Set("X-Ordo-Want", "row")
+	req.AddCookie(&http.Cookie{Name: deviceCookie, Value: f.cookie})
+	rec := httptest.NewRecorder()
+	f.h.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestInsertAnswersWithTheNewRowAlone(t *testing.T) {
+	f := newFixture(t)
+	rec := f.partial("task.insert", url.Values{"cat": {f.cat}, "title": {"first"}})
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.HasPrefix(strings.TrimSpace(body), `<li class="row s-todo"`) || strings.Contains(body, `id="app"`) {
+		t.Fatalf("partial answer %d: %s", rec.Code, body)
+	}
+	if snackOf(t, rec).Msg != "" {
+		t.Fatalf("an inline add raised a snack: %+v", snackOf(t, rec))
+	}
+	first := f.project().Categories[0].Tasks[0]
+	if first.Title != "first" || !strings.Contains(body, `data-id="`+first.ID+`"`) {
+		t.Fatalf("top row %q, body %s", first.Title, body)
+	}
+	f.partial("task.insert", url.Values{"cat": {f.cat}, "id": {first.ID}, "title": {"second"}})
+	if got := strings.Join(titles(f.project().Categories[0]), ","); got != "first,second,one,two,three" {
+		t.Fatalf("batch order: %s", got)
+	}
+	rec = f.partial("task.insert", url.Values{"cat": {f.cat}, "title": {"  "}})
+	if strings.TrimSpace(rec.Body.String()) != "" || snackOf(t, rec).Msg != "A task needs a title" {
+		t.Fatalf("refused add: %q %+v", rec.Body.String(), snackOf(t, rec))
+	}
+	rec = f.partial("separator.add", url.Values{"cat": {f.cat}})
+	if !strings.Contains(rec.Body.String(), "data-sep") || snackOf(t, rec).Undo == "" {
+		t.Fatalf("separator answer: %s %+v", rec.Body.String(), snackOf(t, rec))
 	}
 }
 

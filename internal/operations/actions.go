@@ -18,6 +18,7 @@ type Action struct {
 
 var Actions = []Action{
 	{"task.add", "Add task", Both},
+	{"task.insert", "Add task at the top or below a row", Both},
 	{"separator.add", "Add separator", Both},
 	{"task.title", "Edit title", Both},
 	{"task.description", "Edit description", Both},

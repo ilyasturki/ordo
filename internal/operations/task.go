@@ -67,6 +67,15 @@ func CreateTaskAfter(
 	f TaskFields,
 	afterTaskID string,
 ) (domain.Task, error) {
+	return createTask(p, categoryID, f, afterTaskID, false)
+}
+
+// CreateTaskAtTop puts the new row first in its category, where the TUI's a lands on a header.
+func CreateTaskAtTop(p *domain.Project, categoryID string, f TaskFields) (domain.Task, error) {
+	return createTask(p, categoryID, f, "", true)
+}
+
+func createTask(p *domain.Project, categoryID string, f TaskFields, afterTaskID string, top bool) (domain.Task, error) {
 	switch f.Kind {
 	case "", domain.KindSeparator:
 	default:
@@ -97,6 +106,9 @@ func CreateTaskAfter(
 	// Resolve the anchor before building the row so a bad id fails without
 	// mutating anything.
 	insertAt := len(cat.Tasks)
+	if top {
+		insertAt = 0
+	}
 	parentID := ""
 	switch {
 	case f.ParentID != "":

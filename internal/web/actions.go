@@ -21,6 +21,8 @@ type actionResult struct {
 	Msg   string
 	Focus string
 	Base  *string
+	// Row names the row a request sent with X-Ordo-Want: row gets back alone, instead of the page.
+	Row string
 }
 
 type actionFunc func(s *Server, p *domain.Project, r *http.Request, ids []string) (actionResult, error)
@@ -30,6 +32,7 @@ var errConflict = &operations.Refusal{Msg: "Changed on another device: reload to
 // webActions is the web side of operations.Actions; TestWebCoversItsActions keeps the two in step.
 var webActions = map[string]actionFunc{
 	"task.add":         addTask,
+	"task.insert":      insertTask,
 	"separator.add":    addSeparator,
 	"task.title":       editTitle,
 	"task.description": editDescription,
@@ -167,7 +170,34 @@ func (s *Server) respond(w http.ResponseWriter, r *http.Request, pid string, res
 		w.Header().Set("X-Ordo-Stamp", out.stamp)
 	}
 	w.Header().Set("HX-Push-Url", "false")
+	if r.Header.Get("X-Ordo-Want") == "row" {
+		s.renderRow(w, pid, res.Row)
+		return
+	}
 	s.renderBack(w, r, back)
+}
+
+// renderRow answers with one row's markup, or an empty body when the action made none.
+func (s *Server) renderRow(w http.ResponseWriter, pid, id string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	if id == "" {
+		return
+	}
+	p, err := s.store.LoadProjectByID(pid)
+	if err != nil {
+		return
+	}
+	ci, ti, err := locate(&p, id)
+	if err != nil {
+		return
+	}
+	cat := p.Categories[ci]
+	row := newRow(cat.Tasks[ti])
+	row.ChildDone, row.ChildTotal = cat.ChildProgress(ti)
+	if err := s.pages["project"].ExecuteTemplate(w, "row", map[string]any{"R": row, "PID": p.ID, "Back": "/p/" + p.ID}); err != nil {
+		s.log.Printf("render row %s: %v", id, err)
+	}
 }
 
 // renderBack answers an htmx action with the page it came from, the project page once its task is gone.
@@ -273,22 +303,32 @@ func addTask(s *Server, p *domain.Project, r *http.Request, _ []string) (actionR
 	return actionResult{Msg: "Added " + quote(t.Title), Focus: "t-" + t.ID}, nil
 }
 
-func addSeparator(s *Server, p *domain.Project, r *http.Request, ids []string) (actionResult, error) {
-	after := ""
-	if len(ids) > 0 {
-		after = ids[0]
+// placeRow adds f below the block of the row ids names, or first in the category cat without one.
+func placeRow(p *domain.Project, cat string, ids []string, f operations.TaskFields) (domain.Task, error) {
+	if len(ids) == 0 {
+		return operations.CreateTaskAtTop(p, cat, f)
 	}
-	cat := r.FormValue("cat")
-	if after != "" {
-		if ci, _, err := locate(p, after); err == nil {
-			cat = p.Categories[ci].ID
-		}
+	ci, _, err := locate(p, ids[0])
+	if err != nil {
+		return domain.Task{}, err
 	}
-	t, err := operations.CreateTaskAfter(p, cat, operations.TaskFields{Kind: domain.KindSeparator, Title: r.FormValue("title")}, after)
+	return operations.CreateTaskAfter(p, p.Categories[ci].ID, f, ids[0])
+}
+
+func insertTask(s *Server, p *domain.Project, r *http.Request, ids []string) (actionResult, error) {
+	t, err := placeRow(p, r.FormValue("cat"), ids, operations.TaskFields{Title: r.FormValue("title")})
 	if err != nil {
 		return actionResult{}, err
 	}
-	return actionResult{Msg: "Added a separator", Focus: "t-" + t.ID}, nil
+	return actionResult{Focus: "t-" + t.ID, Row: t.ID}, nil
+}
+
+func addSeparator(s *Server, p *domain.Project, r *http.Request, ids []string) (actionResult, error) {
+	t, err := placeRow(p, r.FormValue("cat"), ids, operations.TaskFields{Kind: domain.KindSeparator, Title: r.FormValue("title")})
+	if err != nil {
+		return actionResult{}, err
+	}
+	return actionResult{Msg: "Added a separator", Focus: "t-" + t.ID, Row: t.ID}, nil
 }
 
 func taskByID(p *domain.Project, id string) (*domain.Task, string, error) {

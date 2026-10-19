@@ -80,6 +80,52 @@ func TestCreateTaskAfterEmptyAnchorAppends(t *testing.T) {
 	}
 }
 
+func TestCreateTaskAtTopGoesFirst(t *testing.T) {
+	p, cid := projectWithTasks(t)
+	if _, err := CreateTaskAtTop(p, cid, TaskFields{Title: "only"}); err != nil {
+		t.Fatalf("top of an empty category: %v", err)
+	}
+	first, err := CreateTaskAtTop(p, cid, TaskFields{Title: "first"})
+	if err != nil {
+		t.Fatalf("top: %v", err)
+	}
+	if first.ParentID != "" {
+		t.Fatalf("a top row nests under %q", first.ParentID)
+	}
+	if _, err := CreateTaskAtTop(p, cid, TaskFields{Kind: domain.KindSeparator}); err != nil {
+		t.Fatalf("separator at the top: %v", err)
+	}
+	if _, err := CreateTask(p, cid, TaskFields{Title: "appended"}); err != nil {
+		t.Fatalf("append: %v", err)
+	}
+	want := []string{"--", "first", "only", "appended"}
+	if got := titles(p); !equal(got, want) {
+		t.Fatalf("order: want %v, got %v", want, got)
+	}
+	if _, err := CreateTaskAtTop(p, cid, TaskFields{Title: " "}); !errors.Is(err, ErrTitleRequired) {
+		t.Fatalf("blank title: %v", err)
+	}
+}
+
+func TestCreateTaskAfterSkipsTheAnchorsSubtasks(t *testing.T) {
+	p, cid := projectWithTasks(t, "parent", "next")
+	parent := p.Categories[0].Tasks[0].ID
+	if _, err := CreateTask(p, cid, TaskFields{Title: "child", ParentID: parent}); err != nil {
+		t.Fatalf("subtask: %v", err)
+	}
+	added, err := CreateTaskAfter(p, cid, TaskFields{Title: "added"}, parent)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	if added.ParentID != "" {
+		t.Fatalf("a row added below a parent nests under %q", added.ParentID)
+	}
+	want := []string{"parent", "child", "added", "next"}
+	if got := titles(p); !equal(got, want) {
+		t.Fatalf("order: want %v, got %v", want, got)
+	}
+}
+
 func TestCreateTaskAfterUnknownAnchorFails(t *testing.T) {
 	p, cid := projectWithTasks(t, "first")
 
