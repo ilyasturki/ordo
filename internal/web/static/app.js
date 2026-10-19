@@ -739,6 +739,10 @@
       e.preventDefault();
       submitComposer(form.closest(".composer"), false);
     }
+    if (form.matches("[data-separator-form]")) {
+      e.preventDefault();
+      finishSeparator(form.closest(".separator"), true);
+    }
   }, true);
 
   document.body.addEventListener("ordo:snack", (e) => snack(e.detail.msg, e.detail.undo));

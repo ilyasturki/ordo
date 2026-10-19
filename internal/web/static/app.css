@@ -386,6 +386,7 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
 .separator-rule { flex: 1; height: 1px; background: var(--outline-variant); }
 .content .separator[data-sep] { cursor: pointer; -webkit-user-select: none; user-select: none; }
 .separator.editing { padding-bottom: 4px; }
+.separator-form { display: contents; }
 .separator-input {
   flex: 1;
   min-width: 0;
