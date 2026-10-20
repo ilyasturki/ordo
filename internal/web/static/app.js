@@ -572,7 +572,7 @@
     }
     const p = e.touches[0];
     const s = swipeFrom(e.target, p.clientX, p.clientY);
-    swipe = s && { ...s, id: p.identifier, x: p.clientX, y: p.clientY, axis: null, samples: [] };
+    swipe = s && { ...s, id: p.identifier, x: p.clientX, y: p.clientY, target: e.target, axis: null, samples: [] };
   }, { passive: true });
 
   document.addEventListener("touchmove", (e) => {
@@ -607,8 +607,13 @@
     if (!swipe || !Array.from(e.changedTouches).some((q) => q.identifier === swipe.id)) return;
     if (swipe.axis) {
       settleSwipe(swipe);
-      // Within a tap's slop the browser still clicks, and that tap was meant.
-      if (swipe.moved > 16) swallowUntil = performance.now() + 400;
+      // Firefox drops the click of a touch whose move was cancelled, so a claimed move within a tap's slop clicks for it.
+      if (e.type === "touchend" && swipe.moved <= 10) {
+        let t = swipe.target;
+        while (t && !(t instanceof HTMLElement)) t = t.parentElement;
+        if (t && t.isConnected) t.click();
+      }
+      swallowUntil = performance.now() + 400;
     }
     swipe = null;
   }
