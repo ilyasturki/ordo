@@ -30,7 +30,10 @@
     void bar.offsetWidth;
     bar.style.animation = "";
     clearTimeout(snackTimer);
-    if (!(undo && undo.keep)) snackTimer = setTimeout(() => { bar.hidden = true; }, undo ? 6000 : 3000);
+    if (!(undo && undo.keep)) snackTimer = setTimeout(() => {
+      bar.hidden = true;
+      offerGone();
+    }, undo ? 6000 : 3000);
   }
 
   function flash(id) {
@@ -1163,7 +1166,7 @@
       return;
     }
     if (draft.theirs) {
-      setDraft(key, { mine: draft.mine, theirs: { base: $("[data-base]", form).value, text: field.value, images: $$("input[name=image]", form).map((i) => i.value) } });
+      setDraft(key, { mine: draft.mine, theirs: fileSide(form) });
       showConflict(form);
       return;
     }
@@ -1192,7 +1195,7 @@
       return;
     }
     form.savedValue = field.value;
-    form.pending = (form.pending || Promise.resolve()).then(() => post(form));
+    form.pending = (form.pending || Promise.resolve()).then(() => post(form)).catch(() => { form.savedValue = null; });
   }
 
   function adoptStamp(stamp) {
@@ -1201,35 +1204,66 @@
     if (staleStamp === stamp) staleStamp = "";
   }
 
-  // What the file holds once text sent from form is saved: editTitle trims it, and
-  // joinDescription trims trailing newlines and appends the image lines.
-  function storedText(form, text) {
-    if (fieldOf(form).name === "title") return text.trim();
-    text = text.replace(/\r\n/g, "\n").replace(/\n+$/, "");
-    const images = $$("input[name=image]", form).map((i) => i.value);
-    return (text.trim() ? [text, ...images] : images).join("\n");
+  function imagesOf(form) {
+    return $$("input[name=image]", form).map((i) => i.value);
   }
 
-  // Their side of a conflict, read from the page the refusal answers with.
+  // Mirrors joinDescription, which appends the image lines.
+  function storedText(form, text) {
+    const field = fieldOf(form);
+    text = asStored(field, text.replace(/\r\n/g, "\n"));
+    if (field.name === "title") return text;
+    return (text.trim() ? [text, ...imagesOf(form)] : imagesOf(form)).join("\n");
+  }
+
+  // A form as rendered from the file: their side of a conflict.
+  function fileSide(form) {
+    return { base: $("[data-base]", form).value, text: fieldOf(form).value, images: imagesOf(form) };
+  }
+
   function theirsIn(html, key) {
     const page = new DOMParser().parseFromString(html, "text/html");
     const form = $$("[data-autosave]", page).find((f) => draftKey(f) === key);
-    if (!form) return null;
-    return { base: $("[data-base]", form).value, text: fieldOf(form).value, images: $$("input[name=image]", form).map((i) => i.value) };
+    return form ? fileSide(form) : null;
   }
 
-  // The task went while its text was being typed: the text stays one tap away.
+  // The task went while its text was being typed: the text stays one tap away,
+  // past other snackbars and reloads, until Copy takes it.
   function gone(key, text) {
     setDraft(key);
-    snack("That task is gone", { label: "Copy", keep: true, run: () => copy(text) });
+    const held = goneText();
+    setGoneText(held ? held + "\n\n" + text : text);
+    offerGone();
+  }
+
+  let goneHeld = null;
+  function goneText() {
+    try {
+      return sessionStorage.getItem("ordo:gone");
+    } catch {
+      return goneHeld;
+    }
+  }
+
+  function setGoneText(text) {
+    goneHeld = text;
+    try {
+      if (text === null) sessionStorage.removeItem("ordo:gone");
+      else sessionStorage.setItem("ordo:gone", text);
+    } catch {}
+  }
+
+  function offerGone() {
+    const text = goneText();
+    if (text === null) return;
+    snack("That task is gone", { label: "Copy", keep: true, run: () => copy(text).then((ok) => {
+      if (ok) setGoneText(null);
+      snack(ok ? "Copied" : "Couldn't copy");
+    }) });
   }
 
   function copy(text) {
-    const done = () => snack("Copied");
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).then(done, () => snack("Couldn't copy"));
-      return;
-    }
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(() => true, () => false);
     const area = document.createElement("textarea");
     area.className = "visually-hidden";
     area.value = text;
@@ -1237,8 +1271,7 @@
     area.select();
     const ok = document.execCommand("copy");
     area.remove();
-    if (ok) done();
-    else snack("Couldn't copy");
+    return Promise.resolve(ok);
   }
 
   function adoptBase(form, base) {
@@ -1281,7 +1314,16 @@
     }
     adoptStamp(res.headers.get("X-Ordo-Stamp"));
     const conflict = res.headers.get("X-Ordo-Conflict") !== null;
-    const page = conflict ? await res.text() : "";
+    let page = "";
+    if (conflict) {
+      try {
+        page = await res.text();
+      } catch {
+        form.savedValue = null;
+        snack("Offline: the change didn't reach Ordo", "reload");
+        return;
+      }
+    }
     // The page may have been swapped while the save, or its answer, was out.
     const live = liveForm(key);
     // A swapped-in field holds the file's text unless a draft was restored into it.
@@ -1611,5 +1653,6 @@
   document.addEventListener("DOMContentLoaded", () => {
     init(app());
     if (location.hash) flash(location.hash.slice(1));
+    offerGone();
   });
 })();

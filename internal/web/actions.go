@@ -218,14 +218,8 @@ func (s *Server) renderBack(w http.ResponseWriter, r *http.Request, back string)
 	get.SetPathValue("pid", parts[1])
 	if len(parts) == 4 && parts[2] == "t" {
 		get.SetPathValue("tid", parts[3])
-		if p, err := s.store.LoadProjectByID(parts[1]); err == nil {
-			if _, _, err := locate(&p, parts[3]); err == nil {
-				s.task(w, get)
-				return
-			}
-		}
-		get.URL = &url.URL{Path: "/p/" + parts[1]}
-		w.Header().Set("HX-Push-Url", get.URL.Path)
+		s.task(w, get)
+		return
 	}
 	s.project(w, get)
 }
