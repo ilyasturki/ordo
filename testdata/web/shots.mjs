@@ -31,6 +31,12 @@ const shots = [
     "rename(original, 'Renamed on the laptop')",
     "(() => { const f = document.querySelector('#title'); f.value = 'Typed on the phone'; f.dispatchEvent(new Event('change', { bubbles: true })); f.blur(); })()",
   ], after: ["rename('Renamed on the laptop', original)"] },
+  // Another device deletes the task while its title is typed; the delete's own undo brings it back after.
+  { name: "task_gone", path: T(3), wait: 900, steps: [
+    "document.querySelector('#title').focus()",
+    "fetch(document.querySelector('.title-form').action.replace('task.title', 'task.delete'), { method: 'POST', credentials: 'same-origin', headers: { 'HX-Request': 'true' }, body: new URLSearchParams({ id: document.querySelector('#app').dataset.task }) }).then((r) => { window.undoDelete = JSON.parse(r.headers.get('HX-Trigger'))['ordo:snack'].undo; })",
+    "(() => { const f = document.querySelector('#title'); f.value = 'Typed on the phone'; f.dispatchEvent(new Event('change', { bubbles: true })); f.blur(); })()",
+  ], after: ["fetch(undoDelete, { method: 'POST', credentials: 'same-origin', headers: { 'HX-Request': 'true' }, body: new URLSearchParams({ back: location.pathname }) })"] },
   { name: "task_done", path: T(2) },
   { name: "task_status", path: T(1), steps: ["document.querySelector('[data-sheet-open=status-sheet]').click()"] },
   { name: "task_priority", path: T(1), steps: ["document.querySelector('[data-sheet-open=priority-sheet]').click()"] },

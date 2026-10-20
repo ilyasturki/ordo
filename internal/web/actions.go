@@ -20,17 +20,10 @@ import (
 type actionResult struct {
 	Msg   string
 	Focus string
-	Base  *string
+	// Saved tells a text field's autosave that the file now holds what it sent.
+	Saved bool
 	// Row names the row a request sent with X-Ordo-Want: row gets back alone, instead of the page.
-	Row    string
-	Theirs *theirs
-}
-
-// theirs is a refused text field's value on disk, for the page to offer instead of the typed one.
-type theirs struct {
-	Base   string   `json:"base"`
-	Text   string   `json:"text"`
-	Images []string `json:"images,omitempty"`
+	Row string
 }
 
 type actionFunc func(s *Server, p *domain.Project, r *http.Request, ids []string) (actionResult, error)
@@ -156,13 +149,14 @@ func (s *Server) respond(w http.ResponseWriter, r *http.Request, pid string, res
 			return
 		}
 		sn.Msg = msg
+		// Flags, not text: a description can outgrow a proxy's header buffer.
 		switch {
-		// The page keeps the typed text and asks instead of the snackbar.
-		case err == error(errConflict) && res.Theirs != nil:
-			w.Header().Set("X-Ordo-Theirs", asciiJSON(res.Theirs))
-			sn = snack{}
 		case err == error(errConflict):
-			sn.Undo = "reload"
+			// The page reads their text from the page this answers with, and asks.
+			w.Header().Set("X-Ordo-Conflict", "1")
+			sn = snack{}
+		case errors.Is(err, domain.ErrTaskNotFound):
+			w.Header().Set("X-Ordo-Gone", "1")
 		}
 	}
 	back := backTo(r, pid)
@@ -176,8 +170,8 @@ func (s *Server) respond(w http.ResponseWriter, r *http.Request, pid string, res
 	if res.Focus != "" && err == nil {
 		w.Header().Set("HX-Trigger-After-Settle", asciiJSON(map[string]string{"ordo:focus": res.Focus}))
 	}
-	if res.Base != nil && err == nil {
-		w.Header().Set("X-Ordo-Base", asciiJSON(*res.Base))
+	if res.Saved && (err == nil || errors.Is(err, operations.ErrNoChange)) {
+		w.Header().Set("X-Ordo-Saved", "1")
 	}
 	if out.stamp != "" {
 		w.Header().Set("X-Ordo-Stamp", out.stamp)
@@ -362,15 +356,15 @@ func editTitle(s *Server, p *domain.Project, r *http.Request, ids []string) (act
 	}
 	title := strings.TrimSpace(r.FormValue("title"))
 	if title == t.Title {
-		return actionResult{}, operations.ErrNoChange
+		return actionResult{Saved: true}, operations.ErrNoChange
 	}
 	if t.Title != r.FormValue("base") {
-		return actionResult{Theirs: &theirs{Base: t.Title, Text: t.Title}}, errConflict
+		return actionResult{}, errConflict
 	}
 	if _, err := operations.UpdateTask(p, cat, t.ID, operations.TaskUpdate{Title: &title}); err != nil {
 		return actionResult{}, err
 	}
-	return actionResult{Base: &title}, nil
+	return actionResult{Saved: true}, nil
 }
 
 func editDescription(s *Server, p *domain.Project, r *http.Request, ids []string) (actionResult, error) {
@@ -382,8 +376,7 @@ func editDescription(s *Server, p *domain.Project, r *http.Request, ids []string
 		return actionResult{}, err
 	}
 	if strings.TrimRight(t.Description, "\n") != strings.TrimRight(strings.ReplaceAll(r.FormValue("base"), "\r\n", "\n"), "\n") {
-		text, images, _ := descriptionFields(t.Description)
-		return actionResult{Theirs: &theirs{Base: t.Description, Text: text, Images: images}}, errConflict
+		return actionResult{}, errConflict
 	}
 	drop := r.FormValue("drop")
 	images := slices.DeleteFunc(slices.Clone(r.Form["image"]), func(line string) bool {
@@ -392,7 +385,7 @@ func editDescription(s *Server, p *domain.Project, r *http.Request, ids []string
 	})
 	desc := joinDescription(r.FormValue("text"), images)
 	if desc == strings.TrimRight(t.Description, "\n") {
-		return actionResult{}, operations.ErrNoChange
+		return actionResult{Saved: true}, operations.ErrNoChange
 	}
 	if _, err := operations.UpdateTask(p, cat, t.ID, operations.TaskUpdate{Description: &desc}); err != nil {
 		return actionResult{}, err
@@ -400,7 +393,7 @@ func editDescription(s *Server, p *domain.Project, r *http.Request, ids []string
 	if drop != "" {
 		return actionResult{Msg: "Image removed"}, nil
 	}
-	return actionResult{Base: &desc}, nil
+	return actionResult{Saved: true}, nil
 }
 
 func attachImages(s *Server, p *domain.Project, r *http.Request, ids []string) (actionResult, error) {

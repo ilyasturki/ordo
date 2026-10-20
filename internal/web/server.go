@@ -371,6 +371,14 @@ func (s *Server) task(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ci, ti, err := locate(&p, r.PathValue("tid"))
+	// An open page refreshing onto a task deleted elsewhere lands on its project.
+	if errors.Is(err, domain.ErrTaskNotFound) && r.Header.Get("HX-Request") != "" {
+		w.Header().Set("HX-Push-Url", "/p/"+p.ID)
+		get := r.Clone(r.Context())
+		get.URL = &url.URL{Path: "/p/" + p.ID}
+		s.project(w, get)
+		return
+	}
 	if err != nil {
 		s.fail(w, r, err)
 		return

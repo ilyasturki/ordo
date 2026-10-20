@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"html"
 	"image"
 	"image/color"
 	"image/png"
@@ -498,12 +499,12 @@ func TestPlainPostsRedirectBack(t *testing.T) {
 func TestTitleEditRefusesAStaleBase(t *testing.T) {
 	f := newFixture(t)
 	rec := f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"uno"}, "base": {"one"}})
-	if f.task(f.ids["one"]).Title != "uno" || rec.Header().Get("X-Ordo-Base") != `"uno"` {
-		t.Fatalf("title = %q, base header %q", f.task(f.ids["one"]).Title, rec.Header().Get("X-Ordo-Base"))
+	if f.task(f.ids["one"]).Title != "uno" || rec.Header().Get("X-Ordo-Saved") != "1" {
+		t.Fatalf("title = %q, saved header %q", f.task(f.ids["one"]).Title, rec.Header().Get("X-Ordo-Saved"))
 	}
 	rec = f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"eins"}, "base": {"one"}})
-	if rec.Header().Get("X-Ordo-Theirs") != `{"base":"uno","text":"uno"}` || f.task(f.ids["one"]).Title != "uno" {
-		t.Fatalf("stale base: theirs %q, title %q", rec.Header().Get("X-Ordo-Theirs"), f.task(f.ids["one"]).Title)
+	if rec.Header().Get("X-Ordo-Conflict") != "1" || rec.Header().Get("X-Ordo-Saved") != "" || f.task(f.ids["one"]).Title != "uno" {
+		t.Fatalf("stale base: conflict %q, saved %q, title %q", rec.Header().Get("X-Ordo-Conflict"), rec.Header().Get("X-Ordo-Saved"), f.task(f.ids["one"]).Title)
 	}
 	rec = f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"  "}, "base": {"uno"}})
 	if snackOf(t, rec).Msg != "A task needs a title" {
@@ -916,18 +917,17 @@ func TestStampOnlyVouchesForACurrentPage(t *testing.T) {
 	}
 }
 
-// The page keeps the typed text and offers Keep mine or Use theirs, so the snackbar's Reload would only lose it.
-func TestStaleTitleSendsTheirsInsteadOfAReload(t *testing.T) {
+// The page keeps the typed text and offers Keep mine or Use theirs, reading theirs from the page this answers with.
+func TestStaleTitleFlagsAConflictAndRendersTheirs(t *testing.T) {
 	f := newFixture(t)
-	rec := f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"uno"}, "base": {"old"}})
-	if sn := snackOf(t, rec); sn.Msg != "" || rec.Header().Get("X-Ordo-Base") != "" {
-		t.Fatalf("snack %+v base %q", sn, rec.Header().Get("X-Ordo-Base"))
+	rec := f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"uno"}, "base": {"old"}, "back": {"/p/" + f.pid + "/t/" + f.ids["one"]}})
+	if sn := snackOf(t, rec); sn.Msg != "" || rec.Header().Get("X-Ordo-Conflict") != "1" {
+		t.Fatalf("snack %+v conflict %q", sn, rec.Header().Get("X-Ordo-Conflict"))
 	}
-	var got theirs
-	if err := json.Unmarshal([]byte(rec.Header().Get("X-Ordo-Theirs")), &got); err != nil || got.Base != "one" {
-		t.Fatalf("theirs %q: %v", rec.Header().Get("X-Ordo-Theirs"), err)
+	if !strings.Contains(rec.Body.String(), `name="base" value="one" data-base`) {
+		t.Fatal("the answer doesn't render their title as the field's base")
 	}
-	f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"uno"}, "base": {got.Base}})
+	f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"uno"}, "base": {"one"}})
 	if title := f.task(f.ids["one"]).Title; title != "uno" {
 		t.Fatalf("keep mine on their base: %q", title)
 	}
@@ -943,17 +943,62 @@ func TestStaleDetailsKeepMineOnTheirBase(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	rec := f.action("task.description", url.Values{"id": {f.ids["one"]}, "base": {""}, "text": {"my text"}})
-	var got theirs
-	if err := json.Unmarshal([]byte(rec.Header().Get("X-Ordo-Theirs")), &got); err != nil {
-		t.Fatalf("theirs %q: %v", rec.Header().Get("X-Ordo-Theirs"), err)
+	rec := f.action("task.description", url.Values{"id": {f.ids["one"]}, "base": {""}, "text": {"my text"}, "back": {"/p/" + f.pid + "/t/" + f.ids["one"]}})
+	body := rec.Body.String()
+	if rec.Header().Get("X-Ordo-Conflict") != "1" || !strings.Contains(body, ">their text</textarea>") || !strings.Contains(body, `name="image" value="`+html.EscapeString(img)+`"`) {
+		t.Fatalf("conflict %q, rendered theirs %v", rec.Header().Get("X-Ordo-Conflict"), strings.Contains(body, "their text"))
 	}
-	if got.Text != "their text" || len(got.Images) != 1 || got.Images[0] != img || f.task(f.ids["one"]).Description != "their text\n"+img {
-		t.Fatalf("theirs %+v, on disk %q", got, f.task(f.ids["one"]).Description)
+	if f.task(f.ids["one"]).Description != "their text\n"+img {
+		t.Fatalf("on disk %q", f.task(f.ids["one"]).Description)
 	}
-	f.action("task.description", url.Values{"id": {f.ids["one"]}, "base": {got.Base}, "text": {"my text"}, "image": got.Images})
+	f.action("task.description", url.Values{"id": {f.ids["one"]}, "base": {"their text\n" + img}, "text": {"my text"}, "image": {img}})
 	if desc := f.task(f.ids["one"]).Description; desc != "my text\n"+img {
 		t.Fatalf("keep mine = %q", desc)
+	}
+}
+
+// A proxy refuses an answer whose headers outgrow its buffer: nginx's default is 4 or 8 KB.
+func TestLongDetailsNeverRideInAHeader(t *testing.T) {
+	f := newFixture(t)
+	long := strings.Repeat("a long line of details that keeps going\n", 500)
+	assertSmallHeaders := func(rec *httptest.ResponseRecorder) {
+		t.Helper()
+		for name, values := range rec.Header() {
+			for _, v := range values {
+				if len(v) > 512 {
+					t.Fatalf("%s carries %d bytes", name, len(v))
+				}
+			}
+		}
+	}
+	rec := f.action("task.description", url.Values{"id": {f.ids["one"]}, "base": {""}, "text": {long}})
+	assertSmallHeaders(rec)
+	if rec.Header().Get("X-Ordo-Saved") != "1" || f.task(f.ids["one"]).Description != strings.TrimRight(long, "\n") {
+		t.Fatalf("saved %q, %d bytes on disk", rec.Header().Get("X-Ordo-Saved"), len(f.task(f.ids["one"]).Description))
+	}
+	rec = f.action("task.description", url.Values{"id": {f.ids["one"]}, "base": {""}, "text": {"stale " + long}, "back": {"/p/" + f.pid + "/t/" + f.ids["one"]}})
+	assertSmallHeaders(rec)
+	if rec.Header().Get("X-Ordo-Conflict") != "1" || !strings.Contains(rec.Body.String(), "a long line of details") {
+		t.Fatalf("conflict %q", rec.Header().Get("X-Ordo-Conflict"))
+	}
+}
+
+func TestDeletedTaskPageLandsOnItsProject(t *testing.T) {
+	f := newFixture(t)
+	f.action("task.delete", url.Values{"id": {f.ids["one"]}})
+	path := "/p/" + f.pid + "/t/" + f.ids["one"]
+	rec := f.do(http.MethodGet, path, nil, true)
+	if rec.Code != http.StatusOK || rec.Header().Get("HX-Push-Url") != "/p/"+f.pid || !strings.Contains(rec.Body.String(), `data-page="project"`) {
+		t.Fatalf("refresh: %d, push %q", rec.Code, rec.Header().Get("HX-Push-Url"))
+	}
+}
+
+func TestTextSaveOnADeletedTaskFlagsItGone(t *testing.T) {
+	f := newFixture(t)
+	f.action("task.delete", url.Values{"id": {f.ids["one"]}})
+	rec := f.action("task.title", url.Values{"id": {f.ids["one"]}, "title": {"typed"}, "base": {"one"}})
+	if rec.Header().Get("X-Ordo-Gone") != "1" || snackOf(t, rec).Msg != "That task is gone" {
+		t.Fatalf("gone %q, snack %+v", rec.Header().Get("X-Ordo-Gone"), snackOf(t, rec))
 	}
 }
 

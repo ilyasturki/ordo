@@ -17,10 +17,11 @@
     $(".snackbar-text", bar).textContent = msg;
     const action = $(".snackbar-action", bar);
     action.hidden = !undo;
-    action.textContent = undo === "reload" ? "Reload" : "Undo";
+    action.textContent = undo === "reload" ? "Reload" : undo && undo.label ? undo.label : "Undo";
     action.onclick = () => {
       bar.hidden = true;
       if (undo === "reload") refresh();
+      else if (undo.run) undo.run();
       else htmx.ajax("POST", undo, { target: "#app", select: "#app", swap: "outerHTML", values: { back: location.pathname + location.search } });
     };
     for (const a of bar.getAnimations()) if (!(a instanceof CSSAnimation)) a.cancel();
@@ -29,7 +30,7 @@
     void bar.offsetWidth;
     bar.style.animation = "";
     clearTimeout(snackTimer);
-    snackTimer = setTimeout(() => { bar.hidden = true; }, undo ? 6000 : 3000);
+    if (!(undo && undo.keep)) snackTimer = setTimeout(() => { bar.hidden = true; }, undo ? 6000 : 3000);
   }
 
   function flash(id) {
@@ -1200,9 +1201,47 @@
     if (staleStamp === stamp) staleStamp = "";
   }
 
-  function adoptBase(form, header) {
-    if (header === null) return;
-    const base = JSON.parse(header);
+  // What the file holds once text sent from form is saved: editTitle trims it, and
+  // joinDescription trims trailing newlines and appends the image lines.
+  function storedText(form, text) {
+    if (fieldOf(form).name === "title") return text.trim();
+    text = text.replace(/\r\n/g, "\n").replace(/\n+$/, "");
+    const images = $$("input[name=image]", form).map((i) => i.value);
+    return (text.trim() ? [text, ...images] : images).join("\n");
+  }
+
+  // Their side of a conflict, read from the page the refusal answers with.
+  function theirsIn(html, key) {
+    const page = new DOMParser().parseFromString(html, "text/html");
+    const form = $$("[data-autosave]", page).find((f) => draftKey(f) === key);
+    if (!form) return null;
+    return { base: $("[data-base]", form).value, text: fieldOf(form).value, images: $$("input[name=image]", form).map((i) => i.value) };
+  }
+
+  // The task went while its text was being typed: the text stays one tap away.
+  function gone(key, text) {
+    setDraft(key);
+    snack("That task is gone", { label: "Copy", keep: true, run: () => copy(text) });
+  }
+
+  function copy(text) {
+    const done = () => snack("Copied");
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, () => snack("Couldn't copy"));
+      return;
+    }
+    const area = document.createElement("textarea");
+    area.className = "visually-hidden";
+    area.value = text;
+    document.body.append(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    if (ok) done();
+    else snack("Couldn't copy");
+  }
+
+  function adoptBase(form, base) {
     $("[data-base]", form).value = base;
     if (form.matches(".details-form")) {
       const text = $("textarea[name=text]", form).value;
@@ -1217,6 +1256,7 @@
   async function post(form) {
     const key = draftKey(form);
     const sent = form.savedValue;
+    const stored = storedText(form, sent);
     // Recorded before it leaves, so a refusal the page never hears of (it was closing) can't lose it.
     setDraft(key, { mine: sent, base: $("[data-base]", form).value });
     const body = new URLSearchParams(new FormData(form));
@@ -1239,24 +1279,34 @@
       snack(res.status === 401 ? "Signed out" : "That didn't work. Check the connection.");
       return;
     }
+    adoptStamp(res.headers.get("X-Ordo-Stamp"));
+    const conflict = res.headers.get("X-Ordo-Conflict") !== null;
+    const page = conflict ? await res.text() : "";
+    // The page may have been swapped while the save, or its answer, was out.
+    const live = liveForm(key);
+    // A swapped-in field holds the file's text unless a draft was restored into it.
+    const field = live && fieldOf(live);
+    const mine = field && (live === form || field.value !== live.savedValue) ? field.value : sent;
+    if (conflict) {
+      const theirs = theirsIn(page, key);
+      if (!theirs) {
+        gone(key, mine);
+        return;
+      }
+      setDraft(key, { mine, theirs });
+      if (live) showConflict(live);
+      return;
+    }
+    if (res.body) res.body.cancel();
+    if (res.headers.get("X-Ordo-Gone") !== null) {
+      gone(key, mine);
+      return;
+    }
     const trigger = res.headers.get("HX-Trigger");
     const sn = trigger && JSON.parse(trigger)["ordo:snack"];
     if (sn) snack(sn.msg, sn.undo);
-    adoptStamp(res.headers.get("X-Ordo-Stamp"));
-    // The page may have been swapped while the save was out.
-    const live = liveForm(key);
-    const theirs = res.headers.get("X-Ordo-Theirs");
-    if (theirs !== null) {
-      // A swapped-in field holds the file's text unless a draft was restored into it.
-      const field = live && fieldOf(live);
-      const mine = field && (live === form || field.value !== live.savedValue) ? field.value : sent;
-      setDraft(key, { mine, theirs: JSON.parse(theirs) });
-      if (live) showConflict(live);
-    } else {
-      setDraft(key);
-      adoptBase(live || form, res.headers.get("X-Ordo-Base"));
-    }
-    if (res.body) res.body.cancel();
+    setDraft(key);
+    if (res.headers.get("X-Ordo-Saved") !== null) adoptBase(live || form, stored);
   }
 
   function flushSaves() {
