@@ -29,6 +29,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Visual mode from a task moves onto folded categories instead of stopping above them, and never unfolds them. A folded header in the range stands for its whole category, sub-categories included: `y`, `Y`, `x`, `d` and `m` take its tasks and separators along, status and tag edits leave them alone, and the status line counts them (`1 task + 1 folded category (2 tasks) selected`). A range that ran past folded categories used to leave their tasks out. `J`, `K`, `>` and `<` refuse such a range
 - The visual delete prompt no longer counts separators as tasks
 - A filter on a category that was then deleted, from the TUI, the CLI or another machine, hid every task until "Clear all". The filter now drops a category that no longer exists
+- The TUI no longer drops edits silently after the phone, the CLI or Syncthing changed the project first. A refused save marks the project `[changed on disk: r drops N edits]` until `r` reloads it, the mark staying when the status line clears; `q`, `ctrl+c` and switching projects ask before dropping those edits, and quitting anyway exits with status 1, naming them on stderr
+- A save still queued when `r` reloads can no longer land after the reload and overwrite the change it showed: `r` waits for it, and each save is checked against the load it came from
+- After a cut whose paste was refused, `r` gives the cut back, so `p` moves the rows instead of leaving a second copy
+- On the phone, a title or details edit refused because the task changed elsewhere no longer loses the typed text to Reload: the field keeps it and offers Keep mine or Use theirs, and a refresh, an action or leaving the page and coming back keeps it too
 
 ### Changed
 
@@ -39,13 +43,6 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - `+` on a web category opens an add row at the top of that category with the keyboard up, in place of the New task sheet. Enter adds the task there and opens the next row below it, so a batch keeps its typing order and the keyboard stays up between tasks. Escape or back closes the row; tapping away adds what it holds, then closes it. The Task button opens the row in the category at the top of the screen
 - A web category's ⋮ menu offers Add separator, which puts one at the top of the category, Fold, and Select completed, which selects its finished tasks for the bulk actions. With one task selected, the edit sheet offers Separator below, like `-` in the terminal. A new separator opens its label in place, and leaving it empty keeps a bare rule; tapping a separator edits its label
 - An empty category on the web reads "No tasks yet", and one whose tasks are all finished "All tasks complete" above its Completed row
-
-### Fixed
-
-- The TUI no longer drops edits silently after the phone, the CLI or Syncthing changed the project first. A refused save marks the project `[changed on disk: r drops N edits]` until `r` reloads it, the mark staying when the status line clears; `q`, `ctrl+c` and switching projects ask before dropping those edits, and quitting anyway exits with status 1, naming them on stderr
-- A save still queued when `r` reloads can no longer land after the reload and overwrite the change it showed: `r` waits for it, and each save is checked against the load it came from
-- After a cut whose paste was refused, `r` gives the cut back, so `p` moves the rows instead of leaving a second copy
-- On the phone, a title or details edit refused because the task changed elsewhere no longer loses the typed text to Reload: the field keeps it and offers Keep mine or Use theirs, and a refresh, an action or leaving the page and coming back keeps it too
 
 ## [0.12.0] - 2026-10-19
 
