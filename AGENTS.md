@@ -39,5 +39,5 @@ allows only same-origin scripts and styles, so markup carries no inline script o
 `style` attribute. Run `./testdata/web/run.sh [shot-name]` after a UI change: it
 seeds `testdata/web/seed.json`, serves it, and writes light and dark PNGs at phone
 width to `/tmp/ordo-web/out/` (`ORDO_WEB_SIZE=340x734` for a narrow phone). Read
-them, then `rm -rf /tmp/ordo-web`. Add a shot in `shots.mjs` for a new screen or
-sheet.
+them, then `rm -rf /tmp/ordo-web`. Add a shot in `fixture-shots.mjs` for a new
+screen or sheet.

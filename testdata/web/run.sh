@@ -2,7 +2,7 @@
 # Screenshot the web app at phone width, light and dark, against an isolated data dir.
 #
 # Usage: ./testdata/web/run.sh [shot-name ...]
-# PNGs land in /tmp/ordo-web/out/ (shot names are listed in shots.mjs).
+# PNGs land in /tmp/ordo-web/out/ (shot names are listed in fixture-shots.mjs).
 # ORDO_WEB_SIZE=340x734 shoots at another viewport (a Galaxy S21 FE is 340 wide).
 set -euo pipefail
 
