@@ -783,6 +783,7 @@ body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-a
 .conflict .conflict-theirs { max-height: 7.5em; margin-top: 4px; padding-left: 12px; border-left: 2px solid currentColor; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 .conflict-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .conflict .button.text { color: var(--on-error-container); }
+.details-form .conflict { margin: 0 16px 12px 56px; }
 .image-tile { position: relative; margin: 0; border-radius: 12px; overflow: hidden; background: var(--surface-container-high); }
 .image-tile img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 .image-missing { display: grid; place-items: center; aspect-ratio: 4 / 3; color: var(--on-surface-variant); }
