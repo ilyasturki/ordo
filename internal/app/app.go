@@ -300,6 +300,9 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.ui.Modes.IsDescriptionEdit() {
 			m.finishDescriptionEdit()
 		}
+		if m.ui.Modes.IsEdit() && !m.commitEditToQuit() {
+			return m, nil
+		}
 		return m, m.quit()
 	}
 	if msg.String() == "ctrl+v" && m.lineInputFocused() {
