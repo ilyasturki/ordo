@@ -7,20 +7,24 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Added
 
 - `l` in the project picker links this directory to the highlighted project and opens it, so the next launch here opens it too. The picker marks the linked project `(linked)`
+- While a filter hides some of a category's tasks, the category ends with an `(N hidden by the filter)` row the cursor stops on, and `enter` or `space` there clears the filter. It replaces the `(no tasks)` such a category showed, and the shortcut bar reads `f filtered` while a filter is on
+- The TUI remembers each project's filter across restarts, in this machine's `state.json`. A new project starts unfiltered, and the web app keeps its own filter
 - The web app's sign-in page pairs with a code: Scan code reads the QR code with the camera inside the app, and Pairing link or code takes a pasted link or code. Without a camera it says why and offers the paste field
 - Devices → Pair a new device shows a one-time pairing QR code and link on a device already signed in, after the passphrase when one is set. Devices shows which device paired which
 - The sign-in page moves on by itself once the device is paired in another tab, and the pair page opened in a browser tab suggests pasting the link into the installed app instead
-- While a filter hides some of a category's tasks, the category ends with an `(N hidden by the filter)` row the cursor stops on, and `enter` or `space` there clears the filter. It replaces the `(no tasks)` such a category showed, and the shortcut bar reads `f filtered` while a filter is on
-- The TUI remembers each project's filter across restarts, in this machine's `state.json`. A new project starts unfiltered, and the web app keeps its own filter
 - Touch gestures in the web app: a swipe from the left edge opens the drawer and a sideways swipe on it or outside it closes it, both following the finger and finishing with its speed; a swipe down on a bottom sheet's handle, or anywhere on it while its content is at the top, closes it; a sideways swipe dismisses the snackbar
 
 ### Changed
 
-- Revoking a device, from Devices or `ordo serve revoke`, also signs out the devices it paired, and lists them; `ordo serve devices` shows which device paired each
 - A task an edit takes out of the filter stays where it is, marked `(filtered out)`, until the cursor leaves it, so `space` can walk it through every status under a status filter. Status, priority and tag edits all behave this way, in visual mode too, where the rows go once visual mode ends and the cursor moves off them. Before, the tag picker and a pasted tag hid the task at once, and the other edits left it unmarked until the next fold or move
-
-### Changed
-
+- Revoking a device, from Devices or `ordo serve revoke`, also signs out the devices it paired, and lists them; `ordo serve devices` shows which device paired each
+- The web app folds finished tasks into a "Completed (n)" row at the bottom of each category, closed until you open it, and remembers it open. A task goes there once it and all its subtasks are done or cancelled; a finished subtask of an open task stays in place, struck through. The Open, Done and All chips are gone, and separators show again
+- A web task's circle still steps through To do, Doing, Done and Cancelled, but the row changes at once and stays put a second after the last tap, then slides into Completed once the task is finished, or back out of it. Undo stays in the snackbar
+- The web app no longer shows progress the terminal app lacks: no bar or "N of M done" under a category, no percentage or done count on the projects page. A category keeps its `~` estimate
+- A web row shows the first two lines of its task's details in grey, without the images, instead of a notes icon
+- `+` on a web category opens an add row at the top of that category with the keyboard up, in place of the New task sheet. Enter adds the task there and opens the next row below it, so a batch keeps its typing order and the keyboard stays up between tasks. Escape or back closes the row; tapping away adds what it holds, then closes it. The Task button opens the row in the category at the top of the screen
+- A web category's ⋮ menu offers Add separator, which puts one at the top of the category, Fold, and Select completed, which selects its finished tasks for the bulk actions. With one task selected, the edit sheet offers Separator below, like `-` in the terminal. A new separator opens its label in place, and leaving it empty keeps a bare rule; tapping a separator edits its label
+- An empty category on the web reads "No tasks yet", and one whose tasks are all finished "All tasks complete" above its Completed row
 - The web app's task page is laid out like Google Tasks: the category name in the top bar moves the task, and `⋮` holds Move up, Move down, Nest or Un-nest and Delete. Status, priority, tag and estimate are one row each showing the current value, and tapping a row opens a sheet with the choices. Details and images follow, then the subtasks with an "Add subtask" row, and a "Mark done" or "Mark open" button sits at the bottom. The created and updated dates are gone from the page
 - Dragging in the web app works like Google Tasks. A long-press lifts the row, with a haptic tap where the browser allows, and moving it drags it; sliding it about 40px right nests it under the task above and left un-nests it, the gap it leaves showing the indent before the drop. Letting go without moving selects the row, in place of the old long-press timer that cut drags short. A row no longer nests by accident, a place the drop can't keep isn't offered, an empty category takes a drop, the list scrolls at the screen's edge, a drop never opens the task, and a live refresh waits for the finger to lift. A mouse still drags at once, and Escape cancels
 
@@ -35,23 +39,13 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - A save still queued when `r` reloads can no longer land after the reload and overwrite the change it showed: `r` waits for it, and each save is checked against the load it came from
 - After a cut whose paste was refused, `r` gives the cut back, so `p` moves the rows instead of leaving a second copy
 - `ctrl+c` in the inline title, category or add editor saves what was typed before quitting, as the description editor already did, instead of dropping it. An edit the editor refuses, like a name another category has, keeps the editor open on the first `ctrl+c`, and a second one quits without it. When the project already holds edits that couldn't be saved, it asks first, and `n` goes back to the editor
-- On the phone, a title or details edit refused because the task changed elsewhere no longer loses the typed text to Reload: the field keeps it and offers Keep mine or Use theirs, and a refresh, an action or leaving the page and coming back keeps it too
-- The web app's drawer and bottom sheets slide away when they close, by a tap outside, Escape, Android back or a drawer item, instead of vanishing in one frame, Firefox for Android included. A drawer item closes the drawer before the next page shows, and the current project just closes it. The task page's `⋮` menu fades out the same way
-- Touch in the web app: the page no longer scrolls behind an open drawer or sheet, a sideways swipe no longer goes back a page, chips, buttons and segments answer a 48px touch, and a long-press on a row, a separator or a drawer item no longer selects text or opens the link menu
 - `ordo task add` and `ordo task edit` take `-e 2d`, a day being 8 hours, so the CLI reads back the `2d` it and the web app print. It refused any day estimate before
-- A web page swap no longer trips the Content-Security-Policy: htmx stopped copying the old page's inline styles, such as the task title's height, onto the new one. `testdata/web/run.sh` now fails on any CSP violation
+- On the phone, a title or details edit refused because the task changed elsewhere no longer loses the typed text to Reload: the field keeps it and offers Keep mine or Use theirs, and a refresh, an action or leaving the page and coming back keeps it too
 - On the phone, text typed into a task another device deletes is no longer lost: "That task is gone" offers Copy, which puts the text on the clipboard. The offer comes back after any other message and after a reload, until Copy takes the text. The open page moves to its project instead of reading "That didn't work"
 - Saving a task's details of a few KB on the phone no longer fails behind a reverse proxy: the web app's answers carried the whole text in a response header, which nginx refuses past its 4 or 8 KB buffer. They now carry only flags
-
-### Changed
-
-- The web app folds finished tasks into a "Completed (n)" row at the bottom of each category, closed until you open it, and remembers it open. A task goes there once it and all its subtasks are done or cancelled; a finished subtask of an open task stays in place, struck through. The Open, Done and All chips are gone, and separators show again
-- A web task's circle still steps through To do, Doing, Done and Cancelled, but the row changes at once and stays put a second after the last tap, then slides into Completed once the task is finished, or back out of it. Undo stays in the snackbar
-- The web app no longer shows progress the terminal app lacks: no bar or "N of M done" under a category, no percentage or done count on the projects page. A category keeps its `~` estimate
-- A web row shows the first two lines of its task's details in grey, without the images, instead of a notes icon
-- `+` on a web category opens an add row at the top of that category with the keyboard up, in place of the New task sheet. Enter adds the task there and opens the next row below it, so a batch keeps its typing order and the keyboard stays up between tasks. Escape or back closes the row; tapping away adds what it holds, then closes it. The Task button opens the row in the category at the top of the screen
-- A web category's ⋮ menu offers Add separator, which puts one at the top of the category, Fold, and Select completed, which selects its finished tasks for the bulk actions. With one task selected, the edit sheet offers Separator below, like `-` in the terminal. A new separator opens its label in place, and leaving it empty keeps a bare rule; tapping a separator edits its label
-- An empty category on the web reads "No tasks yet", and one whose tasks are all finished "All tasks complete" above its Completed row
+- The web app's drawer and bottom sheets slide away when they close, by a tap outside, Escape, Android back or a drawer item, instead of vanishing in one frame, Firefox for Android included. A drawer item closes the drawer before the next page shows, and the current project just closes it. The task page's `⋮` menu fades out the same way
+- Touch in the web app: the page no longer scrolls behind an open drawer or sheet, a sideways swipe no longer goes back a page, chips, buttons and segments answer a 48px touch, and a long-press on a row, a separator or a drawer item no longer selects text or opens the link menu
+- A web page swap no longer trips the Content-Security-Policy: htmx stopped copying the old page's inline styles, such as the task title's height, onto the new one. `testdata/web/run.sh` now fails on any CSP violation
 
 ## [0.12.0] - 2026-10-19
 
