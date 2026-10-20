@@ -772,12 +772,17 @@
     }
   }
 
+  // Mirrors editTitle's TrimSpace and joinDescription's trailing-newline trim.
+  function asStored(field, text) {
+    return field.name === "title" ? text.trim() : text.replace(/\n+$/, "");
+  }
+
   function restoreDraft(form) {
     const key = draftKey(form);
     const draft = drafts.get(key);
     const field = fieldOf(form);
     if (!draft || !field) return;
-    if (draft.mine === field.value) {
+    if (asStored(field, draft.mine) === asStored(field, field.value)) {
       setDraft(key);
       return;
     }

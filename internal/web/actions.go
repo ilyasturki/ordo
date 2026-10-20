@@ -156,13 +156,13 @@ func (s *Server) respond(w http.ResponseWriter, r *http.Request, pid string, res
 			return
 		}
 		sn.Msg = msg
-		if err == error(errConflict) {
-			sn.Undo = "reload"
-		}
+		switch {
 		// The page keeps the typed text and asks instead of the snackbar.
-		if err == error(errConflict) && res.Theirs != nil {
+		case err == error(errConflict) && res.Theirs != nil:
 			w.Header().Set("X-Ordo-Theirs", asciiJSON(res.Theirs))
 			sn = snack{}
+		case err == error(errConflict):
+			sn.Undo = "reload"
 		}
 	}
 	back := backTo(r, pid)
