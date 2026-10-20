@@ -88,6 +88,30 @@ func TestTaskAdd_PersistsWithParsedEstimate(t *testing.T) {
 	}
 }
 
+func TestTaskEdit_AcceptsDayEstimate(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := runCLI(t, dir, "init"); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	if _, err := runCLI(t, dir, "task", "add", "Write docs",
+		"--category", "Feature", "--project", "Default"); err != nil {
+		t.Fatalf("task add: %v", err)
+	}
+
+	if _, err := runCLI(t, dir, "task", "edit", "Write docs",
+		"--estimate", "2d", "--project", "Default"); err != nil {
+		t.Fatalf("task edit -e 2d: %v", err)
+	}
+
+	got, _ := findTask(firstCategoryTasks(t, loadDefault(t, dir), "Feature"), "Write docs")
+	if got.EstimateMinutes != 960 {
+		t.Errorf("estimate = %d, want 960 (2 days of 8h)", got.EstimateMinutes)
+	}
+	if shown := domain.FormatEstimate(got.EstimateMinutes); shown != "2d" {
+		t.Errorf("FormatEstimate = %q, want the 2d the edit took", shown)
+	}
+}
+
 // The pre-refactor CLI parsed "-5" as -5 minutes and stored it. The unified
 // parser must reject it — proving the bug fix at the CLI seam.
 func TestTaskAdd_RejectsNegativeEstimate(t *testing.T) {

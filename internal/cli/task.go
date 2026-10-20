@@ -189,7 +189,7 @@ func newTaskAddCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&categoryName, "category", "C", "", "category: name, parent/name or ID (required without --parent)")
 	cmd.Flags().StringVar(&parent, "parent", "", "add it as a subtask of this task: title or ID")
 	cmd.Flags().StringVar(&priority, "priority", "", "priority: critical|high|medium|low|trivial")
-	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "time estimate: 30, 2h, 1.5h, 2h30m")
+	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "time estimate: 30, 2h, 1.5h, 2h30m, 2d (8h days)")
 	cmd.Flags().StringVar(&description, "description", "", "description, may span several lines")
 
 	_ = cmd.RegisterFlagCompletionFunc("category", completeCategories)
@@ -286,7 +286,7 @@ func newTaskEditCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&title, "title", "t", "", "new title")
 	cmd.Flags().StringVar(&priority, "priority", "", "priority: critical|high|medium|low|trivial")
-	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "time estimate: 30, 2h, 1.5h, 2h30m")
+	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "time estimate: 30, 2h, 1.5h, 2h30m, 2d (8h days)")
 	cmd.Flags().StringVar(&description, "description", "", `new description, "" clears it`)
 
 	_ = cmd.RegisterFlagCompletionFunc("priority", completePriorities)

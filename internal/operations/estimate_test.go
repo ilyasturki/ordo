@@ -20,10 +20,15 @@ func TestParseEstimate(t *testing.T) {
 		{"fractional hours", "1.5h", 90, false},
 		{"bare minutes suffix", "30m", 30, false},
 		{"hours and minutes", "2h30m", 150, false},
+		{"days of eight hours", "2d", 960, false},
+		{"fractional days", "0.5d", 240, false},
+		{"days and hours", "1d4h", 720, false},
+		{"days, hours and minutes", "1d1h30m", 570, false},
 		{"whitespace trimmed", "  2h  ", 120, false},
 		{"uppercase", "2H", 120, false},
 		{"negative rejected", "-5", 0, true},
 		{"garbage rejected", "abc", 0, true},
+		{"days after hours rejected", "4h1d", 0, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
