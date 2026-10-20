@@ -1,6 +1,6 @@
 # Ordo
 
-A local-only project planner for the terminal, run entirely from the keyboard. Name a category after a version (`v1.3.0`) and `ctrl+a` or `gm` bumps it in place. It is a single binary that keeps each project in a plain JSON file. The terminal app never touches the network; `ordo serve` adds an opt-in web app for the phone.
+A local-only project planner for the terminal, run entirely from the keyboard. Name a category after a version (`v1.3.0`) and `ctrl+a` or `gm` bumps it in place. It is a single binary that keeps each project in a plain JSON file. The terminal app never touches the network; `ordo serve` adds an opt-in [web app for the phone](#on-the-phone).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.gif">
@@ -87,6 +87,11 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 ## On the phone
 
 `ordo serve` runs a web app made for a phone, over the same project files. Each category lists its open tasks and folds the finished ones into a Completed row. Its `+` opens a row at the top to type tasks into, Enter adding each one below the last, and its ⋮ menu adds a separator. Tap a task's circle to step its status, open it to edit its title, details, priority, tag, estimate and images, and long-press a row to lift it: drag it to reorder, slide it right to nest it under the task above or left to un-nest it, or let it go where it was to start selecting several. Its edits run through the same code as the TUI's keys and take the same project lock, reading the file again first, so the phone and the CLI never overwrite anyone, and an open page refreshes when the file changes. The TUI doesn't watch the file: once the phone has saved, the TUI's next edit is refused and marked, and `r` shows the phone's change, dropping the TUI edits made since. A title or details edit on the phone that crosses one made elsewhere keeps the typed text and asks: Keep mine or Use theirs.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/phone-dark.png">
+  <img alt="The ordo web app on a phone: the ferry project's open tasks with past versions folded, a task with its status, priority, tag, estimate, details and subtasks, and the inline row adding a task to the next category" src="assets/phone-light.png">
+</picture>
 
 ```bash
 ordo serve --base-url https://ordo.example.com   # listens on 127.0.0.1:7319
