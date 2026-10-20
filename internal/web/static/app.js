@@ -23,6 +23,7 @@
       if (undo === "reload") refresh();
       else htmx.ajax("POST", undo, { target: "#app", select: "#app", swap: "outerHTML", values: { back: location.pathname + location.search } });
     };
+    for (const a of bar.getAnimations()) if (!(a instanceof CSSAnimation)) a.cancel();
     bar.hidden = false;
     bar.style.animation = "none";
     void bar.offsetWidth;
@@ -442,6 +443,7 @@
       d.classList.remove("tracking");
       unstyle(d);
       d.classList.add("closing");
+      d.addEventListener("close", () => d.classList.remove("closing"), { once: true });
       const done = () => {
         if (!d.classList.contains("closing")) return;
         d.classList.remove("closing");
@@ -595,6 +597,7 @@
   }, { passive: false });
 
   function endSwipe(e) {
+    setTimeout(refreshWhenIdle, 50);
     if (!swipe || !Array.from(e.changedTouches).some((q) => q.identifier === swipe.id)) return;
     if (swipe.axis) {
       settleSwipe(swipe);
@@ -611,26 +614,22 @@
     el.style.height = el.scrollHeight + "px";
   }
 
-  // A row lifts on a long-press, or on the first move of a mouse; then it follows the pointer, and sliding it
-  // NEST_DX sideways nests it under the task above or un-nests it. Let go without moving and it starts a selection.
   const LIFT_MS = 400;
   const SLOP = 8;
-  const NEST_DX = 40;
+  const NEST_SLIDE = 40;
   let press = null;
 
-  // Only the rows of a category's first list and their subtasks move; a row held anywhere else stays put.
   function draggableAt(t) {
     const el = t.closest(".row, .separator");
-    if (!el || !el.dataset.id || el.closest(".completed") || t.closest(".status-button")) return null;
+    if (!el || !el.dataset.id || el.matches(".editing") || el.closest(".completed") || t.closest(".status-button")) return null;
     const ul = el.parentElement;
     const list = ul.matches(".rows.sub") ? ul.parentElement.parentElement : ul;
-    return list.matches(".category-body > .rows") && list === list.parentElement.querySelector(":scope > .rows") ? el : null;
+    return list.matches(".category-body > .rows") ? el : null;
   }
 
   const lineOf = (li) => (li.matches(".row") ? li.querySelector(":scope > .list-item") : li);
   const subOf = (li) => li.matches(".row") && li.querySelector(":scope > .rows.sub");
 
-  // The category's rows top to bottom, each subtask under its parent, without the dragged block.
   function linesOf(list) {
     const lines = [];
     for (const li of list.children) {
@@ -680,7 +679,7 @@
       }
     }
     const dx = x - press.x;
-    const depth = Math.max(0, Math.min(1, press.depth + (dx >= NEST_DX) - (dx <= -NEST_DX)));
+    const depth = Math.max(0, Math.min(1, press.depth + (dx >= NEST_SLIDE) - (dx <= -NEST_SLIDE)));
     const spot = spotAt(list, lines, gap, depth);
     const child = spot && spot.ul !== list;
     if (!spot || (el.parentElement === spot.ul && el.nextElementSibling === spot.before && el.classList.contains("child") === child)) return;
@@ -690,7 +689,6 @@
     });
   }
 
-  // Rows the slot pushed aside slide to their new place instead of jumping.
   function flip(change) {
     const boxes = $$(".content .row > .list-item, .content .separator").filter((n) => !press.el.contains(n));
     const tops = boxes.map((n) => n.getBoundingClientRect().top);
@@ -728,7 +726,7 @@
     }
     press.lastX = x;
     press.lastY = y;
-    const dx = Math.max(-NEST_DX, Math.min(NEST_DX, x - press.x));
+    const dx = Math.max(-NEST_SLIDE, Math.min(NEST_SLIDE, x - press.x));
     press.clone.style.transform = `translate(${dx}px, ${y - press.y}px)`;
     place(x, y);
   }
@@ -748,7 +746,6 @@
     press.raf = requestAnimationFrame(autoscroll);
   }
 
-  // The lifted copy glides onto the slot, then the slot shows the row again.
   function land() {
     const { el, clone, rect } = press;
     const r = el.getBoundingClientRect();
@@ -768,7 +765,7 @@
     if (ul === from.ul && el.nextElementSibling === from.next) return;
     let next = el.nextElementSibling;
     while (next && !next.dataset.id) next = next.nextElementSibling;
-    htmx.ajax("POST", "/p/" + app().dataset.project + "/do/task.place", {
+    htmx.ajax("POST", doURL("task.place"), {
       target: "#app", select: "#app", swap: "outerHTML",
       values: { id: el.dataset.id, cat: el.closest("[data-cat]").dataset.cat, parent: ul.dataset.parent || "", before: next ? next.dataset.id : "", back: location.pathname + location.search },
     });
@@ -794,11 +791,20 @@
 
   document.addEventListener("pointerdown", (e) => {
     if (press || selecting || !e.isPrimary || e.button !== 0) return;
+    const mouse = e.pointerType === "mouse";
     const el = draggableAt(e.target);
-    if (!el) return;
-    press = { el, pointer: e.pointerId, x: e.clientX, y: e.clientY, mouse: e.pointerType === "mouse" };
-    if (!press.mouse) press.timer = setTimeout(lift, LIFT_MS);
+    const finished = !el && !mouse && !e.target.closest(".status-button") && e.target.closest(".content .completed .row");
+    if (!el && !finished) return;
+    press = { el: el || finished, pointer: e.pointerId, x: e.clientX, y: e.clientY, mouse };
+    if (finished) press.timer = setTimeout(holdToSelect, LIFT_MS);
+    else if (!mouse) press.timer = setTimeout(lift, LIFT_MS);
   });
+
+  function holdToSelect() {
+    press.held = true;
+    if (navigator.vibrate) navigator.vibrate(20);
+    startSelecting(press.el.dataset.id);
+  }
 
   document.addEventListener("pointermove", (e) => {
     if (!press || e.pointerId !== press.pointer) return;
@@ -807,6 +813,7 @@
       endPress();
       return;
     }
+    if (press.held) return;
     if (!press.drag && Math.hypot(e.clientX - press.x, e.clientY - press.y) <= SLOP) return;
     if (press.mouse && !press.clone) lift();
     if (press.clone) dragTo(e.clientX, e.clientY);
@@ -822,6 +829,8 @@
       press.el.classList.remove("drag-slot");
       swallowUntil = performance.now() + 400;
       if (press.el.matches(".row")) startSelecting(press.el.dataset.id);
+    } else if (press.held) {
+      swallowUntil = performance.now() + 400;
     }
     endPress();
   });
@@ -841,7 +850,10 @@
   document.addEventListener("dragstart", (e) => { if (e.target.closest && e.target.closest(".category-body")) e.preventDefault(); });
 
   let lastPointer = "mouse";
-  document.addEventListener("pointerdown", (e) => { lastPointer = e.pointerType; }, true);
+  document.addEventListener("pointerdown", (e) => {
+    lastPointer = e.pointerType;
+    swallowUntil = 0;
+  }, true);
   document.addEventListener("contextmenu", (e) => {
     if (e.target.closest(".content .row, .content .separator") || (lastPointer !== "mouse" && e.target.closest(".drawer-item"))) e.preventDefault();
   });
