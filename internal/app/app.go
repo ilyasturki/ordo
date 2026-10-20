@@ -300,7 +300,7 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.ui.Modes.IsDescriptionEdit() {
 			m.finishDescriptionEdit()
 		}
-		if m.ui.Modes.IsEdit() && !m.commitEditToQuit() {
+		if m.ui.Modes.IsEdit() && !m.holdsUnsaved() && !m.commitEditToQuit() {
 			return m, nil
 		}
 		return m, m.quit()

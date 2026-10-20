@@ -309,9 +309,7 @@ func (m *model) finishEditing() {
 	m.ui.Edit.reset()
 }
 
-// commitEditToQuit saves the open inline edit for ctrl+c and reports whether
-// quitting can go on. An edit the editor already refused (a taken name, a merge
-// offer) is left behind, so a second ctrl+c always quits.
+// An edit the editor already refused (a taken name, a merge offer) is left behind, so a second ctrl+c quits.
 func (m *model) commitEditToQuit() bool {
 	if m.ui.Edit.err != "" || m.ui.Edit.mergeInto != "" {
 		return true
