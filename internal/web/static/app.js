@@ -467,6 +467,11 @@
     dismiss(e.target);
   }, true);
 
+  // touch-action: pan-y keeps sideways moves for the drawer swipe, but a pinch-zoomed page needs to pan sideways.
+  if (window.visualViewport) {
+    visualViewport.addEventListener("resize", () => document.documentElement.classList.toggle("zoomed", visualViewport.scale > 1));
+  }
+
   let swipe = null;
   let swallowUntil = 0;
 
@@ -482,7 +487,8 @@
     const bar = t.closest("#snackbar");
     if (bar) return { d: bar, kind: "snack" };
     const drawer = $("#drawer");
-    if (drawer && !drawer.open && x <= 40 && !selecting && !t.closest("input, textarea, select") && !scrollsSideways(t)) return { d: drawer, kind: "edge" };
+    const zoomed = document.documentElement.classList.contains("zoomed");
+    if (drawer && !drawer.open && x <= 40 && !zoomed && !selecting && !t.closest("input, textarea, select") && !scrollsSideways(t)) return { d: drawer, kind: "edge" };
     return null;
   }
 
