@@ -567,12 +567,12 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
   line-height: 1.25rem;
   letter-spacing: 0.016rem;
   animation: snack-in 250ms var(--ease-out);
+  touch-action: pan-y;
 }
 body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-area-inset-bottom)); }
 .snackbar-text { flex: 1; padding: 10px 0; }
 .snackbar-action { height: 40px; padding: 0 12px; border: 0; border-radius: 20px; background: none; color: var(--inverse-primary); font-weight: 500; }
 @keyframes snack-in { from { transform: translateY(16px); opacity: 0; } }
-.snackbar { touch-action: pan-y; }
 .snackbar.tracking { animation: none; }
 
 .sheet {
@@ -737,8 +737,7 @@ body.devices .snackbar, body.projects .snackbar { bottom: calc(16px + env(safe-a
 .category-switch .icon { color: var(--on-surface-variant); }
 
 .editor { padding: 0 12px 24px; }
-.parent-link { display: inline-flex; align-items: center; gap: 6px; margin: 4px 4px 4px; font-size: 0.875rem; font-weight: 500; color: var(--primary); }
-.parent-link { position: relative; border-radius: 8px; }
+.parent-link { position: relative; display: inline-flex; align-items: center; gap: 6px; margin: 4px 4px 4px; border-radius: 8px; font-size: 0.875rem; font-weight: 500; color: var(--primary); }
 .parent-link::after { content: ""; position: absolute; inset: -4px -8px; border-radius: inherit; background: currentColor; opacity: 0; transition: opacity 150ms linear; }
 .parent-link:active::after { opacity: 0.12; }
 .title-input {
