@@ -104,6 +104,17 @@ func (s *Store) checkFresh(id string, l *lineage) error {
 	return nil
 }
 
+// DropUnsaved writes off the open copy's edits that never reached disk, once
+// the user chose to lose them. Its version stays, so its next save is still checked.
+func (s *Store) DropUnsaved(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if l := s.copies[id]; l != nil {
+		l.err = nil
+		l.saved = l.queued
+	}
+}
+
 // Unsaved reports how many snapshots of the open copy of id have not reached
 // disk, and why the last one failed. Snapshots still queued count until they land.
 func (s *Store) Unsaved(id string) (int, error) {

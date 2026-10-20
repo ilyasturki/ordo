@@ -825,7 +825,7 @@ func (m model) renderView() string {
 	case modes.ModeMovePicker:
 		return modal.Render(content, m.movePickerView())
 	case modes.ModeConfirmLeave:
-		if m.ui.ConfirmLeave.Kind == leaveSwitch {
+		if m.ui.ConfirmLeave.Kind != leaveQuit {
 			return modal.Render(modal.Render(content, m.projectPickerView()), m.confirmLeaveView())
 		}
 		return modal.Render(content, m.confirmLeaveView())

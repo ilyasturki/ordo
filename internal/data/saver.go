@@ -28,6 +28,7 @@ type Saver struct {
 	results chan error   // capacity 1, best-effort error surface
 	done    chan struct{}
 	pending sync.WaitGroup
+	lastID  string
 
 	mu    sync.Mutex
 	names map[string]string
@@ -74,6 +75,11 @@ func (s *Saver) report(err error) {
 // copy of the project loaded last, so a reload after it can't let it through.
 // Must not be called after Close, nor concurrently with Drain.
 func (s *Saver) Enqueue(project domain.Project) {
+	// The single slot is latest-wins, so another project's queued job would be replaced unwritten.
+	if s.lastID != project.ID {
+		s.pending.Wait()
+		s.lastID = project.ID
+	}
 	l, seq := s.store.queue(project.ID)
 	s.mu.Lock()
 	s.names[project.ID] = project.Name

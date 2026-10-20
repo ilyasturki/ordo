@@ -22,6 +22,7 @@ type leaveKind int
 const (
 	leaveQuit leaveKind = iota
 	leaveSwitch
+	leaveCreate
 )
 
 type ConfirmLeaveState struct {
@@ -77,9 +78,17 @@ func (m *model) quit() tea.Cmd {
 func (m model) handleConfirmLeaveKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "enter":
-		if m.ui.ConfirmLeave.Kind == leaveSwitch {
+		if m.ui.ConfirmLeave.Kind != leaveQuit {
+			m.deps.Store.DropUnsaved(m.project.ID)
+		}
+		switch m.ui.ConfirmLeave.Kind {
+		case leaveSwitch:
 			m.ui.Modes.Uncover()
 			m.switchToPicked(m.ui.ConfirmLeave.status)
+			return m, nil
+		case leaveCreate:
+			m.ui.Modes.Uncover()
+			m.createPickedProject(strings.TrimSpace(m.ui.Picker.input.Value()))
 			return m, nil
 		}
 		return m, tea.Quit
@@ -93,7 +102,7 @@ func (m model) confirmLeaveView() string {
 	save := m.ui.Save
 	question := fmt.Sprintf("Quit and drop %s?", save.edits())
 	confirm := "quit anyway"
-	if m.ui.ConfirmLeave.Kind == leaveSwitch {
+	if m.ui.ConfirmLeave.Kind != leaveQuit {
 		question = fmt.Sprintf("Switch projects and drop %s?", save.edits())
 		confirm = "switch anyway"
 	}

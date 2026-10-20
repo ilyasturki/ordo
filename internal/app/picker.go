@@ -292,7 +292,15 @@ func (m *model) createProjectFromPicker() {
 		m.ui.Picker.cancelAdding()
 		return
 	}
+	if m.holdsUnsaved() {
+		m.ui.ConfirmLeave = ConfirmLeaveState{Kind: leaveCreate}
+		m.ui.Modes.ToConfirmLeave()
+		return
+	}
+	m.createPickedProject(name)
+}
 
+func (m *model) createPickedProject(name string) {
 	project, err := m.deps.Store.CreateProject(name)
 	if err != nil {
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Error: %v", err)
@@ -308,6 +316,7 @@ func (m *model) createProjectFromPicker() {
 	m.saveCursorState()
 
 	m.project = project
+	m.checkSaves()
 	m.ui.Filter = NewFilterState()
 	m.ui.Fold = NewFoldState()
 	m.ui.History.Reset()

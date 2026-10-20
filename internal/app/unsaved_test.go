@@ -262,7 +262,6 @@ func TestReloadKeepsTheCopyOfACutThatLanded(t *testing.T) {
 	assert.False(t, m.ui.Clipboard.IsCut, "p pastes a copy, as after any move")
 }
 
-// The research's snapshot race, through the TUI: r must see an edit still queued.
 func TestReloadWaitsForTheQueuedSnapshot(t *testing.T) {
 	m, web, p := sharedModel(t)
 	saver := withSaver(t, m)
@@ -318,6 +317,31 @@ func TestSwitchingProjectsAsksBeforeDroppingEdits(t *testing.T) {
 	m.selectProject()
 	hit(m, "y")
 	assert.Equal(t, beta.ID, m.project.ID)
+	assert.True(t, m.ui.Modes.IsNormal())
+	assert.Empty(t, m.ui.Save.mark())
+	n, err := m.deps.Store.Unsaved(alpha.ID)
+	assert.Zero(t, n, "the drop was chosen: ordo doesn't report it on exit")
+	assert.NoError(t, err)
+}
+
+func TestCreatingAProjectAsksBeforeDroppingEdits(t *testing.T) {
+	m, _, alpha, _ := newPickerTestModel(t, "")
+	web := data.NewStore(m.deps.Store.(*data.Store).Dir)
+	m.rebuildPositions()
+	onWeb(t, web, alpha.ID, func(p *domain.Project) { p.Name = "Elsewhere" })
+	m.selectItem(selection.FocusTask, tasksIn(alpha, 1)[0].ID)
+	hit(m, "l")
+
+	m.ui.Modes.ToProjectPicker()
+	m.ui.Picker.startAdding()
+	m.ui.Picker.input.SetValue("Gamma")
+	m.createProjectFromPicker()
+	assert.True(t, m.ui.Modes.IsConfirmLeave())
+	assert.Equal(t, alpha.ID, m.project.ID)
+	assert.Contains(t, m.renderView(), "Switch projects and drop 1 edit?")
+
+	hit(m, "y")
+	assert.Equal(t, "Gamma", m.project.Name)
 	assert.True(t, m.ui.Modes.IsNormal())
 	assert.Empty(t, m.ui.Save.mark())
 }

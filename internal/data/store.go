@@ -32,6 +32,7 @@ type ProjectRepository interface {
 	DeleteProject(id string) error
 	ConflictFiles(id string) []string
 	Unsaved(id string) (int, error)
+	DropUnsaved(id string)
 }
 
 // Store manages JSON persistence in a directory.

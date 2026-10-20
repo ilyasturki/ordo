@@ -90,8 +90,6 @@ func renameTo(t *testing.T, s *Store, id, name string) {
 	require.NoError(t, err)
 }
 
-// The research's snapshot race: a snapshot queued before a reload used to pass
-// the reloaded copy's check and overwrite the edit the reload had just shown.
 func TestSnapshotQueuedBeforeReloadIsRefused(t *testing.T) {
 	tui, web, p := twoStores(t)
 	mine, err := tui.LoadProjectByID(p.ID)
@@ -190,4 +188,18 @@ func TestSaverCloseForgetsEditsAReloadDropped(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NoError(t, saver.Close())
+}
+
+func TestDropUnsavedKeepsCheckingTheCopy(t *testing.T) {
+	tui, web, p := twoStores(t)
+	mine, err := tui.LoadProjectByID(p.ID)
+	require.NoError(t, err)
+	renameTo(t, web, p.ID, "Elsewhere")
+	require.ErrorIs(t, tui.SaveProjectLocked(mine), ErrStaleProject)
+
+	tui.DropUnsaved(p.ID)
+	n, err := tui.Unsaved(p.ID)
+	assert.Zero(t, n)
+	assert.NoError(t, err)
+	assert.ErrorIs(t, tui.SaveProjectLocked(mine), ErrStaleProject, "dropping the edits doesn't make the copy current")
 }
