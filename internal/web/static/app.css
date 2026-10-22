@@ -539,9 +539,10 @@ kbd { font: 500 0.8125rem/1 ui-monospace, "SFMono-Regular", monospace; padding: 
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0.006rem;
-  transition: padding 250ms var(--ease), gap 250ms var(--ease);
+  transition: padding 250ms var(--ease), gap 250ms var(--ease), opacity 150ms var(--ease);
 }
 .fab.collapsed { padding: 0 16px; gap: 0; }
+.fab.tucked { opacity: 0; pointer-events: none; }
 .fab-label { overflow: hidden; max-width: 120px; transition: max-width 250ms var(--ease); }
 .fab.collapsed .fab-label { max-width: 0; }
 @media (min-width: 760px) { .fab { right: max(16px, calc(50vw - 344px)); } }

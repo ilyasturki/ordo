@@ -84,6 +84,17 @@
     if (bar) bar.classList.toggle("scrolled", window.scrollY > 4);
   }
 
+  // The FAB steps aside while a category's + or ⋮ sits under it, so a tap there reaches the header.
+  function tuckFab() {
+    const fab = $("[data-fab]");
+    if (!fab) return;
+    const f = fab.getBoundingClientRect();
+    fab.classList.toggle("tucked", [...document.querySelectorAll("[data-add-to], [data-cat-menu]")].some((b) => {
+      const r = b.getBoundingClientRect();
+      return r.right > f.left && r.left < f.right && r.bottom > f.top && r.top < f.bottom;
+    }));
+  }
+
   let lastY = 0;
   window.addEventListener("scroll", () => {
     updateBars();
@@ -92,8 +103,12 @@
       const y = window.scrollY;
       if (Math.abs(y - lastY) > 8) fab.classList.toggle("collapsed", y > lastY && y > 80);
       lastY = y;
+      tuckFab();
     }
   }, { passive: true });
+  new ResizeObserver(tuckFab).observe(document.body);
+  window.addEventListener("resize", tuckFab);
+  document.addEventListener("transitionend", (e) => { if (e.target.matches("[data-fab]")) tuckFab(); });
 
   function syncSelection() {
     const root = app();

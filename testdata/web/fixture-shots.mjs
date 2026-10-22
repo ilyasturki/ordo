@@ -79,6 +79,11 @@ export default [
     assert(`document.getElementById('t-${A(9)}').matches('.s-in_progress:not(.completed *)')`, "Undo did not bring it back as Doing"),
     post("status.set", `{ id: '${A(9)}', value: 'todo' }`),
   ] },
+  // A category header scrolled to the bottom edge: the FAB steps aside and a tap on its + reaches it.
+  { name: "fab_tucked", path: P, steps: [
+    "window.plus = [...document.querySelectorAll('[data-add-to]')].find((b) => b.getBoundingClientRect().top > innerHeight); window.scrollBy(0, plus.getBoundingClientRect().bottom - innerHeight + 10)",
+    later(300, assert("(({ left, right, top, bottom }) => document.querySelector('[data-fab]').matches('.tucked') && document.elementFromPoint((left + right) / 2, (top + bottom) / 2).closest('[data-add-to]') === plus)(plus.getBoundingClientRect())", "the FAB still takes taps on a category's +")),
+  ] },
   { name: "cat_menu", path: P, steps: [
     tap(`#c-${C(12)} [data-cat-menu]`),
     assert(`(({ top, left, right, bottom }) => document.querySelector('#cat-menu').matches(':popover-open') && Math.abs(top - document.querySelector('#c-${C(12)} [data-cat-menu]').getBoundingClientRect().bottom) < 1 && left >= 0 && right <= innerWidth && bottom <= innerHeight)(document.querySelector('#cat-menu').getBoundingClientRect())`, "the category menu is not open under its button, on screen"),
