@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-22
+
 ### Added
 
 - `l` in the project picker links this directory to the highlighted project and opens it, so the next launch here opens it too. The picker marks the linked project `(linked)`
@@ -458,7 +460,8 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
 
-[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/ilyasturki/ordo/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/ilyasturki/ordo/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/ilyasturki/ordo/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/ilyasturki/ordo/compare/v0.9.0...v0.10.0
