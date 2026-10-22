@@ -103,6 +103,71 @@ func TestCopySelected_SeparatorPastesBackAsSeparator(t *testing.T) {
 	}
 }
 
+func TestCutSelected_SeparatorMovesBackAsSeparator(t *testing.T) {
+	for _, tc := range []struct{ name, label, text, status string }{
+		{"labelled", "mid", "### mid", `Cut: separator "mid", p moves it here, esc cancels`},
+		{"bare", "", "---", "Cut: separator, p moves it here, esc cancels"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := separatorProject()
+			p.Categories[0].Tasks[1].Title = tc.label
+			m := newTestModel(t, p)
+			require.True(t, m.selectSeparator(0, 1))
+			require.NotNil(t, m.cutSelectedTask())
+			assert.Equal(t, tc.text, m.ui.Clipboard.Text)
+			assert.True(t, m.ui.Clipboard.IsCut)
+			assert.True(t, m.isTaskCut("s1"))
+			assert.Equal(t, tc.status, m.ui.Screen.StatusMsg)
+			landWrite(m)
+			before := cloneProject(m.project)
+
+			require.True(t, m.selectTaskIdx(0, 2))
+			m.resolvePaste(clipboardLinesMsg{text: tc.text})
+
+			tasks := m.project.Categories[0].Tasks
+			require.Equal(t, []string{"t1", "t2", "s1"}, taskIDs(m.project.Categories[0]))
+			assert.True(t, tasks[2].IsSeparator())
+			assert.Equal(t, tc.label, tasks[2].Title)
+			assert.Equal(t, "Moved!", m.ui.Screen.StatusMsg)
+
+			m.undo()
+			assert.Equal(t, before, m.project)
+			assert.True(t, m.isTaskCut("s1"), "undo brings the pending cut back")
+		})
+	}
+}
+
+func TestDeleteSelected_SeparatorPastesBackAsSeparator(t *testing.T) {
+	for _, tc := range []struct{ name, label string }{{"labelled", "mid"}, {"bare", ""}} {
+		t.Run(tc.name, func(t *testing.T) {
+			label := tc.label
+			p := separatorProject()
+			p.Categories[0].Tasks[1].Title = label
+			m := newTestModel(t, p)
+			before := cloneProject(m.project)
+			require.True(t, m.selectSeparator(0, 1))
+			m.deleteSelected()
+
+			require.Equal(t, []string{"t1", "t2"}, taskIDs(m.project.Categories[0]))
+			require.Len(t, m.ui.Clipboard.Tasks, 1)
+			assert.False(t, m.ui.Clipboard.Written, "d writes nothing to the system clipboard")
+
+			require.True(t, m.selectTaskIdx(0, 1))
+			assert.Nil(t, m.paste())
+			tasks := m.project.Categories[0].Tasks
+			require.Len(t, tasks, 3)
+			assert.True(t, tasks[2].IsSeparator(), "pasted %+v", tasks[2])
+			assert.Equal(t, label, tasks[2].Title)
+			assert.Equal(t, "Pasted!", m.ui.Screen.StatusMsg)
+
+			m.undo()
+			m.undo()
+			assert.Equal(t, before, m.project)
+			assert.True(t, m.ui.Clipboard.empty(), "undoing the delete gives the register back")
+		})
+	}
+}
+
 // Regression: pressing `y` while focused on a description row must copy the
 // description body, not an empty string.
 func TestCopySelected_CopiesDescriptionBody(t *testing.T) {

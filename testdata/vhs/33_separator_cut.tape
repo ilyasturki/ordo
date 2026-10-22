@@ -45,6 +45,20 @@ Sleep 200ms
 Type "p"
 Sleep 500ms
 Screenshot "/tmp/ordo-vt/vhs-out/33_block_pasted.png"
+
+# Cut the lone separator on its own and move it to the top of the category.
+Type "j"
+Sleep 200ms
+Type "x"
+Sleep 500ms
+Screenshot "/tmp/ordo-vt/vhs-out/33_lone_separator_cut.png"
+Type "gg"
+Sleep 200ms
+Type "j"
+Sleep 200ms
+Type "p"
+Sleep 500ms
+Screenshot "/tmp/ordo-vt/vhs-out/33_lone_separator_pasted.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 

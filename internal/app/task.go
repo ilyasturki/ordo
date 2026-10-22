@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -28,27 +29,11 @@ func (m *model) deleteSelected() {
 	// Separators delete instantly (no confirm dialog): they hold no data worth a
 	// second thought, and undo covers an accidental removal.
 	if pos.Kind == selection.FocusSeparator {
-		m.deleteSeparator(pos)
+		m.deleteTask(pos, false)
 		return
 	}
 	m.ui.ConfirmDelete = ConfirmDeleteState{Kind: ConfirmDeleteSelection}
 	m.ui.Modes.ToConfirmDelete()
-}
-
-func (m *model) deleteSeparator(pos selection.Position) {
-	if pos.CategoryIndex < 0 || pos.CategoryIndex >= len(m.project.Categories) {
-		return
-	}
-	cat := &m.project.Categories[pos.CategoryIndex]
-	if pos.TaskIndex < 0 || pos.TaskIndex >= len(cat.Tasks) {
-		return
-	}
-	m.recordHistory()
-	if _, err := operations.DeleteTasks(&m.project, []string{cat.Tasks[pos.TaskIndex].ID}, false); !m.applied(err) {
-		return
-	}
-	m.rebuildAndClamp()
-	m.storeTaskUpdate()
 }
 
 func (m *model) clearDescription(pos selection.Position) {
@@ -274,8 +259,8 @@ func (m *model) cutSelectedTask() tea.Cmd {
 		return nil
 	}
 	position, ok := m.selectedPosition()
-	if !ok || position.Kind != selection.FocusTask {
-		m.ui.Screen.StatusMsg = "Can only cut tasks"
+	if !ok || position.Kind != selection.FocusTask && position.Kind != selection.FocusSeparator {
+		m.ui.Screen.StatusMsg = "Can only cut tasks and separators"
 		return nil
 	}
 
@@ -285,9 +270,16 @@ func (m *model) cutSelectedTask() tea.Cmd {
 	m.ui.Clipboard = ClipboardState{Tasks: tasks, TaskIDs: ids, IsCut: true, Text: text, Written: true}
 	m.ui.TagCopiedLast = false
 
-	status := "Cut: " + truncateText(task.Title, 30) + ", p moves it here, esc cancels"
+	what := truncateText(task.Title, 30)
+	if task.IsSeparator() {
+		what = "separator"
+		if label := strings.TrimSpace(task.Title); label != "" {
+			what = fmt.Sprintf("separator %q", truncateText(label, 30))
+		}
+	}
+	status := "Cut: " + what + ", p moves it here, esc cancels"
 	if n := len(tasks) - 1; n > 0 {
-		status = fmt.Sprintf("Cut: %s and %d subtask%s, p moves them here, esc cancels", truncateText(task.Title, 30), n, plural(n, "", "s"))
+		status = fmt.Sprintf("Cut: %s and %d subtask%s, p moves them here, esc cancels", what, n, plural(n, "", "s"))
 	}
 	m.ui.Screen.StatusMsg = status
 	return m.writeClipboard(clipboardResultMsg{text: text, status: status})

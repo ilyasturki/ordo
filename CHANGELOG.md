@@ -31,6 +31,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Fixed
 
 - `y` on a separator copies it as `### label`, or `---` for a bare one, so `p` pastes a separator, here or in another ordo, instead of a task, or instead of the task copied before. `gy` on a separator offers the plain label
+- `x` and `d` on a lone separator take it the way they take a task, so `p` puts it back, label and all. `x` cuts it to the clipboard as `y` would copy it, where it used to refuse with "Can only cut tasks", and `d` keeps it for `p` where it used to drop it
 - A visual `y` or `Y` copies the separators in the range as those same lines, in order, so pasting the text into another ordo keeps them
 - Visual mode from a task moves onto folded categories instead of stopping above them, and never unfolds them. A folded header in the range stands for its whole category, sub-categories included: `y`, `Y`, `x`, `d` and `m` take its tasks and separators along, status and tag edits leave them alone, and the status line counts them (`1 task + 1 folded category (2 tasks) selected`). A range that ran past folded categories used to leave their tasks out. `J`, `K`, `>` and `<` refuse such a range
 - The visual delete prompt no longer counts separators as tasks

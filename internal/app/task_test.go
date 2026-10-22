@@ -281,7 +281,7 @@ func TestCutSelectedTask_RejectsCategory(t *testing.T) {
 	m.ui.Selection.MoveTo(1) // Cat A header
 	m.cutSelectedTask()
 	assert.Empty(t, m.ui.Clipboard.Tasks)
-	assert.Equal(t, "Can only cut tasks", m.ui.Screen.StatusMsg)
+	assert.Equal(t, "Can only cut tasks and separators", m.ui.Screen.StatusMsg)
 }
 
 func TestPasteTask_AfterCut_MovesTaskToTarget(t *testing.T) {
