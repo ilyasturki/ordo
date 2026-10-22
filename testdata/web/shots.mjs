@@ -8,7 +8,8 @@ import { pathToFileURL } from "node:url";
 
 const [base, cookie, out, ...only] = process.argv.slice(2);
 // Each shot: a page, then optional script steps run in the page before the capture, then an optional
-// touch gesture held down through it: a finger on `at` (a selector's center) or `point`, held `hold` ms, moved by `moves`.
+// touch gesture held down through it: a finger on `at` (a selector's center) or `point`, held `hold` ms, moved by `moves`,
+// lifted when `release` is set.
 // fold: the ordo_fold cookie.
 const shots = (await import(process.env.ORDO_WEB_SHOTS ? pathToFileURL(resolve(process.env.ORDO_WEB_SHOTS)).href : "./fixture-shots.mjs")).default;
 
@@ -67,6 +68,7 @@ async function gesture(sessionId, g) {
       await sleep(16);
     }
   }
+  if (g.release) await send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }, sessionId);
 }
 
 const host = new URL(base).hostname;

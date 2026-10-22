@@ -187,6 +187,21 @@ func TestPairingLinksWorkOnce(t *testing.T) {
 	}
 }
 
+// A pairing link opened in a browser tab, outside the installed app, must leave the token for the app to spend.
+func TestOpeningAPairLinkLeavesItUnspent(t *testing.T) {
+	f := newFixture(t)
+	token, _ := f.auth.NewPairing()
+	f.cookie = ""
+	rec := f.do(http.MethodGet, "/pair/"+token, nil, false)
+	if body := rec.Body.String(); rec.Code != http.StatusOK || !strings.Contains(body, "data-browser-hint") || !strings.Contains(body, "data-copy") {
+		t.Fatalf("pair page: %d, hint %v", rec.Code, strings.Contains(body, "data-browser-hint"))
+	}
+	link := "http://127.0.0.1:7319/pair/" + token
+	if rec := f.do(http.MethodPost, "/pair", url.Values{"token": {link}, "from": {"login"}}, false); rec.Code != http.StatusSeeOther {
+		t.Fatalf("pasting the tab's link in the app: %d", rec.Code)
+	}
+}
+
 func TestPairingExpires(t *testing.T) {
 	f := newFixture(t)
 	token, _ := f.auth.NewPairing()
