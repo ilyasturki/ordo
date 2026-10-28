@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The surface color of app.css, light here and dark in values-night: the window shows it before the WebView paints. -->
+<resources>
+    <color name="ordo_surface">#FAF9FD</color>
+    <color name="colorPrimary">#3557C8</color>
+    <color name="colorPrimaryDark">#FAF9FD</color>
+    <color name="colorAccent">#3557C8</color>
+</resources>

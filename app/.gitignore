@@ -1,0 +1,8 @@
+node_modules
+/.svelte-kit
+/build
+/static/ordo-core.wasm
+/static/wasm_exec.js
+*.jks
+*.keystore
+vite.config.ts.timestamp-*

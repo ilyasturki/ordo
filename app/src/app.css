@@ -1,0 +1,203 @@
+@import 'tailwindcss';
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+:root {
+	color-scheme: light dark;
+	--primary: #3557c8;
+	--on-primary: #ffffff;
+	--primary-container: #dce1ff;
+	--on-primary-container: #0f2463;
+	--secondary-container: #dce2f9;
+	--on-secondary-container: #151b2c;
+	--error: #ba1a1a;
+	--error-container: #ffdad6;
+	--surface: #faf9fd;
+	--surface-container-lowest: #ffffff;
+	--surface-container-low: #f4f3f8;
+	--surface-container: #eeedf2;
+	--surface-container-high: #e8e7ec;
+	--surface-container-highest: #e2e2e6;
+	--on-surface: #1a1c21;
+	--on-surface-variant: #44474f;
+	--outline: #757780;
+	--outline-variant: #c4c6d0;
+	--inverse-surface: #2f3036;
+	--inverse-on-surface: #f1f0f6;
+	--inverse-primary: #b3c5ff;
+	--scrim: rgb(0 0 0 / 0.32);
+	--tag-green: #1e7c43;
+	--tag-blue: #3557c8;
+	--tag-magenta: #9a2f8d;
+	--tag-cyan: #006a6f;
+	--pri-up: #ba1a1a;
+	--pri-down: #006a6f;
+	/* Not redefined for dark mode: a camera reads a QR code dark on light. */
+	--paper: #ffffff;
+	--safe-t: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+	--safe-b: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+	--safe-l: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+	--safe-r: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--primary: #b3c5ff;
+		--on-primary: #172e6e;
+		--primary-container: #2e447f;
+		--on-primary-container: #dce1ff;
+		--secondary-container: #404659;
+		--on-secondary-container: #dce2f9;
+		--error: #ffb4ab;
+		--error-container: #93000a;
+		--surface: #121318;
+		--surface-container-lowest: #0d0e13;
+		--surface-container-low: #1a1b21;
+		--surface-container: #1e1f25;
+		--surface-container-high: #282a2f;
+		--surface-container-highest: #33353a;
+		--on-surface: #e3e2e9;
+		--on-surface-variant: #c4c6d0;
+		--outline: #8e9099;
+		--outline-variant: #44474f;
+		--inverse-surface: #e3e2e9;
+		--inverse-on-surface: #2f3036;
+		--inverse-primary: #3557c8;
+		--scrim: rgb(0 0 0 / 0.5);
+		--tag-green: #7dd99c;
+		--tag-blue: #b3c5ff;
+		--tag-magenta: #f2a6e4;
+		--tag-cyan: #6ed5db;
+		--pri-up: #ffb4ab;
+		--pri-down: #6ed5db;
+	}
+}
+
+@theme inline {
+	--color-primary: var(--primary);
+	--color-on-primary: var(--on-primary);
+	--color-primary-container: var(--primary-container);
+	--color-on-primary-container: var(--on-primary-container);
+	--color-secondary-container: var(--secondary-container);
+	--color-on-secondary-container: var(--on-secondary-container);
+	--color-error: var(--error);
+	--color-error-container: var(--error-container);
+	--color-surface: var(--surface);
+	--color-surface-lowest: var(--surface-container-lowest);
+	--color-surface-low: var(--surface-container-low);
+	--color-surface-mid: var(--surface-container);
+	--color-surface-high: var(--surface-container-high);
+	--color-surface-highest: var(--surface-container-highest);
+	--color-on-surface: var(--on-surface);
+	--color-on-surface-variant: var(--on-surface-variant);
+	--color-outline: var(--outline);
+	--color-outline-variant: var(--outline-variant);
+	--color-inverse-surface: var(--inverse-surface);
+	--color-inverse-on-surface: var(--inverse-on-surface);
+	--color-inverse-primary: var(--inverse-primary);
+	--color-scrim: var(--scrim);
+	--color-tag-green: var(--tag-green);
+	--color-tag-blue: var(--tag-blue);
+	--color-tag-magenta: var(--tag-magenta);
+	--color-tag-cyan: var(--tag-cyan);
+	--color-pri-up: var(--pri-up);
+	--color-pri-down: var(--pri-down);
+	--color-paper: var(--paper);
+	--spacing-safe-t: var(--safe-t);
+	--spacing-safe-b: var(--safe-b);
+	--spacing-safe-l: var(--safe-l);
+	--spacing-safe-r: var(--safe-r);
+	--font-sans:
+		Roboto, 'Roboto Flex', 'Google Sans Text', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+	--ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+}
+
+@layer base {
+	html {
+		-webkit-text-size-adjust: 100%;
+		text-size-adjust: 100%;
+		overscroll-behavior: none;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	body {
+		@apply bg-surface font-sans text-on-surface antialiased;
+		letter-spacing: 0.016em;
+	}
+
+	button {
+		cursor: pointer;
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--primary);
+		outline-offset: 2px;
+	}
+
+	html.native {
+		-webkit-user-select: none;
+		user-select: none;
+	}
+
+	html.native :is(input, textarea, [contenteditable]) {
+		-webkit-user-select: text;
+		user-select: text;
+	}
+}
+
+@utility state-layer {
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
+
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: currentColor;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 150ms linear;
+		z-index: -1;
+	}
+
+	@media (hover: hover) {
+		&:hover::after {
+			opacity: 0.08;
+		}
+	}
+
+	&:active::after {
+		opacity: 0.12;
+	}
+}
+
+.ripple-drop {
+	position: absolute;
+	border-radius: 9999px;
+	background: currentColor;
+	opacity: 0.12;
+	transform: scale(0);
+	animation: ripple-grow 300ms var(--ease-standard) forwards;
+	pointer-events: none;
+	z-index: -1;
+}
+
+.ripple-drop.fading {
+	opacity: 0;
+	transition: opacity 250ms linear;
+}
+
+@keyframes ripple-grow {
+	to {
+		transform: scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ripple-drop {
+		display: none;
+	}
+}
