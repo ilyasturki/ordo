@@ -1,6 +1,6 @@
 # Ordo
 
-A local-only project planner for the terminal, run entirely from the keyboard. Name a category after a version (`v1.3.0`) and `ctrl+a` or `gm` bumps it in place. It is a single binary that keeps each project in a plain JSON file. The terminal app never touches the network; `ordo serve` adds an opt-in [web app for the phone](#on-the-phone).
+A local-only project planner for the terminal, run entirely from the keyboard. Name a category after a version (`v1.3.0`) and `ctrl+a` or `gm` bumps it in place. It is a single binary that keeps each project in a plain JSON file. The terminal app never touches the network; `ordo serve` adds an opt-in [Android and browser app](#on-the-phone).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.gif">
@@ -50,6 +50,8 @@ inputs.ordo.url = "github:ilyasturki/ordo";
 go install github.com/ilyasturki/ordo/cmd/ordo@latest
 ```
 
+This build leaves out the browser app, so `ordo serve` shows a browser a placeholder page. It still syncs the Android app.
+
 ### Prebuilt binary
 
 Grab `ordo-linux-x64`, `ordo-linux-arm64`, `ordo-darwin-x64` or `ordo-darwin-arm64` from the [releases page](https://github.com/ilyasturki/ordo/releases), `chmod +x` it and put it in your `$PATH`. On macOS, a binary downloaded with a browser also needs `xattr -d com.apple.quarantine <file>`.
@@ -57,7 +59,8 @@ Grab `ordo-linux-x64`, `ordo-linux-arm64`, `ordo-darwin-x64` or `ordo-darwin-arm
 ### From source
 
 ```bash
-go build -o ordo ./cmd/ordo
+just build                    # with the browser app, needs bun
+go build -o ordo ./cmd/ordo   # without it, ordo serve shows a browser a placeholder page
 ```
 
 ## Quick start
@@ -86,11 +89,15 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 
 ## On the phone
 
-`ordo serve` runs a web app made for a phone, over the same project files. Each category lists its open tasks and folds the finished ones into a Completed row. Its `+` opens a row at the top to type tasks into, Enter adding each one below the last, and its ⋮ menu adds a separator. Tap a task's circle to step its status, open it to edit its title, details, priority, tag, estimate and images, and long-press a row to lift it: drag it to reorder, slide it right to nest it under the task above or left to un-nest it, or let it go where it was to start selecting several. Its edits run through the same code as the TUI's keys and take the same project lock, reading the file again first, so the phone and the CLI never overwrite anyone, and an open page refreshes when the file changes. The TUI doesn't watch the file: once the phone has saved, the TUI's next edit is refused and marked, and `r` shows the phone's change, dropping the TUI edits made since. A title or details edit on the phone that crosses one made elsewhere keeps the typed text and asks: Keep mine or Use theirs.
+Ordo has an Android app, and `ordo serve` serves the same app to a browser. The app keeps a copy of every project, so it opens at once and works without signal: an edit shows right away, waits in a queue, and reaches the project files the next time `ordo serve` answers. It runs the edits through the TUI's own code, compiled to WebAssembly, and `ordo serve` replays the queue through that code under the same project lock, so an edit sent twice, or landing after another device changed the file, never overwrites anyone. An open app syncs as soon as a project file changes on the server. The APK comes with each [release](https://github.com/ilyasturki/ordo/releases).
+
+The layout follows Google Tasks. Projects are tabs across the top, and each category lists its open tasks and folds the finished ones into a Completed row. Its `+` opens a row at the top to type tasks into, Enter adding each one below the last, and its ⋮ menu renames it, adds a separator or a sub-category, selects its finished tasks or deletes it. Tap a task's circle to step its status, open it to edit its title, details, images, status, priority, tag, estimate and subtasks, and long-press a row to lift it: drag it to reorder, slide it right to nest it under the task above or left to un-nest it, or let it go where it was to start selecting several. Search and Filter sit in the top bar, and every edit offers Undo. A title or details edit that crosses one made elsewhere shows the file's text and offers Keep mine.
+
+The TUI doesn't watch the file: once an edit from the app lands, the TUI's next edit is refused and marked, and `r` shows the change, dropping the TUI edits made since.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/phone-dark.png">
-  <img alt="The ordo web app on a phone: the ferry project's open tasks with past versions folded, a task with its status, priority, tag, estimate, details and subtasks, and the inline row adding a task to the next category" src="assets/phone-light.png">
+  <img alt="The Ordo app on a phone: the ferry project's tasks under the project tabs, a task with its details, status, priority, tag, estimate and subtasks, and the inline row adding a task" src="assets/phone-light.png">
 </picture>
 
 ```bash
@@ -100,9 +107,9 @@ ordo serve passphrase                            # optional: sign in without a l
 ordo serve devices                               # the paired devices; ordo serve revoke <id>
 ```
 
-The app speaks plain HTTP, so keep it on loopback behind a TLS reverse proxy. A paired device stays signed in as long as it's used at least once a year.
+The server speaks plain HTTP, so keep it on loopback behind a TLS reverse proxy. A paired device stays signed in as long as it's used at least once a year.
 
-An app installed from the browser has no address bar, so pair it from inside: tap Scan code on its sign-in page and point the camera at the code `ordo serve pair` prints, or at the one Devices → Pair a new device shows on a device already signed in. Without a camera, paste the link under Pairing link or code. Revoking a device also signs out the devices it paired. On NixOS, the flake's module runs it as a service:
+To pair the Android app, tap Scan the code on its sign-in screen and point the camera at the code `ordo serve pair` prints, or at the one Devices → Pair a new device shows on a device already signed in, or paste the link. A browser pairs by opening the link. Revoking a device also signs out the devices it paired. On NixOS, the flake's module runs it as a service:
 
 ```nix
 imports = [ inputs.ordo.nixosModules.default ];

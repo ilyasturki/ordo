@@ -4,6 +4,24 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- An Android app, attached to each release as an APK. It keeps a copy of every project and a queue of the edits made on it, so it opens at once and works without signal, and the queue reaches the project files through `ordo serve` once the connection is back. The layout follows Google Tasks. Projects are tabs, each category is a card with its own `+` and Completed row, and the task page lists its fields in rows that open their choices
+- The app manages categories and projects. A category's ⋮ menu renames it, adds a sub-category or deletes it, New category ends the list, New project follows the tabs, and the top bar's ⋮ renames or deletes the open project. A project made in the app starts empty
+- Search and Filter in the app's top bar. The filter picks statuses, priorities, tags and categories, and the app keeps it per project
+- Every edit in the app offers Undo in its snackbar, a delete included, offline too
+- An open app syncs as soon as a project file changes on the server, from the TUI, Syncthing or another device
+- [`docs/sync.md`](docs/sync.md) documents the `/api` the app syncs through, for any other client
+
+### Changed
+
+- `ordo serve` serves the new app to a browser in place of the htmx pages, and a browser paired before stays signed in. A build without the app bundle, such as `go install`, shows a browser a placeholder page instead and still syncs the Android app
+- Undo takes an edit back on the app's own copy and queues the change, so it works offline and after another device's edit, which the htmx app's undo refused
+
+### Removed
+
+- The htmx web app, with its drawer, its Task button and its PWA manifest
+
 ## [0.12.1] - 2026-10-22
 
 ### Added
