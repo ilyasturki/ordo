@@ -1,7 +1,11 @@
 import { App } from '@capacitor/app';
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
+import { tapClick } from '$lib/ui/feedback';
 import { closeTopOverlay } from '$lib/ui/overlays';
+
+const CLICKABLE =
+	'button, a[href], summary, label:has(input[type="file"]), [role="button"], [role="tab"], [role="menuitem"], [role="option"]';
 
 const TEXT = 'input:not([type="checkbox"]):not([type="radio"]), textarea, [contenteditable]';
 
@@ -20,6 +24,15 @@ export function wireNative(): () => void {
 	const listeners = new AbortController();
 	document.addEventListener('contextmenu', refuse, { signal: listeners.signal });
 	document.addEventListener('dragstart', refuse, { signal: listeners.signal });
+	document.addEventListener(
+		'click',
+		(e) => {
+			if (e.target instanceof Element && e.target.closest(CLICKABLE)) {
+				tapClick();
+			}
+		},
+		{ signal: listeners.signal }
+	);
 	const back = App.addListener('backButton', () => {
 		if (closeTopOverlay()) {
 			return;

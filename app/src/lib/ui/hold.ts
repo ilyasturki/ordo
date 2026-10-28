@@ -1,4 +1,5 @@
 import type { Action } from 'svelte/action';
+import { tapHold } from '$lib/ui/feedback';
 
 const HOLD_MS = 450;
 const SLOP_PX = 10;
@@ -24,7 +25,7 @@ export const hold: Action<HTMLElement, (e: PointerEvent) => void> = (node, onhol
 		timer = setTimeout(() => {
 			held = true;
 			start = null;
-			navigator.vibrate?.(10);
+			tapHold();
 			handler(e);
 		}, HOLD_MS);
 	}
