@@ -23,6 +23,9 @@ type TaskFields struct {
 	Kind string
 	// ParentID makes the task the last subtask of that top-level task.
 	ParentID string
+	// ID is the row's ID when the caller minted it, so ops queued after the add can name the row.
+	// An ID already in the project returns ErrNoChange: the add was replayed.
+	ID string
 }
 
 // isSeparatorKind reports whether f describes a separator row.
@@ -97,6 +100,14 @@ func createTask(p *domain.Project, categoryID string, f TaskFields, afterTaskID 
 	if f.Estimate < 0 {
 		return domain.Task{}, ErrNegativeEstimate
 	}
+	if f.ID != "" {
+		if err := domain.ValidateID(f.ID); err != nil {
+			return domain.Task{}, err
+		}
+		if _, _, err := LocateTask(p, f.ID); err == nil {
+			return domain.Task{}, ErrNoChange
+		}
+	}
 	idx, err := p.FindCategoryByID(categoryID)
 	if err != nil {
 		return domain.Task{}, err
@@ -140,6 +151,9 @@ func createTask(p *domain.Project, categoryID string, f TaskFields, afterTaskID 
 			return domain.Task{}, err
 		}
 		sep.Title = strings.TrimSpace(f.Title)
+		if f.ID != "" {
+			sep.ID = f.ID
+		}
 		cat.InsertTask(insertAt, sep)
 		return sep, nil
 	}
@@ -147,6 +161,9 @@ func createTask(p *domain.Project, categoryID string, f TaskFields, afterTaskID 
 	task, err := domain.NewTask(f.Title)
 	if err != nil {
 		return domain.Task{}, err
+	}
+	if f.ID != "" {
+		task.ID = f.ID
 	}
 	if f.Status != "" {
 		if err := task.SetStatus(f.Status); err != nil {

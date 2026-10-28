@@ -13,6 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 type hub struct {
@@ -158,7 +159,7 @@ func (u *undoStash) put(pid string, before, after domain.Project) string {
 		}
 	}
 	key := rand.Text()[:16]
-	u.entries[key] = undoEntry{project: pid, before: before, after: cloneProject(after), at: now}
+	u.entries[key] = undoEntry{project: pid, before: before, after: operations.Clone(after), at: now}
 	return key
 }
 

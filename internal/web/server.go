@@ -23,6 +23,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 	"github.com/ilyasturki/ordo/internal/version"
 )
 
@@ -505,15 +506,15 @@ func (s *Server) funcs() template.FuncMap {
 	return template.FuncMap{
 		"icon":          icon,
 		"asset":         func(name string) string { return "/static/" + name + "?v=" + s.assetV },
-		"statusLabel":   func(st string) string { return statusLabels[st] },
-		"priorityLabel": func(p string) string { return priorityLabels[p] },
+		"statusLabel":   func(st string) string { return operations.StatusLabels[st] },
+		"priorityLabel": func(p string) string { return operations.PriorityLabels[p] },
 		"priorityIcon": func(p string) string {
 			if _, ok := iconPaths["priority_"+p]; !ok || p == "" {
 				return "priority_none"
 			}
 			return "priority_" + p
 		},
-		"tagName":  tagName,
+		"tagName":  operations.TagName,
 		"hue":      func(c string) string { return strings.TrimSuffix(c, domain.TagDiamondSuffix) },
 		"diamond":  func(c string) bool { return strings.HasSuffix(c, domain.TagDiamondSuffix) },
 		"est":      domain.FormatEstimate,

@@ -174,34 +174,3 @@ func joinDescription(text string, images []string) string {
 	parts = append(parts, images...)
 	return strings.Join(parts, "\n")
 }
-
-var statusLabels = map[string]string{
-	domain.StatusTodo:       "To do",
-	domain.StatusInProgress: "Doing",
-	domain.StatusCompleted:  "Done",
-	domain.StatusCancelled:  "Cancelled",
-}
-
-var priorityLabels = map[string]string{
-	"":                      "None",
-	domain.PriorityCritical: "Critical",
-	domain.PriorityHigh:     "High",
-	domain.PriorityMedium:   "Medium",
-	domain.PriorityLow:      "Low",
-	domain.PriorityTrivial:  "Trivial",
-}
-
-func tagName(color string) string {
-	if color == "" {
-		return "None"
-	}
-	hue, diamond := strings.CutSuffix(color, domain.TagDiamondSuffix)
-	if hue == "" {
-		return color
-	}
-	name := strings.ToUpper(hue[:1]) + hue[1:]
-	if diamond {
-		name += " diamond"
-	}
-	return name
-}
