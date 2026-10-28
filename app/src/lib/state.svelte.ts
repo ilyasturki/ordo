@@ -138,10 +138,25 @@ class Ordo {
 		this.#queue = await db.getAll('queue');
 		this.#seq = this.#queue.at(-1)?.seq ?? 0;
 		this.pending = this.#queue.length;
+		if (this.session === null && !import.meta.env.APP_BUILD) {
+			await this.#adoptCookie(db);
+		}
 		this.booted = true;
 		if (this.signedIn) {
 			void this.sync();
 		}
+	}
+
+	/** A browser that already paired with this ordo serve carries its device cookie: no sign-in needed. */
+	async #adoptCookie(db: DB): Promise<void> {
+		const session: Session = { server: '', token: '' };
+		try {
+			await new Api(session).devices();
+		} catch {
+			return;
+		}
+		this.session = session;
+		await db.put('meta', session, 'session');
 	}
 
 	async core(): Promise<Core> {
