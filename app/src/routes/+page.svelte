@@ -254,7 +254,8 @@
 			<input
 				bind:value={query}
 				autofocus
-				type="search"
+				type="text"
+				inputmode="search"
 				enterkeyhint="search"
 				placeholder="Search {entry?.name ?? ''}"
 				class="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-on-surface-variant"
