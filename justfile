@@ -12,14 +12,30 @@ ldflags := "-X github.com/ilyasturki/ordo/internal/version.Version=v" + version 
 run *ARGS:
     go run -ldflags "{{ldflags}}" ./cmd/ordo {{ARGS}}
 
-# Build the binary.
-build:
+# Build the binary, with the app bundle `ordo serve` embeds.
+build: web
     go build -ldflags "{{ldflags}}" -o ordo ./cmd/ordo
+
+# Build internal/core to WebAssembly in app/static, beside the wasm_exec.js of the same Go.
+wasm:
+    ./scripts/wasm.sh
+
+# Build the browser app into internal/web/spa, the bundle `ordo serve` embeds (needs bun).
+web:
+    ./scripts/web.sh
+
+# Install a debug build of the Android app on the connected device (needs bun, a JDK and the Android SDK).
+android: wasm
+    cd app && bun install --frozen-lockfile && bun run android:install
 
 # Run every test, then the nix build.
 test:
     go test ./...
     nix build
+
+# Recompute this system's hash of the app's node_modules in nix/web-deps-hashes.nix, after a change to app/bun.lock.
+web-deps-hash:
+    ./nix/refresh-web-deps-hash.sh
 
 # Format Go files and tidy go.mod.
 fmt:

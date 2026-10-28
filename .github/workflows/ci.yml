@@ -21,6 +21,19 @@ jobs:
                   go-version: stable
                   cache: true
 
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+
+            - name: Cache Bun packages
+              uses: actions/cache@v6
+              with:
+                  path: ~/.bun/install/cache
+                  key: bun-${{ runner.os }}-${{ hashFiles('app/bun.lock') }}
+                  restore-keys: bun-${{ runner.os }}-
+
+            - name: Build the app bundle
+              run: scripts/web.sh
+
             - name: Vet
               run: go vet ./...
 
@@ -32,6 +45,70 @@ jobs:
 
             - name: Smoke test
               run: scripts/smoke.sh ./ordo
+
+    app:
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: app
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            # aapt2 is the first parser to read these, minutes into the release APK build.
+            - name: Parse the Android resource XML
+              run: |
+                  python3 - <<'PY'
+                  import pathlib, sys, xml.dom.minidom
+
+                  broken = []
+                  for path in sorted(pathlib.Path('android/app/src').rglob('*.xml')):
+                      try:
+                          xml.dom.minidom.parse(str(path))
+                      except Exception as error:
+                          broken.append(f'::error file=app/{path}::{error}')
+
+                  print('\n'.join(broken))
+                  sys.exit(1 if broken else 0)
+                  PY
+
+            - name: Setup Go
+              uses: actions/setup-go@v6
+              with:
+                  go-version: stable
+                  cache: true
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+
+            - name: Cache Bun packages
+              uses: actions/cache@v6
+              with:
+                  path: ~/.bun/install/cache
+                  key: bun-${{ runner.os }}-${{ hashFiles('app/bun.lock') }}
+                  restore-keys: bun-${{ runner.os }}-
+
+            # The tests run the real core.
+            - name: Build the core to WebAssembly
+              run: ../scripts/wasm.sh
+
+            - name: Install
+              run: bun install --frozen-lockfile
+
+            - name: Format
+              run: bun run format
+
+            - name: Check
+              run: bun run check
+
+            - name: Test
+              run: bun run test
+
+            # The Go job builds the browser bundle; this is the one the APK ships.
+            - name: Build for the Android app
+              run: bun run build
+              env:
+                  BUILD_TARGET: app
 
     nix-build:
         runs-on: ubuntu-latest
