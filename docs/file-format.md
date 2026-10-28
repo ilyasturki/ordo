@@ -186,7 +186,7 @@ The TUI keeps the open project in memory and saves snapshots of it. When it load
 
 A snapshot queued before a reload keeps the note of the load it came from, so it can't land after the reload and overwrite the change the reload just showed.
 
-The CLI and the web app do each change as one read, change and write under the lock, so they always start from the current file. The web app's title and details fields also send the text they were typed over, and the server refuses the edit when the file holds other text: the page keeps what was typed and offers Keep mine, which sends it again over the file's text, or Use theirs. Another client should do the same: re-read before writing, or check that the file is still the one it loaded.
+The CLI and the web app do each change as one read, change and write under the lock, so they always start from the current file. The web app's title and details fields also send the text they were typed over, and the server refuses the edit when the file holds other text: the page keeps what was typed and offers Keep mine, which sends it again over the file's text, or Use theirs. Edits the phone app queued while offline land the same way, replayed by `ordo serve` under the lock, see [sync.md](sync.md). Another client should do the same: re-read before writing, or check that the file is still the one it loaded.
 
 ## Conflict copies
 

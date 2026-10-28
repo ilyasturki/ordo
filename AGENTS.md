@@ -28,9 +28,20 @@ JSON shape (`internal/domain/types.go`), the write and lock path
 
 An edit a user can make lives once, in `internal/operations`, addressed by IDs,
 and gets an entry in `operations.Actions` marked `TUI`, `Web` or `Both`. The TUI
-handlers and `internal/web` (`ordo serve`) both call it; the TUI keeps only its
-cursor, modes, undo history and status line around the call. `TestWebCoversItsActions`
-goes red when a `Web` action has no handler in `webActions`.
+handlers call it and keep only their cursor, modes, undo history and status line
+around the call. A `Web` action is an `operations.Op` run by `operations.Apply`:
+the htmx handlers in `webActions` only read a form into one, `ordo serve` replays
+the phone's queue through it, and `internal/core` runs it on the phone, built to
+WebAssembly from `cmd/ordo-core`. `TestWebCoversItsActions` and
+`TestEveryWebActionApplies` go red when a `Web` action lacks either half.
+
+A queued op is replayable: it names where its rows end up, so landing twice or on
+a file changed since gives the same result. A step from the current state
+(`status.cycle`, `task.shift`, `task.nest`) runs on the phone only, and
+`operations.Perform` turns it into the replayable op that gets queued.
+`docs/sync.md` is the contract of `/api` and its op table: a change to an op's
+fields or the sync answer updates it in the same commit, and bumps `web.Protocol`
+when its Protocol section says so.
 
 The web app is server-rendered `html/template` with vendored htmx and jsQR
 at pinned versions, one hand-written `app.js`, and a hand-written Material 3

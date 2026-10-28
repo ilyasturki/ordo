@@ -13,9 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -47,6 +45,7 @@ type Server struct {
 	hub     *hub
 	limiter *limiter
 	undo    *undoStash
+	csrf    *http.CrossOriginProtection
 
 	globalLimit *limiter
 }
@@ -62,6 +61,7 @@ func New(store *data.Store, images *attachments.Store, auth *Auth, logger *log.L
 		// Across every client, so a botnet spreading guesses still meets a ceiling.
 		globalLimit: newLimiter(50, 15*time.Minute),
 		undo:        newUndoStash(),
+		csrf:        http.NewCrossOriginProtection(),
 	}
 	if err := s.hashAssets(); err != nil {
 		return nil, err
@@ -132,8 +132,10 @@ func (s *Server) Handler() http.Handler {
 	app.HandleFunc("POST /logout", s.logout)
 	mux.Handle("/", s.requireDevice(app))
 
-	csrf := http.NewCrossOriginProtection()
-	return secureHeaders(csrf.Handler(mux))
+	root := http.NewServeMux()
+	root.Handle("/api/", s.api())
+	root.Handle("/", s.csrf.Handler(mux))
+	return secureHeaders(root)
 }
 
 func cacheForever(h http.Handler) http.Handler {
@@ -414,17 +416,7 @@ func (s *Server) task(w http.ResponseWriter, r *http.Request) {
 }
 
 // version fingerprints the project file, so a page tells its own save from another writer's.
-func (s *Server) version(pid string) string {
-	if domain.ValidateID(pid) != nil {
-		return ""
-	}
-	raw, err := os.ReadFile(filepath.Join(s.store.Dir, pid+".json"))
-	if err != nil {
-		return ""
-	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:8])
-}
+func (s *Server) version(pid string) string { return s.store.Stamp(pid) }
 
 func locate(p *domain.Project, id string) (int, int, error) {
 	for ci := range p.Categories {

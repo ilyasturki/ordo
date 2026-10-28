@@ -71,7 +71,8 @@ func (s *Store) Dir() string {
 	return s.dir
 }
 
-func (s *Store) Add(data []byte) (string, error) {
+// Target is the reference the image in data is stored under, without storing it.
+func Target(data []byte) (string, error) {
 	if len(data) > MaxSize {
 		return "", ErrTooLarge
 	}
@@ -80,9 +81,15 @@ func (s *Store) Add(data []byte) (string, error) {
 		return "", ErrNotImage
 	}
 	sum := sha256.Sum256(data)
-	name := hex.EncodeToString(sum[:16]) + "." + ext
-	target := DirName + "/" + name
-	path := filepath.Join(s.dir, name)
+	return DirName + "/" + hex.EncodeToString(sum[:16]) + "." + ext, nil
+}
+
+func (s *Store) Add(data []byte) (string, error) {
+	target, err := Target(data)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(s.dir, strings.TrimPrefix(target, DirName+"/"))
 	if _, err := os.Lstat(path); err == nil {
 		// Prune spares files by age: one referenced again must look new.
 		now := time.Now()

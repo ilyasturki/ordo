@@ -390,16 +390,21 @@ func (s *Store) loadProjectFile(path string) (domain.Project, os.FileInfo, error
 	if err != nil {
 		return domain.Project{}, nil, err
 	}
+	project, err := decodeProject(data, filepath.Base(path))
+	return project, info, err
+}
+
+func decodeProject(data []byte, name string) (domain.Project, error) {
 	var project domain.Project
 	if err := json.Unmarshal(data, &project); err != nil {
-		return domain.Project{}, nil, err
+		return domain.Project{}, err
 	}
 	// A file from a newer binary is refused, not repaired: in a fleet of
 	// machines sharing a data directory, a half-upgraded member must fail
 	// loudly rather than rewrite the file through an older format and drop
 	// whatever the newer version added.
 	if err := domain.CheckSchema(project); err != nil {
-		return domain.Project{}, nil, fmt.Errorf("%s: %w", filepath.Base(path), err)
+		return domain.Project{}, fmt.Errorf("%s: %w", name, err)
 	}
 	// Repair rather than reject: a project containing control characters —
 	// written before these checks existed, or hand-edited — still opens, minus
@@ -408,7 +413,7 @@ func (s *Store) loadProjectFile(path string) (domain.Project, os.FileInfo, error
 	// in-app way to fix it. The stripped form becomes canonical on the next save.
 	domain.StripProjectText(&project)
 	domain.NormalizeNesting(&project)
-	return project, info, nil
+	return project, nil
 }
 
 func (s *Store) projectPath(id string) string {
