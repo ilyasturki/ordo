@@ -29,6 +29,8 @@ yay -S ordo       # build from source
 yay -S ordo-bin   # prebuilt binary
 ```
 
+The source package builds without the browser app, like `go install` below; `ordo-bin` carries it.
+
 ### Nix
 
 Run without installing:
@@ -37,7 +39,7 @@ Run without installing:
 nix run github:ilyasturki/ordo
 ```
 
-Or pin it in your system flake (x86_64-linux, aarch64-linux and aarch64-darwin):
+Or pin it in your system flake (x86_64-linux, aarch64-linux and aarch64-darwin; only the x86_64-linux build carries the browser app so far):
 
 ```nix
 inputs.ordo.url = "github:ilyasturki/ordo";

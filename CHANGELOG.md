@@ -15,7 +15,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ### Changed
 
-- `ordo serve` serves the new app to a browser in place of the htmx pages, and a browser paired before stays signed in. A build without the app bundle, such as `go install`, shows a browser a placeholder page instead and still syncs the Android app
+- `ordo serve` serves the new app to a browser in place of the htmx pages, and a browser paired before stays signed in. A build without the app bundle shows a browser a placeholder page instead and still syncs the Android app. That covers `go install`, the AUR source package and the nix package outside x86_64-linux; the release binaries, Homebrew, `ordo-bin` and the x86_64-linux nix package carry the app
 - Undo takes an edit back on the app's own copy and queues the change, so it works offline and after another device's edit, which the htmx app's undo refused
 
 ### Removed
