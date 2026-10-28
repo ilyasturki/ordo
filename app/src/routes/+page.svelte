@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { fly } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import BulkSheet from '$lib/BulkSheet.svelte';
 	import CategoryCard from '$lib/CategoryCard.svelte';
@@ -53,11 +54,43 @@
 		}
 	});
 
+	let slide = $state(0);
+
 	function switchTo(id: string) {
+		const from = ordo.projects.findIndex((p) => p.id === entry?.id);
+		const to = ordo.projects.findIndex((p) => p.id === id);
+		slide = Math.sign(to - from);
 		board.clear();
 		board.adding = null;
 		ordo.open(id);
 		window.scrollTo({ top: 0 });
+	}
+
+	let swipe: { x: number; y: number; at: number } | null = null;
+
+	function swipeStart(e: TouchEvent) {
+		const t = e.touches[0];
+		swipe = e.touches.length === 1 ? { x: t.clientX, y: t.clientY, at: e.timeStamp } : null;
+	}
+
+	/** A quick sideways fling over the list moves to the next or the previous project, as in Google Tasks. */
+	function swipeEnd(e: TouchEvent) {
+		const t = e.changedTouches[0];
+		const s = swipe;
+		swipe = null;
+		if (s === null || board.drag !== null || board.selecting || board.adding !== null) {
+			return;
+		}
+		const dx = t.clientX - s.x;
+		const dy = t.clientY - s.y;
+		if (Math.abs(dx) < 72 || Math.abs(dx) < 2 * Math.abs(dy) || e.timeStamp - s.at > 400) {
+			return;
+		}
+		const i = ordo.projects.findIndex((p) => p.id === entry?.id);
+		const next = ordo.projects[i + (dx < 0 ? 1 : -1)];
+		if (next !== undefined) {
+			switchTo(next.id);
+		}
 	}
 
 	function newProject() {
@@ -294,49 +327,56 @@
 	</header>
 {/if}
 
-<main class="mx-auto flex max-w-3xl flex-col gap-3 px-3 pt-3 pb-[calc(var(--safe-b)+96px)]">
-	{#if !project}
-		<div class="flex flex-col items-center gap-4 px-6 pt-24 text-center text-on-surface-variant">
-			{#if ordo.syncing}
-				<p>Loading your projects…</p>
-			{:else if ordo.projects.length === 0}
-				<p>No projects yet.</p>
-				<Button variant="filled" icon="add" onclick={newProject}>New project</Button>
-			{/if}
-		</div>
-	{:else}
-		{#if filter && filtering(filter) && !searching}
-			<div class="flex items-center gap-2 px-1 text-sm text-on-surface-variant">
-				<Icon name="filter_list" size={18} />
-				<span class="flex-1">Filtered</span>
-				<Button
-					onclick={() =>
-						entry &&
-						ordo.setFilter(entry.id, { statuses: [], priorities: [], categories: [], tags: [] })}
-					>Clear</Button
-				>
+{#key entry?.id}
+	<main
+		class="mx-auto flex max-w-3xl flex-col gap-3 px-3 pt-3 pb-[calc(var(--safe-b)+96px)]"
+		in:fly={{ x: slide * 48, duration: slide ? 200 : 0 }}
+		ontouchstart={swipeStart}
+		ontouchend={swipeEnd}
+	>
+		{#if !project}
+			<div class="flex flex-col items-center gap-4 px-6 pt-24 text-center text-on-surface-variant">
+				{#if ordo.syncing}
+					<p>Loading your projects…</p>
+				{:else if ordo.projects.length === 0}
+					<p>No projects yet.</p>
+					<Button variant="filled" icon="add" onclick={newProject}>New project</Button>
+				{/if}
 			</div>
-		{/if}
-		{#each views as view (view.cat.id)}
-			<CategoryCard {view} {board} {narrowed} menu={categoryMenu(view.cat)} />
-		{/each}
-		{#if narrowed && views.length === 0}
-			<p class="px-6 pt-16 text-center text-on-surface-variant">Nothing matches.</p>
-		{/if}
-		{#if !narrowed}
-			{#if project.categories.length === 0}
-				<p class="px-6 pt-16 text-center text-on-surface-variant">
-					This project has no categories yet.
-				</p>
+		{:else}
+			{#if filter && filtering(filter) && !searching}
+				<div class="flex items-center gap-2 px-1 text-sm text-on-surface-variant">
+					<Icon name="filter_list" size={18} />
+					<span class="flex-1">Filtered</span>
+					<Button
+						onclick={() =>
+							entry &&
+							ordo.setFilter(entry.id, { statuses: [], priorities: [], categories: [], tags: [] })}
+						>Clear</Button
+					>
+				</div>
 			{/if}
-			<div class="flex justify-center pt-2">
-				<Button variant="tonal" icon="playlist_add" onclick={() => addCategory()}
-					>New category</Button
-				>
-			</div>
+			{#each views as view (view.cat.id)}
+				<CategoryCard {view} {board} {narrowed} menu={categoryMenu(view.cat)} />
+			{/each}
+			{#if narrowed && views.length === 0}
+				<p class="px-6 pt-16 text-center text-on-surface-variant">Nothing matches.</p>
+			{/if}
+			{#if !narrowed}
+				{#if project.categories.length === 0}
+					<p class="px-6 pt-16 text-center text-on-surface-variant">
+						This project has no categories yet.
+					</p>
+				{/if}
+				<div class="flex justify-center pt-2">
+					<Button variant="tonal" icon="playlist_add" onclick={() => addCategory()}
+						>New category</Button
+					>
+				</div>
+			{/if}
 		{/if}
-	{/if}
-</main>
+	</main>
+{/key}
 
 {#if project}
 	<FilterSheet bind:open={filterOpen} {project} />
