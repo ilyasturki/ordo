@@ -14,7 +14,8 @@
 
 	async function add(keepOpen: boolean) {
 		const text = title.trim();
-		if (busy) {
+		const current = board.adding?.cat === cat && board.adding.after === after;
+		if (busy || !current) {
 			return;
 		}
 		if (text === '') {
