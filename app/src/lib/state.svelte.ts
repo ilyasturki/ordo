@@ -57,7 +57,7 @@ function entryOf(s: StoredProject): Entry | null {
 	}
 }
 
-class Ordo {
+export class Ordo {
 	#db: DB | undefined;
 	#core: Core | undefined;
 	#opened = new Set<string>();
@@ -122,12 +122,14 @@ class Ordo {
 		this.snack = { key: ++this.#snackKey, msg, action };
 	}
 
-	async boot(): Promise<void> {
-		void loadCore().then(
-			(core) => (this.#core = core),
-			() => undefined
-		);
-		const db = await openStore();
+	async boot(dbName?: string): Promise<void> {
+		if (this.#core === undefined) {
+			void loadCore().then(
+				(core) => (this.#core = core),
+				() => undefined
+			);
+		}
+		const db = await openStore(dbName);
 		this.#db = db;
 		this.session = ((await db.get('meta', 'session')) as Session | undefined) ?? null;
 		const stored = await db.getAll('projects');
@@ -157,6 +159,11 @@ class Ordo {
 		}
 		this.session = session;
 		await db.put('meta', session, 'session');
+	}
+
+	/** Hands the store a core already loaded, as the tests do. */
+	useCore(core: Core): void {
+		this.#core = core;
 	}
 
 	async core(): Promise<Core> {

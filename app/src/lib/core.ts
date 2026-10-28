@@ -1,4 +1,3 @@
-import { base } from '$app/paths';
 import type { Answer, Op } from '$lib/model';
 
 type Exports = {
@@ -62,7 +61,7 @@ function script(src: string): Promise<void> {
 }
 
 async function instantiate(go: InstanceType<typeof Go>): Promise<WebAssembly.Instance> {
-	const url = `${base}/ordo-core.wasm`;
+	const url = '/ordo-core.wasm';
 	try {
 		return (await WebAssembly.instantiateStreaming(fetch(url), go.importObject)).instance;
 	} catch {
@@ -73,7 +72,7 @@ async function instantiate(go: InstanceType<typeof Go>): Promise<WebAssembly.Ins
 
 async function boot(): Promise<Core> {
 	if (globalThis.Go === undefined) {
-		await script(`${base}/wasm_exec.js`);
+		await script('/wasm_exec.js');
 	}
 	const go = new Go();
 	const ready = new Promise<void>((resolve) => {
