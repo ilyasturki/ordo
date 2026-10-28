@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Shoot the README's phone screens of the demo's ferry project into assets/phone-light.png and assets/phone-dark.png.
 #
-# Usage: ./assets/phone/run.sh (needs go, node 22+, chromium and nix). ORDO_WEB_PORT picks the port.
+# Usage: ./assets/phone/run.sh (needs go, bun, node 22+, chromium and nix). ORDO_WEB_PORT picks the port.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -10,6 +10,7 @@ trap 'rm -rf "$work"' EXIT
 export ORDO_DATA_PATH="$work/data" ORDO_CONFIG_PATH="$work/config" TZ=UTC
 ordo="$work/ordo"
 
+just web
 go build -o "$ordo" ./cmd/ordo
 "$ordo" import assets/demo/homelab.json -q
 "$ordo" import assets/demo/ferry.json -q

@@ -50,7 +50,7 @@ demo:
     nix run nixpkgs#gifsicle -- --batch -O3 --lossy=20 assets/demo-dark.gif assets/demo-light.gif
     ls -lh assets/demo-dark.gif assets/demo-light.gif assets/social-preview.png
 
-# Shoot the README's phone screenshots (needs go, node 22+, chromium and nix).
+# Shoot the README's phone screenshots (needs go, bun, node 22+, chromium and nix).
 phone:
     ./assets/phone/run.sh
     ls -lh assets/phone-light.png assets/phone-dark.png

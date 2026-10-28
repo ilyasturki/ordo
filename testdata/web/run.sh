@@ -15,6 +15,7 @@ OUT="$BASE_DIR/out"
 PORT="${ORDO_WEB_PORT:-7391}"
 
 rm -rf "$BASE_DIR" && mkdir -p "$DATA" "$OUT"
+just web
 go build -o ordo ./cmd/ordo
 
 export ORDO_DATA_PATH="$DATA"
