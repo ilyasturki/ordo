@@ -1,6 +1,6 @@
 # File format
 
-Version 0.9.0, released as phasionary, carried its own sync, made of a change journal, a SQLite server and a web app. Each change to the data model had to be taught to all three. The server was never deployed, and Syncthing already carried the files between machines, so the whole stack was removed. Ordo syncs through these files alone. Its phone web app, `ordo serve`, lives in this repository and edits them through the same code as the TUI, under the same lock. Any other client works on the files described here.
+Version 0.9.0, released as phasionary, carried its own sync, made of a change journal, a SQLite server and a web app. Each change to the data model had to be taught to all three. The server was never deployed, and Syncthing already carried the files between machines, so the whole stack was removed. Ordo syncs through these files alone. Its Android and browser app, synced through `ordo serve`, lives in this repository and edits them through the same code as the TUI, under the same lock. Any other client works on the files described here.
 
 ## Layout
 
@@ -182,11 +182,11 @@ A client on the same machine as ordo takes the same locks. A client on another d
 
 ## Edits from outside
 
-The TUI keeps the open project in memory and saves snapshots of it. When it loads the file it notes its identity (inode, size, modification time), each of its own saves moves the note to the version it wrote, and every snapshot is checked against the note of the load it came from. If Syncthing, the CLI, the web app or another app has changed the file in between, the save is refused, and so is every later one until a reload. The TUI then marks the project `[changed on disk: r drops N edits]`, and `q`, `ctrl+c`, switching projects and creating one ask before dropping those edits. `r` waits for any save still in flight, loads the file again and drops the refused edits, so the other writer's change always wins. Quitting anyway exits with status 1 and names the lost edits on stderr.
+The TUI keeps the open project in memory and saves snapshots of it. When it loads the file it notes its identity (inode, size, modification time), each of its own saves moves the note to the version it wrote, and every snapshot is checked against the note of the load it came from. If Syncthing, the CLI, `ordo serve` or another app has changed the file in between, the save is refused, and so is every later one until a reload. The TUI then marks the project `[changed on disk: r drops N edits]`, and `q`, `ctrl+c`, switching projects and creating one ask before dropping those edits. `r` waits for any save still in flight, loads the file again and drops the refused edits, so the other writer's change always wins. Quitting anyway exits with status 1 and names the lost edits on stderr.
 
 A snapshot queued before a reload keeps the note of the load it came from, so it can't land after the reload and overwrite the change the reload just showed.
 
-The CLI and the web app do each change as one read, change and write under the lock, so they always start from the current file. The web app's title and details fields also send the text they were typed over, and the server refuses the edit when the file holds other text: the page keeps what was typed and offers Keep mine, which sends it again over the file's text, or Use theirs. Edits the phone app queued while offline land the same way, replayed by `ordo serve` under the lock, see [sync.md](sync.md). Another client should do the same: re-read before writing, or check that the file is still the one it loaded.
+The CLI and `ordo serve` do each change as one read, change and write under the lock, so they always start from the current file. The app queues its edits and `ordo serve` replays them under the lock, see [sync.md](sync.md). A title or details edit carries the text it was typed over, and the server refuses it when the file holds other text: the app shows the file's text and offers Keep mine, which sends the edit again over it. Another client should do the same: re-read before writing, or check that the file is still the one it loaded.
 
 ## Conflict copies
 

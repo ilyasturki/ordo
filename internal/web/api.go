@@ -27,6 +27,7 @@ func (s *Server) api() http.Handler {
 	authed := http.NewServeMux()
 	authed.HandleFunc("POST /api/sync", s.sync)
 	authed.HandleFunc("GET /api/attachments/{name}", s.image)
+	authed.HandleFunc("GET /api/events", s.events)
 	authed.HandleFunc("PUT /api/attachments/{name}", s.putAttachment)
 	authed.HandleFunc("GET /api/devices", s.apiDevices)
 	authed.HandleFunc("POST /api/devices/pair", s.apiPairCode)
@@ -80,6 +81,20 @@ func (s *Server) apiDevice(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, dev)))
 	})
+}
+
+// userMessage phrases an op's own error; ok is false for a failure of the store itself.
+func userMessage(err error, fromOp bool) (msg string, ok bool) {
+	if msg, ok := operations.Explain(err); ok {
+		return msg, true
+	}
+	switch {
+	case errors.Is(err, attachments.ErrNotImage), errors.Is(err, attachments.ErrTooLarge):
+		return err.Error(), true
+	case fromOp:
+		return "Can't do that: " + err.Error(), true
+	}
+	return "", false
 }
 
 func apiError(w http.ResponseWriter, status int, msg string) {

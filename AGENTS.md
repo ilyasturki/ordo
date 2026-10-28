@@ -24,32 +24,28 @@ JSON shape (`internal/domain/types.go`), the write and lock path
 (`internal/data`), or the stale guard updates it in the same commit, and bumps
 `ProjectSchemaVersion` when its Schema section says so.
 
-# Shared edits and the web app
+# Shared edits and the app
 
 An edit a user can make lives once, in `internal/operations`, addressed by IDs,
-and gets an entry in `operations.Actions` marked `TUI`, `Web` or `Both`. The TUI
+and gets an entry in `operations.Actions` marked `TUI`, `App` or `Both`. The TUI
 handlers call it and keep only their cursor, modes, undo history and status line
-around the call. A `Web` action is an `operations.Op` run by `operations.Apply`:
-the htmx handlers in `webActions` only read a form into one, `ordo serve` replays
-the phone's queue through it, and `internal/core` runs it on the phone, built to
-WebAssembly from `cmd/ordo-core`. `TestWebCoversItsActions` and
-`TestEveryWebActionApplies` go red when a `Web` action lacks either half.
+around the call. An `App` action is an `operations.Op` run by `operations.Apply`:
+the app runs it on its own copy through `internal/core`, built to WebAssembly
+from `cmd/ordo-core`, and `ordo serve` replays the app's queue through it.
+`TestEveryAppActionApplies` goes red when an `App` action has no applier, and
+`operations.Undo` gives each op the ops that take it back.
 
 A queued op is replayable: it names where its rows end up, so landing twice or on
 a file changed since gives the same result. A step from the current state
-(`status.cycle`, `task.shift`, `task.nest`) runs on the phone only, and
+(`status.cycle`, `task.shift`, `task.nest`) runs in the app only, and
 `operations.Perform` turns it into the replayable op that gets queued.
 `docs/sync.md` is the contract of `/api` and its op table: a change to an op's
 fields or the sync answer updates it in the same commit, and bumps `web.Protocol`
 when its Protocol section says so.
 
-The web app is server-rendered `html/template` with vendored htmx and jsQR
-at pinned versions, one hand-written `app.js`, and a hand-written Material 3
-`app.css` whose colors are tokens on `:root`, redefined for dark mode. Its CSP
-allows only same-origin scripts and styles, so markup carries no inline script or
-`style` attribute. Run `./testdata/web/run.sh [shot-name]` after a UI change: it
-seeds `testdata/web/seed.json`, serves it, and writes light and dark PNGs at phone
-width to `/tmp/ordo-web/out/` (`ORDO_WEB_SIZE=340x734` for a narrow phone). Read
-them, then `rm -rf /tmp/ordo-web`. Add a shot in `fixture-shots.mjs` for a new
-screen or sheet. `just phone` reshoots the README's phone screens from
-`assets/phone/` after a change to the list, the task page or the add row.
+The app in `app/` is SvelteKit built static, with Svelte 5, Tailwind 4, bits-ui,
+vaul-svelte, Capacitor 8 for the Android shell, and bun. `ordo serve` embeds its
+browser build from `internal/web/spa/`, and the APK ships the same build; a Go
+build without it serves `placeholder.html`. Its colors are tokens on `:root` in
+`app/src/app.css`, redefined for dark mode. Run `bun run check` and `bun run test`
+in `app/` after a change to it.

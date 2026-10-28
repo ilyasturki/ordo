@@ -11,10 +11,12 @@
 	let { children }: { children: Snippet } = $props();
 
 	onMount(() => {
-		void ordo.boot();
+		void ordo.boot().then(() => ordo.listen(ordo.signedIn));
 		const unwire = wireNative();
 		const wake = () => {
-			if (document.visibilityState === 'visible') {
+			const visible = document.visibilityState === 'visible';
+			ordo.listen(visible && ordo.signedIn);
+			if (visible) {
 				void ordo.sync();
 			}
 		};

@@ -5,11 +5,12 @@ type Surface uint8
 
 const (
 	TUI Surface = 1 << iota
-	Web
-	Both = TUI | Web
+	// App is the phone and browser app, which runs the action through Apply.
+	App
+	Both = TUI | App
 )
 
-// Action names one user-facing edit; the web's dispatch and its parity test key off Actions.
+// Action names one user-facing edit; TestEveryAppActionApplies keys off Actions.
 type Action struct {
 	ID      string
 	Label   string
@@ -25,9 +26,9 @@ var Actions = []Action{
 	{"task.attach", "Attach image", Both},
 	{"task.delete", "Delete", Both},
 	{"status.cycle", "Cycle status", Both},
-	{"status.set", "Set status", Web},
+	{"status.set", "Set status", App},
 	{"priority.step", "Raise or lower priority", TUI},
-	{"priority.set", "Set priority", Web},
+	{"priority.set", "Set priority", App},
 	{"tag.cycle", "Cycle tag", TUI},
 	{"tag.set", "Set tag", Both},
 	{"tag.paste", "Paste tag", TUI},

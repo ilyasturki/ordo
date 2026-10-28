@@ -252,6 +252,26 @@ class Ordo {
 		}
 	}
 
+	#listening: AbortController | undefined;
+
+	/** Keeps a stream open to ordo serve while the app is in view, and syncs when a file changes. */
+	listen(on: boolean): void {
+		this.#listening?.abort();
+		this.#listening = undefined;
+		const api = this.api;
+		if (!on || api === null) {
+			return;
+		}
+		const ctl = new AbortController();
+		this.#listening = ctl;
+		const retry = () => {
+			if (!ctl.signal.aborted) {
+				setTimeout(() => this.#listening === ctl && this.listen(true), 5000);
+			}
+		};
+		api.listen(() => this.#schedule(SYNC_DELAY_MS), ctl.signal).then(retry, retry);
+	}
+
 	async sync(): Promise<void> {
 		if (this.#inflight !== undefined) {
 			this.#again = true;
@@ -439,9 +459,11 @@ class Ordo {
 		this.session = session;
 		await db.put('meta', session, 'session');
 		await this.sync();
+		this.listen(true);
 	}
 
 	expire(): void {
+		this.listen(false);
 		if (this.session === null) {
 			return;
 		}
@@ -450,6 +472,7 @@ class Ordo {
 	}
 
 	async signOut(): Promise<void> {
+		this.listen(false);
 		const db = this.#db;
 		try {
 			await this.api?.logout();

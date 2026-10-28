@@ -79,10 +79,10 @@ func TestSyncAppliesTheQueueOnceAndSendsWhatChanged(t *testing.T) {
 	if got := strings.Join(statuses(resp.Results), ","); got != "applied,applied" {
 		t.Fatalf("results = %s", got)
 	}
-	if len(resp.Projects) != 1 || resp.Projects[0].Data == nil || resp.Projects[0].Stamp != f.srv.version(f.pid) {
+	if len(resp.Projects) != 1 || resp.Projects[0].Data == nil || resp.Projects[0].Stamp != f.store.Stamp(f.pid) {
 		t.Fatalf("projects = %+v", resp.Projects)
 	}
-	if _, _, err := locate(resp.Projects[0].Data, "phone-made"); err != nil {
+	if _, _, err := operations.LocateTask(resp.Projects[0].Data, "phone-made"); err != nil {
 		t.Fatal("the answer doesn't hold the added task")
 	}
 	again := f.sync(ops, map[string]string{f.pid: resp.Projects[0].Stamp})

@@ -8,7 +8,7 @@ Every answer is JSON, and gzipped for a client that sends `Accept-Encoding: gzip
 
 `GET /api/hello` needs no token. It answers `{"protocol": 1, "has_passphrase": true}`, so the sign-in screen knows whether to offer the passphrase.
 
-`POST /api/pair` takes `{"token": "<code>", "name": "<device name>"}`, where the code is the one `ordo serve pair` prints, or the link around it. It answers `{"token": "<device token>", "protocol": 1}`. The phone app sends that token on every later request as `Authorization: Bearer <device token>`, and the API answers it from any origin. With `"cookie": true` the server sets the token as the same `HttpOnly` cookie the pages use and leaves it out of the answer: the browser app, served from `ordo serve` itself, signs in that way, and a request carrying the cookie must come from the same origin.
+`POST /api/pair` takes `{"token": "<code>", "name": "<device name>"}`, where the code is the one `ordo serve pair` prints, or the link around it. It answers `{"token": "<device token>", "protocol": 1}`. The phone app sends that token on every later request as `Authorization: Bearer <device token>`, and the API answers it from any origin. With `"cookie": true` the server sets the token as an `HttpOnly` cookie and leaves it out of the answer: the browser app, served from `ordo serve` itself, signs in that way, and a request carrying the cookie must come from the same origin.
 
 `POST /api/login` takes `{"passphrase": "<passphrase>", "name": "<device name>"}` and answers like `/api/pair`, `"cookie": true` included.
 
@@ -100,6 +100,10 @@ A project op's `project` is the project it creates, renames or deletes. `project
 ## Images
 
 The client names an image the way the store does: `<hash>.<ext>`, the first 32 hex digits of the sha256 of its bytes and the extension of its type (see [Images](file-format.md#images)). `PUT /api/attachments/<name>` with the bytes as the body stores it, and is refused when the bytes don't hash to the name. Once it is stored, a `task.attach` op adds `![<name>](attachments/<hash>.<ext>)` to the task. `GET /api/attachments/<name>` serves a stored image.
+
+## Live changes
+
+`GET /api/events` is a stream of server-sent events that stays open: each time a project file changes, from a sync, the TUI or Syncthing, it sends `event: change` with the project's ID as `data`. The app syncs when one arrives instead of waiting for its next poll. The stream sends a comment every 25 seconds so proxies keep it open.
 
 ## Protocol
 

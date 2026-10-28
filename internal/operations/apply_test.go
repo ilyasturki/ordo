@@ -249,13 +249,13 @@ func TestAStaleTextEditCarriesTheirs(t *testing.T) {
 	}
 }
 
-func TestEveryWebActionApplies(t *testing.T) {
+func TestEveryAppActionApplies(t *testing.T) {
 	for _, a := range operations.Actions {
-		if a.Surface&operations.Web == 0 {
+		if a.Surface&operations.App == 0 {
 			continue
 		}
 		if _, err := operations.Apply(board(t), operations.Op{Action: a.ID}); errors.Is(err, operations.ErrUnknownAction) {
-			t.Errorf("%s is offered on the web but Apply doesn't know it", a.ID)
+			t.Errorf("%s is offered in the app but Apply doesn't know it", a.ID)
 		}
 	}
 	if _, err := operations.Apply(board(t), operations.Op{Action: "task.levitate"}); !errors.Is(err, operations.ErrUnknownAction) {

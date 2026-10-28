@@ -3,10 +3,8 @@ package web
 import (
 	"encoding/base64"
 	"errors"
-	"html/template"
 	"net"
 	"net/http"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -74,9 +72,6 @@ func clientIP(r *http.Request) string {
 }
 
 func deviceName(r *http.Request) string {
-	if name := strings.TrimSpace(r.FormValue("name")); name != "" {
-		return truncate(name, 60)
-	}
 	ua := r.UserAgent()
 	browser := "Browser"
 	for _, b := range [][2]string{{"Firefox/", "Firefox"}, {"Edg/", "Edge"}, {"Chrome/", "Chrome"}, {"Safari/", "Safari"}} {
@@ -101,65 +96,6 @@ func truncate(s string, n int) string {
 	return string(r[:n])
 }
 
-type authPage struct {
-	Token   string
-	Name    string
-	Error   string
-	HasPass bool
-}
-
-func (s *Server) pairPage(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, http.StatusOK, "pair", page{Title: "Pair this device", Body: "auth",
-		Data: authPage{Token: r.PathValue("token"), Name: deviceName(r)}})
-}
-
-// pair answers the pair page, or the login page's pairing form when it sends from=login.
-func (s *Server) pair(w http.ResponseWriter, r *http.Request) {
-	failed := func(status int, msg string) {
-		if r.FormValue("from") == "login" {
-			s.render(w, r, status, "login", page{Title: "Sign in", Body: "auth",
-				Data: authPage{Name: deviceName(r), HasPass: s.auth.HasPassphrase(), Error: msg}})
-			return
-		}
-		s.render(w, r, status, "pair", page{Title: "Pair this device", Body: "auth",
-			Data: authPage{Error: msg, HasPass: s.auth.HasPassphrase()}})
-	}
-	if s.limiter.blocked("pair:" + clientIP(r)) {
-		failed(http.StatusTooManyRequests, "Too many attempts. Wait a few minutes.")
-		return
-	}
-	cookie, err := s.auth.Pair(r.FormValue("token"), deviceName(r))
-	if err != nil {
-		s.limiter.fail("pair:" + clientIP(r))
-		msg := "Pairing failed"
-		if errors.Is(err, ErrBadPairing) {
-			msg = "This pairing code is used or expired. Get a new one from Devices on a signed-in device, or run ordo serve pair."
-		} else {
-			s.log.Printf("pair: %v", err)
-		}
-		failed(http.StatusForbidden, msg)
-		return
-	}
-	s.setCookie(w, r, deviceCookie, cookie, cookieAge)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, http.StatusOK, "login", page{Title: "Sign in", Body: "auth",
-		Data: authPage{Name: deviceName(r), HasPass: s.auth.HasPassphrase()}})
-}
-
-func (s *Server) login(w http.ResponseWriter, r *http.Request) {
-	cookie, status, msg := s.signIn(r, r.FormValue("passphrase"), deviceName(r))
-	if status != 0 {
-		view := authPage{Name: deviceName(r), HasPass: s.auth.HasPassphrase(), Error: msg}
-		s.render(w, r, status, "login", page{Title: "Sign in", Body: "auth", Data: view})
-		return
-	}
-	s.setCookie(w, r, deviceCookie, cookie, cookieAge)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
 // signIn pairs a new device on the passphrase; a refusal has its status and message for the user.
 func (s *Server) signIn(r *http.Request, phrase, name string) (token string, status int, msg string) {
 	if s.limiter.blocked("login:"+clientIP(r)) || s.globalLimit.blocked("login") {
@@ -178,87 +114,6 @@ func (s *Server) signIn(r *http.Request, phrase, name string) (token string, sta
 	}
 	s.log.Printf("login: %v", err)
 	return "", http.StatusForbidden, "Sign-in failed"
-}
-
-func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
-	if _, err := s.auth.Revoke(deviceFrom(r).ID); err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	s.setCookie(w, r, deviceCookie, "", -time.Second)
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
-}
-
-type deviceView struct {
-	Device
-	From string
-	Also string
-}
-
-type devicesPage struct {
-	Devices []deviceView
-	Also    string
-	HasPass bool
-}
-
-func (s *Server) devices(w http.ResponseWriter, r *http.Request) {
-	devs, err := s.auth.Devices()
-	if err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	names := make(map[string]string, len(devs))
-	for _, d := range devs {
-		names[d.ID] = d.Name
-	}
-	view := devicesPage{HasPass: s.auth.HasPassphrase()}
-	for _, d := range devs {
-		var also []string
-		for _, c := range lineage(devs, d.ID)[1:] {
-			also = append(also, c.Name)
-		}
-		v := deviceView{Device: d, From: names[d.PairedBy], Also: strings.Join(also, ", ")}
-		if d.ID == deviceFrom(r).ID {
-			view.Also = v.Also
-		}
-		view.Devices = append(view.Devices, v)
-	}
-	s.render(w, r, http.StatusOK, "devices", page{Title: "Devices", Body: "devices", Data: view})
-}
-
-type pairCodePage struct {
-	HasPass bool
-	Error   string
-	Link    string
-	QR      template.URL
-	Minutes int
-}
-
-func (s *Server) pairCodePage(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, http.StatusOK, "devices_pair", page{Title: "Pair a new device", Body: "devices",
-		Data: pairCodePage{HasPass: s.auth.HasPassphrase()}})
-}
-
-// pairCode mints a pairing link for another device, once the passphrase is entered again when one is set.
-func (s *Server) pairCode(w http.ResponseWriter, r *http.Request) {
-	view := pairCodePage{HasPass: s.auth.HasPassphrase(), Minutes: int(PairTTL.Minutes())}
-	status, msg, err := s.recheck(r, r.FormValue("passphrase"))
-	if err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	if status != 0 {
-		view.Error = msg
-		s.render(w, r, status, "devices_pair", page{Title: "Pair a new device", Body: "devices", Data: view})
-		return
-	}
-	link, png, err := s.pairLink(r)
-	if err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	view.Link, view.QR = link, template.URL(png)
-	s.render(w, r, http.StatusOK, "devices_pair", page{Title: "Pair a new device", Body: "devices", Data: view})
 }
 
 // recheck asks for the passphrase again when one is set, under the sign-in limits; a refusal has
@@ -306,19 +161,4 @@ func (s *Server) linkBase(r *http.Request) string {
 		scheme = "https"
 	}
 	return scheme + "://" + r.Host
-}
-
-func (s *Server) revoke(w http.ResponseWriter, r *http.Request) {
-	gone, err := s.auth.Revoke(r.PathValue("id"))
-	if err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	self := deviceFrom(r).ID
-	if slices.ContainsFunc(gone, func(d Device) bool { return d.ID == self }) {
-		s.setCookie(w, r, deviceCookie, "", -time.Second)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-	http.Redirect(w, r, "/devices", http.StatusSeeOther)
 }

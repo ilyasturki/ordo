@@ -133,6 +133,31 @@ export class Api {
 		return this.#json(`/api/devices/${encodeURIComponent(id)}/revoke`, {});
 	}
 
+	/** Calls changed with a project's ID each time ordo serve sees its file change, until signal aborts. */
+	async listen(changed: (pid: string) => void, signal: AbortSignal): Promise<void> {
+		const res = await this.#fetch('/api/events', { signal });
+		const reader = res.body?.pipeThrough(new TextDecoderStream()).getReader();
+		if (reader === undefined) {
+			return;
+		}
+		let buffered = '';
+		for (;;) {
+			const { value, done } = await reader.read();
+			if (done) {
+				return;
+			}
+			buffered += value;
+			const events = buffered.split('\n\n');
+			buffered = events.pop() ?? '';
+			for (const ev of events) {
+				const data = ev.split('\n').find((l) => l.startsWith('data: '));
+				if (data !== undefined) {
+					changed(data.slice('data: '.length));
+				}
+			}
+		}
+	}
+
 	logout(): Promise<void> {
 		return this.#json('/api/logout', {});
 	}
