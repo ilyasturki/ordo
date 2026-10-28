@@ -55,6 +55,13 @@ func TestReplayingAnOpChangesNothingMore(t *testing.T) {
 		{Action: "task.place", IDs: []string{"a"}, Cat: "c2", Before: "d"},
 		{Action: "task.move", IDs: []string{"b"}, Cat: "c2"},
 		{Action: "task.delete", IDs: []string{"d"}},
+		{Action: "task.restore", Cat: "c1", Before: "a", Rows: []domain.Task{
+			{ID: "r1", Title: "back", Status: domain.StatusTodo}, {ID: "r2", ParentID: "r1", Title: "its child", Status: domain.StatusCompleted},
+		}},
+		{Action: "category.add", New: "k1", Title: "Docs"},
+		{Action: "category.add", New: "k2", Parent: "c1", Title: "Sub"},
+		{Action: "category.rename", Cat: "c1", Title: "Renamed"},
+		{Action: "category.delete", Cat: "c2"},
 	}
 	for _, op := range ops {
 		t.Run(op.Action, func(t *testing.T) {
@@ -151,13 +158,78 @@ func TestAnEditToRowsDeletedElsewhereIsGone(t *testing.T) {
 		{Action: "task.title", IDs: []string{"x"}, Title: "y"},
 		{Action: "task.place", IDs: []string{"x"}, Cat: "c1"},
 		{Action: "task.move", IDs: []string{"x"}, Cat: "c2"},
+		{Action: "category.rename", Cat: "x", Title: "y"},
+		{Action: "task.restore", Cat: "x", Rows: []domain.Task{{ID: "r1", Title: "back", Status: domain.StatusTodo}}},
 	} {
 		if _, err := operations.Apply(board(t), op); operations.VerdictOf(err) != operations.Gone {
 			t.Errorf("%s on a deleted row: %v", op.Action, err)
 		}
 	}
-	if _, err := operations.Apply(board(t), operations.Op{Action: "task.delete", IDs: []string{"x"}}); !errors.Is(err, operations.ErrNoChange) {
-		t.Errorf("deleting a deleted row: %v", err)
+	for _, op := range []operations.Op{
+		{Action: "task.delete", IDs: []string{"x"}},
+		{Action: "category.delete", Cat: "x"},
+	} {
+		if _, err := operations.Apply(board(t), op); !errors.Is(err, operations.ErrNoChange) {
+			t.Errorf("%s of something deleted: %v", op.Action, err)
+		}
+	}
+}
+
+func TestQueuedCategoriesAndRestoresOutliveWhatTheyWereMadeBeside(t *testing.T) {
+	p := board(t)
+	row := func(id string) []domain.Task { return []domain.Task{{ID: id, Title: id, Status: domain.StatusTodo}} }
+	for _, op := range []operations.Op{
+		{Action: "category.add", New: "k1", Parent: "gone", Title: "Docs"},
+		{Action: "task.restore", Cat: "c1", Parent: "gone", Before: "c", Rows: row("r1")},
+		{Action: "task.restore", Cat: "c1", Before: "gone", Rows: row("r2")},
+		{Action: "task.restore", Cat: "c1", Parent: "b", Rows: row("r3")},
+		{Action: "task.restore", Cat: "c1", Parent: "d", Rows: []domain.Task{{ID: "a", Title: "x", Status: domain.StatusTodo}, {ID: "r4", ParentID: "a", Title: "r4", Status: domain.StatusTodo}}},
+	} {
+		if _, err := operations.Apply(p, op); err != nil {
+			t.Fatalf("%s: %v", op.Action, err)
+		}
+	}
+	if k := p.Categories[len(p.Categories)-1]; k.ID != "k1" || k.ParentID != "" {
+		t.Fatalf("category = %+v", k)
+	}
+	want := []string{"a", "a>r4", "b", "b>b1", "b>r3", "r1", "c", "r2"}
+	if got := outline(p)["c1"]; !reflect.DeepEqual(got, want) {
+		t.Fatalf("c1 = %v, want %v", got, want)
+	}
+}
+
+func TestRefusedCategoryAndRestoreOps(t *testing.T) {
+	sep := domain.Task{ID: "r1", Kind: domain.KindSeparator}
+	for _, tc := range []struct {
+		op  operations.Op
+		msg string
+	}{
+		{operations.Op{Action: "category.add", New: "k1", Title: " fix "}, "A category with that name already exists"},
+		{operations.Op{Action: "category.add", New: "k1", Title: " "}, "A category needs a name"},
+		{operations.Op{Action: "category.add", New: "../k", Title: "Docs"}, ""},
+		{operations.Op{Action: "category.rename", Cat: "c1", Title: "FIX"}, "A category with that name already exists"},
+		{operations.Op{Action: "task.restore", Cat: "c1", Rows: []domain.Task{{ID: "r1", Title: "a\x1bb", Status: domain.StatusTodo}}}, ""},
+		{operations.Op{Action: "task.restore", Cat: "c1", Rows: []domain.Task{{ID: "r1", Title: "x", Status: "done"}}}, ""},
+		{operations.Op{Action: "task.restore", Cat: "c1", Rows: []domain.Task{{ID: "r1", Title: " ", Status: domain.StatusTodo}}}, "A task needs a title"},
+		{operations.Op{Action: "task.restore", Cat: "c1", Rows: []domain.Task{{ID: "r/1", Title: "x", Status: domain.StatusTodo}}}, "Can't restore those rows"},
+		{operations.Op{Action: "task.restore", Cat: "c1", Rows: []domain.Task{{ID: "r1", Title: "x", Status: domain.StatusTodo}, {ID: "r2", ParentID: "a", Title: "y", Status: domain.StatusTodo}}}, "Can't restore those rows"},
+		{operations.Op{Action: "task.restore", Cat: "c1", Rows: []domain.Task{{ID: "r1", Title: "x", Status: domain.StatusTodo}, {ID: "r1", ParentID: "r1", Title: "y", Status: domain.StatusTodo}}}, "Can't restore those rows"},
+		{operations.Op{Action: "task.restore", Cat: "c1", Rows: []domain.Task{sep, {ID: "r2", ParentID: "r1", Title: "y", Status: domain.StatusTodo}}}, "Can't restore those rows"},
+	} {
+		p := board(t)
+		_, err := operations.Apply(p, tc.op)
+		if operations.VerdictOf(err) != operations.Refused {
+			t.Errorf("%+v: %v", tc.op, err)
+			continue
+		}
+		if msg, _ := operations.Explain(err); tc.msg != "" && msg != tc.msg {
+			t.Errorf("%+v: %q, want %q", tc.op, msg, tc.msg)
+		}
+	}
+	p := board(t)
+	p.Categories = append(p.Categories, domain.Category{ID: "s1", Name: "Sub", ParentID: "c2", Tasks: []domain.Task{}})
+	if _, err := operations.Apply(p, operations.Op{Action: "category.add", New: "k1", Parent: "s1", Title: "Deep"}); operations.VerdictOf(err) != operations.Refused {
+		t.Fatalf("a sub-category under a sub-category: %v", err)
 	}
 }
 

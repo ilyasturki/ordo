@@ -19,6 +19,7 @@ import (
 var (
 	ErrProjectNotFound      = errors.New("project not found")
 	ErrDuplicateProjectName = errors.New("project name already exists")
+	ErrProjectExists        = errors.New("project already exists")
 )
 
 type ProjectRepository interface {
@@ -235,6 +236,32 @@ func (s *Store) CreateProject(name string) (domain.Project, error) {
 		project.Categories = populateSampleTasks(project.Categories)
 		return project, nil
 	})
+}
+
+// CreateEmptyProject writes a project with no categories under the ID a client minted, so the
+// edits it queued after the create can name it. An ID already on disk is ErrProjectExists, checked
+// before the name: a create sent twice finds its own name taken.
+func (s *Store) CreateEmptyProject(id, name string) (domain.Project, error) {
+	if err := domain.ValidateID(id); err != nil {
+		return domain.Project{}, err
+	}
+	if err := domain.ValidateLine(name); err != nil {
+		return domain.Project{}, err
+	}
+	g, err := s.acquireGlobalLock()
+	if err != nil {
+		return domain.Project{}, err
+	}
+	defer g.Close()
+	if s.projectExists(id) {
+		return domain.Project{}, ErrProjectExists
+	}
+	if err := s.checkProjectNameAvailableLocked(name, ""); err != nil {
+		return domain.Project{}, err
+	}
+	now := domain.NowTimestamp()
+	project := domain.Project{ID: id, Name: name, CreatedAt: now, UpdatedAt: now, Categories: []domain.Category{}}
+	return project, s.saveNewProjectLocked(project)
 }
 
 // ImportProject persists a fully-formed project parsed from an external file

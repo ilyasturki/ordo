@@ -96,3 +96,73 @@ func TestOpenReadsLikeTheStore(t *testing.T) {
 		t.Fatalf("title = %q", p.Categories[0].Tasks[0].Title)
 	}
 }
+
+func TestPerformAnswersHowToUndoIt(t *testing.T) {
+	s, pid := opened(t)
+	a := s.Perform(pid, op(operations.Op{Action: "task.delete", IDs: []string{"a"}}))
+	if len(a.Undo) != 1 || a.Undo[0].Action != "task.restore" || len(a.Undo[0].Rows) != 1 || a.Undo[0].Before != "b" {
+		t.Fatalf("undo = %+v", a.Undo)
+	}
+	back := s.Perform(pid, op(a.Undo[0]))
+	if back.Status != operations.Applied || back.Queue == nil || back.Queue.Action != "task.restore" {
+		t.Fatalf("undoing = %+v", back)
+	}
+	if tasks := held(t, s, pid).Categories[0].Tasks; len(tasks) != 2 || tasks[0].ID != "a" {
+		t.Fatalf("tasks = %+v", tasks)
+	}
+	if r := s.Perform(pid, op(a.Undo[0])); r.Status != operations.Unchanged || r.Msg != "" || r.Undo != nil {
+		t.Fatalf("undoing twice = %+v", r)
+	}
+}
+
+func TestSessionCreatesRenamesAndDeletesProjects(t *testing.T) {
+	s, _ := opened(t)
+	created := s.Perform("", op(operations.Op{Action: "project.create", Title: " Laptop "}))
+	if created.Status != operations.Applied || created.Row == "" || created.Queue == nil || created.Queue.Action != "project.create" {
+		t.Fatalf("create = %+v", created)
+	}
+	id := created.Row
+	if p := held(t, s, id); p.ID != id || p.Name != "Laptop" || p.Categories == nil || len(p.Categories) != 0 {
+		t.Fatalf("created %+v", p)
+	}
+	if len(created.Undo) != 1 || created.Undo[0].Action != "project.delete" {
+		t.Fatalf("create's undo = %+v", created.Undo)
+	}
+	if r := s.Replay(id, op(*created.Queue)); r.Status != operations.Unchanged {
+		t.Fatalf("replayed create = %+v", r)
+	}
+	if r := s.Perform("p2", op(operations.Op{Action: "project.create", Title: "phone"})); r.Status != operations.Refused || r.Msg != "A project with that name already exists" {
+		t.Fatalf("duplicate create = %+v", r)
+	}
+	if r := s.Perform("p2", op(operations.Op{Action: "project.create", Title: " "})); r.Status != operations.Refused || r.Msg != "A project needs a name" {
+		t.Fatalf("nameless create = %+v", r)
+	}
+	if r := s.Perform(id, op(operations.Op{Action: "category.add", Title: "Feature"})); r.Status != operations.Applied {
+		t.Fatalf("an edit in the new project = %+v", r)
+	}
+
+	renamed := s.Perform(id, op(operations.Op{Action: "project.rename", Title: "Desk"}))
+	if renamed.Status != operations.Applied || held(t, s, id).Name != "Desk" {
+		t.Fatalf("rename = %+v", renamed)
+	}
+	if len(renamed.Undo) != 1 || renamed.Undo[0].Action != "project.rename" || renamed.Undo[0].Title != "Laptop" {
+		t.Fatalf("rename's undo = %+v", renamed.Undo)
+	}
+	for _, tc := range []struct {
+		pid   string
+		title string
+		want  operations.Verdict
+	}{{id, "Desk", operations.Unchanged}, {id, "PHONE", operations.Refused}, {"nope", "x", operations.Gone}} {
+		if r := s.Replay(tc.pid, op(operations.Op{Action: "project.rename", Title: tc.title})); r.Status != tc.want {
+			t.Fatalf("rename %s to %q = %+v", tc.pid, tc.title, r)
+		}
+	}
+
+	deleted := s.Perform(id, op(operations.Op{Action: "project.delete"}))
+	if deleted.Status != operations.Applied || deleted.Undo != nil || s.Project(id) != nil {
+		t.Fatalf("delete = %+v", deleted)
+	}
+	if r := s.Replay(id, op(operations.Op{Action: "project.delete"})); r.Status != operations.Unchanged {
+		t.Fatalf("replayed delete = %+v", r)
+	}
+}

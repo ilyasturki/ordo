@@ -61,6 +61,15 @@ var webActions = map[string]formOp{
 	"task.place": fields(func(r *http.Request, ids []string) operations.Op {
 		return operations.Op{IDs: ids, Cat: r.FormValue("cat"), Parent: r.FormValue("parent"), Before: r.FormValue("before")}
 	}),
+	"category.add": fields(func(r *http.Request, _ []string) operations.Op {
+		return operations.Op{New: r.FormValue("new"), Parent: r.FormValue("parent"), Title: r.FormValue("title")}
+	}),
+	"category.rename": fields(func(r *http.Request, _ []string) operations.Op {
+		return operations.Op{Cat: r.FormValue("cat"), Title: r.FormValue("title")}
+	}),
+	"category.delete": fields(func(r *http.Request, _ []string) operations.Op {
+		return operations.Op{Cat: r.FormValue("cat")}
+	}),
 }
 
 // focusesRow names the actions whose answer puts the cursor on the row they made or moved.

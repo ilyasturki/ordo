@@ -9,6 +9,10 @@ import (
 
 // CreateCategory fails with ErrNameRequired, or the domain's ErrDuplicateCategoryName, ErrCategoryNotFound or ErrNestDepth.
 func CreateCategory(p *domain.Project, parentID, name string) (domain.Category, error) {
+	return createCategory(p, "", parentID, name)
+}
+
+func createCategory(p *domain.Project, id, parentID, name string) (domain.Category, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return domain.Category{}, ErrNameRequired
@@ -16,7 +20,7 @@ func CreateCategory(p *domain.Project, parentID, name string) (domain.Category, 
 	if err := domain.ValidateLine(name); err != nil {
 		return domain.Category{}, err
 	}
-	cat, err := p.AddCategoryUnder(parentID, name)
+	cat, err := p.AddCategoryWithID(id, parentID, name)
 	if err != nil {
 		return domain.Category{}, err
 	}

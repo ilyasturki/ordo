@@ -47,6 +47,10 @@ func Explain(err error) (msg string, ok bool) {
 		return "That category is gone", true
 	case errors.Is(err, ErrTitleRequired):
 		return "A task needs a title", true
+	case errors.Is(err, ErrNameRequired):
+		return "A category needs a name", true
+	case errors.Is(err, domain.ErrDuplicateCategoryName):
+		return "A category with that name already exists", true
 	case errors.Is(err, domain.ErrSeparatorNest):
 		return "A separator doesn't nest", true
 	case errors.Is(err, domain.ErrNestDepth):

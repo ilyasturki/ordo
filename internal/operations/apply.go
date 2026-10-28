@@ -31,6 +31,8 @@ type Op struct {
 	Reverse bool     `json:"reverse,omitempty"`
 	Up      bool     `json:"up,omitempty"`
 	Lines   []string `json:"lines,omitempty"`
+	// Rows are the rows a task.restore puts back: one top-level row then its children, or one row.
+	Rows []domain.Task `json:"rows,omitempty"`
 }
 
 type Outcome struct {
@@ -68,6 +70,10 @@ var appliers = map[string]applier{
 	"task.shift":       shiftRows,
 	"task.move":        moveRows,
 	"task.place":       placeRows,
+	"task.restore":     restoreRows,
+	"category.add":     addCategory,
+	"category.rename":  renameCategory,
+	"category.delete":  deleteCategory,
 }
 
 var gestures = map[string]bool{"status.cycle": true, "task.shift": true, "task.nest": true, "task.unnest": true}
@@ -101,7 +107,7 @@ func Apply(p *domain.Project, op Op) (Outcome, error) {
 // a nest, un-nest or shift as the place its rows landed.
 func Perform(p *domain.Project, op Op) (Outcome, Op, error) {
 	switch op.Action {
-	case "task.add", "task.insert", "separator.add":
+	case "task.add", "task.insert", "separator.add", "category.add":
 		if op.New == "" {
 			id, err := domain.NewID()
 			if err != nil {
@@ -483,6 +489,56 @@ func placeRows(p *domain.Project, op Op) (Outcome, error) {
 		return Outcome{Msg: "Nested under " + quote(t.Title), Row: rows[0].ID}, nil
 	}
 	return Outcome{Msg: "Moved", Row: rows[0].ID}, nil
+}
+
+// addCategory falls back to a top-level category when the parent is gone, so an add queued offline survives it.
+func addCategory(p *domain.Project, op Op) (Outcome, error) {
+	if op.New != "" {
+		if err := domain.ValidateID(op.New); err != nil {
+			return Outcome{}, err
+		}
+		if _, err := p.FindCategoryByID(op.New); err == nil {
+			return Outcome{}, ErrNoChange
+		}
+	}
+	parent := op.Parent
+	if pi, err := p.FindCategoryByID(parent); err != nil {
+		parent = ""
+	} else if p.Categories[pi].ParentID != "" {
+		return Outcome{}, refuse("A sub-category can't hold sub-categories: nesting goes one level deep")
+	}
+	cat, err := createCategory(p, op.New, parent, op.Title)
+	if err != nil {
+		return Outcome{}, err
+	}
+	return Outcome{Msg: "Added " + quote(cat.Name), Row: cat.ID}, nil
+}
+
+func renameCategory(p *domain.Project, op Op) (Outcome, error) {
+	ci, err := p.FindCategoryByID(op.Cat)
+	if err != nil {
+		return Outcome{}, err
+	}
+	if p.Categories[ci].Name == strings.TrimSpace(op.Title) {
+		return Outcome{}, ErrNoChange
+	}
+	cat, err := RenameCategory(p, op.Cat, op.Title)
+	if err != nil {
+		return Outcome{}, err
+	}
+	return Outcome{Msg: "Renamed to " + quote(cat.Name)}, nil
+}
+
+func deleteCategory(p *domain.Project, op Op) (Outcome, error) {
+	ci, err := p.FindCategoryByID(op.Cat)
+	if err != nil {
+		return Outcome{}, ErrNoChange
+	}
+	name := p.Categories[ci].Name
+	if err := DeleteCategory(p, op.Cat); err != nil {
+		return Outcome{}, err
+	}
+	return Outcome{Msg: "Deleted " + quote(name)}, nil
 }
 
 func quote(s string) string {

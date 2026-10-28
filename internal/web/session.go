@@ -150,32 +150,34 @@ func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
-	view := authPage{Name: deviceName(r), HasPass: s.auth.HasPassphrase()}
-	if s.limiter.blocked("login:"+clientIP(r)) || s.globalLimit.blocked("login") {
-		view.Error = "Too many attempts. Wait a few minutes."
-		s.render(w, r, http.StatusTooManyRequests, "login", page{Title: "Sign in", Body: "auth", Data: view})
-		return
-	}
-	cookie, err := s.auth.Login(r.FormValue("passphrase"), deviceName(r))
-	if err != nil {
-		if errors.Is(err, ErrBadPassphrase) {
-			s.limiter.fail("login:" + clientIP(r))
-			s.globalLimit.fail("login")
-		}
-		switch {
-		case errors.Is(err, ErrBadPassphrase):
-			view.Error = "Wrong passphrase"
-		case errors.Is(err, ErrNoPassphrase):
-			view.Error = "No passphrase is set. Pair with a code instead."
-		default:
-			s.log.Printf("login: %v", err)
-			view.Error = "Sign-in failed"
-		}
-		s.render(w, r, http.StatusForbidden, "login", page{Title: "Sign in", Body: "auth", Data: view})
+	cookie, status, msg := s.signIn(r, r.FormValue("passphrase"), deviceName(r))
+	if status != 0 {
+		view := authPage{Name: deviceName(r), HasPass: s.auth.HasPassphrase(), Error: msg}
+		s.render(w, r, status, "login", page{Title: "Sign in", Body: "auth", Data: view})
 		return
 	}
 	s.setCookie(w, r, deviceCookie, cookie, cookieAge)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// signIn pairs a new device on the passphrase; a refusal has its status and message for the user.
+func (s *Server) signIn(r *http.Request, phrase, name string) (token string, status int, msg string) {
+	if s.limiter.blocked("login:"+clientIP(r)) || s.globalLimit.blocked("login") {
+		return "", http.StatusTooManyRequests, "Too many attempts. Wait a few minutes."
+	}
+	token, err := s.auth.Login(phrase, name)
+	switch {
+	case err == nil:
+		return token, 0, ""
+	case errors.Is(err, ErrBadPassphrase):
+		s.limiter.fail("login:" + clientIP(r))
+		s.globalLimit.fail("login")
+		return "", http.StatusForbidden, "Wrong passphrase"
+	case errors.Is(err, ErrNoPassphrase):
+		return "", http.StatusForbidden, "No passphrase is set. Pair with a code instead."
+	}
+	s.log.Printf("login: %v", err)
+	return "", http.StatusForbidden, "Sign-in failed"
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
@@ -240,40 +242,58 @@ func (s *Server) pairCodePage(w http.ResponseWriter, r *http.Request) {
 // pairCode mints a pairing link for another device, once the passphrase is entered again when one is set.
 func (s *Server) pairCode(w http.ResponseWriter, r *http.Request) {
 	view := pairCodePage{HasPass: s.auth.HasPassphrase(), Minutes: int(PairTTL.Minutes())}
-	refuse := func(status int, msg string) {
+	status, msg, err := s.recheck(r, r.FormValue("passphrase"))
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	if status != 0 {
 		view.Error = msg
 		s.render(w, r, status, "devices_pair", page{Title: "Pair a new device", Body: "devices", Data: view})
+		return
 	}
-	if view.HasPass {
-		if s.limiter.blocked("login:"+clientIP(r)) || s.globalLimit.blocked("login") {
-			refuse(http.StatusTooManyRequests, "Too many attempts. Wait a few minutes.")
-			return
-		}
-		if err := s.auth.CheckPassphrase(r.FormValue("passphrase")); err != nil {
-			if !errors.Is(err, ErrBadPassphrase) {
-				s.fail(w, r, err)
-				return
-			}
-			s.limiter.fail("login:" + clientIP(r))
-			s.globalLimit.fail("login")
-			refuse(http.StatusForbidden, "Wrong passphrase")
-			return
-		}
+	link, png, err := s.pairLink(r)
+	if err != nil {
+		s.fail(w, r, err)
+		return
 	}
+	view.Link, view.QR = link, template.URL(png)
+	s.render(w, r, http.StatusOK, "devices_pair", page{Title: "Pair a new device", Body: "devices", Data: view})
+}
+
+// recheck asks for the passphrase again when one is set, under the sign-in limits; a refusal has
+// its status and message for the user.
+func (s *Server) recheck(r *http.Request, phrase string) (status int, msg string, err error) {
+	if !s.auth.HasPassphrase() {
+		return 0, "", nil
+	}
+	if s.limiter.blocked("login:"+clientIP(r)) || s.globalLimit.blocked("login") {
+		return http.StatusTooManyRequests, "Too many attempts. Wait a few minutes.", nil
+	}
+	if err := s.auth.CheckPassphrase(phrase); err != nil {
+		if !errors.Is(err, ErrBadPassphrase) {
+			return 0, "", err
+		}
+		s.limiter.fail("login:" + clientIP(r))
+		s.globalLimit.fail("login")
+		return http.StatusForbidden, "Wrong passphrase", nil
+	}
+	return 0, "", nil
+}
+
+// pairLink mints a pairing link on behalf of the requesting device, and its QR code as a PNG data URL.
+func (s *Server) pairLink(r *http.Request) (link, png string, err error) {
 	token, err := s.auth.NewPairingBy(deviceFrom(r).ID)
 	if err != nil {
-		s.fail(w, r, err)
-		return
+		return "", "", err
 	}
-	view.Link = s.linkBase(r) + "/pair/" + token
-	code, err := qr.Encode(view.Link, qr.M)
+	link = s.linkBase(r) + "/pair/" + token
+	code, err := qr.Encode(link, qr.M)
 	if err != nil {
-		s.fail(w, r, err)
-		return
+		return "", "", err
 	}
 	code.Scale = 8
-	view.QR = template.URL("data:image/png;base64," + base64.StdEncoding.EncodeToString(code.PNG()))
-	s.render(w, r, http.StatusOK, "devices_pair", page{Title: "Pair a new device", Body: "devices", Data: view})
+	return link, "data:image/png;base64," + base64.StdEncoding.EncodeToString(code.PNG()), nil
 }
 
 // linkBase is the address a new device opens: the one serve remembers, else the one this request reached.

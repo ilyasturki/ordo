@@ -1,13 +1,16 @@
 package web
 
 import (
+	"cmp"
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/ilyasturki/ordo/internal/attachments"
 	"github.com/ilyasturki/ordo/internal/data"
@@ -25,7 +28,13 @@ func (s *Server) api() http.Handler {
 	authed.HandleFunc("POST /api/sync", s.sync)
 	authed.HandleFunc("GET /api/attachments/{name}", s.image)
 	authed.HandleFunc("PUT /api/attachments/{name}", s.putAttachment)
+	authed.HandleFunc("GET /api/devices", s.apiDevices)
+	authed.HandleFunc("POST /api/devices/pair", s.apiPairCode)
+	authed.HandleFunc("POST /api/devices/{id}/revoke", s.apiRevoke)
+	authed.HandleFunc("POST /api/logout", s.apiLogout)
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/hello", s.apiHello)
+	mux.HandleFunc("POST /api/login", s.apiLogin)
 	mux.HandleFunc("POST /api/pair", s.apiPair)
 	mux.Handle("/api/", s.apiDevice(authed))
 	return cors(mux)
@@ -112,11 +121,7 @@ func (s *Server) apiPair(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	name := truncate(strings.TrimSpace(req.Name), 60)
-	if name == "" {
-		name = deviceName(r)
-	}
-	token, err := s.auth.Pair(req.Token, name)
+	token, err := s.auth.Pair(req.Token, requestedName(r, req.Name))
 	if err != nil {
 		s.limiter.fail("pair:" + clientIP(r))
 		if !errors.Is(err, ErrBadPairing) {
@@ -125,11 +130,133 @@ func (s *Server) apiPair(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusForbidden, "This pairing code is used or expired. Get a new one from Devices on a signed-in device, or run ordo serve pair.")
 		return
 	}
-	if req.Cookie {
+	s.signedIn(w, r, token, req.Cookie)
+}
+
+func requestedName(r *http.Request, name string) string {
+	if name = truncate(strings.TrimSpace(name), 60); name != "" {
+		return name
+	}
+	return deviceName(r)
+}
+
+// signedIn answers a new device's token, or sets it as the pages' cookie when the client asked.
+func (s *Server) signedIn(w http.ResponseWriter, r *http.Request, token string, cookie bool) {
+	if cookie {
 		s.setCookie(w, r, deviceCookie, token, cookieAge)
 		token = ""
 	}
 	writeJSON(w, r, map[string]any{"token": token, "protocol": Protocol})
+}
+
+func (s *Server) apiFail(w http.ResponseWriter, r *http.Request, err error) {
+	s.log.Printf("%s %s: %v", r.Method, r.URL.Path, err)
+	apiError(w, http.StatusInternalServerError, "Something went wrong")
+}
+
+// apiHello tells the sign-in screen whether to offer the passphrase.
+func (s *Server) apiHello(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, r, map[string]any{"protocol": Protocol, "has_passphrase": s.auth.HasPassphrase()})
+}
+
+type loginRequest struct {
+	Passphrase string `json:"passphrase"`
+	Name       string `json:"name"`
+	Cookie     bool   `json:"cookie"`
+}
+
+func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil {
+		apiError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	token, status, msg := s.signIn(r, req.Passphrase, requestedName(r, req.Name))
+	if status != 0 {
+		apiError(w, status, msg)
+		return
+	}
+	s.signedIn(w, r, token, req.Cookie)
+}
+
+type deviceInfo struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	LastSeen  time.Time `json:"last_seen"`
+	// From names the device that paired this one.
+	From string `json:"from,omitempty"`
+	// Also names the devices revoking this one signs out too.
+	Also []string `json:"also,omitempty"`
+	Self bool     `json:"self"`
+}
+
+func (s *Server) apiDevices(w http.ResponseWriter, r *http.Request) {
+	devs, err := s.auth.Devices()
+	if err != nil {
+		s.apiFail(w, r, err)
+		return
+	}
+	names := make(map[string]string, len(devs))
+	for _, d := range devs {
+		names[d.ID] = d.Name
+	}
+	out := make([]deviceInfo, 0, len(devs))
+	for _, d := range devs {
+		info := deviceInfo{ID: d.ID, Name: d.Name, CreatedAt: d.CreatedAt, LastSeen: d.LastSeen, From: names[d.PairedBy], Self: d.ID == deviceFrom(r).ID}
+		for _, c := range lineage(devs, d.ID)[1:] {
+			info.Also = append(info.Also, c.Name)
+		}
+		out = append(out, info)
+	}
+	writeJSON(w, r, map[string]any{"devices": out, "has_passphrase": s.auth.HasPassphrase()})
+}
+
+func (s *Server) apiPairCode(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Passphrase string `json:"passphrase"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		apiError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	status, msg, err := s.recheck(r, req.Passphrase)
+	if err != nil {
+		s.apiFail(w, r, err)
+		return
+	}
+	if status != 0 {
+		apiError(w, status, msg)
+		return
+	}
+	link, png, err := s.pairLink(r)
+	if err != nil {
+		s.apiFail(w, r, err)
+		return
+	}
+	writeJSON(w, r, map[string]any{"link": link, "qr": png, "minutes": int(PairTTL.Minutes())})
+}
+
+func (s *Server) apiRevoke(w http.ResponseWriter, r *http.Request) {
+	gone, err := s.auth.Revoke(r.PathValue("id"))
+	if err != nil {
+		s.apiFail(w, r, err)
+		return
+	}
+	self := slices.ContainsFunc(gone, func(d Device) bool { return d.ID == deviceFrom(r).ID })
+	if self {
+		s.setCookie(w, r, deviceCookie, "", -time.Second)
+	}
+	writeJSON(w, r, map[string]bool{"self": self})
+}
+
+func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
+	if _, err := s.auth.Revoke(deviceFrom(r).ID); err != nil {
+		s.apiFail(w, r, err)
+		return
+	}
+	s.setCookie(w, r, deviceCookie, "", -time.Second)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type syncRequest struct {
@@ -178,8 +305,13 @@ func (s *Server) sync(w http.ResponseWriter, r *http.Request) {
 	}
 	results := make([]opResult, len(req.Ops))
 	for i := 0; i < len(req.Ops); {
+		if operations.ProjectAction(req.Ops[i].Action) {
+			results[i] = s.applyProject(req.Ops[i])
+			i++
+			continue
+		}
 		j := i + 1
-		for j < len(req.Ops) && req.Ops[j].Project == req.Ops[i].Project {
+		for j < len(req.Ops) && req.Ops[j].Project == req.Ops[i].Project && !operations.ProjectAction(req.Ops[j].Action) {
 			j++
 		}
 		s.applyRun(req.Ops[i:j], results[i:j])
@@ -240,7 +372,10 @@ func applyQueued(p *domain.Project, op queuedOp) opResult {
 	}
 	out, err := operations.Apply(p, op.Op)
 	res.Status, res.Msg = operations.VerdictOf(err), out.Msg
-	if err != nil {
+	switch {
+	case res.Status == operations.Unchanged:
+		res.Msg = ""
+	case err != nil:
 		res.Msg, _ = userMessage(err, true)
 	}
 	var conflict *operations.Conflict
@@ -248,6 +383,67 @@ func applyQueued(p *domain.Project, op queuedOp) opResult {
 		res.Theirs = &conflict.Theirs
 	}
 	return res
+}
+
+// applyProject creates, renames or deletes a project file, under the store's global lock where
+// names are checked, rather than editing one under its own lock.
+func (s *Server) applyProject(op queuedOp) opResult {
+	msg, err := s.projectOp(op.Project, op.Op)
+	res := opResult{ID: op.ID, Status: operations.VerdictOf(err)}
+	switch {
+	case err == nil:
+		res.Msg = msg
+	case errors.Is(err, operations.ErrNoChange):
+	case errors.Is(err, data.ErrProjectNotFound):
+		res.Status, res.Msg = operations.Gone, "That project is gone"
+	case errors.Is(err, domain.ErrInvalidID), errors.Is(err, domain.ErrControlCharacters), errors.Is(err, domain.ErrInvalidUTF8):
+		res.Msg, _ = userMessage(err, true)
+	default:
+		var ok bool
+		if res.Msg, ok = userMessage(err, false); !ok {
+			s.log.Printf("sync %s %s: %v", op.Action, op.Project, err)
+			res.Msg = "The server couldn't save this"
+		}
+	}
+	return res
+}
+
+func (s *Server) projectOp(pid string, op operations.Op) (string, error) {
+	if op.Action == "project.delete" {
+		p, err := s.store.LoadProjectByID(pid)
+		if !errors.Is(err, data.ErrProjectNotFound) {
+			err = s.store.DeleteProject(pid)
+		}
+		if errors.Is(err, data.ErrProjectNotFound) {
+			return "", operations.ErrNoChange
+		}
+		return operations.ProjectMsg(op.Action, cmp.Or(p.Name, pid)), err
+	}
+	name, err := operations.ProjectName(op.Title)
+	if err != nil {
+		return "", err
+	}
+	if op.Action == "project.create" {
+		_, err = s.store.CreateEmptyProject(pid, name)
+		if errors.Is(err, data.ErrProjectExists) {
+			err = operations.ErrNoChange
+		}
+	} else if err = s.checkRename(pid, name); err == nil {
+		_, err = s.store.RenameProject(pid, name)
+	}
+	if errors.Is(err, data.ErrDuplicateProjectName) {
+		err = operations.ErrProjectNameTaken
+	}
+	return operations.ProjectMsg(op.Action, name), err
+}
+
+// checkRename finds a rename to the name the project has already: RenameProject would save it.
+func (s *Server) checkRename(pid, name string) error {
+	p, err := s.store.LoadProjectByID(pid)
+	if err == nil && p.Name == name {
+		return operations.ErrNoChange
+	}
+	return err
 }
 
 // putAttachment stores an image the phone attached offline, under the name it computed from the bytes.

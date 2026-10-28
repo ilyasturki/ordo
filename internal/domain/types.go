@@ -702,6 +702,11 @@ func (p *Project) RenameCategory(index int, name string) error {
 }
 
 func (p *Project) AddCategoryUnder(parentID, name string) (*Category, error) {
+	return p.AddCategoryWithID("", parentID, name)
+}
+
+// AddCategoryWithID is AddCategoryUnder keeping an ID the caller minted; empty mints one.
+func (p *Project) AddCategoryWithID(id, parentID, name string) (*Category, error) {
 	at := len(p.Categories)
 	if parentID != "" {
 		parent, err := p.FindCategoryByID(parentID)
@@ -719,6 +724,9 @@ func (p *Project) AddCategoryUnder(parentID, name string) (*Category, error) {
 	cat, err := NewCategory(name)
 	if err != nil {
 		return nil, err
+	}
+	if id != "" {
+		cat.ID = id
 	}
 	cat.ParentID = parentID
 	p.InsertCategory(at, cat)

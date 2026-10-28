@@ -43,6 +43,31 @@ func TestDeleteProject_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, ErrProjectNotFound)
 }
 
+func TestCreateEmptyProjectKeepsTheClientsID(t *testing.T) {
+	store := NewStore(t.TempDir())
+	require.NoError(t, store.Ensure())
+	_, err := store.CreateProject("Alpha")
+	require.NoError(t, err)
+
+	created, err := store.CreateEmptyProject("phone-made", "Beta")
+	require.NoError(t, err)
+	loaded, err := store.LoadProjectByID("phone-made")
+	require.NoError(t, err)
+	assert.Equal(t, "Beta", loaded.Name)
+	assert.Equal(t, created.CreatedAt, loaded.CreatedAt)
+	assert.NotNil(t, loaded.Categories)
+	assert.Empty(t, loaded.Categories, "no sample categories")
+
+	_, err = store.CreateEmptyProject("phone-made", "Beta")
+	assert.ErrorIs(t, err, ErrProjectExists, "the ID is checked before the name")
+	_, err = store.CreateEmptyProject("other", " alpha ")
+	assert.ErrorIs(t, err, ErrDuplicateProjectName)
+	_, err = store.CreateEmptyProject("../escape", "Gamma")
+	assert.ErrorIs(t, err, domain.ErrInvalidID)
+	_, err = os.Stat(filepath.Join(store.Dir, "..", "escape.json"))
+	assert.True(t, os.IsNotExist(err))
+}
+
 func TestRenameProject_RejectsDuplicateName(t *testing.T) {
 	tmpDir := t.TempDir()
 	store := NewStore(tmpDir)

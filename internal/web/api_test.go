@@ -227,3 +227,221 @@ func TestPutAttachmentWantsTheNameOfItsBytes(t *testing.T) {
 		t.Fatalf("get: %d", rec.Code)
 	}
 }
+
+func TestSyncCreatesRenamesAndDeletesProjects(t *testing.T) {
+	f := newFixture(t)
+	op := func(id, pid string, o operations.Op) queuedOp { return queuedOp{ID: id, Project: pid, Op: o} }
+	ops := []queuedOp{
+		op("1", "phone-made", operations.Op{Action: "project.create", Title: " Laptop "}),
+		op("2", "phone-made", operations.Op{Action: "category.add", New: "inbox", Title: "Inbox"}),
+		op("3", "phone-made", operations.Op{Action: "task.add", New: "first", Cat: "inbox", Title: "first"}),
+		op("4", "other", operations.Op{Action: "project.create", Title: "phone"}),
+		op("5", "phone-made", operations.Op{Action: "project.rename", Title: "Desk"}),
+		op("6", f.pid, operations.Op{Action: "project.rename", Title: "desk"}),
+		op("7", "no-such-project", operations.Op{Action: "project.rename", Title: "x"}),
+		op("8", f.pid, operations.Op{Action: "status.set", IDs: []string{f.ids["one"]}, Value: domain.StatusCompleted}),
+	}
+	resp := f.sync(ops, nil)
+	if got := strings.Join(statuses(resp.Results), ","); got != "applied,applied,applied,refused,applied,refused,gone,applied" {
+		t.Fatalf("results = %s", got)
+	}
+	if msg := resp.Results[3].Msg; msg != "A project with that name already exists" {
+		t.Fatalf("duplicate name: %q", msg)
+	}
+	var made *domain.Project
+	for _, p := range resp.Projects {
+		if p.ID == "phone-made" {
+			made = p.Data
+		}
+	}
+	if made == nil || made.Name != "Desk" || len(made.Categories) != 1 || len(made.Categories[0].Tasks) != 1 || made.Categories[0].Tasks[0].ID != "first" {
+		t.Fatalf("created project = %+v", made)
+	}
+	again := f.sync(ops, nil)
+	if got := strings.Join(statuses(again.Results), ","); got != "unchanged,unchanged,unchanged,refused,unchanged,refused,gone,unchanged" {
+		t.Fatalf("replay = %s", got)
+	}
+	if again.Results[0].Msg != "" {
+		t.Fatalf("an unchanged op says %q", again.Results[0].Msg)
+	}
+	deleted := f.sync([]queuedOp{op("9", "phone-made", operations.Op{Action: "project.delete"})}, nil)
+	if deleted.Results[0].Status != operations.Applied || len(deleted.Projects) != 1 {
+		t.Fatalf("delete = %+v", deleted)
+	}
+	if again := f.sync([]queuedOp{op("9", "phone-made", operations.Op{Action: "project.delete"})}, nil); again.Results[0].Status != operations.Unchanged {
+		t.Fatalf("replayed delete = %+v", again.Results[0])
+	}
+}
+
+func TestAPIHelloSaysWhetherToOfferThePassphrase(t *testing.T) {
+	f := newFixture(t)
+	hello := func() (h struct {
+		Protocol      int  `json:"protocol"`
+		HasPassphrase bool `json:"has_passphrase"`
+	}) {
+		rec := f.api(http.MethodGet, "/api/hello", "", nil)
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &h) != nil {
+			t.Fatalf("hello: %d %s", rec.Code, rec.Body)
+		}
+		return h
+	}
+	if h := hello(); h.Protocol != Protocol || h.HasPassphrase {
+		t.Fatalf("hello = %+v", h)
+	}
+	if err := f.auth.SetPassphrase("correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	if !hello().HasPassphrase {
+		t.Fatal("the passphrase isn't offered")
+	}
+}
+
+func TestAPILoginSignsInOnThePassphrase(t *testing.T) {
+	f := newFixture(t)
+	if rec := f.api(http.MethodPost, "/api/login", "", loginRequest{Passphrase: "anything"}); rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "No passphrase is set") {
+		t.Fatalf("without a passphrase: %d %s", rec.Code, rec.Body)
+	}
+	if err := f.auth.SetPassphrase("correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	rec := f.api(http.MethodPost, "/api/login", "", loginRequest{Passphrase: "correct horse battery", Name: "Pixel"})
+	var signed struct{ Token string }
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &signed) != nil || signed.Token == "" {
+		t.Fatalf("login: %d %s", rec.Code, rec.Body)
+	}
+	if rec := f.api(http.MethodGet, "/api/devices", signed.Token, nil); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"Pixel"`) {
+		t.Fatalf("devices with the token: %d %s", rec.Code, rec.Body)
+	}
+	rec = f.api(http.MethodPost, "/api/login", "", loginRequest{Passphrase: "correct horse battery", Cookie: true})
+	if !strings.Contains(rec.Header().Get("Set-Cookie"), deviceCookie+"=") || strings.Contains(rec.Body.String(), ".") {
+		t.Fatalf("cookie %q, body %s", rec.Header().Get("Set-Cookie"), rec.Body)
+	}
+	for i := 0; i < 5; i++ {
+		if rec := f.api(http.MethodPost, "/api/login", "", loginRequest{Passphrase: "nope"}); rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "Wrong passphrase") {
+			t.Fatalf("guess %d: %d %s", i, rec.Code, rec.Body)
+		}
+	}
+	if rec := f.api(http.MethodPost, "/api/login", "", loginRequest{Passphrase: "correct horse battery"}); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("after five failures: %d", rec.Code)
+	}
+}
+
+type devicesAnswer struct {
+	Devices []struct {
+		ID   string   `json:"id"`
+		Name string   `json:"name"`
+		From string   `json:"from"`
+		Also []string `json:"also"`
+		Self bool     `json:"self"`
+	} `json:"devices"`
+	HasPassphrase bool `json:"has_passphrase"`
+}
+
+func (f *fixture) pairChild(name string) (id, token string) {
+	f.t.Helper()
+	root, _, _ := strings.Cut(f.cookie, ".")
+	code, err := f.auth.NewPairingBy(root)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	token, err = f.auth.Pair(code, name)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	id, _, _ = strings.Cut(token, ".")
+	return id, token
+}
+
+func TestAPIDevicesSaysWhoPairedWhom(t *testing.T) {
+	f := newFixture(t)
+	child, _ := f.pairChild("Laptop")
+	rec := f.api(http.MethodGet, "/api/devices", f.cookie, nil)
+	var got devicesAnswer
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &got) != nil || len(got.Devices) != 2 {
+		t.Fatalf("devices: %d %s", rec.Code, rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), "token") {
+		t.Fatal("the answer carries a token hash")
+	}
+	root, laptop := got.Devices[0], got.Devices[1]
+	if !root.Self || root.Name != "test" || strings.Join(root.Also, ",") != "Laptop" || root.From != "" {
+		t.Fatalf("this device = %+v", root)
+	}
+	if laptop.Self || laptop.ID != child || laptop.From != "test" || len(laptop.Also) != 0 {
+		t.Fatalf("the laptop = %+v", laptop)
+	}
+	if rec := f.api(http.MethodGet, "/api/devices", "", nil); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous: %d", rec.Code)
+	}
+}
+
+func TestAPIPairMintsALinkAfterThePassphrase(t *testing.T) {
+	f := newFixture(t)
+	var minted struct {
+		Link    string `json:"link"`
+		QR      string `json:"qr"`
+		Minutes int    `json:"minutes"`
+	}
+	rec := f.api(http.MethodPost, "/api/devices/pair", f.cookie, nil)
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &minted) != nil {
+		t.Fatalf("pair: %d %s", rec.Code, rec.Body)
+	}
+	if !strings.Contains(minted.Link, "/pair/") || !strings.HasPrefix(minted.QR, "data:image/png;base64,") || minted.Minutes != 10 {
+		t.Fatalf("minted %+v", minted)
+	}
+	if _, err := f.auth.Pair(minted.Link, "Tablet"); err != nil {
+		t.Fatalf("the link doesn't pair: %v", err)
+	}
+	if err := f.auth.SetPassphrase("correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	if rec := f.api(http.MethodPost, "/api/devices/pair", f.cookie, map[string]string{"passphrase": "nope"}); rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "Wrong passphrase") {
+		t.Fatalf("wrong passphrase: %d %s", rec.Code, rec.Body)
+	}
+	if rec := f.api(http.MethodPost, "/api/devices/pair", f.cookie, map[string]string{"passphrase": "correct horse battery"}); rec.Code != http.StatusOK {
+		t.Fatalf("right passphrase: %d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestAPIRevokeSaysWhetherTheCallerLostAccess(t *testing.T) {
+	f := newFixture(t)
+	root, _, _ := strings.Cut(f.cookie, ".")
+	other, _ := f.pairChild("Laptop")
+	_, phone := f.pairChild("Phone")
+	var answer struct{ Self bool }
+	rec := f.api(http.MethodPost, "/api/devices/"+other+"/revoke", phone, nil)
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &answer) != nil || answer.Self {
+		t.Fatalf("revoke another: %d %s", rec.Code, rec.Body)
+	}
+	rec = f.api(http.MethodPost, "/api/devices/"+root+"/revoke", phone, nil)
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &answer) != nil || !answer.Self {
+		t.Fatalf("revoke the device that paired this one: %d %s", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Header().Get("Set-Cookie"), "Max-Age=0") {
+		t.Fatalf("cookie kept: %q", rec.Header().Get("Set-Cookie"))
+	}
+	if rec := f.api(http.MethodGet, "/api/devices", phone, nil); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("after losing access: %d", rec.Code)
+	}
+	if rec := f.api(http.MethodPost, "/api/devices/"+other+"/revoke", "", nil); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous revoke: %d", rec.Code)
+	}
+}
+
+func TestAPILogoutSignsTheCallerOut(t *testing.T) {
+	f := newFixture(t)
+	_, laptop := f.pairChild("Laptop")
+	if rec := f.api(http.MethodPost, "/api/logout", "", nil); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous logout: %d", rec.Code)
+	}
+	rec := f.api(http.MethodPost, "/api/logout", laptop, nil)
+	if rec.Code != http.StatusNoContent || !strings.Contains(rec.Header().Get("Set-Cookie"), "Max-Age=0") {
+		t.Fatalf("logout: %d %q", rec.Code, rec.Header().Get("Set-Cookie"))
+	}
+	if rec := f.api(http.MethodPost, "/api/sync", laptop, syncRequest{Protocol: Protocol}); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("after logout: %d", rec.Code)
+	}
+	if rec := f.api(http.MethodPost, "/api/sync", f.cookie, syncRequest{Protocol: Protocol}); rec.Code != http.StatusOK {
+		t.Fatalf("the device that paired it: %d", rec.Code)
+	}
+}
