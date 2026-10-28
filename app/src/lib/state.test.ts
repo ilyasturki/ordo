@@ -16,7 +16,14 @@ beforeAll(async () => {
 });
 
 function task(id: string, title: string, extra: Partial<Task> = {}): Task {
-	return { id, title, status: 'todo', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', ...extra };
+	return {
+		id,
+		title,
+		status: 'todo',
+		created_at: '2026-01-01T00:00:00Z',
+		updated_at: '2026-01-01T00:00:00Z',
+		...extra
+	};
 }
 
 function project(id: string, tasks: Task[]): Project {
@@ -31,7 +38,12 @@ function project(id: string, tasks: Task[]): Project {
 }
 
 type Request = { ops: SyncOp[]; have: Record<string, string> };
-type Reply = { results?: { id: string; status: string; msg?: string; theirs?: string }[]; projects: unknown[] } | number;
+type Reply =
+	| {
+			results?: { id: string; status: string; msg?: string; theirs?: string }[];
+			projects: unknown[];
+	  }
+	| number;
 
 /** A stand-in ordo serve: each sync answers with the next reply, built from the request. */
 function serve(...replies: ((req: Request) => Reply | Promise<Reply>)[]) {
@@ -83,10 +95,19 @@ describe('the store', () => {
 		expect(ordo.pending).toBe(1);
 
 		const sent = serve((req) => ({
-			projects: [{ id: 'p1', name: 'p1', stamp: 's2', data: project('p1', [task('a', 'one', { status: 'in_progress' })]) }]
+			projects: [
+				{
+					id: 'p1',
+					name: 'p1',
+					stamp: 's2',
+					data: project('p1', [task('a', 'one', { status: 'in_progress' })])
+				}
+			]
 		}));
 		await ordo.sync();
-		expect(sent[0].ops.map((o) => [o.action, o.value, o.project])).toEqual([['status.set', 'in_progress', 'p1']]);
+		expect(sent[0].ops.map((o) => [o.action, o.value, o.project])).toEqual([
+			['status.set', 'in_progress', 'p1']
+		]);
 		expect(sent[0].have).toEqual({});
 		expect(ordo.pending).toBe(0);
 		expect(ordo.project('p1')?.stamp).toBe('s2');
@@ -108,14 +129,23 @@ describe('the store', () => {
 						id: 'p2',
 						name: 'p2',
 						stamp: 's2',
-						data: project('p2', [task('a', 'one', { status: 'completed' }), task('b', 'two'), task('c', 'renamed on the laptop')])
+						data: project('p2', [
+							task('a', 'one', { status: 'completed' }),
+							task('b', 'two'),
+							task('c', 'renamed on the laptop')
+						])
 					}
 				]
 			};
 		});
 		const syncing = ordo.sync();
 		await inFlight;
-		await ordo.edit('p2', { action: 'task.title', ids: ['b'], title: 'typed meanwhile', base: 'two' });
+		await ordo.edit('p2', {
+			action: 'task.title',
+			ids: ['b'],
+			title: 'typed meanwhile',
+			base: 'two'
+		});
 		release();
 		await syncing;
 		const titles = ordo.project('p2')?.data.categories[0].tasks.map((t) => t.title);
@@ -143,7 +173,14 @@ describe('the store', () => {
 		const ordo = await signedIn('p5', [task('a', 'one')]);
 		await ordo.edit('p5', { action: 'task.title', ids: ['a'], title: 'mine', base: 'one' });
 		serve((req) => ({
-			results: [{ id: req.ops[0].id, status: 'conflict', msg: 'Changed on another device', theirs: 'theirs' }],
+			results: [
+				{
+					id: req.ops[0].id,
+					status: 'conflict',
+					msg: 'Changed on another device',
+					theirs: 'theirs'
+				}
+			],
 			projects: [{ id: 'p5', name: 'p5', stamp: 's2', data: project('p5', [task('a', 'theirs')]) }]
 		}));
 		await ordo.sync();
@@ -159,7 +196,9 @@ describe('the store', () => {
 		await ordo.edit('p6', { action: 'task.delete', ids: ['a'] });
 		expect(ordo.project('p6')?.data.categories[0].tasks.map((t) => t.id)).toEqual(['b']);
 		ordo.snack?.action?.run();
-		await vi.waitFor(() => expect(ordo.project('p6')?.data.categories[0].tasks.map((t) => t.id)).toEqual(['a', 'b']));
+		await vi.waitFor(() =>
+			expect(ordo.project('p6')?.data.categories[0].tasks.map((t) => t.id)).toEqual(['a', 'b'])
+		);
 		expect(ordo.pending).toBe(2);
 	});
 
