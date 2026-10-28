@@ -48,7 +48,10 @@ vaul-svelte, Capacitor 8 for the Android shell, and bun. `ordo serve` embeds its
 browser build from `internal/web/spa/`, and the APK ships the same build; a Go
 build without it serves `placeholder.html`. Its colors are tokens on `:root` in
 `app/src/app.css`, redefined for dark mode. Run `bun run check` and `bun run test`
-in `app/` after a change to it.
+in `app/` after a change to it; the tests load the real core, so run `just wasm`
+first. `just web` fills `internal/web/spa/`, and `just android` installs a debug
+APK on the connected phone. A change to `app/bun.lock` needs `just web-deps-hash`,
+or `nix build` fails on the stale hash of `node_modules`.
 
 Run `./testdata/web/run.sh [shot-name]` after a UI change: it builds the app,
 seeds `testdata/web/seed.json`, serves it and writes light and dark PNGs at phone
