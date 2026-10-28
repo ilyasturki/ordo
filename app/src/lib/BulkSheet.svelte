@@ -24,6 +24,11 @@
 		void board.onSelected({ action, ...extra }, { keep: true });
 	}
 
+	function cat(): string {
+		const id = [...board.selected][0];
+		return project.categories.find((c) => c.tasks.some((t) => t.id === id))?.id ?? '';
+	}
+
 	function move(cat: string) {
 		open = false;
 		void board.onSelected({ action: 'task.move', cat });
@@ -56,6 +61,21 @@
 	<button class={item} onclick={() => structure('task.unnest')}
 		><Icon name="outdent" class="text-on-surface-variant" />Un-nest</button
 	>
+	{#if n === 1}
+		<button
+			class={item}
+			onclick={() => {
+				open = false;
+				void board.edit({
+					action: 'separator.add',
+					ids: [...board.selected],
+					cat: cat(),
+					title: ''
+				});
+				board.clear();
+			}}><Icon name="separator" class="text-on-surface-variant" />Separator below</button
+		>
+	{/if}
 	<h3 class={section}>Move to</h3>
 	{#each project.categories as c (c.id)}
 		<button class="{item} {c.parent_id ? 'pl-10' : ''}" onclick={() => move(c.id)}

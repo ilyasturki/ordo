@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import Icon from '$lib/Icon.svelte';
 	import {
 		PRIORITY_LABELS,
@@ -74,8 +75,10 @@
 			use:hold={(e) => board.press(t.id, e)}
 			role="button"
 			tabindex="-1"
-			onclick={() => board.selecting && board.toggle(t.id)}
-			onkeydown={(e) => e.key === 'Enter' && board.selecting && board.toggle(t.id)}
+			onclick={() => (board.selecting ? board.toggle(t.id) : goto(`/p/${board.pid()}/t/${t.id}`))}
+			onkeydown={(e) =>
+				e.key === 'Enter' &&
+				(board.selecting ? board.toggle(t.id) : goto(`/p/${board.pid()}/t/${t.id}`))}
 		>
 			{#if t.title}<span class="text-xs font-medium tracking-wide text-on-surface-variant uppercase"
 					>{t.title}</span
