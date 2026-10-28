@@ -17,7 +17,10 @@
 
 	const entry = $derived(ordo.current);
 	const project = $derived(entry?.data);
-	const board = new Board(() => entry?.id ?? '');
+	const board = new Board(
+		() => entry?.id ?? '',
+		() => entry?.data
+	);
 
 	let searching = $state(false);
 	let query = $state('');

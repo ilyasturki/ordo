@@ -43,8 +43,8 @@
 	function revoke(d: DeviceInfo) {
 		confirm = {
 			title: `Sign out “${d.name}”?`,
-			body: d.also
-				? `Devices it paired sign out with it: ${d.also}.`
+			body: d.also?.length
+				? `Devices it paired sign out with it: ${d.also.join(', ')}.`
 				: d.self
 					? 'This device signs out and forgets its copy of your projects.'
 					: 'It stops syncing until it pairs again.',

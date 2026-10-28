@@ -36,7 +36,7 @@ export type DeviceInfo = {
 	created_at: string;
 	last_seen: string;
 	from?: string;
-	also?: string;
+	also?: string[];
 	self?: boolean;
 };
 

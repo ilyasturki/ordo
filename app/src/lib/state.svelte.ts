@@ -332,15 +332,13 @@ class Ordo {
 					const e = { ...mine, error: st.error };
 					next.push(e);
 					if (st.error !== mine.error) {
-						void tx
-							.objectStore('projects')
-							.put({
-								id: e.id,
-								name: e.name,
-								stamp: e.stamp,
-								raw: JSON.stringify(e.data),
-								error: e.error
-							});
+						void tx.objectStore('projects').put({
+							id: e.id,
+							name: e.name,
+							stamp: e.stamp,
+							raw: JSON.stringify(e.data),
+							error: e.error
+						});
 					}
 				}
 				continue;

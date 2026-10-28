@@ -44,8 +44,9 @@
 </script>
 
 <section
-	class="overflow-hidden rounded-3xl bg-surface-low {cat.parent_id ? 'ml-4' : ''}"
+	class="rounded-3xl bg-surface-low {cat.parent_id ? 'ml-4' : ''}"
 	data-cat={cat.id}
+	data-drop={narrowed ? undefined : cat.id}
 >
 	<header class="flex items-center gap-0.5 py-1 pr-1 pl-4">
 		<button
@@ -78,12 +79,17 @@
 			{#if adding && adding.after === ''}
 				<Composer {board} cat={cat.id} after="" />
 			{/if}
-			{#each view.open as row (row.task.id)}
-				<TaskRow {row} {board} />
-				{#if adding && adding.after === row.task.id}
-					<Composer {board} cat={cat.id} after={row.task.id} />
+			<div data-open>
+				{#each view.open as row (row.task.id)}
+					<TaskRow {row} {board} cat={cat.id} />
+					{#if adding && adding.after === row.task.id}
+						<Composer {board} cat={cat.id} after={row.task.id} />
+					{/if}
+				{/each}
+				{#if board.drag?.moved && board.drag.spot.cat === cat.id && board.drag.spot.parent === '' && board.drag.spot.before === ''}
+					<div class="mx-2 rounded-2xl bg-on-surface/5" style:height="{board.drag.height}px"></div>
 				{/if}
-			{/each}
+			</div>
 			{#if !hasOpenTask && !adding}
 				<p class="px-4 pt-1 pb-4 text-sm text-on-surface-variant">
 					{view.completed.length > 0 ? 'All tasks complete' : 'No tasks yet'}
@@ -106,7 +112,7 @@
 				{#if doneOpen}
 					<div transition:slide={{ duration: 180 }}>
 						{#each view.completed as row (row.task.id)}
-							<TaskRow {row} {board} />
+							<TaskRow {row} {board} cat={cat.id} />
 						{/each}
 					</div>
 				{/if}
