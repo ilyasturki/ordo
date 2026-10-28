@@ -8,11 +8,17 @@
 		findTask,
 		finished,
 		imagesOf,
+		formatEstimate,
 		isSeparator,
 		joinDescription,
+		PRIORITY_LABELS,
+		STATUS_LABELS,
+		tagName,
 		type Task
 	} from '$lib/model';
-	import Pickers from '$lib/Pickers.svelte';
+	import Pickers, { type PickerKind } from '$lib/Pickers.svelte';
+	import TagMark from '$lib/TagMark.svelte';
+	import Menu, { type MenuItem } from '$lib/ui/Menu.svelte';
 	import StatusIcon from '$lib/StatusIcon.svelte';
 	import Thumb from '$lib/Thumb.svelte';
 	import { ordo } from '$lib/state.svelte';
@@ -47,6 +53,8 @@
 	let confirm = $state<ConfirmSpec | null>(null);
 	let subtask = $state('');
 	let picker = $state<HTMLInputElement | null>(null);
+	let choosing = $state<PickerKind | null>(null);
+	let choosingOpen = $state(false);
 
 	$effect(() => {
 		const t = task;
@@ -169,7 +177,76 @@
 		void ordo.edit(pid, { action: 'status.cycle', ids: [t.id] });
 	}
 
-	const section = 'mb-2 text-sm font-medium text-on-surface-variant';
+	function choose(kind: PickerKind) {
+		choosing = kind;
+		choosingOpen = true;
+	}
+
+	const ACTIONS: Record<PickerKind, string> = {
+		status: 'status.set',
+		priority: 'priority.set',
+		tag: 'tag.set',
+		estimate: 'estimate.set'
+	};
+
+	const TITLES: Record<PickerKind, string> = {
+		status: 'Status',
+		priority: 'Priority',
+		tag: 'Tag',
+		estimate: 'Estimate'
+	};
+
+	function picked(value: string) {
+		if (choosing !== null) {
+			void edit({ action: ACTIONS[choosing], ids: [tid], value }, choosing === 'status');
+		}
+		choosingOpen = false;
+	}
+
+	function valueOf(kind: PickerKind, t: Task): string {
+		switch (kind) {
+			case 'status':
+				return t.status;
+			case 'priority':
+				return t.priority ?? '';
+			case 'tag':
+				return t.tag_color ?? '';
+			default:
+				return String(t.estimate_minutes ?? 0);
+		}
+	}
+
+	function menu(t: Task): MenuItem[] {
+		const items: MenuItem[] = [
+			{
+				label: 'Move up',
+				icon: 'arrow_upward',
+				run: () => void edit({ action: 'task.shift', ids: [tid], up: true }, false)
+			},
+			{
+				label: 'Move down',
+				icon: 'arrow_downward',
+				run: () => void edit({ action: 'task.shift', ids: [tid] }, false)
+			}
+		];
+		if (t.parent_id) {
+			items.push({
+				label: 'Un-nest',
+				icon: 'outdent',
+				run: () => void edit({ action: 'task.unnest', ids: [tid] }, false)
+			});
+		} else if (!isSeparator(t)) {
+			items.push({
+				label: 'Nest under the task above',
+				icon: 'indent',
+				run: () => void edit({ action: 'task.nest', ids: [tid] }, false)
+			});
+		}
+		items.push({ label: 'Delete', icon: 'delete', danger: true, run: remove });
+		return items;
+	}
+
+	const rowClass = 'state-layer flex min-h-14 w-full items-center gap-4 rounded-2xl px-3 text-left';
 </script>
 
 <svelte:window
@@ -185,7 +262,7 @@
 	<IconButton icon="arrow_back" label="Back" onclick={back} />
 	<div class="flex-1"></div>
 	{#if task}
-		<IconButton icon="delete" label="Delete task" onclick={remove} />
+		<Menu label="More for this task" items={menu(task)} />
 	{/if}
 </header>
 
@@ -194,132 +271,125 @@
 		<p>This task is gone: it was deleted, here or on another device.</p>
 	</main>
 {:else}
-	<main class="mx-auto flex max-w-2xl flex-col gap-6 px-4 pb-[calc(var(--safe-b)+48px)]">
-		<div class="flex flex-col gap-1">
-			<button
-				use:ripple
-				class="state-layer -ml-1 inline-flex h-8 items-center gap-1 self-start rounded-lg pr-2 pl-3 text-sm font-medium text-primary"
-				onclick={() => (moveOpen = true)}
+	<main class="mx-auto flex max-w-2xl flex-col gap-2 px-4 pb-[calc(var(--safe-b)+96px)]">
+		<button
+			use:ripple
+			class="state-layer -ml-1 inline-flex h-8 items-center gap-1 self-start rounded-lg pr-2 pl-3 text-sm font-medium text-primary"
+			onclick={() => (moveOpen = true)}
+		>
+			{cat.name}<Icon name="expand_more" size={18} />
+		</button>
+		{#if parent}
+			<a
+				href="/p/{pid}/t/{parent.id}"
+				class="flex items-center gap-1 text-sm text-on-surface-variant"
 			>
-				{cat.name}<Icon name="expand_more" size={18} />
-			</button>
-			{#if parent}
-				<a
-					href="/p/{pid}/t/{parent.id}"
-					class="flex items-center gap-1 text-sm text-on-surface-variant"
-				>
-					<Icon name="subtask" size={16} />Subtask of {parent.title}
-				</a>
-			{/if}
-			<textarea
-				bind:value={title}
-				rows="1"
-				maxlength="500"
-				enterkeyhint="done"
-				aria-label="Title"
-				class="field-sizing-content w-full resize-none bg-transparent text-2xl leading-8 outline-none {finished(
-					task.status
-				)
-					? 'text-on-surface-variant line-through'
-					: ''}"
-				onfocus={() => (editingTitle = true)}
-				onblur={() => {
-					editingTitle = false;
-					void saveTitle();
-				}}
-				oninput={() => {
-					clearTimeout(titleTimer);
-					titleTimer = setTimeout(() => void saveTitle(), 800);
-				}}
-				onkeydown={(e) => {
-					if (e.key === 'Enter') {
-						e.preventDefault();
-						(e.currentTarget as HTMLTextAreaElement).blur();
-					}
-				}}></textarea>
-		</div>
+				<Icon name="subtask" size={16} />Subtask of {parent.title}
+			</a>
+		{/if}
+		<textarea
+			bind:value={title}
+			rows="1"
+			maxlength="500"
+			enterkeyhint="done"
+			aria-label="Title"
+			placeholder={isSeparator(task) ? 'Separator label' : 'Title'}
+			class="field-sizing-content w-full resize-none bg-transparent py-2 text-2xl leading-8 outline-none placeholder:text-on-surface-variant {finished(
+				task.status
+			)
+				? 'text-on-surface-variant line-through'
+				: ''}"
+			onfocus={() => (editingTitle = true)}
+			onblur={() => {
+				editingTitle = false;
+				void saveTitle();
+			}}
+			oninput={() => {
+				clearTimeout(titleTimer);
+				titleTimer = setTimeout(() => void saveTitle(), 800);
+			}}
+			onkeydown={(e) => {
+				if (e.key === 'Enter') {
+					e.preventDefault();
+					(e.currentTarget as HTMLTextAreaElement).blur();
+				}
+			}}></textarea>
 
 		{#if !isSeparator(task)}
-			<div class="flex items-start gap-3">
+			<div class="flex items-start gap-4 px-3 py-2">
 				<Icon name="notes" class="mt-0.5 text-on-surface-variant" />
-				<div class="flex min-w-0 flex-1 flex-col gap-3">
-					<textarea
-						bind:value={details}
-						rows="1"
-						placeholder="Add details"
-						aria-label="Details"
-						class="field-sizing-content min-h-6 w-full resize-none bg-transparent text-base leading-6 outline-none placeholder:text-on-surface-variant"
-						onfocus={() => (editingDetails = true)}
-						onblur={() => {
-							editingDetails = false;
-							void saveDetails();
-						}}
-						oninput={() => {
-							clearTimeout(detailsTimer);
-							detailsTimer = setTimeout(() => void saveDetails(), 1000);
-						}}></textarea>
-					{#each imagesOf(task.description) as image (image.target)}
-						{@const line = fields.images.find((l) => l.includes(`(${image.target})`))}
-						<Thumb {image} remove={line ? () => dropImage(line) : undefined} />
-					{/each}
-					<label
-						class="state-layer inline-flex h-8 cursor-pointer items-center gap-2 self-start rounded-lg px-2 text-sm font-medium text-primary"
-					>
-						<Icon name="add_photo" size={20} />Add image
-						<input
-							bind:this={picker}
-							type="file"
-							accept="image/png,image/jpeg,image/gif,image/webp"
-							multiple
-							class="hidden"
-							onchange={(e) => void attach(e.currentTarget.files)}
-						/>
-					</label>
-				</div>
+				<textarea
+					bind:value={details}
+					rows="1"
+					placeholder="Add details"
+					aria-label="Details"
+					class="field-sizing-content min-h-6 w-full resize-none bg-transparent text-base leading-6 outline-none placeholder:text-on-surface-variant"
+					onfocus={() => (editingDetails = true)}
+					onblur={() => {
+						editingDetails = false;
+						void saveDetails();
+					}}
+					oninput={() => {
+						clearTimeout(detailsTimer);
+						detailsTimer = setTimeout(() => void saveDetails(), 1000);
+					}}></textarea>
 			</div>
+			{#each imagesOf(task.description) as image (image.target)}
+				{@const line = fields.images.find((l) => l.includes(`(${image.target})`))}
+				<div class="pl-13"><Thumb {image} remove={line ? () => dropImage(line) : undefined} /></div>
+			{/each}
+			<label use:ripple class="{rowClass} cursor-pointer text-on-surface-variant">
+				<Icon name="add_photo" />Add image
+				<input
+					bind:this={picker}
+					type="file"
+					accept="image/png,image/jpeg,image/gif,image/webp"
+					multiple
+					class="hidden"
+					onchange={(e) => void attach(e.currentTarget.files)}
+				/>
+			</label>
 
-			<section>
-				<h2 class={section}>Status</h2>
-				<Pickers
-					kind="status"
-					value={task.status}
-					pick={(v) => void edit({ action: 'status.set', ids: [tid], value: v }, false)}
+			<button use:ripple class={rowClass} onclick={() => choose('status')}>
+				<StatusIcon status={task.status} />
+				<span class="flex-1">{STATUS_LABELS[task.status] ?? task.status}</span>
+			</button>
+			<button use:ripple class={rowClass} onclick={() => choose('priority')}>
+				<Icon
+					name={task.priority ? `priority_${task.priority}` : 'priority_none'}
+					class={task.priority === 'critical' || task.priority === 'high'
+						? 'text-pri-up'
+						: task.priority === 'low' || task.priority === 'trivial'
+							? 'text-pri-down'
+							: 'text-on-surface-variant'}
 				/>
-			</section>
-			<section>
-				<h2 class={section}>Priority</h2>
-				<Pickers
-					kind="priority"
-					value={task.priority ?? ''}
-					pick={(v) => void edit({ action: 'priority.set', ids: [tid], value: v })}
-				/>
-			</section>
-			<section>
-				<h2 class={section}>Tag</h2>
-				<Pickers
-					kind="tag"
-					value={task.tag_color ?? ''}
-					pick={(v) => void edit({ action: 'tag.set', ids: [tid], value: v })}
-				/>
-			</section>
-			<section>
-				<h2 class={section}>Estimate</h2>
-				<Pickers
-					kind="estimate"
-					value={String(task.estimate_minutes ?? 0)}
-					pick={(v) => void edit({ action: 'estimate.set', ids: [tid], value: v })}
-				/>
-			</section>
+				<span class="flex-1 {task.priority ? '' : 'text-on-surface-variant'}"
+					>{task.priority ? PRIORITY_LABELS[task.priority] : 'Add priority'}</span
+				>
+			</button>
+			<button use:ripple class={rowClass} onclick={() => choose('tag')}>
+				<span class="grid size-6 place-items-center text-on-surface-variant">
+					{#if task.tag_color}<TagMark color={task.tag_color} />{:else}<Icon name="label" />{/if}
+				</span>
+				<span class="flex-1 {task.tag_color ? '' : 'text-on-surface-variant'}"
+					>{task.tag_color ? tagName(task.tag_color) : 'Add tag'}</span
+				>
+			</button>
+			<button use:ripple class={rowClass} onclick={() => choose('estimate')}>
+				<Icon name="schedule" class="text-on-surface-variant" />
+				<span class="flex-1 {task.estimate_minutes ? '' : 'text-on-surface-variant'}"
+					>{task.estimate_minutes ? formatEstimate(task.estimate_minutes) : 'Add estimate'}</span
+				>
+			</button>
 
 			{#if !task.parent_id}
-				<section>
-					<h2 class={section}>Subtasks</h2>
+				<div class="mt-2">
 					{#each children as c (c.id)}
 						<div class="flex items-center">
 							<button
 								use:ripple
 								class="state-layer grid size-12 shrink-0 place-items-center rounded-full"
-								aria-label="Change status"
+								aria-label="{STATUS_LABELS[c.status]}, change status"
 								onclick={() => cycle(c)}
 							>
 								<StatusIcon status={c.status} />
@@ -332,22 +402,43 @@
 							>
 						</div>
 					{/each}
-					<form class="flex items-center" onsubmit={addSubtask}>
-						<span class="grid size-12 shrink-0 place-items-center text-on-surface-variant"
-							><Icon name="add" /></span
-						>
+					<form class="flex items-center px-3" onsubmit={addSubtask}>
+						<Icon name="subtask" class="text-on-surface-variant" />
 						<input
 							bind:value={subtask}
 							maxlength="500"
 							enterkeyhint="enter"
-							placeholder="Add subtask"
-							class="h-12 min-w-0 flex-1 bg-transparent outline-none placeholder:text-on-surface-variant"
+							placeholder="Add subtasks"
+							aria-label="Add a subtask"
+							class="h-14 min-w-0 flex-1 bg-transparent pl-4 outline-none placeholder:text-on-surface-variant"
 						/>
 					</form>
-				</section>
+				</div>
 			{/if}
 		{/if}
 	</main>
+
+	{#if !isSeparator(task)}
+		<div
+			class="fixed inset-x-0 bottom-0 flex justify-end bg-surface px-4 pt-2 pb-[calc(var(--safe-b)+12px)]"
+		>
+			<button
+				use:ripple
+				class="state-layer h-10 rounded-full px-4 text-sm font-medium text-primary"
+				onclick={() =>
+					void edit(
+						{
+							action: 'status.set',
+							ids: [tid],
+							value: finished(task.status) ? 'todo' : 'completed'
+						},
+						false
+					)}
+			>
+				{finished(task.status) ? 'Mark open' : 'Mark done'}
+			</button>
+		</div>
+	{/if}
 
 	<Sheet bind:open={moveOpen} title="Move to">
 		{#each entry.data.categories as c (c.id)}
@@ -366,6 +457,12 @@
 				<Icon name={c.id === cat.id ? 'check' : 'move'} class="text-on-surface-variant" />{c.name}
 			</button>
 		{/each}
+	</Sheet>
+
+	<Sheet bind:open={choosingOpen} title={choosing ? TITLES[choosing] : ''}>
+		{#if choosing}
+			<Pickers kind={choosing} value={valueOf(choosing, task)} pick={picked} />
+		{/if}
 	</Sheet>
 {/if}
 
