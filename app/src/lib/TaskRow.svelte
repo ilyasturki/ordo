@@ -30,6 +30,7 @@
 	const meta = $derived(pri !== '' || est !== '' || row.childTotal > 0 || row.images > 0);
 	const drag = $derived(board.drag?.moved ? board.drag : null);
 	const lifted = $derived(drag?.id === t.id ? drag : null);
+	const shift = $derived(lifted ? (lifted.spot.parent ? 36 : 0) - (child ? 36 : 0) : 0);
 	const gapBefore = $derived(drag !== null && drag.spot.cat === cat && drag.spot.before === t.id);
 	const gapInside = $derived(
 		drag !== null && drag.spot.cat === cat && drag.spot.parent === t.id && drag.spot.before === ''
@@ -58,10 +59,8 @@
 	class={lifted ? 'fixed z-50 touch-none rounded-2xl bg-surface-highest shadow-xl' : ''}
 	style:top={lifted ? `${lifted.top}px` : undefined}
 	style:left={lifted ? `${lifted.left}px` : undefined}
-	style:width={lifted ? `${lifted.width}px` : undefined}
-	style:transform={lifted
-		? `translateX(${(lifted.spot.parent ? 36 : 0) - (child ? 36 : 0)}px)`
-		: undefined}
+	style:width={lifted ? `${lifted.width - Math.max(0, shift)}px` : undefined}
+	style:transform={lifted ? `translateX(${shift}px)` : undefined}
 	style:transition={lifted ? 'transform 120ms' : undefined}
 >
 	{#if isSeparator(t)}
