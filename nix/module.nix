@@ -11,7 +11,7 @@ let
 in
 {
   options.services.ordo-web = {
-    enable = lib.mkEnableOption "the Ordo web app (`ordo serve`)";
+    enable = lib.mkEnableOption "`ordo serve`, which syncs the Ordo app and serves it to a browser";
 
     package = lib.mkOption {
       type = lib.types.package;
@@ -80,7 +80,7 @@ in
 
   config = lib.mkIf cfg.enable {
     systemd.services.ordo-web = {
-      description = "Ordo web app";
+      description = "Ordo app server";
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
       environment.ORDO_DATA_PATH = cfg.dataDir;

@@ -42,8 +42,8 @@ func newServeCmd() *cobra.Command {
 	var listen, baseURL string
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "Serve the phone web app",
-		Long: "Serve Ordo's web app, made for a phone, over the same project files the terminal app uses.\n\n" +
+		Short: "Sync the Android app and serve it to a browser",
+		Long: "Sync the Android app with the project files the terminal app uses, and serve the same app to a browser.\n\n" +
 			"Listen on loopback (or a unix socket with unix:/path) behind a TLS reverse proxy, then\n" +
 			"pair each device once with `ordo serve pair`, or from Devices on a device already paired.\n" +
 			"Devices are kept in web.json beside state.json.",

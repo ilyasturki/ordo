@@ -11,8 +11,8 @@ import (
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
-// Op is one edit addressed by IDs: what the web app's forms build, what the phone queues
-// while offline and what `ordo serve` replays. docs/sync.md is its wire contract.
+// Op is one edit addressed by IDs: what the app queues while offline and what `ordo serve`
+// replays. docs/sync.md is its wire contract.
 type Op struct {
 	Action string   `json:"action"`
 	IDs    []string `json:"ids,omitempty"`
