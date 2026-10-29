@@ -13,9 +13,6 @@ var (
 	DialogChromeWidth  = HelpDialogStyle.GetHorizontalPadding() + HelpDialogStyle.GetHorizontalBorderSize()
 	DialogChromeHeight = HelpDialogStyle.GetVerticalPadding() + HelpDialogStyle.GetVerticalBorderSize()
 
-	PanelChromeWidth  = PanelStyle.GetHorizontalPadding()
-	PanelChromeHeight = PanelStyle.GetVerticalPadding()
-
 	// Both gutters, though only the left is painted: a row reaching the last
 	// column phantom-wraps in some terminals.
 	FullPanelChromeWidth  = 2 * FullPanelStyle.GetPaddingLeft()

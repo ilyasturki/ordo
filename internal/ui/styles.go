@@ -66,11 +66,8 @@ var (
 	ShortcutLabelStyle = lipgloss.NewStyle().Faint(true)
 	ShortcutSepStyle   = lipgloss.NewStyle().Faint(true)
 
-	// A frameless dialog: Padding(2,3) equals HelpDialogStyle's border plus
-	// padding, so a panel fills the same rectangle.
-	PanelStyle = lipgloss.NewStyle().Padding(2, 3)
-	// The same panel owning the whole terminal: no bottom padding, so the footer
-	// rests on the last row.
+	// A frameless panel owning the whole terminal: no bottom padding, so the
+	// footer rests on the last row.
 	FullPanelStyle = lipgloss.NewStyle().Padding(1, 0, 0, 2)
 )
 

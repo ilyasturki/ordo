@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -115,10 +116,10 @@ func TestPickerVisibleCount_AdaptsToTerminalHeight(t *testing.T) {
 	hintRows := m.pickerHintRows()
 	require.Equal(t, 2, hintRows, "the dialog footer wraps once at its 70-column cap")
 
-	assert.Equal(t, 30-ui.PanelChromeHeight-pickerOwnRows-hintRows-pickerScrollReserve, m.pickerVisibleCount())
+	assert.Equal(t, 30-ui.DialogChromeHeight-pickerOwnRows-hintRows-pickerScrollReserve, m.pickerVisibleCount())
 
 	m.ui.Screen.Height = 50
-	assert.Equal(t, 50-ui.PanelChromeHeight-pickerOwnRows-hintRows-pickerScrollReserve, m.pickerVisibleCount())
+	assert.Equal(t, 50-ui.DialogChromeHeight-pickerOwnRows-hintRows-pickerScrollReserve, m.pickerVisibleCount())
 }
 
 func TestPickerVisibleCount_FitsAllWhenTall(t *testing.T) {
@@ -272,6 +273,16 @@ func TestPickerPanelView_IsOpaque(t *testing.T) {
 	for i, line := range strings.Split(rendered, "\n") {
 		assert.Equalf(t, width, lipgloss.Width(line), "row %d is short, the background bleeds through", i)
 	}
+}
+
+func TestPickerDialog_HasTheDialogBorder(t *testing.T) {
+	m := newPickerModel(t, 8, 100, 30)
+	lines := strings.Split(ansi.Strip(m.projectPickerView()), "\n")
+	assert.True(t, strings.HasPrefix(lines[0], "╭"), lines[0])
+	assert.True(t, strings.HasPrefix(lines[len(lines)-1], "╰"), lines[len(lines)-1])
+
+	m.ui.Picker.fullscreen = true
+	assert.NotContains(t, m.projectPickerView(), "╭", "the full-screen picker stays frameless")
 }
 
 func TestPickerFullscreenView_FillsTheScreen(t *testing.T) {

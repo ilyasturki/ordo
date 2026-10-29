@@ -90,7 +90,7 @@ func (m model) pickerVisibleCount() int {
 	if m.ui.Screen.Height <= 0 {
 		return min(total, pickerFallbackVisible)
 	}
-	chrome := ui.PanelChromeHeight
+	chrome := ui.DialogChromeHeight
 	if m.ui.Picker.fullscreen {
 		chrome = ui.FullPanelChromeHeight
 	}
@@ -103,8 +103,7 @@ func (m model) projectPickerView() string {
 	lines := m.pickerBody(contentWidth)
 	if !m.ui.Picker.fullscreen {
 		lines = append(lines, "", ui.RenderHints(m.pickerHints()))
-		// Width or lipgloss leaves short rows unpadded and the list shows through.
-		return ui.PanelStyle.Width(contentWidth + ui.PanelChromeWidth).Render(strings.Join(lines, "\n"))
+		return m.dialogStyle().Render(strings.Join(lines, "\n"))
 	}
 
 	// Nothing of the main view renders under a full-screen picker, so the status
