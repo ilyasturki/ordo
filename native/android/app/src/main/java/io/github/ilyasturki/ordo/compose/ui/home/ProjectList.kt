@@ -1,5 +1,6 @@
 package io.github.ilyasturki.ordo.compose.ui.home
 
+import android.os.SystemClock
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,6 +67,10 @@ fun ProjectList(
     val lines = remember(entry.project, filter, ui) { Board.lines(entry.project, filter, ui.peek, ui.held) }
     var dragOrder by remember { mutableStateOf<List<Line>?>(null) }
     val shown = dragOrder ?: lines
+    // A lifted row's release also reaches the row as a tap: that one neither opens it nor steps its status.
+    var lifting by remember { mutableStateOf(false) }
+    var droppedAt by remember { mutableLongStateOf(0L) }
+    val tapping = { !lifting && SystemClock.uptimeMillis() - droppedAt > 400 }
     val listState = rememberLazyListState()
     val reorder = rememberReorderableLazyListState(listState) { from, to ->
         if (to.index == 0) return@rememberReorderableLazyListState
@@ -100,8 +106,13 @@ fun ProjectList(
                             shadowElevation = lift,
                             color = if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surface,
                             modifier = Modifier.longPressDraggableHandle(
-                                onDragStarted = { feedback.hold() },
+                                onDragStarted = {
+                                    lifting = true
+                                    feedback.hold()
+                                },
                                 onDragStopped = {
+                                    lifting = false
+                                    droppedAt = SystemClock.uptimeMillis()
                                     val order = dragOrder
                                     val op = order?.let { dropOp(it, line) }
                                     if (op == null) {
@@ -118,15 +129,17 @@ fun ProjectList(
                         ) {
                             Column(Modifier.fillMaxWidth()) {
                                 val cycle = { id: String, status: String ->
-                                    if (filter.active) onUi(ui.copy(held = ui.held + id))
-                                    scope.launch {
-                                        if (engine.edit(pid, Ops.cycle(id)).applied && next(status) == Status.COMPLETED) feedback.commit()
+                                    if (tapping()) {
+                                        if (filter.active) onUi(ui.copy(held = ui.held + id))
+                                        scope.launch {
+                                            if (engine.edit(pid, Ops.cycle(id)).applied && next(status) == Status.COMPLETED) feedback.commit()
+                                        }
                                     }
-                                    Unit
                                 }
-                                TaskRow(line.row, child = false, onCycle = { cycle(line.row.task.id, line.row.task.status) }, onOpen = { onOpen(line.row.task.id) })
+                                val open = { id: String -> if (tapping()) onOpen(id) }
+                                TaskRow(line.row, child = false, onCycle = { cycle(line.row.task.id, line.row.task.status) }, onOpen = { open(line.row.task.id) })
                                 for (c in line.children) {
-                                    TaskRow(c, child = true, onCycle = { cycle(c.task.id, c.task.status) }, onOpen = { onOpen(c.task.id) })
+                                    TaskRow(c, child = true, onCycle = { cycle(c.task.id, c.task.status) }, onOpen = { open(c.task.id) })
                                 }
                             }
                         }

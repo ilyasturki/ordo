@@ -17,6 +17,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ilyasturki.ordo.compose.core.GoCore
@@ -151,6 +153,15 @@ class AppTest {
         compose.onNodeWithContentDescription("Mark done").performClick()
         compose.waitUntil(5_000) { task("Tap a row to focus it")?.status == "completed" }
         compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Add a task").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun aRowLiftedAndLetGoInPlaceStaysShut() {
+        scrollTo("Recurring tasks")
+        compose.onNodeWithText("Recurring tasks").performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Mark done").assertDoesNotExist()
+        assertEquals("todo", task("Recurring tasks")?.status)
     }
 
     @Test
