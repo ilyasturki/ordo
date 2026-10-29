@@ -125,7 +125,7 @@ var helpMarksSection = helpSection{
 		{keys: "✂", desc: "cut, p puts it back"},
 		{keys: "━━", desc: "separator"},
 		{keys: "▼ / ▶", desc: "category open / folded"},
-		{keys: "(filtered out)", desc: "an edit took it out of the filter"},
+		{keys: "(filtered out)", desc: "hidden by the filter, shown until the cursor leaves"},
 	},
 }
 
