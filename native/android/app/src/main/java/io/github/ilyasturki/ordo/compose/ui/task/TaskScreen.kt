@@ -108,20 +108,22 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
     var editingDetails by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf("") }
 
-    LaunchedEffect(task.title) {
-        if (!editingTitle && task.title != titleBase) {
+    fun adoptTitle() {
+        if (task.title != titleBase) {
             title = task.title
             titleBase = task.title
         }
     }
-    LaunchedEffect(task.description) {
-        val text = Description.fields(task.description).first
-        if (!editingDetails && task.description != descBase) {
+    fun adoptDetails() {
+        if (task.description != descBase) {
+            val text = Description.fields(task.description).first
             details = text
             detailsBase = text
             descBase = task.description
         }
     }
+    LaunchedEffect(task.title) { if (!editingTitle) adoptTitle() }
+    LaunchedEffect(task.description) { if (!editingDetails) adoptDetails() }
 
     suspend fun saveTitle() {
         val next = title.replace(space, " ").trim()
@@ -251,7 +253,8 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                     .fillMaxWidth()
                     .onFocusChanged {
                         editingTitle = it.isFocused
-                        if (!it.isFocused) scope.launch { saveTitle() }
+                        if (it.isFocused) return@onFocusChanged
+                        if (title.replace(space, " ").trim() == titleBase) adoptTitle() else scope.launch { saveTitle() }
                     },
                 placeholder = { Text(if (task.separator) "Separator label" else "Title") },
                 textStyle = MaterialTheme.typography.headlineSmall.copy(textDecoration = if (done) TextDecoration.LineThrough else null),
@@ -266,7 +269,8 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                         .fillMaxWidth()
                         .onFocusChanged {
                             editingDetails = it.isFocused
-                            if (!it.isFocused) scope.launch { saveDetails() }
+                            if (it.isFocused) return@onFocusChanged
+                            if (details == detailsBase) adoptDetails() else scope.launch { saveDetails() }
                         },
                     placeholder = { Text("Add details") },
                     textStyle = MaterialTheme.typography.bodyLarge,
