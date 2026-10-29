@@ -1,0 +1,72 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+}
+
+val repo: File = rootProject.projectDir.resolve("../..").canonicalFile
+
+android {
+    namespace = "io.github.ilyasturki.ordo.compose"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = "io.github.ilyasturki.ordo.compose"
+        minSdk = 26
+        targetSdk = 37
+        versionCode = 1
+        versionName = repo.resolve("VERSION").readText().trim()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".dev"
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+        }
+    }
+
+    buildFeatures {
+        compose = true
+    }
+
+    testOptions {
+        unitTests.all {
+            it.systemProperty("ordo.repo", repo.path)
+        }
+    }
+}
+
+dependencies {
+    implementation(files("libs/ordocore.aar"))
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
+    implementation(libs.material3)
+    implementation(libs.activity.compose)
+    implementation(libs.core.ktx)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.lifecycle.process)
+    implementation(libs.navigation3.runtime)
+    implementation(libs.navigation3.ui)
+    implementation(libs.work.runtime)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.sse)
+    implementation(libs.serialization.json)
+    implementation(libs.coroutines.android)
+    implementation(libs.reorderable)
+    implementation(libs.code.scanner)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
+
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.junit)
+    debugImplementation(libs.compose.ui.test.manifest)
+}

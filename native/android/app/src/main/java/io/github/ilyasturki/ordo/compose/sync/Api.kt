@@ -1,0 +1,177 @@
+package io.github.ilyasturki.ordo.compose.sync
+
+import io.github.ilyasturki.ordo.compose.model.json
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import okhttp3.sse.EventSource
+import okhttp3.sse.EventSourceListener
+import okhttp3.sse.EventSources
+import java.io.IOException
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+
+const val PROTOCOL = 1
+
+// The server answered, with its HTTP status and a message for the user.
+class ServerError(val status: Int, message: String) : Exception(message)
+
+// The request never got an answer.
+class Offline(cause: Throwable) : Exception("Can't reach ordo serve", cause)
+
+@Serializable
+data class Hello(val protocol: Int, val has_passphrase: Boolean = false)
+
+@Serializable
+data class SyncResult(val id: String, val status: String, val msg: String = "", val theirs: String? = null)
+
+@Serializable
+data class ProjectState(
+    val id: String,
+    val name: String = "",
+    val stamp: String = "",
+    val data: JsonElement? = null,
+    val error: String? = null,
+)
+
+@Serializable
+data class SyncAnswer(val protocol: Int, val results: List<SyncResult> = emptyList(), val projects: List<ProjectState> = emptyList())
+
+@Serializable
+private data class TokenAnswer(val token: String)
+
+@Serializable
+private data class ErrorAnswer(val error: String = "")
+
+private val jsonType = "application/json".toMediaType()
+
+// /api of docs/sync.md, with the device token as a bearer.
+class Api(val server: String, private val token: String, private val http: OkHttpClient = client) {
+    private fun request(path: String): Request.Builder {
+        val b = Request.Builder().url(server.trimEnd('/') + path)
+        if (token != "") b.header("Authorization", "Bearer $token")
+        return b
+    }
+
+    private suspend fun <T> call(req: Request, out: KSerializer<T>): T {
+        val res = try {
+            http.newCall(req).await()
+        } catch (e: IOException) {
+            throw Offline(e)
+        }
+        res.use {
+            val body = try {
+                it.body.string()
+            } catch (e: IOException) {
+                throw Offline(e)
+            }
+            if (!it.isSuccessful) {
+                val msg = runCatching { json.decodeFromString(ErrorAnswer.serializer(), body).error }.getOrNull()
+                throw ServerError(it.code, msg?.takeIf(String::isNotEmpty) ?: "ordo serve answered ${it.code}")
+            }
+            if (it.code == 204 || body.isEmpty()) {
+                @Suppress("UNCHECKED_CAST")
+                return Unit as T
+            }
+            return try {
+                json.decodeFromString(out, body)
+            } catch (e: Exception) {
+                throw ServerError(it.code, "ordo serve answered something this app can't read")
+            }
+        }
+    }
+
+    private suspend fun <T> post(path: String, body: JsonObject, out: KSerializer<T>): T =
+        call(request(path).post(body.toString().toRequestBody(jsonType)).build(), out)
+
+    suspend fun hello(): Hello = call(request("/api/hello").get().build(), Hello.serializer())
+
+    suspend fun pair(code: String, name: String): String =
+        post("/api/pair", buildJsonObject { put("token", code); put("name", name) }, TokenAnswer.serializer()).token
+
+    suspend fun login(passphrase: String, name: String): String =
+        post("/api/login", buildJsonObject { put("passphrase", passphrase); put("name", name) }, TokenAnswer.serializer()).token
+
+    suspend fun sync(ops: List<JsonObject>, have: Map<String, String>): SyncAnswer = post(
+        "/api/sync",
+        buildJsonObject {
+            put("protocol", PROTOCOL)
+            put("ops", kotlinx.serialization.json.JsonArray(ops))
+            put("have", JsonObject(have.mapValues { JsonPrimitive(it.value) }))
+        },
+        SyncAnswer.serializer(),
+    )
+
+    suspend fun logout() {
+        post("/api/logout", JsonObject(emptyMap()), Unit.serializer())
+    }
+
+    // Calls changed with a project's ID each time ordo serve sees its file change, until cancelled.
+    fun listen(changed: (String) -> Unit, closed: () -> Unit): EventSource =
+        EventSources.createFactory(events).newEventSource(
+            request("/api/events").header("Accept", "text/event-stream").build(),
+            object : EventSourceListener() {
+                override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
+                    if (type == "change") changed(data)
+                }
+
+                override fun onClosed(eventSource: EventSource) = closed()
+
+                override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) = closed()
+            },
+        )
+
+    companion object {
+        val client: OkHttpClient = OkHttpClient.Builder()
+            .callTimeout(20, TimeUnit.SECONDS)
+            .build()
+
+        // The stream sends a comment every 25 seconds: a minute of silence is a dead connection.
+        private val events: OkHttpClient = client.newBuilder()
+            .callTimeout(0, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build()
+    }
+}
+
+private suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
+    enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            if (!cont.isCancelled) cont.resumeWithException(e)
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            cont.resume(response) { _, r, _ -> r.close() }
+        }
+    })
+    cont.invokeOnCancellation { cancel() }
+}
+
+fun ProjectState.raw(): String? = data?.toString()
+
+fun SyncResult.isProblem(): Boolean = status != "applied" && status != "unchanged"
+
+internal fun JsonObject.withIds(qid: String, pid: String): JsonObject =
+    JsonObject(this + mapOf("id" to JsonPrimitive(qid), "project" to JsonPrimitive(pid)))
+
+internal val JsonObject.action: String get() = this["action"]?.jsonPrimitive?.content.orEmpty()
+
+internal fun JsonElement.asObject(): JsonObject = jsonObject
+
+internal val unitSerializer = String.serializer()
