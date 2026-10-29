@@ -125,7 +125,7 @@ fun NameSheet(
 fun SheetAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, danger: Boolean = false, onClick: () -> Unit) {
     val color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-        Icon(icon, null, tint = color)
+        Icon(icon, null, tint = if (danger) color else MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.width(16.dp))
         Text(label, color = color, modifier = Modifier.weight(1f))
     }
@@ -358,7 +358,7 @@ fun SyncSheet(state: SyncState, onRetry: () -> Unit, onSignIn: () -> Unit, onDis
     val trouble = state.trouble
     val (headline, body) = when (trouble) {
         is Trouble.Failing -> if (trouble.offline) {
-            "Can't reach your server" to "The phone has no way to ordo serve right now, from no signal or the server being down. It keeps trying, in the background too."
+            "Can't reach your server" to "The phone can't get to ordo serve right now: no signal, or the server is down. It keeps trying, in the background too."
         } else {
             "Your server isn't answering" to "ordo serve answered with an error: ${trouble.message}. The phone keeps trying, in the background too."
         }

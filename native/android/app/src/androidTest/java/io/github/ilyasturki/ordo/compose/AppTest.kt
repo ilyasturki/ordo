@@ -146,7 +146,7 @@ class AppTest {
         compose.onNodeWithText("Medium").assertExists()
         compose.onNodeWithText("Green").assertExists()
         compose.onNodeWithText("2h").assertExists()
-        compose.onNodeWithContentDescription("Set status").assertExists()
+        compose.onNodeWithContentDescription("Status: To do").assertExists()
         compose.onNodeWithText("Add details").assertExists()
         compose.onNodeWithContentDescription("Mark done").performClick()
         compose.waitUntil(5_000) { task("Tap a row to focus it")?.status == "completed" }

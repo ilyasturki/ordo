@@ -305,7 +305,7 @@ private fun Properties(task: Task, images: Int, menu: String, setMenu: (String) 
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.Center,
     ) {
-        Field("status", statusSet, Icons.InProgress, "Set status", Status.label(task.status), { Icon(Icons.status(task.status), null, Modifier.size(18.dp)) }) {
+        Field("status", statusSet, Icons.status(task.status), "Status: ${Status.label(task.status)}", Status.label(task.status), { Icon(Icons.status(task.status), null, Modifier.size(18.dp)) }) {
             Picker(menu == "status", { setMenu("") }, Status.all, Status::label, { edit(Ops.status(id, it), false) }, leading = { Icon(Icons.status(it), null) })
         }
         Field("priority", task.priority != "", Icons.Flag, "Add a priority", Priority.label(task.priority), { Icon(Icons.priority(task.priority), null, Modifier.size(18.dp)) }) {
