@@ -28,7 +28,10 @@
           ordo = pkgs.buildGoModule {
             pname = "ordo";
             inherit version;
-            src = ./.;
+            src = pkgs.lib.fileset.toSource {
+              root = ./.;
+              fileset = pkgs.lib.fileset.difference ./. ./native;
+            };
             vendorHash = "sha256-y6cR7/CISh9WTtW+g4SfqbbSlpGcYTxoJP0cycCF4bo=";
             subPackages = [ "cmd/ordo" ];
             ldflags = [
