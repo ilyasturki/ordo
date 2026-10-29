@@ -67,6 +67,8 @@ import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
 import kotlinx.coroutines.launch
 
+private val space = Regex("\\s+")
+
 @Composable
 fun plainFieldColors() = TextFieldDefaults.colors(
     focusedContainerColor = Color.Transparent,
@@ -198,7 +200,7 @@ fun AddSheet(entry: Entry, initialCat: String, onDismiss: () -> Unit, onAdded: (
     val pid = entry.id
 
     val save: () -> Unit = save@{
-        val text = title.replace(Regex("\\s+"), " ").trim()
+        val text = title.replace(space, " ").trim()
         if (text.isEmpty() || cat.isEmpty()) return@save
         title = ""
         scope.launch {
@@ -256,7 +258,10 @@ fun AddSheet(entry: Entry, initialCat: String, onDismiss: () -> Unit, onAdded: (
                         )
                         Picker(menu == "cat", { menu = "" }, categories, { c ->
                             categories.firstOrNull { it.id == c.parentId }?.let { "${it.name} › ${c.name}" } ?: c.name
-                        }, { cat = it.id })
+                        }, { c ->
+                            if (c.id != cat) after = ""
+                            cat = c.id
+                        })
                     }
                     if (details == null) {
                         IconButton(onClick = { details = "" }) { Icon(Icons.Notes, "Add details", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
