@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build the native Android app from the flake's native dev shell: internal/core bound with gomobile, then the APK.
 #
-# Usage: scripts/native.sh core|apk|install [adb serial]|test
+# Usage: scripts/native.sh core|apk|install [adb serial]|test|ui <adb serial>
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -37,8 +37,19 @@ test)
     core
     native/android/gradlew -p native/android testDebugUnitTest
     ;;
+ui)
+    # The device's adb, not Gradle's connected tasks: those install on every device attached.
+    serial=${2:?usage: scripts/native.sh ui <adb serial of an emulator>}
+    core
+    native/android/gradlew -p native/android assembleDebug assembleDebugAndroidTest
+    adb -s "$serial" install -r "$apk"
+    adb -s "$serial" install -r native/android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+    out=$(adb -s "$serial" shell am instrument -w io.github.ilyasturki.ordo.compose.dev.test/androidx.test.runner.AndroidJUnitRunner)
+    echo "$out"
+    grep -q "^OK (" <<<"$out"
+    ;;
 *)
-    echo "usage: scripts/native.sh core|apk|install [adb serial]|test" >&2
+    echo "usage: scripts/native.sh core|apk|install [adb serial]|test|ui <adb serial>" >&2
     exit 2
     ;;
 esac

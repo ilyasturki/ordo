@@ -40,6 +40,10 @@ native *SERIAL:
 native-test:
     nix develop .#native --command scripts/native.sh test
 
+# Run the native app's UI tests on the emulator SERIAL names (they install there, never on the phone).
+native-ui SERIAL:
+    nix develop .#native --command scripts/native.sh ui {{SERIAL}}
+
 # Run the app with hot reload in the browser, against a throwaway seeded server (--reset reseeds it).
 dev *ARGS:
     ./scripts/dev.sh web {{ARGS}}

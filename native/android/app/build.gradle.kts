@@ -46,6 +46,8 @@ android {
             it.systemProperty("ordo.repo", repo.path)
         }
     }
+
+    sourceSets.getByName("androidTest").assets.srcDir(repo.resolve("testdata/web"))
 }
 
 dependencies {
