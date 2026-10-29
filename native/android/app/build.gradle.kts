@@ -28,6 +28,13 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
+        // Optimized like a release, under the debug build's id and key: what the phone runs, since a debug build stutters.
+        create("phone") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".dev"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
     }
 
     buildFeatures {

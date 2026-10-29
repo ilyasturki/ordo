@@ -8,6 +8,7 @@ cd "$(dirname "$0")/.."
 : "${ANDROID_HOME:?run it through just, in the native dev shell of the flake}"
 root=$PWD
 apk=native/android/app/build/outputs/apk/debug/app-debug.apk
+phone=native/android/app/build/outputs/apk/phone/app-phone.apk
 
 core() {
     local bin=$root/native/core/.bin
@@ -27,8 +28,8 @@ apk)
     ;;
 install)
     core
-    native/android/gradlew -p native/android assembleDebug
-    adb ${2:+-s "$2"} install -r "$apk"
+    native/android/gradlew -p native/android assemblePhone
+    adb ${2:+-s "$2"} install -r "$phone"
     ;;
 test)
     go -C native/core vet ./...

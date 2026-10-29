@@ -50,6 +50,8 @@ object Ops {
         op("task.description", "ids" to listOf(id), "text" to text, "base" to base)
     fun add(cat: String, title: String, parent: String = "") =
         op("task.add", "cat" to cat, "title" to title, "parent" to parent)
+    fun insert(cat: String, after: String, title: String) =
+        op("task.insert", "cat" to cat, "ids" to (if (after == "") emptyList() else listOf(after)), "title" to title)
     fun separator(cat: String, after: String, label: String) =
         op("separator.add", "cat" to cat, "ids" to (if (after == "") emptyList() else listOf(after)), "title" to label)
     fun delete(id: String) = op("task.delete", "ids" to listOf(id))

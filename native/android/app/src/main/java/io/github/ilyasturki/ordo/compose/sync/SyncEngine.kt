@@ -61,6 +61,8 @@ data class SyncState(
     val syncing: Boolean = false,
     val lastSync: Long = 0,
     val trouble: Trouble? = null,
+    // Why the last round failed, empty once one gets through.
+    val error: String = "",
 ) {
     val signedIn: Boolean get() = session != null && !session.expired
 
@@ -85,7 +87,7 @@ data class Delays(
 // app/src/lib/state.svelte.ts does. One lane runs every core call and state change in order.
 class SyncEngine(
     private val store: Store,
-    private val core: CoreApi,
+    private val newCore: () -> CoreApi,
     private val scope: CoroutineScope,
     private val deviceName: String,
     private val delays: Delays = Delays(),
@@ -102,6 +104,9 @@ class SyncEngine(
 
     private val _snacks = MutableSharedFlow<Snack>(extraBufferCapacity = 16)
     val snacks: SharedFlow<Snack> = _snacks.asSharedFlow()
+
+    // Made by boot, on the lane: loading the Go library stays off the main thread.
+    private lateinit var core: CoreApi
 
     private val booted = CompletableDeferred<Unit>()
     private var queue: List<Queued> = emptyList()
@@ -126,6 +131,7 @@ class SyncEngine(
 
     suspend fun boot() = withContext(lane) {
         if (booted.isCompleted) return@withContext
+        core = newCore()
         val session = store.session()
         val entries = store.projects().mapNotNull { (meta, raw) ->
             runCatching { Entry(meta.id, meta.name, meta.stamp, raw, Project.parse(raw), meta.error) }.getOrNull()
@@ -262,7 +268,7 @@ class SyncEngine(
             backoff = 0
             failures = 0
             failingSince = 0
-            publish { copy(lastSync = clock(), trouble = null) }
+            publish { copy(lastSync = clock(), trouble = null, error = "") }
             schedule(if (queue.isNotEmpty()) delays.sync else if (foreground) delays.poll else -1)
             return Round.OK
         } catch (e: CancellationException) {
@@ -290,10 +296,11 @@ class SyncEngine(
                 Trouble.Failing(failingSince, message, e is Offline)
             else -> _state.value.trouble
         }
-        publish { copy(trouble = trouble) }
+        publish { copy(trouble = trouble, error = message) }
         if (trouble is Trouble.Outdated) return Round.STOP
         backoff = minOf(delays.maxBackoff, if (backoff == 0L) delays.firstBackoff else backoff * 2)
-        schedule(backoff)
+        // Out of sight, WorkManager retries what waits; nothing else needs the radio.
+        if (foreground) schedule(backoff)
         if (queue.isNotEmpty()) background()
         return Round.RETRY
     }
@@ -371,6 +378,7 @@ class SyncEngine(
 
     // The app came to the front or left it: the front polls and keeps the live stream open.
     suspend fun foreground(on: Boolean) {
+        awaitBoot()
         withContext(lane) {
             foreground = on
             listen(on)
@@ -384,6 +392,7 @@ class SyncEngine(
 
     // The network came back.
     suspend fun online() {
+        awaitBoot()
         if (withContext(lane) { foreground }) sync()
     }
 

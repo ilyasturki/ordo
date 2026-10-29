@@ -32,7 +32,7 @@ android: wasm
 native-core:
     nix develop .#native --command scripts/native.sh core
 
-# Build the native Android app and install its debug build on the connected device, or the one SERIAL names.
+# Build the native Android app, optimized and signed with the debug key, and install it on the connected device or the one SERIAL names.
 native *SERIAL:
     nix develop .#native --command scripts/native.sh install {{SERIAL}}
 

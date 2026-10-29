@@ -85,7 +85,7 @@ class SyncEngineTest {
         delays: Delays = quiet,
     ): SyncEngine {
         val core = PipeCore().also(cores::add)
-        return SyncEngine(Store(dir), core, scope, "test phone", delays, clock, { Api(it.server, it.token, http) })
+        return SyncEngine(Store(dir), { core }, scope, "test phone", delays, clock, { Api(it.server, it.token, http) })
     }
 
     private fun <T> test(block: suspend CoroutineScope.() -> T): T = runBlocking { withTimeout(60_000) { block() } }
@@ -253,6 +253,24 @@ class SyncEngineTest {
         now += quiet.graceBeforeTrouble
         assertEquals(Round.RETRY, e.sync())
         assertTrue(e.state.value.trouble is Trouble.Failing)
+    }
+
+    @Test
+    fun aFailureRetriesByItselfOnlyInSight() = test {
+        val rounds = java.util.concurrent.atomic.AtomicInteger()
+        val count = Interceptor { chain ->
+            if (chain.request().url.encodedPath == "/api/sync") rounds.incrementAndGet()
+            chain.proceed(chain.request())
+        }
+        val e = paired(engine(Api.client.newBuilder().addInterceptor(count).build(), delays = quiet.copy(firstBackoff = 50, maxBackoff = 50)))
+        server.stop()
+        val before = rounds.get()
+        assertEquals(Round.RETRY, e.sync())
+        Thread.sleep(600)
+        assertEquals("out of sight, WorkManager retries", before + 1, rounds.get())
+        e.foreground(true)
+        Thread.sleep(600)
+        assertTrue("in sight, the backoff retries", rounds.get() > before + 3)
     }
 
     @Test
