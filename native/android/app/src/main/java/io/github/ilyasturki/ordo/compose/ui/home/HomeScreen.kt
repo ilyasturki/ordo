@@ -95,6 +95,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     val pager = rememberPagerState(initialPage = projects.indexOfFirst { it.id == state.prefs.current }.coerceAtLeast(0)) { projects.size }
     val current = projects.getOrNull(pager.currentPage.coerceAtMost(projects.lastIndex))
     val latest by rememberUpdatedState(projects)
+    fun filterOf(e: Entry): Filter = (state.prefs.filters[e.id] ?: Filter.NONE).pruned(e.project)
 
     LaunchedEffect(projects.map { it.id }) {
         val i = projects.indexOfFirst { it.id == state.prefs.current }
@@ -103,9 +104,11 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     LaunchedEffect(pager) {
         snapshotFlow { pager.settledPage }.distinctUntilChanged().drop(1).collect { page ->
             val id = latest.getOrNull(page)?.id ?: return@collect
-            feedback.tick()
             uis.keys.filter { it != id }.forEach(uis::remove)
-            if (id != engine.state.value.prefs.current) engine.setCurrent(id)
+            if (id != engine.state.value.prefs.current) {
+                feedback.tick()
+                engine.setCurrent(id)
+            }
         }
     }
 
@@ -141,7 +144,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                         }
                     }
                     if (current != null) {
-                        val active = (state.prefs.filters[current.id] ?: Filter.NONE).active
+                        val active = filterOf(current).active
                         IconButton(onClick = { sheet = HomeSheet.Filters(current.id) }) {
                             Icon(Icons.Filter, if (active) "Filter, on" else "Filter", tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -193,7 +196,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                 val entry = projects.getOrNull(page) ?: return@HorizontalPager
                 ProjectList(
                     entry = entry,
-                    filter = state.prefs.filters[entry.id] ?: Filter.NONE,
+                    filter = filterOf(entry),
                     ui = uis[entry.id] ?: ListUi(),
                     onUi = { uis[entry.id] = it },
                     onOpen = { open(TaskKey(entry.id, it)) },
@@ -212,7 +215,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             AddSheet(e, lastCat[e.id].orEmpty(), onDismiss = { sheet = null }) { cat -> lastCat[e.id] = cat }
         }
         is HomeSheet.Filters -> entry(s.pid)?.let { e ->
-            FilterSheet(e.project, state.prefs.filters[e.id] ?: Filter.NONE, onChange = { f ->
+            FilterSheet(e.project, filterOf(e), onChange = { f ->
                 uis.remove(e.id)
                 scope.launch { engine.setFilter(e.id, f) }
             }, onDismiss = { sheet = null })
