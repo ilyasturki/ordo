@@ -9,7 +9,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import okhttp3.Call
@@ -34,9 +33,6 @@ class ServerError(val status: Int, message: String) : Exception(message)
 
 // The request never got an answer.
 class Offline(cause: Throwable) : Exception("Can't reach ordo serve", cause)
-
-@Serializable
-data class Hello(val protocol: Int, val has_passphrase: Boolean = false)
 
 @Serializable
 data class SyncResult(val id: String, val status: String, val msg: String = "", val theirs: String? = null)
@@ -100,13 +96,8 @@ class Api(val server: String, private val token: String, private val http: OkHtt
     private suspend fun <T> post(path: String, body: JsonObject, out: KSerializer<T>): T =
         call(request(path).post(body.toString().toRequestBody(jsonType)).build(), out)
 
-    suspend fun hello(): Hello = call(request("/api/hello").get().build(), Hello.serializer())
-
     suspend fun pair(code: String, name: String): String =
         post("/api/pair", buildJsonObject { put("token", code); put("name", name) }, TokenAnswer.serializer()).token
-
-    suspend fun login(passphrase: String, name: String): String =
-        post("/api/login", buildJsonObject { put("passphrase", passphrase); put("name", name) }, TokenAnswer.serializer()).token
 
     suspend fun sync(ops: List<JsonObject>, have: Map<String, String>): SyncAnswer = post(
         "/api/sync",
@@ -171,7 +162,3 @@ internal fun JsonObject.withIds(qid: String, pid: String): JsonObject =
     JsonObject(this + mapOf("id" to JsonPrimitive(qid), "project" to JsonPrimitive(pid)))
 
 internal val JsonObject.action: String get() = this["action"]?.jsonPrimitive?.content.orEmpty()
-
-internal fun JsonElement.asObject(): JsonObject = jsonObject
-
-internal val unitSerializer = String.serializer()

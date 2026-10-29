@@ -5,7 +5,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.security.SecureRandom
 
@@ -65,8 +64,6 @@ object Ops {
     fun projectCreate(title: String) = op("project.create", "title" to title)
     fun projectRename(title: String) = op("project.rename", "title" to title)
     fun projectDelete() = op("project.delete")
-
-    fun actionOf(op: JsonObject): String = op["action"]?.jsonPrimitive?.content.orEmpty()
 
     private val random = SecureRandom()
 

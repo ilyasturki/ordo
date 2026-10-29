@@ -3,6 +3,7 @@ package io.github.ilyasturki.ordo.compose.model
 // The image lines of a description, read as app/src/lib/model.ts reads them.
 object Description {
     private val ref = Regex("""!\[([^\[\]\n]*)]\(([^()\n]+)\)""")
+    private val space = Regex("\\s+")
     private val stored = Regex("""^attachments/[0-9a-f]{32}\.(?:png|jpg|gif|webp)$""")
 
     private fun isImage(target: String): Boolean {
@@ -22,7 +23,7 @@ object Description {
     fun preview(description: String): String {
         val stripped = ref.replace(description) { m -> if (isImage(m.groupValues[2])) " " else m.value }
         return stripped.lineSequence()
-            .map { it.split(Regex("\\s+")).filter(String::isNotEmpty).joinToString(" ") }
+            .map { it.split(space).filter(String::isNotEmpty).joinToString(" ") }
             .filter(String::isNotEmpty)
             .take(2)
             .joinToString("\n")

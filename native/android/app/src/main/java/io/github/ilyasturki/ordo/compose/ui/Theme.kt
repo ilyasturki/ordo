@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import io.github.ilyasturki.ordo.compose.R
+import io.github.ilyasturki.ordo.compose.model.Tags
 
 private fun flex(weight: Int) = Font(
     R.font.google_sans_flex,
@@ -57,7 +58,7 @@ private val typography = Typography().run {
 
 // The four tag dots and the priority marks, the web app's tokens (app/src/app.css).
 data class Marks(val green: Color, val blue: Color, val magenta: Color, val cyan: Color, val up: Color, val down: Color) {
-    fun tag(color: String): Color = when (color.removeSuffix("-diamond")) {
+    fun tag(color: String): Color = when (Tags.dot(color)) {
         "green" -> green
         "blue" -> blue
         "magenta" -> magenta
