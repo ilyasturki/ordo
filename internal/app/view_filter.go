@@ -141,7 +141,7 @@ func formatTagFilterLabel(color string) string {
 		return "untagged"
 	}
 	style, _ := ui.TagDotStyle(color, false)
-	return style.Render(ui.TagGlyph(color)) + " " + tagColorName(color)
+	return style.Render(ui.TagGlyph) + " " + tagColorName(color)
 }
 
 func renderCheckboxLine(label string, enabled, selected bool) string {

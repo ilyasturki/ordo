@@ -35,12 +35,12 @@ Type "T"
 Sleep 200ms
 Type " "
 Sleep 200ms
-Type "jjjjjjj"
+Type "jjj"
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/44_batch_picker.png"
 Sleep 300ms
 
-# Enter recolours all three green tasks to the cyan diamond.
+# Enter recolours all three green tasks to cyan.
 Enter
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/44_batch_recoloured.png"

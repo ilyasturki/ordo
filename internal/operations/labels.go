@@ -26,13 +26,6 @@ func TagName(color string) string {
 	if color == "" {
 		return "None"
 	}
-	hue, diamond := strings.CutSuffix(color, domain.TagDiamondSuffix)
-	if hue == "" {
-		return color
-	}
-	name := strings.ToUpper(hue[:1]) + hue[1:]
-	if diamond {
-		name += " diamond"
-	}
-	return name
+	hue := domain.CanonicalTagColor(color)
+	return strings.ToUpper(hue[:1]) + hue[1:]
 }

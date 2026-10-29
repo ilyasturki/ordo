@@ -82,26 +82,20 @@ export const PRIORITY_LABELS: Record<string, string> = {
 	trivial: 'Trivial'
 };
 
-export const TAGS = [
-	'',
-	'green',
-	'blue',
-	'magenta',
-	'cyan',
-	'green-diamond',
-	'blue-diamond',
-	'magenta-diamond',
-	'cyan-diamond'
-] as const;
+export const TAGS = ['', 'green', 'blue', 'magenta', 'cyan'] as const;
+
+// Files and an older core still carry green-diamond and the like; they read as their hue's dot.
+export function canonicalTag(color: string): string {
+	const hue = color.replace(/-diamond$/u, '');
+	return (TAGS as readonly string[]).includes(hue) ? hue : color;
+}
 
 export function tagName(color: string): string {
 	if (color === '') {
 		return 'None';
 	}
-	const diamond = color.endsWith('-diamond');
-	const hue = diamond ? color.slice(0, -'-diamond'.length) : color;
-	const name = hue.charAt(0).toUpperCase() + hue.slice(1);
-	return diamond ? `${name} diamond` : name;
+	const hue = canonicalTag(color);
+	return hue.charAt(0).toUpperCase() + hue.slice(1);
 }
 
 export const ESTIMATE_PRESETS = [0, 15, 30, 60, 120, 240, 480, 960, 1440, 2400];
@@ -267,7 +261,7 @@ function matches(t: Task, f: Filter, query: string): boolean {
 	if (f.priorities.length > 0 && !f.priorities.includes(t.priority ?? '')) {
 		return false;
 	}
-	if (f.tags.length > 0 && !f.tags.includes(t.tag_color ?? '')) {
+	if (f.tags.length > 0 && !f.tags.includes(canonicalTag(t.tag_color ?? ''))) {
 		return false;
 	}
 	if (query !== '') {

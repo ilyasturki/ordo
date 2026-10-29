@@ -262,3 +262,26 @@ func TestEveryAppActionApplies(t *testing.T) {
 		t.Fatalf("unknown action: %v", err)
 	}
 }
+
+// The APK already on the phone embeds a core that still hands out diamonds.
+func TestOpsCarryingADiamondStoreItsDot(t *testing.T) {
+	p := board(t)
+	for _, op := range []operations.Op{
+		{Action: "tag.set", IDs: []string{"a"}, Value: "green-diamond"},
+		{Action: "task.restore", Cat: "c1", Rows: []domain.Task{{ID: "r1", Title: "back", Status: domain.StatusTodo, TagColor: "cyan-diamond"}}},
+	} {
+		if _, err := operations.Apply(p, op); err != nil {
+			t.Fatalf("%s: %v", op.Action, err)
+		}
+	}
+	tags := map[string]string{}
+	for _, task := range p.Categories[0].Tasks {
+		tags[task.ID] = task.TagColor
+	}
+	if tags["a"] != domain.TagGreen || tags["r1"] != domain.TagCyan {
+		t.Fatalf("tags = %v", tags)
+	}
+	if _, err := operations.Apply(p, operations.Op{Action: "tag.set", IDs: []string{"a"}, Value: "green-diamond"}); !errors.Is(err, operations.ErrNoChange) {
+		t.Fatalf("a diamond on its own dot changed something: %v", err)
+	}
+}

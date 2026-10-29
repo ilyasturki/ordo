@@ -63,6 +63,11 @@ export default [
     tap("main button", "High"),
     assert(`document.querySelector('${sheet}')?.textContent.includes('Priority')`, "the priority sheet is not open"),
   ] },
+  { name: "task_tags", path: T(9), ready: "main figure img", wait: 600, steps: [
+    tap("main button", "Magenta"),
+    assert(`[...document.querySelectorAll('${sheet} [role=group][aria-label=Tag] button')].map((b) => b.ariaLabel + (b.ariaPressed === 'true' ? '*' : '')).join() === 'None,Green,Blue,Magenta*,Cyan'`,
+      "the tag sheet does not offer the four dots with the task's magenta diamond picked as magenta"),
+  ] },
   { name: "cat_menu", path: "/", steps: [
     tap(`${cat(8)} button[aria-label="More for Feature"]`),
     assert(`${labels("[role=menu] [role=menuitem]")} === 'Rename,Add separator,Add sub-category,Select completed,Delete category' && ${onScreen("document.querySelector('[role=menu]')")} && document.querySelector('[role=menu]').getBoundingClientRect().top >= document.querySelector('${cat(8)} button[aria-label="More for Feature"]').getBoundingClientRect().bottom`,

@@ -1,7 +1,15 @@
 import { Api, Offline, ServerError, type ProjectState, type SyncResult } from '$lib/api';
 import { loadCore, type Core } from '$lib/core';
 import { openStore, type DB, type Queued, type Session, type StoredProject } from '$lib/db';
-import { NO_FILTER, newID, type Answer, type Filter, type Op, type Project } from '$lib/model';
+import {
+	canonicalTag,
+	NO_FILTER,
+	newID,
+	type Answer,
+	type Filter,
+	type Op,
+	type Project
+} from '$lib/model';
 
 export type Entry = {
 	id: string;
@@ -110,7 +118,8 @@ export class Ordo {
 	}
 
 	filterOf(id: string): Filter {
-		return this.prefs.filters[id] ?? NO_FILTER;
+		const f = this.prefs.filters[id] ?? NO_FILTER;
+		return { ...f, tags: [...new Set(f.tags.map(canonicalTag))] };
 	}
 
 	setFilter(id: string, f: Filter): void {

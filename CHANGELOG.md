@@ -12,6 +12,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - `enter` or `space` on a category's `(N hidden by the filter)` row shows those tasks in place, marked `(filtered out)`, until the cursor leaves the category, where it used to clear the whole filter. The filter and its saved copy stay as they were; `f` → Clear all filters still clears it
 - The project picker dialog (`ctrl+p`) has the rounded border of the other dialogs, so it stands out from the list behind it. The full-screen picker stays frameless
+- Four tag marks instead of eight: `t`, `T`, the filter and the app offer the four coloured dots and drop the diamonds. A diamond already in a project file, or sent by an older app, reads as its colour's dot
 
 ### Fixed
 

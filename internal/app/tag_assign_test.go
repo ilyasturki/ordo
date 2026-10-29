@@ -71,11 +71,11 @@ func TestTagEdit_BatchRecoloursEveryTaskSharingTheMarkInOneUndo(t *testing.T) {
 	require.Len(t, m.ui.TagEdit.batchIDs, 3)
 	m.handleTagEditKey(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.True(t, m.ui.TagEdit.batch)
-	m.ui.TagEdit.colorIdx = tagColorIndex(domain.TagCyanDiamond)
+	m.ui.TagEdit.colorIdx = tagColorIndex(domain.TagCyan)
 	m.handleTagEditKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	for _, task := range m.project.Categories[0].Tasks {
-		assert.Equal(t, domain.TagCyanDiamond, task.TagColor, task.ID)
+		assert.Equal(t, domain.TagCyan, task.TagColor, task.ID)
 	}
 	assert.Equal(t, domain.TagGreen, m.project.Categories[1].Tasks[0].TagColor, "other categories keep the mark")
 

@@ -126,6 +126,7 @@ func SetTags(p *domain.Project, ids []string, color string) (int, error) {
 	if err := domain.ValidateTagColor(color); err != nil {
 		return 0, err
 	}
+	color = domain.CanonicalTagColor(color)
 	changed := 0
 	for _, t := range realTasks(p, ids) {
 		if t.TagColor == color {

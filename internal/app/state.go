@@ -275,7 +275,11 @@ func filterStateFrom(saved data.Filter) FilterState {
 	f := NewFilterState()
 	restoreValues(f.statuses, saved.Statuses, filterStatuses)
 	restoreValues(f.priorities, saved.Priorities, filterPriorities)
-	restoreValues(f.tags, saved.Tags, filterTagColors)
+	tags := make([]string, len(saved.Tags))
+	for i, v := range saved.Tags {
+		tags[i] = domain.CanonicalTagColor(v)
+	}
+	restoreValues(f.tags, tags, filterTagColors)
 	for _, id := range saved.Categories {
 		f.categories[id] = true
 	}

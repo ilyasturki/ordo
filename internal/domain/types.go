@@ -30,25 +30,20 @@ const (
 
 	// Tag marks are stored as stable names, not ANSI numbers. Each is a hue the
 	// terminal theme tracks (red and yellow already mean priority, status and
-	// search) times a glyph: the plain name is a dot, the -diamond name a diamond.
-	TagGreen          = "green"
-	TagBlue           = "blue"
-	TagMagenta        = "magenta"
-	TagCyan           = "cyan"
-	TagDiamondSuffix  = "-diamond"
-	TagGreenDiamond   = TagGreen + TagDiamondSuffix
-	TagBlueDiamond    = TagBlue + TagDiamondSuffix
-	TagMagentaDiamond = TagMagenta + TagDiamondSuffix
-	TagCyanDiamond    = TagCyan + TagDiamondSuffix
+	// search), drawn as a dot.
+	TagGreen   = "green"
+	TagBlue    = "blue"
+	TagMagenta = "magenta"
+	TagCyan    = "cyan"
+	// Files, other apps and an older app's queued ops still carry green-diamond
+	// and the like; they read as their hue's dot.
+	TagDiamondSuffix = "-diamond"
 )
 
 // TagColorCycle is the canonical mark order `t` steps through and the single
 // source of truth the other tag lists derive from: NextTagColor walks it, and
 // the picker and filter build their rows by adding the "no tag" sentinel.
-var TagColorCycle = []string{
-	TagGreen, TagBlue, TagMagenta, TagCyan,
-	TagGreenDiamond, TagBlueDiamond, TagMagentaDiamond, TagCyanDiamond,
-}
+var TagColorCycle = []string{TagGreen, TagBlue, TagMagenta, TagCyan}
 
 // PriorityOrder lists the priority levels highest-first and is the single source
 // of truth the priority lists derive from: ValidatePriority checks membership
@@ -409,7 +404,24 @@ func (t *Task) CyclePriority() bool {
 	return true
 }
 
+func CanonicalTagColor(color string) string {
+	if hue, ok := strings.CutSuffix(color, TagDiamondSuffix); ok && slices.Contains(TagColorCycle, hue) {
+		return hue
+	}
+	return color
+}
+
+func NormalizeTags(p *Project) {
+	for i := range p.Categories {
+		for j := range p.Categories[i].Tasks {
+			t := &p.Categories[i].Tasks[j]
+			t.TagColor = CanonicalTagColor(t.TagColor)
+		}
+	}
+}
+
 func ValidateTagColor(color string) error {
+	color = CanonicalTagColor(color)
 	if color == "" || slices.Contains(TagColorCycle, color) {
 		return nil
 	}
@@ -420,6 +432,7 @@ func ValidateTagColor(color string) error {
 // from the last color back to "" (no tag). An empty color starts the cycle at
 // the first color; any unrecognized value resets to "" (no tag).
 func NextTagColor(color string) string {
+	color = CanonicalTagColor(color)
 	if color == "" {
 		return TagColorCycle[0]
 	}
@@ -439,7 +452,7 @@ func FreeTagColor(tasks []Task) string {
 	for _, t := range tasks {
 		if !t.IsSeparator() && t.TagColor != "" &&
 			(t.Status == StatusTodo || t.Status == StatusInProgress) {
-			open[t.TagColor]++
+			open[CanonicalTagColor(t.TagColor)]++
 		}
 	}
 	best := TagColorCycle[0]
@@ -467,7 +480,7 @@ func (t *Task) SetTagColor(color string) error {
 	if err := ValidateTagColor(color); err != nil {
 		return err
 	}
-	t.TagColor = color
+	t.TagColor = CanonicalTagColor(color)
 	t.UpdatedAt = NowTimestamp()
 	return nil
 }

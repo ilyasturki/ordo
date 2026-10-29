@@ -95,6 +95,14 @@ func TestOpenReadsLikeTheStore(t *testing.T) {
 	if p.Categories[0].Tasks[0].Title != "ab" {
 		t.Fatalf("title = %q", p.Categories[0].Tasks[0].Title)
 	}
+	pid, err = s.Open([]byte(`{"id": "p2", "name": "y", "categories": [{"id": "c1", "name": "C", "tasks": [{"id": "t1", "title": "a", "status": "todo", "tag_color": "blue-diamond"}]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	json.Unmarshal(s.Project(pid), &p)
+	if p.Categories[0].Tasks[0].TagColor != domain.TagBlue {
+		t.Fatalf("tag = %q", p.Categories[0].Tasks[0].TagColor)
+	}
 }
 
 func TestPerformAnswersHowToUndoIt(t *testing.T) {

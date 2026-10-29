@@ -32,6 +32,7 @@ func (s *Session) Open(raw []byte) (string, error) {
 	}
 	domain.StripProjectText(&p)
 	domain.NormalizeNesting(&p)
+	domain.NormalizeTags(&p)
 	s.projects[p.ID] = &p
 	return p.ID, nil
 }

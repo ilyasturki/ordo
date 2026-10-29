@@ -470,8 +470,7 @@ func TestTask_CyclePriority(t *testing.T) {
 func TestTask_CycleTag(t *testing.T) {
 	t.Run("walks the palette then back to none", func(t *testing.T) {
 		task := Task{}
-		want := []string{TagGreen, TagBlue, TagMagenta, TagCyan,
-			TagGreenDiamond, TagBlueDiamond, TagMagentaDiamond, TagCyanDiamond, ""}
+		want := []string{TagGreen, TagBlue, TagMagenta, TagCyan, ""}
 		for _, expected := range want {
 			task.CycleTag()
 			assert.Equal(t, expected, task.TagColor)
@@ -524,9 +523,32 @@ func TestNextTagColor(t *testing.T) {
 	assert.Equal(t, TagBlue, NextTagColor(TagGreen))
 	assert.Equal(t, TagMagenta, NextTagColor(TagBlue))
 	assert.Equal(t, TagCyan, NextTagColor(TagMagenta))
-	assert.Equal(t, TagGreenDiamond, NextTagColor(TagCyan))
-	assert.Equal(t, "", NextTagColor(TagCyanDiamond))
+	assert.Equal(t, "", NextTagColor(TagCyan))
+	assert.Equal(t, TagBlue, NextTagColor("green-diamond"), "a retired diamond cycles on from its hue")
 	assert.Equal(t, "", NextTagColor("bogus"))
+}
+
+func TestCanonicalTagColor_ReadsADiamondAsItsDot(t *testing.T) {
+	for _, hue := range TagColorCycle {
+		assert.Equal(t, hue, CanonicalTagColor(hue+TagDiamondSuffix))
+		assert.Equal(t, hue, CanonicalTagColor(hue))
+	}
+	assert.Equal(t, "", CanonicalTagColor(""))
+	assert.Equal(t, "red-diamond", CanonicalTagColor("red-diamond"))
+}
+
+func TestNormalizeTags(t *testing.T) {
+	p := Project{Categories: []Category{{Tasks: []Task{
+		{ID: "a", TagColor: "cyan-diamond"}, {ID: "b", TagColor: TagBlue}, {ID: "c"},
+	}}}}
+	NormalizeTags(&p)
+	got := []string{p.Categories[0].Tasks[0].TagColor, p.Categories[0].Tasks[1].TagColor, p.Categories[0].Tasks[2].TagColor}
+	assert.Equal(t, []string{TagCyan, TagBlue, ""}, got)
+}
+
+func TestFreeTagColor_CountsADiamondAsItsDot(t *testing.T) {
+	tasks := []Task{{TagColor: "green-diamond", Status: StatusTodo}}
+	assert.Equal(t, TagBlue, FreeTagColor(tasks))
 }
 
 func TestValidateTagColor(t *testing.T) {
@@ -535,6 +557,7 @@ func TestValidateTagColor(t *testing.T) {
 	}
 	assert.Error(t, ValidateTagColor("red"))
 	assert.Error(t, ValidateTagColor("red-diamond"))
+	assert.NoError(t, ValidateTagColor("magenta-diamond"), "files and queued ops from older builds still carry diamonds")
 	assert.Error(t, ValidateTagColor("2"))
 }
 
@@ -543,6 +566,8 @@ func TestTask_SetTagColor(t *testing.T) {
 		task := Task{}
 		require.NoError(t, task.SetTagColor(TagBlue))
 		assert.Equal(t, TagBlue, task.TagColor)
+		require.NoError(t, task.SetTagColor("blue-diamond"))
+		assert.Equal(t, TagBlue, task.TagColor, "a retired diamond is stored as its dot")
 		assert.NotEmpty(t, task.UpdatedAt)
 	})
 

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	buildCategories,
+	canonicalTag,
+	TAGS,
+	tagName,
 	descriptionFields,
 	formatEstimate,
 	imagesOf,
@@ -121,5 +124,59 @@ describe('parsePairing', () => {
 		expect(parsePairing('ABC123')).toEqual({ server: '', code: 'ABC123' });
 		expect(parsePairing('https://example.com/other')).toBeNull();
 		expect(parsePairing('')).toBeNull();
+	});
+});
+
+describe('tags', () => {
+	it('offers the four dots and none', () => {
+		expect(TAGS).toEqual(['', 'green', 'blue', 'magenta', 'cyan']);
+	});
+
+	it('reads a diamond from an older build as its dot', () => {
+		expect(canonicalTag('magenta-diamond')).toBe('magenta');
+		expect(canonicalTag('cyan')).toBe('cyan');
+		expect(canonicalTag('red-diamond')).toBe('red-diamond');
+		expect(tagName('green-diamond')).toBe('Green');
+	});
+
+	it('filters a diamond under its dot', () => {
+		const p: Project = {
+			id: 'p',
+			name: 'P',
+			created_at: '',
+			updated_at: '',
+			categories: [
+				{
+					id: 'c',
+					name: 'C',
+					created_at: '',
+					tasks: [
+						{
+							id: 'a',
+							title: 'a',
+							status: 'todo',
+							tag_color: 'blue-diamond',
+							created_at: '',
+							updated_at: ''
+						},
+						{
+							id: 'b',
+							title: 'b',
+							status: 'todo',
+							tag_color: 'green',
+							created_at: '',
+							updated_at: ''
+						}
+					]
+				}
+			]
+		};
+		const [v] = buildCategories(p, {
+			statuses: [],
+			priorities: [],
+			categories: [],
+			tags: ['blue']
+		});
+		expect(v.open.map((r) => r.task.id)).toEqual(['a']);
 	});
 });

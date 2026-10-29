@@ -22,6 +22,9 @@ func restoreRows(p *domain.Project, op Op) (Outcome, error) {
 	if len(rows) == 0 {
 		return Outcome{}, ErrNoChange
 	}
+	for i := range rows {
+		rows[i].TagColor = domain.CanonicalTagColor(rows[i].TagColor)
+	}
 	cat, parent, before := op.Cat, op.Parent, op.Before
 	if head := op.Rows[0].ID; rows[0].ID != head {
 		ci, _, _ := LocateTask(p, head)

@@ -14,6 +14,7 @@
 		PRIORITY_LABELS,
 		STATUS_LABELS,
 		tagName,
+		canonicalTag,
 		type Task
 	} from '$lib/model';
 	import Pickers, { type PickerKind } from '$lib/Pickers.svelte';
@@ -210,7 +211,7 @@
 			case 'priority':
 				return t.priority ?? '';
 			case 'tag':
-				return t.tag_color ?? '';
+				return canonicalTag(t.tag_color ?? '');
 			default:
 				return String(t.estimate_minutes ?? 0);
 		}

@@ -369,3 +369,19 @@ func TestConflictFiles(t *testing.T) {
 	assert.Empty(t, store.ConflictFiles(other.ID))
 	assert.Empty(t, store.ConflictFiles("../"+project.ID))
 }
+
+func TestLoadReadsADiamondTagAsItsDot(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewStore(tmpDir)
+	require.NoError(t, store.Ensure())
+
+	raw := `{"id":"tags-1","name":"T","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z","categories":[
+	  {"id":"c1","name":"C","created_at":"2024-01-01T00:00:00Z","tasks":[
+	    {"id":"a","title":"A","status":"todo","tag_color":"magenta-diamond","created_at":"x","updated_at":"x"}
+	  ]}]}`
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "tags-1.json"), []byte(raw), 0o644))
+
+	project, err := store.LoadProjectByID("tags-1")
+	require.NoError(t, err)
+	assert.Equal(t, domain.TagMagenta, project.Categories[0].Tasks[0].TagColor)
+}

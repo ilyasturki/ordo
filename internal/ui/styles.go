@@ -135,7 +135,7 @@ func priorityColor(priority string) (color.Color, bool) {
 // these are ANSI 0–6 so the terminal keeps them legible on both light and dark
 // themes (ANSI 16–255 and hex do not track the theme).
 func tagColor(name string) (color.Color, bool) {
-	switch strings.TrimSuffix(name, tagDiamondSuffix) {
+	switch strings.TrimSuffix(name, "-diamond") {
 	case "green":
 		return lipgloss.Color("2"), true
 	case "blue":
@@ -149,16 +149,7 @@ func tagColor(name string) (color.Color, bool) {
 	}
 }
 
-const tagDiamondSuffix = "-diamond"
-
-// TagGlyph is the glyph drawn for a tag mark, a dot or a diamond. Both are one
-// cell wide with East Asian ambiguous width, so they align the same way.
-func TagGlyph(name string) string {
-	if strings.HasSuffix(name, tagDiamondSuffix) {
-		return "◆"
-	}
-	return "●"
-}
+const TagGlyph = "●"
 
 // TagDotVisible reports whether name is a renderable tag color — i.e. whether a
 // dot should be drawn (and its column reserved) at all.
@@ -200,7 +191,7 @@ func TagSegmentText(name string) string {
 	if !TagDotVisible(name) {
 		return ""
 	}
-	return TagGlyph(name) + " "
+	return TagGlyph + " "
 }
 
 // PriorityStyle returns the text style for a task title with the given

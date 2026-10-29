@@ -282,6 +282,7 @@ func (s *Store) ImportProject(project domain.Project) (domain.Project, error) {
 		return domain.Project{}, fmt.Errorf("importing project: %w", err)
 	}
 	domain.NormalizeNesting(&project)
+	domain.NormalizeTags(&project)
 	return s.createNewProjectLocked(project.Name, func() (domain.Project, error) {
 		// ValidateID comes before projectExists so a malformed ID is never used
 		// to stat a path; an ID like "../../x" would otherwise have become a
@@ -440,6 +441,7 @@ func decodeProject(data []byte, name string) (domain.Project, error) {
 	// in-app way to fix it. The stripped form becomes canonical on the next save.
 	domain.StripProjectText(&project)
 	domain.NormalizeNesting(&project)
+	domain.NormalizeTags(&project)
 	return project, nil
 }
 

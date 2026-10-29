@@ -11,7 +11,8 @@ Type "clear && ./ordo -p Default"
 Enter
 Sleep 800ms
 
-# Give eight tasks the eight marks through the picker (j steps past "None").
+# Give four tasks the four marks through the picker (j steps past "None"),
+# then the completed "Fix date formatting" task the first one.
 Type "T"
 Type "j"
 Enter
@@ -27,37 +28,25 @@ Type "j"
 Type "T"
 Type "jjjj"
 Enter
-Type "j"
-Type "T"
-Type "jjjjj"
-Enter
 # Step over the Fix header.
-Type "jj"
+Type "jjjj"
 Type "T"
-Type "jjjjjj"
-Enter
 Type "j"
-Type "T"
-Type "jjjjjjj"
-Enter
-Type "j"
-Type "T"
-Type "jjjjjjjj"
 Enter
 Sleep 800ms
 Show
 
-# All eight marks on unselected rows; the "Fix date formatting" task is
+# All four marks on unselected rows; the "Fix date formatting" task is
 # completed, so its mark is dimmed.
 Type "j"
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/43_marks_rows.png"
 Sleep 300ms
 
-# A diamond on the selection bar becomes a reverse block like a dot does.
+# A mark on the selection bar becomes a reverse block.
 Type "k"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/43_diamond_selected.png"
+Screenshot "/tmp/ordo-vt/vhs-out/43_mark_selected.png"
 Sleep 300ms
 
 Type "T"

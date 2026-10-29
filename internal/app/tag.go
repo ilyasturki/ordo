@@ -163,7 +163,7 @@ func (m model) tagEditView() string {
 			swatch = ui.MutedStyle.Render("○ None (remove)")
 		} else {
 			style, _ := ui.TagDotStyle(color, false)
-			swatch = style.Render(ui.TagGlyph(color)) + " " + tagColorName(color)
+			swatch = style.Render(ui.TagGlyph) + " " + tagColorName(color)
 		}
 		lines = append(lines, marker+swatch)
 	}
@@ -176,7 +176,7 @@ func (m model) tagEditView() string {
 		}
 		style, _ := ui.TagDotStyle(s.batchColor, false)
 		lines = append(lines, "", fmt.Sprintf("  %s all %d tasks marked %s in %s",
-			box, n, style.Render(ui.TagGlyph(s.batchColor)), truncateText(s.batchCat, 30)))
+			box, n, style.Render(ui.TagGlyph), truncateText(s.batchCat, 30)))
 		hints = append([]ui.Hint{{Key: "space", Label: "whole batch"}}, hints...)
 	}
 	lines = append(lines, "", ui.RenderHints(hints))
@@ -356,22 +356,16 @@ func tagColorIndex(color string) int {
 // tagColorName is the human-facing name of a tag mark, used in the info,
 // filter, and tag-picker views.
 func tagColorName(color string) string {
-	hue, diamond := strings.CutSuffix(color, domain.TagDiamondSuffix)
-	var name string
-	switch hue {
+	switch domain.CanonicalTagColor(color) {
 	case domain.TagGreen:
-		name = "Green"
+		return "Green"
 	case domain.TagBlue:
-		name = "Blue"
+		return "Blue"
 	case domain.TagMagenta:
-		name = "Magenta"
+		return "Magenta"
 	case domain.TagCyan:
-		name = "Cyan"
+		return "Cyan"
 	default:
 		return color
 	}
-	if diamond {
-		name += " diamond"
-	}
-	return name
 }

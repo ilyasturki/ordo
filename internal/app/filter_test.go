@@ -537,6 +537,13 @@ func TestRestoredFilterDropsValuesNoRowOffers(t *testing.T) {
 	assert.Zero(t, f.TagCount(), "a value no row could untick is dropped")
 }
 
+func TestRestoredFilterReadsADiamondAsItsDot(t *testing.T) {
+	f := filterStateFrom(data.Filter{Tags: []string{"cyan-diamond", "cyan"}})
+
+	assert.Equal(t, 1, f.TagCount())
+	assert.True(t, f.IsTagEnabled(domain.TagCyan))
+}
+
 func TestFilterSavesOnEveryChange(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	stub := withStubStateManager(m)
