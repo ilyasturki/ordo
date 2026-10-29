@@ -7,6 +7,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Added
 
 - `l` in the project picker, dialog or full screen, unlinks this directory on the row marked `(linked)`, and the footer reads `l unlink` there. The unlink holds for the rest of the session: opening or creating a project no longer links the directory until `l` links it again
+- A Row marks section at the end of `?` names what each glyph on a row means: status boxes, priority arrows, the tag dot, `¶`, `▣`, the estimate, subtask progress, `✂`, separators, folds and `(filtered out)`. The help filter `/` finds them by meaning
 
 ### Changed
 

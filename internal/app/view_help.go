@@ -111,6 +111,24 @@ var helpModeSections = []helpSection{
 	},
 }
 
+// What the glyphs on a row mean: a legend, not shortcuts.
+var helpMarksSection = helpSection{
+	title: "Row marks",
+	entries: []helpEntry{
+		{keys: "[ ] [/] [x] [-]", desc: "todo / in progress / completed / cancelled"},
+		{keys: "⇈ ▲ ▼ ⇊", desc: "priority critical / high / low / trivial"},
+		{keys: "●", desc: "tag dot, green, blue, magenta or cyan: a batch"},
+		{keys: "¶", desc: "has a description"},
+		{keys: "▣ / ▣2", desc: "one image / two images attached"},
+		{keys: "~1h", desc: "estimate"},
+		{keys: "1/3", desc: "subtasks finished"},
+		{keys: "✂", desc: "cut, p puts it back"},
+		{keys: "━━", desc: "separator"},
+		{keys: "▼ / ▶", desc: "category open / folded"},
+		{keys: "(filtered out)", desc: "an edit took it out of the filter"},
+	},
+}
+
 var builtinHelpSections = buildHelpSections(nil)
 
 // Sections come out in declaration order, so the groups in normalBindings are
@@ -149,7 +167,7 @@ func buildHelpSections(commands []taskCommand) []helpSection {
 		}
 		out = append(out, section)
 	}
-	return append(out, helpModeSections...)
+	return append(append(out, helpModeSections...), helpMarksSection)
 }
 
 var builtinReferenceLines = referenceLines(builtinHelpSections)
@@ -171,7 +189,9 @@ func (m model) helpReferenceLines() []helpLine {
 func (m model) helpShortcutCount() int {
 	n := 0
 	for _, s := range m.helpSections() {
-		n += len(s.entries)
+		if s.title != helpMarksSection.title {
+			n += len(s.entries)
+		}
 	}
 	return n
 }

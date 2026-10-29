@@ -216,3 +216,25 @@ func TestHelp_ToggleLastsTheSession(t *testing.T) {
 	back, _ := am.handleHelpKey(tea.KeyPressMsg{Text: "a"})
 	assert.False(t, back.(model).helpExpanded())
 }
+
+func TestHelpFilter_FindsTheRowMarks(t *testing.T) {
+	for query, keys := range map[string]string{"description": "¶", "image": "▣ / ▣2", "cut": "✂", "tag dot": "●", "▣": "▣ / ▣2"} {
+		var found bool
+		for _, e := range helpEntries(filteredHelpBody(t, query)) {
+			if e.keys == keys {
+				found = true
+				assert.False(t, e.runnable, "a mark is a legend, not a shortcut")
+			}
+		}
+		assert.True(t, found, "%q should find %q", query, keys)
+	}
+}
+
+func TestHelp_ShortcutCountLeavesOutTheRowMarks(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	total := 0
+	for _, s := range m.helpSections() {
+		total += len(s.entries)
+	}
+	assert.Equal(t, total-len(helpMarksSection.entries), m.helpShortcutCount())
+}
