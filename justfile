@@ -28,6 +28,18 @@ web:
 android: wasm
     cd app && bun install --frozen-lockfile && bun run android:install
 
+# Bind internal/core into the native Android app's library, native/android/app/libs/ordocore.aar (needs nix: the flake's SDK and NDK).
+native-core:
+    nix develop .#native --command scripts/native.sh core
+
+# Build the native Android app and install its debug build on the connected device, or the one SERIAL names.
+native *SERIAL:
+    nix develop .#native --command scripts/native.sh install {{SERIAL}}
+
+# Run the native app's tests: the Go wrapper's, then the JVM ones against a real core and ordo serve.
+native-test:
+    nix develop .#native --command scripts/native.sh test
+
 # Run the app with hot reload in the browser, against a throwaway seeded server (--reset reseeds it).
 dev *ARGS:
     ./scripts/dev.sh web {{ARGS}}

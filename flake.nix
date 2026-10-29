@@ -65,7 +65,16 @@
           default = self.packages.${system}.ordo;
         }
         // pkgs.lib.optionalAttrs (web != null) { inherit web; }
+        // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          android-sdk = import ./nix/android-sdk.nix { inherit nixpkgs system; };
+        }
       );
+
+      devShells.x86_64-linux.native = nixpkgs.legacyPackages.x86_64-linux.mkShellNoCC rec {
+        ANDROID_HOME = "${self.packages.x86_64-linux.android-sdk}/libexec/android-sdk";
+        # Gradle stops when ANDROID_SDK_ROOT names another SDK than ANDROID_HOME.
+        ANDROID_SDK_ROOT = ANDROID_HOME;
+      };
 
       nixosModules.default = import ./nix/module.nix { inherit self; };
 
