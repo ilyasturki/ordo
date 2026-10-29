@@ -28,6 +28,14 @@ web:
 android: wasm
     cd app && bun install --frozen-lockfile && bun run android:install
 
+# Run the app with hot reload in the browser, against a throwaway seeded server (--reset reseeds it).
+dev *ARGS:
+    ./scripts/dev.sh web {{ARGS}}
+
+# Install and open the app on the USB phone, against a throwaway seeded server (--reset reseeds it).
+dev-phone *ARGS:
+    ./scripts/dev.sh phone {{ARGS}}
+
 # Run every test, then the nix build.
 test:
     go test ./...
