@@ -4,9 +4,12 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-29
+
 ### Added
 
 - An Android app, attached to each release as an APK. It keeps a copy of every project and a queue of the edits made on it, so it opens at once and works without signal, and the queue reaches the project files through `ordo serve` once the connection is back. The layout follows Google Tasks. Projects are tabs, each category is a card with its own `+` and Completed row, and the task page lists its fields in rows that open their choices
+- The app pairs once, by scanning the QR code `ordo serve pair` prints or pasting its link. A long press lifts a row to drag it, and sliding it right nests it under the task above. A sideways swipe on the list changes project, a tap plays the system click sound, a long press buzzes, and Back closes the open sheet or page before it leaves the app
 - The app manages categories and projects. A category's ⋮ menu renames it, adds a sub-category or deletes it, New category ends the list, New project follows the tabs, and the top bar's ⋮ renames or deletes the open project. A project made in the app starts empty
 - Search and Filter in the app's top bar. The filter picks statuses, priorities, tags and categories, and the app keeps it per project
 - Every edit in the app offers Undo in its snackbar, a delete included, offline too
@@ -478,7 +481,8 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
 
-[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/ilyasturki/ordo/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/ilyasturki/ordo/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/ilyasturki/ordo/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/ilyasturki/ordo/compare/v0.10.0...v0.11.0
