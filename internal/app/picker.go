@@ -118,7 +118,11 @@ func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 			m.selectProject()
 		}
 	case "l":
-		m.linkSelectedProject()
+		if m.onLinkedRow() {
+			m.unlinkDir()
+		} else {
+			m.linkSelectedProject()
+		}
 	case "d":
 		m.initiateProjectDelete()
 	case "esc", "q":
@@ -141,7 +145,41 @@ func (m *model) linkSelectedProject() {
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Error linking directory: %v", err)
 		return
 	}
+	m.ui.KeepDirUnlinked = false
 	m.openPickedProject(fmt.Sprintf("Linked this directory to %s", project.Name))
+}
+
+func (m *model) onLinkedRow() bool {
+	if m.ui.Picker.isOnNewProject() || m.ui.Picker.selected >= len(m.ui.Picker.projects) {
+		return false
+	}
+	linked := m.linkedProjectID()
+	return linked != "" && m.ui.Picker.projects[m.ui.Picker.selected].ID == linked
+}
+
+func (m model) linkedProjectID() string {
+	if m.deps.StateManager == nil {
+		return ""
+	}
+	return m.deps.StateManager.GetProjectForDir()
+}
+
+func (m *model) unlinkDir() {
+	project := m.ui.Picker.projects[m.ui.Picker.selected]
+	if _, err := m.deps.StateManager.UnlinkDir(); err != nil {
+		m.ui.Screen.StatusMsg = fmt.Sprintf("Error unlinking directory: %v", err)
+		return
+	}
+	m.ui.KeepDirUnlinked = true
+	m.ui.Screen.StatusMsg = fmt.Sprintf("Unlinked this directory from %s", project.Name)
+}
+
+// linkDirIfUnset links the directory to a project it opens only while it has no
+// link, and not at all after an unlink this session.
+func (m *model) linkDirIfUnset(projectID string) {
+	if !m.ui.KeepDirUnlinked {
+		linkDirIfUnset(m.deps.StateManager, projectID)
+	}
 }
 
 func (m *model) initiateProjectDelete() {
@@ -181,6 +219,9 @@ func (m *model) confirmDeleteProject() {
 		return
 	}
 
+	if m.linkedProjectID() == deleteID {
+		_, _ = m.deps.StateManager.UnlinkDir()
+	}
 	m.removeProjectFromOrder(deleteID)
 	_ = m.deps.StateManager.DeleteFoldedCategories(deleteID)
 	_ = m.deps.StateManager.DeleteCursor(deleteID)
@@ -205,7 +246,7 @@ func (m *model) confirmDeleteProject() {
 			}
 			m.project = next
 			m.checkSaves()
-			_ = m.deps.StateManager.SetProjectForDir(m.project.ID)
+			m.linkDirIfUnset(m.project.ID)
 			m.ui.Filter = loadFilterState(m.deps.StateManager, m.project)
 			m.ui.Fold = loadFoldState(m.deps.StateManager, m.project)
 			m.ui.History.Reset()
@@ -307,7 +348,7 @@ func (m *model) createPickedProject(name string) {
 		return
 	}
 
-	_ = m.deps.StateManager.SetProjectForDir(project.ID)
+	m.linkDirIfUnset(project.ID)
 	order := m.deps.StateManager.GetProjectOrder()
 	order = append(order, project.ID)
 	_ = m.deps.StateManager.SetProjectOrder(order)
@@ -369,7 +410,7 @@ func (m *model) switchToPicked(status string) {
 	// Switching to an existing project is a transient, session-only view change:
 	// only establish a directory link when none exists yet, never override one.
 	// The link is changed deliberately via `l` here or `project link`/`add`.
-	linkDirIfUnset(m.deps.StateManager, project.ID)
+	m.linkDirIfUnset(project.ID)
 
 	// Hand the outgoing project its cursor back before adopting the incoming
 	// project's, so switching away and back returns to the same row.

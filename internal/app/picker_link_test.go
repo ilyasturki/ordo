@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,8 +19,9 @@ import (
 // selecting a project persisted the directory link.
 type linkTrackingState struct {
 	*stubStateManager
-	link     string
-	setCalls []string
+	link        string
+	setCalls    []string
+	unlinkCalls int
 }
 
 func newLinkTrackingState(initial string) *linkTrackingState {
@@ -31,6 +34,13 @@ func (s *linkTrackingState) SetProjectForDir(id string) error {
 	s.link = id
 	s.setCalls = append(s.setCalls, id)
 	return nil
+}
+
+func (s *linkTrackingState) UnlinkDir() (string, error) {
+	prev := s.link
+	s.link = ""
+	s.unlinkCalls++
+	return prev, nil
 }
 
 // newPickerTestModel wires a real store (two projects) and a link-tracking
@@ -119,4 +129,153 @@ func TestPickerRow_MarksLinkedProject(t *testing.T) {
 
 	assert.Contains(t, body, "Alpha (current)")
 	assert.Contains(t, body, "Beta (linked)")
+}
+
+func pressPickerKey(t *testing.T, m *model, key string) {
+	t.Helper()
+	after, _ := m.handleProjectPickerKey(tea.KeyPressMsg{Code: rune(key[0]), Text: key})
+	*m = after
+}
+
+func TestPickerL_OnLinkedRowUnlinksAndStays(t *testing.T) {
+	for _, fullscreen := range []bool{false, true} {
+		m, state, alpha, beta := newPickerTestModel(t, "")
+		state.link = beta.ID
+		m.ui.Picker.fullscreen = fullscreen
+		m.ui.Modes.ToProjectPicker()
+
+		pressPickerKey(t, m, "l")
+
+		assert.Equal(t, 1, state.unlinkCalls)
+		assert.Empty(t, state.link)
+		assert.Empty(t, state.setCalls)
+		assert.Equal(t, alpha.ID, m.project.ID, "unlinking does not open the row")
+		assert.True(t, m.ui.Modes.IsProjectPicker(), "unlinking stays in the picker")
+		assert.Equal(t, "Unlinked this directory from Beta", m.ui.Screen.StatusMsg)
+		assert.NotContains(t, ansi.Strip(m.projectPickerView()), "(linked)")
+	}
+}
+
+func TestPickerL_OffLinkedRowStillLinks(t *testing.T) {
+	m, state, alpha, beta := newPickerTestModel(t, "")
+	state.link = alpha.ID
+
+	pressPickerKey(t, m, "l")
+
+	assert.Zero(t, state.unlinkCalls)
+	assert.Equal(t, []string{beta.ID}, state.setCalls)
+	assert.Equal(t, beta.ID, m.project.ID)
+}
+
+func TestPickerUnlink_SticksWhenPickingAfterwards(t *testing.T) {
+	m, state, alpha, beta := newPickerTestModel(t, "")
+	state.link = beta.ID
+	pressPickerKey(t, m, "l")
+
+	m.ui.Picker.selected = 1
+	m.selectProject()
+	assert.Equal(t, beta.ID, m.project.ID)
+	assert.Empty(t, state.link, "picking after an unlink must not relink the directory")
+
+	m.ui.Picker = ProjectPickerState{projects: []domain.Project{alpha, beta}, selected: 0}
+	m.selectProject()
+	assert.Equal(t, alpha.ID, m.project.ID)
+	assert.Empty(t, state.setCalls, "the unlink holds for the whole session")
+}
+
+func TestPickerUnlink_SticksWhenCreatingAProject(t *testing.T) {
+	m, state, _, beta := newPickerTestModel(t, "")
+	state.link = beta.ID
+	pressPickerKey(t, m, "l")
+
+	m.createPickedProject("Gamma")
+
+	assert.Equal(t, "Gamma", m.project.Name)
+	assert.Empty(t, state.link)
+	assert.Empty(t, state.setCalls)
+}
+
+func TestPickerLinkAfterUnlink_ResumesLinking(t *testing.T) {
+	m, state, alpha, beta := newPickerTestModel(t, "")
+	state.link = beta.ID
+	pressPickerKey(t, m, "l")
+
+	m.ui.Picker.selected = 0
+	pressPickerKey(t, m, "l")
+	assert.Equal(t, alpha.ID, state.link, "l off the linked row links deliberately")
+	assert.False(t, m.ui.KeepDirUnlinked)
+}
+
+func TestCreatePickedProject_KeepsAnExistingLink(t *testing.T) {
+	m, state, alpha, _ := newPickerTestModel(t, "")
+	state.link = alpha.ID
+
+	m.createPickedProject("Gamma")
+
+	assert.Equal(t, "Gamma", m.project.Name)
+	assert.Equal(t, alpha.ID, state.link, "creating opens the project for the session, like picking one")
+}
+
+func TestCreatePickedProject_LinksAnUnlinkedDir(t *testing.T) {
+	m, state, _, _ := newPickerTestModel(t, "")
+
+	m.createPickedProject("Gamma")
+
+	assert.Equal(t, m.project.ID, state.link)
+}
+
+func TestDeleteCurrentProject_KeepsALinkToAnotherProject(t *testing.T) {
+	m, state, alpha, beta := newPickerTestModel(t, "")
+	state.link = beta.ID
+	m.ui.ConfirmDelete = ConfirmDeleteState{Kind: ConfirmDeleteProject, ProjectID: alpha.ID}
+
+	m.confirmDeleteProject()
+
+	assert.Equal(t, beta.ID, m.project.ID)
+	assert.Equal(t, beta.ID, state.link)
+	assert.Empty(t, state.setCalls)
+}
+
+func TestDeleteLinkedProject_DropsTheLink(t *testing.T) {
+	m, state, alpha, beta := newPickerTestModel(t, "")
+	state.link = beta.ID
+	m.ui.ConfirmDelete = ConfirmDeleteState{Kind: ConfirmDeleteProject, ProjectID: beta.ID}
+
+	m.confirmDeleteProject()
+
+	assert.Equal(t, alpha.ID, m.project.ID)
+	assert.Empty(t, state.link, "a link must not outlive its project")
+}
+
+func TestDeleteCurrentLinkedProject_LinksTheNextOne(t *testing.T) {
+	m, state, alpha, beta := newPickerTestModel(t, "")
+	state.link = alpha.ID
+	m.ui.ConfirmDelete = ConfirmDeleteState{Kind: ConfirmDeleteProject, ProjectID: alpha.ID}
+
+	m.confirmDeleteProject()
+
+	assert.Equal(t, beta.ID, m.project.ID)
+	assert.Equal(t, beta.ID, state.link)
+}
+
+func TestPickerFooter_NamesUnlinkOnTheLinkedRow(t *testing.T) {
+	for _, fullscreen := range []bool{false, true} {
+		m, state, _, beta := newPickerTestModel(t, "")
+		state.link = beta.ID
+		m.ui.Picker.fullscreen = fullscreen
+		m.ui.Screen.Width, m.ui.Screen.Height = 100, 30
+
+		m.ui.Picker.selected = 1
+		onLinked := ansi.Strip(m.projectPickerView())
+		rowsOn, visibleOn := m.pickerHintRows(), m.pickerVisibleCount()
+		m.ui.Picker.selected = 0
+		offLinked := ansi.Strip(m.projectPickerView())
+
+		assert.Contains(t, onLinked, "l unlink")
+		assert.Contains(t, offLinked, "l link")
+		assert.NotContains(t, offLinked, "unlink")
+		assert.Equal(t, rowsOn, m.pickerHintRows())
+		assert.Equal(t, visibleOn, m.pickerVisibleCount())
+		assert.Equal(t, lipgloss.Height(onLinked), lipgloss.Height(offLinked))
+	}
 }

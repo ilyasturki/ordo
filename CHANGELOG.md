@@ -4,9 +4,17 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- `l` in the project picker, dialog or full screen, unlinks this directory on the row marked `(linked)`, and the footer reads `l unlink` there. The unlink holds for the rest of the session: opening or creating a project no longer links the directory until `l` links it again
+
 ### Changed
 
 - `enter` or `space` on a category's `(N hidden by the filter)` row shows those tasks in place, marked `(filtered out)`, until the cursor leaves the category, where it used to clear the whole filter. The filter and its saved copy stay as they were; `f` → Clear all filters still clears it
+
+### Fixed
+
+- Creating a project from the picker, or deleting the current project, no longer replaces the directory's link to another project, and deleting the linked project drops its link
 
 ## [0.13.0] - 2026-10-29
 

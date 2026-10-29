@@ -66,6 +66,7 @@ type State struct {
 type StateRepository interface {
 	GetProjectForDir() string
 	SetProjectForDir(id string) error
+	UnlinkDir() (string, error)
 	GetProjectOrder() []string
 	SetProjectOrder(order []string) error
 	GetFoldedCategories(projectID string) []string

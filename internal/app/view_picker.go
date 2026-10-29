@@ -33,8 +33,9 @@ const (
 
 // pickerNormalHints are the footer hints shown while browsing the picker. Plain
 // navigation (j/k, paging, g/G) is intentionally omitted per dialog-footer
-// convention; only picker-specific actions are listed.
-func (m model) pickerNormalHints() []ui.Hint {
+// convention; only picker-specific actions are listed. link is the label of l,
+// "unlink" on the linked row.
+func (m model) pickerNormalHints(link string) []ui.Hint {
 	back := "back"
 	if m.project.ID == "" {
 		back = "quit"
@@ -43,7 +44,7 @@ func (m model) pickerNormalHints() []ui.Hint {
 		{Key: "⏎", Label: "select"},
 		{Key: "a", Label: "new"},
 		{Key: "/", Label: "search"},
-		{Key: "l", Label: "link"},
+		{Key: "l", Label: link},
 		{Key: "J/K", Label: "move"},
 		{Key: "d", Label: "delete"},
 		{Key: "esc", Label: back},
@@ -57,7 +58,11 @@ func (m model) pickerHints() []ui.Hint {
 	case m.ui.Picker.filtering:
 		return []ui.Hint{{Key: "⏎", Label: "select"}, {Key: "esc", Label: "clear"}}
 	}
-	return m.pickerNormalHints()
+	link := "link"
+	if m.onLinkedRow() {
+		link = "unlink"
+	}
+	return m.pickerNormalHints(link)
 }
 
 func (m model) pickerContentWidth() int {
@@ -74,7 +79,9 @@ func (m model) pickerContentWidth() int {
 }
 
 func (m model) pickerHintRows() int {
-	rendered := lipgloss.NewStyle().Width(m.pickerContentWidth()).Render(ui.RenderHints(m.pickerNormalHints()))
+	// Measured with the longer label so the list keeps its height as the cursor
+	// crosses the linked row.
+	rendered := lipgloss.NewStyle().Width(m.pickerContentWidth()).Render(ui.RenderHints(m.pickerNormalHints("unlink")))
 	return lipgloss.Height(rendered)
 }
 
@@ -144,10 +151,7 @@ func (m model) pickerBody(contentWidth int) []string {
 		source = p.allProjects
 	}
 	cols := measurePickerColumns(source, contentWidth)
-	linkedID := ""
-	if m.deps.StateManager != nil {
-		linkedID = m.deps.StateManager.GetProjectForDir()
-	}
+	linkedID := m.linkedProjectID()
 	for i := start; i < end; i++ {
 		isSelected := !p.onNew && !p.isAdding && i == p.selected
 		lines = append(lines, m.renderPickerRow(i, isSelected, linkedID, cols, contentWidth))

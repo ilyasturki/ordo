@@ -151,6 +151,8 @@ type UIState struct {
 	History         HistoryState
 	Search          SearchState
 	Cursor          cursorTracker
+	// KeepDirUnlinked: the picker unlinked the directory, so opening a project no longer links it.
+	KeepDirUnlinked bool
 	layout          layoutCache
 }
 
