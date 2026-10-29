@@ -39,7 +39,8 @@
               "-X github.com/ilyasturki/ordo/internal/version.BuildDate=${buildDate}"
             ];
             nativeBuildInputs = [ pkgs.installShellFiles ];
-            preBuild = ''
+            # Not preBuild: buildGoModule runs that in the vendor derivation too, before vendor/ exists.
+            postConfigure = ''
               find internal/web/spa -mindepth 1 -maxdepth 1 ! -name placeholder.html -exec rm -rf {} +
             ''
             + pkgs.lib.optionalString (web != null) ''
