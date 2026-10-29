@@ -60,6 +60,8 @@ type FilterState struct {
 	tags             map[string]bool
 	// held stays shown until the cursor leaves it: tasks an edit took out of the filter.
 	held map[string]bool
+	// peek is the category whose hidden rows show until the cursor leaves it.
+	peek string
 }
 
 func NewFilterState() FilterState {
@@ -155,6 +157,7 @@ func (f *FilterState) MoveDown(catCount int) {
 
 func (f *FilterState) ToggleSelected(categories []domain.Category) {
 	f.releaseHeld()
+	f.endPeek()
 	switch f.view {
 	case FilterViewStatus:
 		if f.statusSelected >= 0 && f.statusSelected < len(filterStatuses) {
@@ -235,9 +238,13 @@ func (f *FilterState) holds(taskID string) bool { return f.held[taskID] }
 func (f *FilterState) holding() bool            { return len(f.held) > 0 }
 func (f *FilterState) releaseHeld()             { f.held = nil }
 
+func (f *FilterState) startPeek(categoryID string)  { f.peek = categoryID }
+func (f *FilterState) peeks(categoryID string) bool { return f.peek != "" && f.peek == categoryID }
+func (f *FilterState) endPeek()                     { f.peek = "" }
+
 // FilteredOut is false for a held task an edit brought back into the filter.
 func (f *FilterState) FilteredOut(task domain.Task, categoryID, parentCategoryID string) bool {
-	return f.holds(task.ID) && !f.TaskVisible(task, categoryID, parentCategoryID)
+	return (f.holds(task.ID) || f.peeks(categoryID)) && !f.TaskVisible(task, categoryID, parentCategoryID)
 }
 
 // savedNone stands for the "" no-priority and untagged buckets in state.json, which stays readable that way.
@@ -300,6 +307,7 @@ func (f *FilterState) pruneCategories(categories []domain.Category) bool {
 
 func (f *FilterState) ClearAll() {
 	f.releaseHeld()
+	f.endPeek()
 	f.statuses = make(map[string]bool)
 	f.priorities = make(map[string]bool)
 	f.categories = make(map[string]bool)

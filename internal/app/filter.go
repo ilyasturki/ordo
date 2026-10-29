@@ -26,17 +26,44 @@ func (m *model) onHiddenRow() bool {
 	return ok && pos.Kind == selection.FocusHidden
 }
 
-// showHiddenTasks clears the whole filter from a hidden row, reporting whether the cursor was on one.
+// showHiddenTasks peeks at the hidden row's category, reporting whether the cursor was on one.
 func (m *model) showHiddenTasks() bool {
-	if !m.onHiddenRow() {
+	pos, ok := m.selectedPosition()
+	if !ok || pos.Kind != selection.FocusHidden {
 		return false
 	}
-	m.ui.Filter.ClearAll()
-	m.saveFilter()
+	shown := make(map[string]bool)
+	for _, p := range m.positions() {
+		if p.Kind == selection.FocusTask {
+			shown[p.ID] = true
+		}
+	}
+	m.ui.Filter.startPeek(pos.ID)
+	m.rebuildPositions()
+	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
+		return p.Kind == selection.FocusTask && p.CategoryIndex == pos.CategoryIndex && !shown[p.ID]
+	})
+	m.ensureVisible()
+	m.ui.Screen.StatusMsg = "Hidden again once you leave the category"
+	return true
+}
+
+// releasePeek waits for normal mode, like releaseFilteredOut.
+func (m *model) releasePeek() {
+	if !m.ui.Modes.IsNormal() || m.ui.Filter.peek == "" || m.ui.Filter.peeks(m.cursorCategoryID()) {
+		return
+	}
+	m.ui.Filter.endPeek()
 	m.rebuildPositions()
 	m.ensureVisible()
-	m.ui.Screen.StatusMsg = "Filter cleared"
-	return true
+}
+
+func (m *model) cursorCategoryID() string {
+	pos, ok := m.selectedPosition()
+	if !ok || pos.CategoryIndex < 0 || pos.CategoryIndex >= len(m.project.Categories) {
+		return ""
+	}
+	return m.project.Categories[pos.CategoryIndex].ID
 }
 
 // holdFilteredOut keeps each edited row the filter stops matching where it is, until the cursor leaves it.
@@ -62,7 +89,7 @@ func (m *model) holdFilteredOut(ids []string) {
 			continue
 		}
 		m.ui.Filter.hold(id)
-		held = true
+		held = held || !m.ui.Filter.peeks(cat.ID)
 	}
 	m.rebuildPositions()
 	m.ensureVisible()

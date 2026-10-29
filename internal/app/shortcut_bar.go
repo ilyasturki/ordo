@@ -2,8 +2,10 @@ package app
 
 import (
 	"slices"
+	"strconv"
 
 	"github.com/ilyasturki/ordo/internal/app/modes"
+	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
@@ -94,8 +96,9 @@ func (m model) normalHints() []ui.Hint {
 			hints[i] = ui.Hint{Key: "f", Label: "filtered", Active: true}
 		}
 	}
-	if m.onHiddenRow() {
-		hints = slices.Insert(hints, 0, ui.Hint{Key: "enter", Label: "clear filter"})
+	if pos, ok := m.selectedPosition(); ok && pos.Kind == selection.FocusHidden {
+		n := hiddenByFilter(m.project.Categories[pos.CategoryIndex], &m.ui.Filter)
+		hints = slices.Insert(hints, 0, ui.Hint{Key: "enter", Label: "show " + strconv.Itoa(n)})
 	}
 	return hints
 }

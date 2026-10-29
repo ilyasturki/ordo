@@ -99,6 +99,7 @@ func (m *model) reloadProject() {
 	m.checkSaves()
 	m.ui.History.Reset()
 	m.ui.Filter.releaseHeld()
+	m.ui.Filter.endPeek()
 	// The move that used the cut up may be among the dropped edits: a copy would then duplicate the rows.
 	if dropped > 0 && m.ui.Clipboard.Moved {
 		m.ui.Clipboard.IsCut, m.ui.Clipboard.Moved = true, false
@@ -136,9 +137,9 @@ func (m *model) restoreSelection(kind selection.FocusKind, catID, taskID string)
 // taskRowVisible is the filter's verdict alone; shownRows adds nesting and folds on top.
 func taskRowVisible(filter *FilterState, task domain.Task, categoryID, parentCategoryID string) bool {
 	if task.IsSeparator() {
-		return filter == nil || !filter.HasActiveFilter()
+		return filter == nil || !filter.HasActiveFilter() || filter.peeks(categoryID)
 	}
-	return filter == nil || filter.holds(task.ID) || filter.TaskVisible(task, categoryID, parentCategoryID)
+	return filter == nil || filter.holds(task.ID) || filter.peeks(categoryID) || filter.TaskVisible(task, categoryID, parentCategoryID)
 }
 
 func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool {

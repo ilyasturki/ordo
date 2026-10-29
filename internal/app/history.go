@@ -159,6 +159,7 @@ func (m *model) applyHistoryEntry(e historyEntry) {
 	m.project = cloneProject(e.project)
 	m.ui.Clipboard = cloneClipboard(e.clipboard)
 	m.ui.Filter.releaseHeld()
+	m.ui.Filter.endPeek()
 	m.rebuildPositions()
 	if !e.cursor.IsZero() && !m.restoreCursor(e.cursor) {
 		m.ui.Selection.SetSelected(findFirstTaskIndex(m.ui.Selection.Positions()))

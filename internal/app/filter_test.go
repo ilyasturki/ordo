@@ -87,19 +87,145 @@ func TestHiddenRowCountsNoSeparatorAndNoContextParent(t *testing.T) {
 	lineWith(t, screen(m), "(1 hidden by the filter)")
 }
 
-func TestEnterOnHiddenRowClearsTheFilterOntoItsCategory(t *testing.T) {
+func TestEnterOnHiddenRowShowsItsCategorysTasks(t *testing.T) {
 	for _, key := range []string{"enter", "space"} {
 		t.Run(key, func(t *testing.T) {
 			m := onHiddenRow(t)
+			stub := m.deps.StateManager.(*stubStateManager)
+			m.saveFilter()
 
-			dispatchKeys(m, key)
+			m, _ = pressKeys(m, key)
 
-			assert.False(t, m.ui.Filter.HasActiveFilter())
-			assert.Equal(t, "category:c1", cursorItem(t, m))
-			assert.Equal(t, domain.StatusInProgress, m.project.Categories[0].Tasks[1].Status, "no task changed")
-			assert.NotContains(t, rowIDs(m), "hidden:c1")
+			assert.Equal(t, []string{"project:", "category:c1", "task:t1", "task:t2", "task:t3", "category:c2", "task:t4", "task:t5"}, rowIDs(m))
+			assert.Equal(t, "task:t2", cursorItem(t, m), "the cursor lands on the first task it shows")
+			lines := screen(m)
+			assert.Contains(t, lineWith(t, lines, "Beta"), "Beta (filtered out)")
+			assert.Contains(t, lineWith(t, lines, "Gamma"), "Gamma (filtered out)")
+			assert.NotContains(t, lineWith(t, lines, "Alpha"), "filtered out")
+			assert.Equal(t, "Hidden again once you leave the category", m.ui.Screen.StatusMsg)
+			assert.Equal(t, data.Filter{Statuses: []string{"todo"}}, stub.filters["p1"], "the saved filter stays")
+			assert.True(t, m.ui.Filter.IsStatusEnabled(domain.StatusTodo))
+			assert.Equal(t, domain.StatusInProgress, taskStatus(m, "t2"), "no task changed")
 		})
 	}
+}
+
+func peekingModel(t *testing.T) *model {
+	t.Helper()
+	m, _ := pressKeys(onHiddenRow(t), "enter")
+	require.Equal(t, "task:t2", cursorItem(t, m))
+	return m
+}
+
+func TestPeekLastsUntilTheCursorLeavesTheCategory(t *testing.T) {
+	t.Run("up", func(t *testing.T) {
+		m, _ := pressKeys(peekingModel(t), "j", "k", "k", "k")
+		assert.Equal(t, "category:c1", cursorItem(t, m))
+		assert.Contains(t, rowIDs(m), "task:t3", "moving inside the category, header included, keeps the tasks")
+
+		m, _ = pressKeys(m, "k")
+		assert.Equal(t, "project:", cursorItem(t, m))
+		assert.NotContains(t, rowIDs(m), "task:t2")
+		assert.NotContains(t, rowIDs(m), "task:t3")
+		lineWith(t, screen(m), "(2 hidden by the filter)")
+	})
+	t.Run("down", func(t *testing.T) {
+		m, _ := pressKeys(peekingModel(t), "j", "j")
+		assert.Equal(t, "category:c2", cursorItem(t, m))
+		assert.Equal(t, []string{"project:", "category:c1", "task:t1", "hidden:c1", "category:c2", "task:t4", "task:t5"}, rowIDs(m))
+	})
+}
+
+func TestPeekShowsTheCategorysSeparators(t *testing.T) {
+	m := newTestModel(t, domain.Project{ID: "p1", Categories: []domain.Category{{ID: "c1", Name: "Cat", Tasks: []domain.Task{
+		{ID: "todo", Title: "Todo", Status: domain.StatusTodo},
+		{ID: "sep", Kind: domain.KindSeparator},
+		{ID: "done", Title: "Done", Status: domain.StatusCompleted},
+	}}}})
+	m.ui.Filter.statuses[domain.StatusTodo] = true
+	m.rebuildPositions()
+	selectRow(t, m, selection.FocusHidden, "c1")
+
+	m, _ = pressKeys(m, "enter")
+
+	assert.Equal(t, []string{"project:", "category:c1", "task:todo", "separator:sep", "task:done"}, rowIDs(m))
+	assert.Equal(t, "task:done", cursorItem(t, m))
+}
+
+func TestVisualRangeKeepsThePeekUntilVisualModeEnds(t *testing.T) {
+	m, _ := pressKeys(peekingModel(t), "j", "v", "j")
+	require.True(t, m.ui.Modes.IsVisual())
+	assert.Equal(t, "task:t4", cursorItem(t, m))
+	assert.Contains(t, rowIDs(m), "task:t2", "a visual range may still reach back")
+
+	m, _ = pressKeys(m, "esc")
+	assert.NotContains(t, rowIDs(m), "task:t2")
+	assert.NotContains(t, rowIDs(m), "task:t3")
+}
+
+func TestEditWhilePeekingFollowsTheHeldRowRules(t *testing.T) {
+	m, _ := pressKeys(peekingModel(t), "j", "v", "j", "space")
+	require.NotEqual(t, domain.StatusTodo, taskStatus(m, "t4"))
+
+	m, _ = pressKeys(m, "esc")
+	assert.Equal(t, "task:t4", cursorItem(t, m))
+	assert.NotContains(t, rowIDs(m), "task:t2", "the peek ended")
+	assert.Contains(t, rowIDs(m), "task:t3", "the edited row is held while the cursor sits on a held row")
+
+	m, _ = pressKeys(m, "k")
+	assert.NotContains(t, rowIDs(m), "task:t3")
+	assert.NotContains(t, rowIDs(m), "task:t4")
+}
+
+func TestEditInsideThePeekKeepsTheRowWithoutTheHeldNotice(t *testing.T) {
+	m, _ := pressKeys(peekingModel(t), "space")
+	require.Equal(t, domain.StatusCompleted, taskStatus(m, "t2"))
+	assert.Equal(t, "task:t2", cursorItem(t, m))
+	assert.NotEqual(t, "Hidden by the filter once you move off it", m.ui.Screen.StatusMsg)
+
+	m, _ = pressKeys(m, "j", "k")
+	assert.Contains(t, lineWith(t, screen(m), "Beta"), "Beta (filtered out)", "moving off it inside the category keeps it")
+}
+
+func TestPeekEndsOnFilterChangeUndoRedoAndReload(t *testing.T) {
+	t.Run("filter change", func(t *testing.T) {
+		m := peekingModel(t)
+		m.ui.Filter.SetView(FilterViewPriority)
+		m.ui.Filter.ToggleSelected(m.project.Categories)
+		assert.False(t, m.ui.Filter.peeks("c1"))
+	})
+	t.Run("clear all", func(t *testing.T) {
+		m := peekingModel(t)
+		m.ui.Filter.ClearAll()
+		assert.False(t, m.ui.Filter.peeks("c1"))
+	})
+	t.Run("undo and redo", func(t *testing.T) {
+		m, _ := pressKeys(peekingModel(t), "space", "u")
+		assert.False(t, m.ui.Filter.peeks("c1"))
+		assert.Equal(t, domain.StatusInProgress, taskStatus(m, "t2"))
+		assert.NotContains(t, rowIDs(m), "task:t2")
+
+		selectRow(t, m, selection.FocusHidden, "c1")
+		m, _ = pressKeys(m, "enter")
+		require.True(t, m.ui.Filter.peeks("c1"))
+		m, _ = pressKeys(m, "ctrl+r")
+		assert.False(t, m.ui.Filter.peeks("c1"))
+		assert.NotContains(t, rowIDs(m), "task:t2")
+	})
+	t.Run("reload", func(t *testing.T) {
+		m := newStoredModel(t, sampleProject())
+		m.ui.Filter.statuses[domain.StatusTodo] = true
+		m.rebuildPositions()
+		cat := m.project.Categories[0].ID
+		selectRow(t, m, selection.FocusHidden, cat)
+		m, _ = pressKeys(m, "enter")
+		require.True(t, m.ui.Filter.peeks(cat))
+
+		m.reloadProject()
+
+		assert.False(t, m.ui.Filter.peeks(cat))
+		assert.Contains(t, rowIDs(m), "hidden:"+cat)
+	})
 }
 
 func TestHiddenRowRefusesRowActions(t *testing.T) {
@@ -206,7 +332,7 @@ func TestShortcutBarShowsTheFilterIsOn(t *testing.T) {
 	assert.NotContains(t, ansi.Strip(m.renderShortcutBar()), "clear filter")
 
 	selectRow(t, m, selection.FocusHidden, "c1")
-	assert.True(t, strings.HasPrefix(ansi.Strip(m.renderShortcutBar()), "enter clear filter"))
+	assert.True(t, strings.HasPrefix(ansi.Strip(m.renderShortcutBar()), "enter show 2"))
 }
 
 func TestFilterKeyOpensTheDialogFromTheHiddenRow(t *testing.T) {
@@ -431,7 +557,7 @@ func TestFilterSavesOnEveryChange(t *testing.T) {
 	require.Contains(t, stub.filters, "p1")
 	selectRow(t, m, selection.FocusHidden, "c1")
 	dispatchKeys(m, "enter")
-	assert.NotContains(t, stub.filters, "p1", "enter on a hidden row saves the cleared filter")
+	assert.Equal(t, data.Filter{Statuses: []string{"todo"}}, stub.filters["p1"], "enter on a hidden row leaves the saved filter alone")
 }
 
 func TestFilterAndItsCursorSurviveARestart(t *testing.T) {

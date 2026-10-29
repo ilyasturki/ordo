@@ -140,6 +140,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if updated, ok := next.(model); ok {
 		updated.collapseLeftRow()
 		updated.releaseFilteredOut()
+		updated.releasePeek()
 		updated.trackCursor()
 		return updated, cmd
 	}
