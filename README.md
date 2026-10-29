@@ -98,6 +98,8 @@ The layout follows Google Tasks. Projects are tabs across the top, and each cate
 
 The TUI doesn't watch the file: once an edit from the app lands, the TUI's next edit is refused and marked, and `r` shows the change, dropping the TUI edits made since.
 
+A native Android app is on trial beside it, in `native/`: Kotlin and Jetpack Compose, the same Go code for the edits, bound with gomobile, and the same pairing and sync. `just native` builds it with the flake's Android SDK and installs it on the connected phone as Ordo Native, next to the Capacitor app.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/phone-dark.png">
   <img alt="The Ordo app on a phone: the ferry project's tasks under the project tabs, a task with its details, status, priority, tag, estimate and subtasks, and the inline row adding a task" src="assets/phone-light.png">

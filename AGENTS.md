@@ -59,3 +59,19 @@ width to `/tmp/ordo-web/out/` (`ORDO_WEB_SIZE=340x734` for a narrow phone). Read
 them, then `rm -rf /tmp/ordo-web`. Add a shot in `fixture-shots.mjs` for a new
 screen or sheet. `just phone` reshoots the README's phone screens from
 `assets/phone/` after a change to the list, the task page or the add row.
+
+# Native app
+
+`native/` holds a native Android app (Kotlin, Jetpack Compose, Material 3) on
+trial beside the Capacitor one. Its edits run `internal/core` bound with
+gomobile in `native/core`, a module of its own that `./...` and `nix build`
+skip, so an op change reaches it at the next `just native-core` with no Kotlin
+change. Its sync engine, `sync/SyncEngine.kt`, ports
+`app/src/lib/state.svelte.ts`: a change to `docs/sync.md` lands in both.
+`nix develop .#native` provides its SDK and NDK. `just native-test` runs its Go
+and JVM tests, the JVM ones against the real core through
+`native/core/cmd/corepipe` and a real `ordo serve`. `just native-ui <serial>`
+runs its Compose tests on the emulator that serial names: Gradle's connected
+tasks install on every attached device, the user's phone included.
+`just native` installs the `phone` build, R8-optimized and signed with the
+debug key under the debug id `io.github.ilyasturki.ordo.compose.dev`.

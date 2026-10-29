@@ -8,6 +8,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - `l` in the project picker, dialog or full screen, unlinks this directory on the row marked `(linked)`, and the footer reads `l unlink` there. The unlink holds for the rest of the session: opening or creating a project no longer links the directory until `l` links it again
 - A Row marks section at the end of `?` names what each glyph on a row means: status boxes, priority arrows, the tag dot, `¶`, `▣`, the estimate, subtask progress, `✂`, separators, folds and `(filtered out)`. The help filter `/` finds them by meaning
+- A native Android app to try beside the current one, in `native/`: Kotlin and Jetpack Compose with Material 3, installed as Ordo Native next to the Capacitor app. Its edits run through the TUI's own Go code, bound with gomobile, and it syncs with `ordo serve` the way the app does, in the background too once the app is closed. Finished tasks stay in place, struck through, and the filter follows the TUI's rules, counting what it hides in each category; a tap on that count shows the hidden rows until you change project or filter. Projects are tabs over a pager that follows the finger, one `+` opens a sheet on the keyboard to add tasks, and the task page shows only the fields that are set, with Mark done floating at the bottom right. The not-synced icon only shows once edits stay stuck, and tapping it says why. `just native` builds and installs it, `just native-test` and `just native-ui <emulator>` test it
 
 ### Changed
 

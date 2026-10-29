@@ -1,6 +1,6 @@
 # Sync API
 
-`ordo serve` answers the phone app and the browser app under `/api`. Both keep a copy of every project and a queue of the edits made on it, and edit the copy through `internal/operations` compiled to WebAssembly (`cmd/ordo-core`), so an edit made with no signal shows at once and reaches the files later. The server replays the queue through the same code, under the same lock as every other writer (see [file-format.md](file-format.md#locks)).
+`ordo serve` answers the phone apps and the browser app under `/api`. Each keeps a copy of every project and a queue of the edits made on it, and edits the copy through `internal/operations`, compiled to WebAssembly (`cmd/ordo-core`) or, for the native Android app, bound with gomobile (`native/core`), so an edit made with no signal shows at once and reaches the files later. The server replays the queue through the same code, under the same lock as every other writer (see [file-format.md](file-format.md#locks)).
 
 Every answer is JSON, and gzipped for a client that sends `Accept-Encoding: gzip`. An error answers `{"error": "<message for the user>", "protocol": 1}`.
 
