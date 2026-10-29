@@ -13,6 +13,7 @@ import io.github.ilyasturki.ordo.compose.data.Store
 import io.github.ilyasturki.ordo.compose.sync.SyncEngine
 import io.github.ilyasturki.ordo.compose.sync.SyncWorker
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -35,11 +36,11 @@ class OrdoApp : Application() {
         scope.launch { engine.boot() }
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
-                scope.launch { engine.foreground(true) }
+                scope.launch(start = CoroutineStart.UNDISPATCHED) { engine.foreground(true) }
             }
 
             override fun onStop(owner: LifecycleOwner) {
-                scope.launch { engine.foreground(false) }
+                scope.launch(start = CoroutineStart.UNDISPATCHED) { engine.foreground(false) }
             }
         })
         getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(

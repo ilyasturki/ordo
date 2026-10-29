@@ -119,6 +119,9 @@ class SyncEngine(
     private var failures = 0
     private var failingSince = 0L
     private var foreground = false
+    // The last state asked for, set in the caller's order: the lane applies it whatever order the calls reach it in.
+    @Volatile
+    private var wanted = false
     private var stream: EventSource? = null
     private var streamGen = 0
 
@@ -218,7 +221,7 @@ class SyncEngine(
             store.saveProject(StoredProject(pid, p.name, e.stamp, e.error), raw)
         }
         schedule(delays.sync)
-        background()
+        if (!foreground) background()
     }
 
     private fun schedule(ms: Long) {
@@ -300,8 +303,7 @@ class SyncEngine(
         if (trouble is Trouble.Outdated) return Round.STOP
         backoff = minOf(delays.maxBackoff, if (backoff == 0L) delays.firstBackoff else backoff * 2)
         // Out of sight, WorkManager retries what waits; nothing else needs the radio.
-        if (foreground) schedule(backoff)
-        if (queue.isNotEmpty()) background()
+        if (foreground) schedule(backoff) else if (queue.isNotEmpty()) background()
         return Round.RETRY
     }
 
@@ -378,16 +380,22 @@ class SyncEngine(
 
     // The app came to the front or left it: the front polls and keeps the live stream open.
     suspend fun foreground(on: Boolean) {
+        wanted = on
         awaitBoot()
-        withContext(lane) {
-            foreground = on
-            listen(on)
-            if (!on && queue.isEmpty()) {
-                timer?.cancel()
-                timer = null
+        val front = withContext(lane) {
+            foreground = wanted
+            listen(foreground)
+            if (!foreground) {
+                if (queue.isEmpty()) {
+                    timer?.cancel()
+                    timer = null
+                } else {
+                    background()
+                }
             }
+            foreground
         }
-        if (on) sync()
+        if (front) sync()
     }
 
     // The network came back.
