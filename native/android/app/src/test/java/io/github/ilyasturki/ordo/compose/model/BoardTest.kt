@@ -83,7 +83,7 @@ class BoardTest {
     fun aPeekRevealsTheCategoryMuted() {
         val f = Filter(statuses = setOf(Status.TODO))
         assertEquals(
-            listOf("# Feature", "a~,  a1~,  a2", "sep", "b~", "c", "(2 hidden, peeking)", "# UI < Feature", "(1 hidden)", "# Fix", "e"),
+            listOf("# Feature", "a,  a1~,  a2", "sep", "b~", "c", "(2 hidden, peeking)", "# UI < Feature", "(1 hidden)", "# Fix", "e"),
             shape(Board.lines(project, f, peek = "feat")),
         )
     }

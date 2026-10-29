@@ -6,7 +6,6 @@ data class Row(
     val childTotal: Int = 0,
     val images: Int = 0,
     val preview: String = "",
-    // Shown by a peek or held after an edit, though the filter hides it.
     val muted: Boolean = false,
 )
 
@@ -45,11 +44,11 @@ object Board {
                 if (shown[i] || peeking) {
                     val children = (i + 1 until end)
                         .filter { shown[it] || peeking }
-                        .map { row(cat.tasks[it], cat, filter, peeking || cat.tasks[it].id in held) }
+                        .map { row(cat.tasks[it], cat, filter, held, hidden = !shown[it]) }
                     val kids = cat.tasks.subList(i + 1, end)
                     out += Block(
                         cat.id,
-                        row(cat.tasks[i], cat, filter, peeking || cat.tasks[i].id in held).copy(
+                        row(cat.tasks[i], cat, filter, held, hidden = !shown[i]).copy(
                             childDone = kids.count { it.finished },
                             childTotal = kids.size,
                         ),
@@ -64,11 +63,12 @@ object Board {
         return out
     }
 
-    private fun row(task: Task, cat: Category, filter: Filter, revealed: Boolean) = Row(
+    // Muted: a row only a peek shows, or one held where an edit left it though the filter no longer matches.
+    private fun row(task: Task, cat: Category, filter: Filter, held: Set<String>, hidden: Boolean) = Row(
         task = task,
         images = Description.images(task.description),
         preview = Description.preview(task.description),
-        muted = revealed && !task.separator && !filter.taskVisible(task, cat),
+        muted = !task.separator && (hidden || (task.id in held && !filter.taskVisible(task, cat))),
     )
 
     fun shownRows(cat: Category, filter: Filter, held: Set<String> = emptySet()): BooleanArray {
