@@ -73,7 +73,8 @@ ports `app/src/lib/state.svelte.ts`: a change to `docs/sync.md` lands in both.
 `nix develop .#native` provides its SDK and NDK. `just native-test` runs its Go
 and JVM tests, the JVM ones against the real core through
 `native/core/cmd/corepipe` and a real `ordo serve`. `just native-ui <serial>`
-runs its Compose tests on the emulator that serial names: Gradle's connected
+runs its Compose tests against a seeded `ordo serve` on `ORDO_UI_PORT` (7466), on
+the emulator that serial names: Gradle's connected
 tasks install on every attached device, the user's phone included.
 `just native` installs the `phone` build, R8-optimized and signed with the
 debug key under the debug id `io.github.ilyasturki.ordo.compose.dev`.

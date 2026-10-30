@@ -22,7 +22,6 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.unit.width
-import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
@@ -63,6 +62,19 @@ class AppTest : AppFixture() {
         val label = compose.onNodeWithText("Ordo", useUnmergedTree = true).getUnclippedBoundsInRoot()
         assertEquals(label.left.value, bar.left.value, 1f)
         assertEquals(label.width.value, bar.width.value, 1f)
+    }
+
+    private fun back() {
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        compose.waitForIdle()
+    }
+
+    // The first back may only close the keyboard.
+    private fun backUntil(gone: String) {
+        repeat(3) {
+            if (compose.onAllNodesWithContentDescription(gone).fetchSemanticsNodes().isNotEmpty()) back()
+        }
+        compose.onNodeWithContentDescription(gone).assertDoesNotExist()
     }
 
     @Test
@@ -161,6 +173,22 @@ class AppTest : AppFixture() {
     }
 
     @Test
+    fun aPhotoWaitingOnThePhoneShowsAndCountsInTheExplanation() {
+        val images = engine.images
+        val temp = images.newTemp().apply { writeBytes(byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3)) }
+        val kept = images.keep(temp, "offline.png")
+        runBlocking { engine.attach(PID, task("Recurring tasks")!!.id, listOf(kept)) }
+        compose.waitUntil(15_000) { compose.onAllNodesWithContentDescription("Not synced").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("Not synced").performClick()
+        compose.onNodeWithText("1 edit and 1 photo wait safely on this phone.").assertIsDisplayed()
+        back()
+        scrollTo("Recurring tasks")
+        compose.onNodeWithText("Recurring tasks").performClick()
+        compose.onNodeWithContentDescription("offline").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Remove offline").assertIsDisplayed()
+    }
+
+    @Test
     fun theTaskPageShowsWhatIsSetAndMarkDoneStaysOnIt() {
         openTask("Tap a row to focus it")
         compose.onNodeWithContentDescription("Mark done").assertIsDisplayed()
@@ -219,14 +247,13 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Recurring tasks").assertDoesNotExist()
         compose.onNodeWithContentDescription("Add a task").assertDoesNotExist()
         compose.onNodeWithText("Pairing link login").performClick()
-        compose.onNodeWithContentDescription("Mark done").assertIsDisplayed()
-        Espresso.pressBack()
+        compose.onNodeWithContentDescription("Back").assertIsDisplayed()
+        backUntil("Back")
         compose.onNodeWithText("Pairing link login").assertIsDisplayed()
         compose.onNodeWithText("Recurring tasks").assertDoesNotExist()
         compose.onNode(hasSetTextAction()).performTextReplacement("no such task anywhere")
         compose.onNodeWithText("Nothing matches").assertIsDisplayed()
-        Espresso.closeSoftKeyboard()
-        Espresso.pressBack()
+        backUntil("Close search")
         compose.onNodeWithContentDescription("Search").assertIsDisplayed()
         compose.onNodeWithContentDescription("Add a task").assertIsDisplayed()
         scrollTo("Recurring tasks")
