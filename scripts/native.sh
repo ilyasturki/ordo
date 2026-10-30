@@ -13,6 +13,7 @@ phone=native/android/app/build/outputs/apk/phone/app-phone.apk
 core() {
     local bin=$root/native/core/.bin
     GOBIN=$bin go -C native/core install tool
+    mkdir -p native/android/app/libs
     (cd native/core && PATH=$bin:$PATH gomobile bind -target=android/arm64,android/amd64 -androidapi 26 \
         -javapkg io.github.ilyasturki.ordo.core -ldflags='-s -w' -trimpath \
         -o "$root/native/android/app/libs/ordocore.aar" ./ordocore)
