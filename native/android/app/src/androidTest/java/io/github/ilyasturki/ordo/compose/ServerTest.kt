@@ -31,6 +31,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
@@ -228,8 +229,8 @@ class ServerTest {
         compose.onNodeWithContentDescription("Account and settings").performClick()
         compose.onNodeWithText("Devices").performClick()
         waitForText("$name · this device")
-        compose.onNodeWithContentDescription("Sign out $other").performClick()
-        compose.onNodeWithText("Sign out “$other”?").assertExists()
+        compose.onNodeWithContentDescription("Sign out $other").performScrollTo().performClick()
+        waitForText("Sign out “$other”?")
         inDialog("Sign out").performClick()
         compose.waitUntil(WAIT) { compose.onAllNodesWithContentDescription("Sign out $other").fetchSemanticsNodes().isEmpty() }
         val refused = runCatching { runBlocking { Api(server, token).devices() } }.exceptionOrNull()
@@ -242,8 +243,8 @@ class ServerTest {
         compose.onNodeWithContentDescription("Account and settings").performClick()
         compose.onNodeWithText("Devices").performClick()
         waitForText("$name · this device")
-        compose.onNodeWithContentDescription("Sign out $name").performClick()
-        compose.onNodeWithText("This phone signs out and forgets its copy of your projects.").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Sign out $name").performScrollTo().performClick()
+        waitForText("This phone signs out and forgets its copy of your projects.")
         inDialog("Sign out").performClick()
         waitForText("Pair")
         assertNull(engine.state.value.session)
@@ -255,8 +256,8 @@ class ServerTest {
         compose.onNodeWithContentDescription("Account and settings").performClick()
         compose.onNodeWithText("Devices").performClick()
         waitForText("$name · this device")
-        compose.onNodeWithText("Sign out").performClick()
-        compose.onNodeWithText("Sign out?").assertIsDisplayed()
+        compose.onNodeWithText("Sign out").performScrollTo().performClick()
+        waitForText("Sign out?")
         inDialog("Sign out").performClick()
         waitForText("Pair")
         assertNull(engine.state.value.session)
@@ -268,7 +269,7 @@ class ServerTest {
         compose.onNodeWithContentDescription("Account and settings").performClick()
         compose.onNodeWithText("Devices").performClick()
         waitForText("$name · this device")
-        compose.onNodeWithText("Pair a new device").performClick()
+        compose.onNodeWithText("Pair a new device").performScrollTo().performClick()
         waitForText("Type the passphrase again to make a pairing code.")
         compose.onNode(hasSetTextAction()).performTextInput(passphrase)
         compose.onNodeWithText("Make a code").performClick()
@@ -305,6 +306,7 @@ class ServerTest {
         compose.onNodeWithTag("viewer").assertIsDisplayed()
         compose.waitUntil(WAIT) { compose.onAllNodes(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).fetchSemanticsNodes().isEmpty() }
         back()
+        waitForDescription("Remove Holiday in Rome")
         compose.onNodeWithContentDescription("Remove Holiday in Rome").performClick()
         compose.waitUntil(WAIT) { images("Recurring tasks").isEmpty() }
         waitForText("Undo")
@@ -382,7 +384,7 @@ class ServerTest {
         compose.onNodeWithTag("viewer").performTouchInput { swipeRight() }
         waitForText("1 of 2")
         back()
-        compose.onNodeWithContentDescription("Mark done").assertIsDisplayed()
+        waitForDescription("Mark done")
     }
 
     @Test
