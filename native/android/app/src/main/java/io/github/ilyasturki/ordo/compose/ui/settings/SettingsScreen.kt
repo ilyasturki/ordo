@@ -19,10 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,22 +27,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.ilyasturki.ordo.compose.ui.DevicesKey
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LicenceKey
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.NavKey
-import io.github.ilyasturki.ordo.compose.ui.home.ConfirmDialog
 import io.github.ilyasturki.ordo.compose.ui.home.ago
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(open: (NavKey) -> Unit, back: () -> Unit) {
     val engine = LocalEngine.current
     val state by engine.state.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    var signingOut by remember { mutableStateOf(false) }
     val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
 
     Scaffold(
@@ -64,24 +58,13 @@ fun SettingsScreen(open: (NavKey) -> Unit, back: () -> Unit) {
                 "Sync",
                 buildString {
                     append(if (state.lastSync == 0L) "Not synced since the app started" else "Synced ${ago(state.lastSync)}")
-                    if (state.pending > 0) append(" · ${state.pending} waiting")
+                    if (state.waiting) append(" · ${state.waitingWords} waiting")
                 },
             )
-            Item(Icons.Logout, "Sign out", "Drops this phone's copy; the server keeps everything it got", danger = true) { signingOut = true }
+            Item(Icons.Devices, "Devices", "Pair a new device, sign out") { open(DevicesKey) }
             Label("About")
             Item(Icons.Notes, "Font licence", "Google Sans Flex, SIL Open Font License 1.1") { open(LicenceKey) }
             Item(Icons.Label, "Version", version)
-        }
-    }
-
-    if (signingOut) {
-        val text = if (state.pending > 0) {
-            "${state.pending} edits haven't reached the server yet: signing out drops them."
-        } else {
-            "The server keeps your projects; pair this phone again to get them back."
-        }
-        ConfirmDialog("Sign out?", text, "Sign out", { signingOut = false }) {
-            scope.launch { engine.signOut() }
         }
     }
 }
@@ -97,7 +80,7 @@ private fun Label(text: String) {
 }
 
 @Composable
-private fun Item(icon: ImageVector, title: String, detail: String, danger: Boolean = false, onClick: (() -> Unit)? = null) {
+internal fun Item(icon: ImageVector, title: String, detail: String, danger: Boolean = false, onClick: (() -> Unit)? = null) {
     val color = if (danger) MaterialTheme.colorScheme.error else Color.Unspecified
     Row(
         Modifier

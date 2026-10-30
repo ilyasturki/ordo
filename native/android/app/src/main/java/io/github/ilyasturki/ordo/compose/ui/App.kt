@@ -29,6 +29,9 @@ data class ViewerKey(val pid: String, val tid: String, val start: Int) : NavKey
 data object SettingsKey : NavKey
 
 @Serializable
+data object DevicesKey : NavKey
+
+@Serializable
 data object LicenceKey : NavKey
 
 @Serializable

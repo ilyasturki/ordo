@@ -515,6 +515,45 @@ class SyncEngine(
         }
     }
 
+    // Whether that server takes a passphrase: false for one that doesn't, or doesn't answer.
+    suspend fun offersPassphrase(server: String): Boolean = try {
+        withContext(io) { api(Session(server, "")).hello().hasPassphrase }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        false
+    }
+
+    suspend fun login(server: String, passphrase: String): String? = try {
+        val token = withContext(io) { api(Session(server, "")).login(passphrase, deviceName) }
+        signIn(Session(server, token))
+        null
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        e.message ?: "Can't sign in"
+    }
+
+    // The device's own calls: a token the server stopped taking ends the session as a sync would.
+    private suspend fun <T> asDevice(call: suspend Api.() -> T): T {
+        val s = session ?: throw ServerError(401, "Sign in again")
+        try {
+            return withContext(io) { api(s).call() }
+        } catch (e: ServerError) {
+            if (e.status == 401) withContext(lane) { if (session == s) expire() }
+            throw e
+        }
+    }
+
+    suspend fun devices(): Devices = asDevice { devices() }
+
+    suspend fun pairDevice(passphrase: String): PairCode = asDevice { pairDevice(passphrase) }
+
+    // Signs that device out, with the ones it paired: this phone too when it is one of them.
+    suspend fun revoke(id: String) {
+        if (asDevice { revoke(id) }) signOut()
+    }
+
     suspend fun signIn(next: Session) {
         withContext(lane) {
             val previous = session

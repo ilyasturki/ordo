@@ -103,16 +103,21 @@ class Server : AutoCloseable {
         false
     }
 
-    fun ordo(vararg args: String): String {
+    fun ordo(vararg args: String, stdin: String = ""): String {
         val pb = ProcessBuilder(listOf(File(bin, "ordo").path) + args).redirectErrorStream(true)
         pb.environment().putAll(env)
         val p = pb.start()
+        p.outputStream.bufferedWriter().use { it.write(stdin) }
         val out = p.inputStream.bufferedReader().readText()
         check(p.waitFor() == 0) { "ordo ${args.joinToString(" ")}: $out" }
         return out
     }
 
     fun pairLink(): String = ordo("serve", "pair", "--base-url", url).lineSequence().first { it.startsWith("http") }.trim()
+
+    fun passphrase(phrase: String) {
+        ordo("serve", "passphrase", stdin = phrase + "\n")
+    }
 
     // An image as the server stored it, null while it hasn't.
     fun attachment(name: String): ByteArray? =

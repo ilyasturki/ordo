@@ -24,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,14 +36,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import io.github.ilyasturki.ordo.compose.sync.parseServer
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +62,28 @@ fun SignInScreen(onBack: (() -> Unit)?) {
     var link by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var passphrase by remember { mutableStateOf("") }
+    var passError by remember { mutableStateOf<String?>(null) }
+    // The session's server when it expired, else the address typed in the field: it decides if a passphrase is offered.
+    val known = state.session?.server
+    val server = known ?: parseServer(link)
+    var offering by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(server) {
+        offering = null
+        if (server == null) return@LaunchedEffect
+        if (known == null) delay(400)
+        if (engine.offersPassphrase(server)) offering = server
+    }
+
+    fun finished(failure: String?) {
+        if (failure == null) {
+            focus.clearFocus()
+            feedback.commit()
+            onBack?.invoke()
+        } else {
+            feedback.reject()
+        }
+    }
 
     fun pair(text: String) {
         if (busy) return
@@ -66,13 +92,19 @@ fun SignInScreen(onBack: (() -> Unit)?) {
         scope.launch {
             error = engine.pair(text)
             busy = false
-            if (error == null) {
-                focus.clearFocus()
-                feedback.commit()
-                onBack?.invoke()
-            } else {
-                feedback.reject()
-            }
+            finished(error)
+        }
+    }
+
+    fun login() {
+        val at = offering
+        if (busy || at == null || passphrase == "") return
+        busy = true
+        passError = null
+        scope.launch {
+            passError = engine.login(at, passphrase)
+            busy = false
+            finished(passError)
         }
     }
 
@@ -99,13 +131,13 @@ fun SignInScreen(onBack: (() -> Unit)?) {
                 Text("Ordo", style = MaterialTheme.typography.displaySmall)
             }
             Text(
-                "Pair this phone with your ordo serve. On a paired device, open Devices and pick “Pair a new device”, or run “ordo serve pair” on the server. Then scan its code or paste its link.",
+                "Pair this phone with your ordo serve. On a paired device, open Settings, then Devices, and pick “Pair a new device”, or run “ordo serve pair” on the server. Then scan its code or paste its link.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (state.session?.expired == true && state.pending > 0) {
+            if (state.session?.expired == true && state.waiting) {
                 Text(
-                    "${state.pending} edits wait on this phone: they sync once it is paired again with the same server.",
+                    "${state.waitingWords} on this phone: they sync once it is signed in again to the same server.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -134,8 +166,8 @@ fun SignInScreen(onBack: (() -> Unit)?) {
                     error = null
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Pairing link") },
-                placeholder = { Text("https://…/pair/…") },
+                label = { Text(if (known == null) "Pairing link or server address" else "Pairing link") },
+                placeholder = { Text("https://…") },
                 singleLine = true,
                 isError = error != null,
                 supportingText = error?.let { { Text(it) } },
@@ -149,8 +181,30 @@ fun SignInScreen(onBack: (() -> Unit)?) {
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { pair(link) }),
             )
-            Button(onClick = { pair(link) }, enabled = link.isNotBlank() && !busy, modifier = Modifier.fillMaxWidth()) {
-                Text(if (busy) "Pairing…" else "Pair")
+            if (offering == null || known != null) {
+                Button(onClick = { pair(link) }, enabled = link.isNotBlank() && !busy, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (busy) "Pairing…" else "Pair")
+                }
+            }
+            if (offering != null) {
+                OutlinedTextField(
+                    passphrase,
+                    {
+                        passphrase = it
+                        passError = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Passphrase") },
+                    singleLine = true,
+                    isError = passError != null,
+                    supportingText = passError?.let { { Text(it) } },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Password, imeAction = ImeAction.Go),
+                    keyboardActions = KeyboardActions(onGo = { login() }),
+                )
+                Button(onClick = ::login, enabled = passphrase != "" && !busy, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (busy) "Signing in…" else "Sign in")
+                }
             }
             Spacer(Modifier.height(8.dp))
         }

@@ -3,6 +3,7 @@ package io.github.ilyasturki.ordo.compose.sync
 import io.github.ilyasturki.ordo.compose.model.json
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
@@ -24,6 +25,7 @@ import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
 import java.io.File
 import java.io.IOException
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -50,6 +52,29 @@ data class ProjectState(
 
 @Serializable
 data class SyncAnswer(val protocol: Int, val results: List<SyncResult> = emptyList(), val projects: List<ProjectState> = emptyList())
+
+@Serializable
+data class Hello(@SerialName("has_passphrase") val hasPassphrase: Boolean = false)
+
+@Serializable
+data class DeviceInfo(
+    val id: String,
+    val name: String,
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("last_seen") val lastSeen: String = "",
+    val from: String = "",
+    val also: List<String> = emptyList(),
+    val self: Boolean = false,
+)
+
+@Serializable
+data class Devices(val devices: List<DeviceInfo> = emptyList(), @SerialName("has_passphrase") val hasPassphrase: Boolean = false)
+
+@Serializable
+data class PairCode(val link: String, val qr: String, val minutes: Int)
+
+@Serializable
+private data class RevokeAnswer(val self: Boolean = false)
 
 @Serializable
 private data class TokenAnswer(val token: String)
@@ -118,6 +143,20 @@ class Api(val server: String, private val token: String, private val http: OkHtt
     suspend fun logout() {
         post("/api/logout", JsonObject(emptyMap()), Unit.serializer())
     }
+
+    suspend fun hello(): Hello = call(request("/api/hello").build(), Hello.serializer())
+
+    suspend fun login(passphrase: String, name: String): String =
+        post("/api/login", buildJsonObject { put("passphrase", passphrase); put("name", name) }, TokenAnswer.serializer()).token
+
+    suspend fun devices(): Devices = call(request("/api/devices").build(), Devices.serializer())
+
+    suspend fun pairDevice(passphrase: String): PairCode =
+        post("/api/devices/pair", buildJsonObject { put("passphrase", passphrase) }, PairCode.serializer())
+
+    // True when the device asking is one of those it signed out.
+    suspend fun revoke(id: String): Boolean =
+        post("/api/devices/${URLEncoder.encode(id, "UTF-8")}/revoke", JsonObject(emptyMap()), RevokeAnswer.serializer()).self
 
     suspend fun putImage(name: String, file: File) {
         call(request("/api/attachments/$name").put(file.asRequestBody(bytesType)).build(), Unit.serializer(), transfers)
