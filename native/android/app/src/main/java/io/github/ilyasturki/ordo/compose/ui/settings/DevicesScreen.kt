@@ -153,7 +153,10 @@ fun DevicesScreen(back: () -> Unit) {
     }
 
     if (pairing) {
-        PairSheet(devices?.hasPassphrase == true) { pairing = false }
+        PairSheet(devices?.hasPassphrase == true) {
+            pairing = false
+            scope.launch { load() }
+        }
     }
 }
 
