@@ -52,8 +52,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-// A picked or photographed image as a file waiting for the server. A phone's HEIC or other format
-// the server refuses becomes a jpeg.
+// A picked or photographed image as a file waiting for the server; a format it refuses, a phone's HEIC, becomes a jpeg.
 fun Images.take(resolver: ContentResolver, uri: Uri, alt: String = displayName(resolver, uri)): Kept {
     val input = resolver.openInputStream(uri) ?: throw ImageRefused(Images.NOT_AN_IMAGE)
     val temp = input.use(::copy)
@@ -77,8 +76,7 @@ private fun displayName(resolver: ContentResolver, uri: Uri): String =
         if (c.moveToFirst()) c.getString(0) else null
     } ?: uri.lastPathSegment.orEmpty()
 
-// At the size it shows, the system applying the photo's rotation: a phone's photo decoded whole is
-// 50 MB. Cover fills the box and may overflow it, otherwise it fits inside.
+// At the size it shows, a phone's photo being 50 MB whole; cover fills the box and may overflow it, otherwise it fits inside.
 fun decode(file: File, width: Int, height: Int, cover: Boolean): Bitmap? = try {
     fun scale(w: Int, h: Int): Float {
         val x = width.toFloat() / w

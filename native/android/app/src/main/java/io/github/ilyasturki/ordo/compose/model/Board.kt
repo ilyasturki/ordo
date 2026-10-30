@@ -77,8 +77,7 @@ object Board {
         muted = !task.separator && (hidden || (task.id in held && !filter.taskVisible(task, cat))),
     )
 
-    // What the TUI's search matches (internal/app/search.go rowMatches), as a narrower list: a row
-    // stays when it or a subtask matches, and under a category whose name matches, every row stays.
+    // The TUI's search (internal/app/search.go rowMatches) as a narrower list: a row stays when it or a subtask matches, every row under a matching category.
     fun search(lines: List<Line>, query: String): List<Line> {
         val q = query.trim()
         if (q == "") return lines

@@ -281,6 +281,7 @@ class ImagesTest {
         assertEquals("a b", Images.altOf("a[b].png"))
         assertEquals("photo", Images.altOf("image.jpeg"))
         assertEquals("photo", Images.altOf(""))
+        assertEquals("the picker hides the real name", "photo", Images.altOf("1000000019.jpg"))
     }
 
     @Test

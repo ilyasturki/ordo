@@ -215,8 +215,7 @@ class SyncEngine(
         a
     }
 
-    // Queues the op naming images already kept on the phone: the bytes go first, so a crash
-    // between the two leaves a file to upload, never a line the server can't show.
+    // The bytes are on the phone before this op: a crash between the two leaves a file to upload, never a line the server can't show.
     suspend fun attach(pid: String, tid: String, kept: List<Kept>): Answer = withContext(lane) {
         tracked()
         val a = edit(pid, Ops.attach(tid, kept.map(Kept::line)))
@@ -233,11 +232,11 @@ class SyncEngine(
     }
 
     // The image's file on the phone, fetched the first time; null when it can't be had right now.
-    suspend fun image(name: String): File? {
-        images.file(name)?.let { return it }
-        val s = session?.takeUnless { it.expired } ?: return null
-        return try {
-            withContext(io) { images.cached(name) { api(s).image(name, it) } }
+    suspend fun image(name: String): File? = withContext(io) {
+        images.file(name)?.let { return@withContext it }
+        val s = session?.takeUnless { it.expired } ?: return@withContext null
+        try {
+            images.cached(name) { api(s).image(name, it) }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -343,8 +342,7 @@ class SyncEngine(
 
     private val waiting: Boolean get() = queue.isNotEmpty() || unsent.isNotEmpty()
 
-    // Sends the images ahead of the ops naming them, those kept meanwhile too: once none is left,
-    // the caller takes the queue with nothing in between. False when the session changed under it.
+    // Sends the images ahead of the ops naming them, those kept meanwhile too; false when the session changed under it.
     private suspend fun upload(s: Session): Boolean {
         while (true) {
             val name = unsent.firstOrNull() ?: return true

@@ -14,8 +14,7 @@ data class Kept(val name: String, val alt: String) {
     val line: String get() = "![$alt](attachments/$name)"
 }
 
-// The phone's image files: those the server hasn't stored yet, kept like the queue, and a bounded
-// cache of the others. Both under the name the server gives the bytes (docs/sync.md, Images).
+// Files under the name the server gives the bytes (docs/sync.md, Images): those it hasn't stored yet, kept like the queue, and a bounded cache of the others.
 class Images(private val waiting: File, private val cache: File, private val bound: Long = 200L shl 20) {
     init {
         waiting.mkdirs()
@@ -154,13 +153,13 @@ class Images(private val waiting: File, private val cache: File, private val bou
             }
         }
 
-        // The alt text of a file's line, as attachments.Line cleans it; a phone's "image" says nothing.
+        // The alt text of a file's line, as attachments.Line cleans it. The photo picker names a file by its number, which says nothing.
         fun altOf(fileName: String): String {
             val dot = fileName.lastIndexOf('.')
             val stem = if (dot > 0) fileName.substring(0, dot) else fileName
             val flat = stem.map { if (it == '[' || it == ']' || it.isISOControl()) ' ' else it }.joinToString("")
                 .trim().replace(Regex("\\s+"), " ")
-            return if (flat == "" || flat == "image") "photo" else flat
+            return if (flat == "image" || flat.all(Char::isDigit)) "photo" else flat
         }
     }
 }

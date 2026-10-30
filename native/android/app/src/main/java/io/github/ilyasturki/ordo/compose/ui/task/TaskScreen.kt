@@ -226,6 +226,8 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
         photo = null
         if (taken && file != null) {
             attach { images -> listOf(images.take(context.contentResolver, Uri.fromFile(file), alt = "photo").also { file.delete() }) }
+        } else {
+            file?.delete()
         }
     }
     fun openCamera() {
