@@ -22,6 +22,8 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.unit.width
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
@@ -62,6 +64,15 @@ class AppTest : AppFixture() {
         val label = compose.onNodeWithText("Ordo", useUnmergedTree = true).getUnclippedBoundsInRoot()
         assertEquals(label.left.value, bar.left.value, 1f)
         assertEquals(label.width.value, bar.width.value, 1f)
+    }
+
+    private fun keyboardIsUp(): Boolean {
+        var up = false
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val top = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).singleOrNull()
+            up = top != null && ViewCompat.getRootWindowInsets(top.window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        }
+        return up
     }
 
     private fun back() {
@@ -242,6 +253,7 @@ class AppTest : AppFixture() {
     @Test
     fun theSearchNarrowsTheListInPlaceAndBackClosesIt() {
         compose.onNodeWithContentDescription("Search").performClick()
+        compose.waitUntil(30_000) { keyboardIsUp() }
         compose.onNode(hasSetTextAction()).performTextInput("pairing")
         compose.onNodeWithText("Pairing link login").assertIsDisplayed()
         compose.onNodeWithText("Recurring tasks").assertDoesNotExist()

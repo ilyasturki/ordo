@@ -103,7 +103,7 @@ fun ProjectList(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(top = 64.dp),
+            modifier = Modifier.fillMaxSize().padding(top = 64.dp),
         )
         return
     }

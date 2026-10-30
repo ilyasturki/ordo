@@ -54,6 +54,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -334,7 +335,8 @@ fun HomeScreen(open: (NavKey) -> Unit) {
 @Composable
 private fun ProjectSearchBar(project: String, search: TextFieldState, onClose: () -> Unit) {
     val focus = remember { FocusRequester() }
-    val keyboard = LocalFocusManager.current
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     val bar = rememberSearchBarState()
     SearchBar(
         state = bar,
@@ -342,7 +344,7 @@ private fun ProjectSearchBar(project: String, search: TextFieldState, onClose: (
             SearchBarDefaults.InputField(
                 search,
                 bar,
-                onSearch = { keyboard.clearFocus() },
+                onSearch = { focusManager.clearFocus() },
                 modifier = Modifier.focusRequester(focus),
                 placeholder = { Text("Search $project", maxLines = 1) },
                 leadingIcon = { IconButton(onClick = onClose) { Icon(Icons.Back, "Close search") } },
@@ -351,7 +353,10 @@ private fun ProjectSearchBar(project: String, search: TextFieldState, onClose: (
         },
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp),
     )
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    LaunchedEffect(Unit) {
+        focus.requestFocus()
+        keyboard?.show()
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
