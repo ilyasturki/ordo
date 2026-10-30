@@ -65,9 +65,9 @@ object Status {
     val all = listOf(TODO, IN_PROGRESS, COMPLETED, CANCELLED)
 
     fun label(status: String): String = when (status) {
-        TODO -> "To do"
-        IN_PROGRESS -> "Doing"
-        COMPLETED -> "Done"
+        TODO -> "Todo"
+        IN_PROGRESS -> "In Progress"
+        COMPLETED -> "Completed"
         CANCELLED -> "Cancelled"
         else -> status
     }

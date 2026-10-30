@@ -36,6 +36,7 @@ import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Header
 import io.github.ilyasturki.ordo.compose.model.Hidden
 import io.github.ilyasturki.ordo.compose.model.Line
+import io.github.ilyasturki.ordo.compose.model.NoTasks
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.model.Status
 import io.github.ilyasturki.ordo.compose.sync.Entry
@@ -99,6 +100,7 @@ fun ProjectList(
                     is Hidden -> HiddenLine(line) {
                         onUi(if (line.peeking) ui.copy(peek = null) else ui.copy(peek = line.cat))
                     }
+                    is NoTasks -> NoTasksLine()
                     is Block -> {
                         val lift by animateDpAsState(if (dragging) 6.dp else 0.dp, label = "lift")
                         Surface(

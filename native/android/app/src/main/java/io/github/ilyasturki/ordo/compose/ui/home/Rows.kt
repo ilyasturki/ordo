@@ -106,7 +106,7 @@ fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, m
                 color = if (done) colors.onSurfaceVariant else colors.onSurface,
                 textDecoration = if (done) TextDecoration.LineThrough else null,
             )
-            if (!done && row.preview != "") {
+            if (row.preview != "") {
                 Text(
                     row.preview,
                     style = MaterialTheme.typography.bodyMedium,
@@ -117,7 +117,7 @@ fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, m
             }
             val pri = t.priority.takeIf { it != "" && it != "medium" }
             val est = Estimates.format(t.estimateMinutes)
-            if (!done && (pri != null || est != "" || row.childTotal > 0 || row.images > 0)) {
+            if (pri != null || est != "" || row.childTotal > 0 || row.images > 0) {
                 FlowRow(
                     Modifier.padding(top = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -125,7 +125,15 @@ fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, m
                 ) {
                     if (pri != null) {
                         val up = pri == "critical" || pri == "high"
-                        Chip(Icons.priority(pri), Priority.label(pri), if (up) MaterialTheme.marks.up else MaterialTheme.marks.down)
+                        Chip(
+                            Icons.priority(pri),
+                            Priority.label(pri),
+                            when {
+                                done -> colors.onSurfaceVariant
+                                up -> MaterialTheme.marks.up
+                                else -> MaterialTheme.marks.down
+                            },
+                        )
                     }
                     if (est != "") Chip(Icons.Schedule, est)
                     if (row.childTotal > 0) Chip(Icons.Subtask, "${row.childDone}/${row.childTotal}")
@@ -134,7 +142,7 @@ fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, m
             }
         }
         if (t.tagColor != "") {
-            Box(Modifier.height(48.dp), contentAlignment = Alignment.Center) { TagDot(t.tagColor) }
+            Box(Modifier.height(48.dp), contentAlignment = Alignment.Center) { TagDot(t.tagColor, Modifier.alpha(if (done) 0.5f else 1f)) }
         }
     }
 }
@@ -175,7 +183,7 @@ private fun SeparatorRow(label: String, child: Boolean, onOpen: () -> Unit, modi
     ) {
         if (label != "") {
             Text(
-                label.uppercase(),
+                label,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -183,6 +191,16 @@ private fun SeparatorRow(label: String, child: Boolean, onOpen: () -> Unit, modi
         }
         HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
     }
+}
+
+@Composable
+fun NoTasksLine() {
+    Text(
+        "No tasks",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 56.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+    )
 }
 
 @Composable

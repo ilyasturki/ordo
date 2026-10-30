@@ -122,7 +122,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
 
     suspend fun saveTitle() {
         val next = title.replace(space, " ").trim()
-        if (next.isEmpty() || next == titleBase) return
+        if ((next.isEmpty() && !task.separator) || next == titleBase) return
         val base = titleBase
         titleBase = next
         val a = engine.edit(pid, Ops.title(tid, next, base), quiet = true)
@@ -201,7 +201,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
         },
         floatingActionButton = {
             if (!task.separator && !WindowInsets.isImeVisible) {
-                val label = if (done) "Mark open" else "Mark done"
+                val label = if (done) "Mark todo" else "Mark done"
                 ExtendedFloatingActionButton(
                     text = { Text(label) },
                     icon = { Icon(if (done) Icons.Todo else Icons.Check, null) },
@@ -209,10 +209,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                     onClick = {
                         scope.launch {
                             val a = engine.edit(pid, Ops.status(tid, if (done) Status.TODO else Status.COMPLETED))
-                            if (a.applied && !done) {
-                                feedback.commit()
-                                back()
-                            }
+                            if (a.applied && !done) feedback.commit()
                         }
                     },
                 )
@@ -263,7 +260,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                             if (it.isFocused) return@onFocusChanged
                             if (details == detailsBase) adoptDetails() else scope.launch { saveDetails() }
                         },
-                    placeholder = { Text("Add details") },
+                    placeholder = { Text("Add a description") },
                     textStyle = MaterialTheme.typography.bodyLarge,
                     colors = plainFieldColors(),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),

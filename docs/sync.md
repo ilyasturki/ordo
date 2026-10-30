@@ -42,7 +42,7 @@ One round trip sends the queue and brings back every project that changed.
 {
   "protocol": 1,
   "results": [
-    { "id": "q1", "status": "applied", "msg": "Marked done" },
+    { "id": "q1", "status": "applied", "msg": "Marked completed" },
     { "id": "q2", "status": "applied", "msg": "Added “Retry uploads”" }
   ],
   "projects": [

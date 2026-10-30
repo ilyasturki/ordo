@@ -59,6 +59,7 @@ import io.github.ilyasturki.ordo.compose.model.Priority
 import io.github.ilyasturki.ordo.compose.model.Project
 import io.github.ilyasturki.ordo.compose.model.Status
 import io.github.ilyasturki.ordo.compose.model.Tags
+import io.github.ilyasturki.ordo.compose.model.Task
 import io.github.ilyasturki.ordo.compose.sync.Entry
 import io.github.ilyasturki.ordo.compose.sync.SyncState
 import io.github.ilyasturki.ordo.compose.sync.Trouble
@@ -87,6 +88,7 @@ fun NameSheet(
     action: String,
     onDismiss: () -> Unit,
     onDone: suspend (String) -> Boolean,
+    blankAllowed: Boolean = false,
     extra: @Composable ColumnScope.() -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -95,7 +97,7 @@ fun NameSheet(
     val sheet = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
     val done: () -> Unit = {
         scope.launch {
-            if (text.text.isNotBlank() && onDone(text.text.trim())) {
+            if ((blankAllowed || text.text.isNotBlank()) && onDone(text.text.trim())) {
                 sheet.hide()
                 onDismiss()
             }
@@ -115,7 +117,7 @@ fun NameSheet(
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { done() }),
                 )
-                TextButton(onClick = done, enabled = text.text.isNotBlank(), modifier = Modifier.padding(end = 8.dp)) { Text(action) }
+                TextButton(onClick = done, enabled = blankAllowed || text.text.isNotBlank(), modifier = Modifier.padding(end = 8.dp)) { Text(action) }
             }
             extra()
         }
@@ -156,6 +158,18 @@ fun countTasks(project: Project, cat: Category): Int {
     return ids.sumOf { c -> c.tasks.count { !it.separator } }
 }
 
+// What deleting a category takes with it, in the TUI's words (internal/app/view_confirm.go).
+fun deletedWith(project: Project, cat: Category): String {
+    val subs = project.categories.count { it.parentId == cat.id }
+    val tasks = countTasks(project, cat)
+    val taskWord = if (tasks == 1) "1 task" else "$tasks tasks"
+    return when (subs) {
+        0 -> "Its $taskWord go too."
+        1 -> "Its sub-category and $taskWord go too."
+        else -> "Its $subs sub-categories and $taskWord go too."
+    }
+}
+
 // Picks one value from a short list, anchored to what opened it.
 @Composable
 fun <T> Picker(
@@ -182,7 +196,7 @@ fun <T> Picker(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun AddSheet(entry: Entry, initialCat: String, onDismiss: () -> Unit, onAdded: (String) -> Unit) {
+fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> Unit, onAdded: (String) -> Unit) {
     val engine = LocalEngine.current
     val scope = rememberCoroutineScope()
     val feedback = rememberFeedback()
@@ -191,17 +205,24 @@ fun AddSheet(entry: Entry, initialCat: String, onDismiss: () -> Unit, onAdded: (
     val categories = entry.project.categories
     var title by remember { mutableStateOf("") }
     var details by remember { mutableStateOf<String?>(null) }
-    var cat by remember { mutableStateOf(categories.firstOrNull { it.id == initialCat }?.id ?: categories.firstOrNull()?.id.orEmpty()) }
+    var cat by remember {
+        mutableStateOf((categories.firstOrNull { it.id == initialCat } ?: categories.firstOrNull(filter::categoryVisible) ?: categories.firstOrNull())?.id.orEmpty())
+    }
     var priority by remember { mutableStateOf("") }
     var tag by remember { mutableStateOf("") }
     var estimate by remember { mutableIntStateOf(0) }
     var after by remember { mutableStateOf("") }
     var menu by remember { mutableStateOf("") }
     val pid = entry.id
+    val hidden = categories.firstOrNull { it.id == cat }?.let { !filter.taskVisible(Task(id = "", priority = priority, tagColor = tag), it) } == true
 
     val save: () -> Unit = save@{
         val text = title.replace(space, " ").trim()
         if (text.isEmpty() || cat.isEmpty()) return@save
+        if (hidden) {
+            feedback.reject()
+            return@save
+        }
         title = ""
         scope.launch {
             val a = engine.edit(pid, Ops.insert(cat, after, text), quiet = true)
@@ -235,12 +256,20 @@ fun AddSheet(entry: Entry, initialCat: String, onDismiss: () -> Unit, onAdded: (
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { save() }),
             )
+            if (hidden) {
+                Text(
+                    "Clear the filter to add a task here",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
             details?.let { d ->
                 TextField(
                     d,
                     { details = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Add details") },
+                    placeholder = { Text("Add a description") },
                     textStyle = MaterialTheme.typography.bodyMedium,
                     colors = plainFieldColors(),
                     maxLines = 5,
@@ -264,7 +293,7 @@ fun AddSheet(entry: Entry, initialCat: String, onDismiss: () -> Unit, onAdded: (
                         })
                     }
                     if (details == null) {
-                        IconButton(onClick = { details = "" }) { Icon(Icons.Notes, "Add details", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        IconButton(onClick = { details = "" }) { Icon(Icons.Notes, "Add a description", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                     Box {
                         if (priority == "") {
@@ -291,7 +320,7 @@ fun AddSheet(entry: Entry, initialCat: String, onDismiss: () -> Unit, onAdded: (
                         Picker(menu == "estimate", { menu = "" }, listOf(0) + Estimates.presets, { if (it == 0) "None" else Estimates.format(it) }, { estimate = it })
                     }
                 }
-                TextButton(onClick = save, enabled = title.isNotBlank()) { Text("Save") }
+                TextButton(onClick = save, enabled = title.isNotBlank() && !hidden) { Text("Save") }
             }
         }
     }
@@ -317,13 +346,6 @@ fun FilterSheet(project: Project, filter: Filter, onChange: (Filter) -> Unit, on
                     Toggle(Priority.label(p), p in filter.priorities) { onChange(filter.copy(priorities = filter.priorities.flip(p))) }
                 }
             }
-            Section("Tag") {
-                for (t in Tags.all + "") {
-                    Toggle(if (t == "") "Untagged" else Tags.label(t), t in filter.tags, leading = if (t == "") null else ({ TagDot(t) })) {
-                        onChange(filter.copy(tags = filter.tags.flip(t)))
-                    }
-                }
-            }
             if (project.categories.isNotEmpty()) {
                 Section("Category") {
                     for (c in project.categories) {
@@ -331,6 +353,13 @@ fun FilterSheet(project: Project, filter: Filter, onChange: (Filter) -> Unit, on
                         Toggle(parent?.let { "${it.name} › ${c.name}" } ?: c.name, c.id in filter.categories) {
                             onChange(filter.copy(categories = filter.categories.flip(c.id)))
                         }
+                    }
+                }
+            }
+            Section("Tag") {
+                for (t in Tags.all + "") {
+                    Toggle(if (t == "") "Untagged" else Tags.label(t), t in filter.tags, leading = if (t == "") null else ({ TagDot(t) })) {
+                        onChange(filter.copy(tags = filter.tags.flip(t)))
                     }
                 }
             }

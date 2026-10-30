@@ -88,6 +88,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     val projects = state.projects
     val scope = rememberCoroutineScope()
     val feedback = rememberFeedback()
+    val snackbar = LocalSnackbar.current
     var sheet by remember { mutableStateOf<HomeSheet?>(null) }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     val uis = remember { mutableStateMapOf<String, ListUi>() }
@@ -98,7 +99,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     val latest by rememberUpdatedState(projects)
     fun filterOf(e: Entry): Filter = (state.prefs.filters[e.id] ?: Filter.NONE).pruned(e.project)
 
-    LaunchedEffect(projects.map { it.id }) {
+    LaunchedEffect(projects.map { it.id }, state.prefs.current) {
         val i = projects.indexOfFirst { it.id == state.prefs.current }
         if (i >= 0 && i != pager.currentPage) pager.scrollToPage(i)
     }
@@ -162,7 +163,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                 FloatingActionButton(onClick = { sheet = HomeSheet.Add(current.id) }) { Icon(Icons.Add, "Add a task") }
             }
         },
-        snackbarHost = { SnackbarHost(LocalSnackbar.current) },
+        snackbarHost = { SnackbarHost(snackbar) },
     ) { pad ->
         if (projects.isEmpty()) {
             Column(
@@ -213,7 +214,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     when (val s = sheet) {
         null -> {}
         is HomeSheet.Add -> entry(s.pid)?.let { e ->
-            AddSheet(e, lastCat[e.id].orEmpty(), onDismiss = { sheet = null }) { cat -> lastCat[e.id] = cat }
+            AddSheet(e, filterOf(e), lastCat[e.id].orEmpty(), onDismiss = { sheet = null }) { cat -> lastCat[e.id] = cat }
         }
         is HomeSheet.Filters -> entry(s.pid)?.let { e ->
             FilterSheet(e.project, filterOf(e), onChange = { f ->
@@ -237,10 +238,16 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             NameSheet(cat.name, "Category name", "Rename", onDismiss = { sheet = null }, onDone = { name ->
                 name == cat.name || engine.edit(e.id, Ops.categoryRename(cat.id, name), quiet = true).applied
             }) {
-                if (cat.parentId == "") {
-                    SheetAction(Icons.NewFolder, "New sub-category") { sheet = HomeSheet.NewCategory(e.id, cat.id) }
+                SheetAction(Icons.NewFolder, "New sub-category") { sheet = HomeSheet.NewCategory(e.id, cat.parentId.ifEmpty { cat.id }) }
+                SheetAction(Icons.Separator, "Add a separator") {
+                    if (filterOf(e).active) {
+                        sheet = null
+                        feedback.reject()
+                        scope.launch { snackbar.showSnackbar("Clear the filter to add a separator") }
+                    } else {
+                        sheet = HomeSheet.NewSeparator(e.id, cat.id)
+                    }
                 }
-                SheetAction(Icons.Separator, "Add a separator") { sheet = HomeSheet.NewSeparator(e.id, cat.id) }
                 SheetAction(Icons.Delete, "Delete category", danger = true) {
                     sheet = null
                     confirm = Confirm.DeleteCategory(e.id, cat.id)
@@ -250,9 +257,8 @@ fun HomeScreen(open: (NavKey) -> Unit) {
         is HomeSheet.NewCategory -> NameSheet("", if (s.parent == "") "New category" else "New sub-category", "Add", onDismiss = { sheet = null }, onDone = { name ->
             engine.edit(s.pid, Ops.categoryAdd(name, s.parent), quiet = true).applied.also { if (it) feedback.commit() }
         })
-        is HomeSheet.NewSeparator -> NameSheet("", "Separator label", "Add", onDismiss = { sheet = null }, onDone = { label ->
-            val cat = entry(s.pid)?.project?.category(s.cat)
-            engine.edit(s.pid, Ops.separator(s.cat, cat?.tasks?.lastOrNull { it.parentId == "" }?.id.orEmpty(), label), quiet = true).applied
+        is HomeSheet.NewSeparator -> NameSheet("", "Separator label", "Add", blankAllowed = true, onDismiss = { sheet = null }, onDone = { label ->
+            engine.edit(s.pid, Ops.separator(s.cat, "", label), quiet = true).applied
         })
         HomeSheet.NewProject -> NameSheet("", "New project", "Add", onDismiss = { sheet = null }, onDone = { name ->
             val pid = engine.createProject(name)
@@ -277,13 +283,18 @@ fun HomeScreen(open: (NavKey) -> Unit) {
         null -> {}
         is Confirm.DeleteProject -> entry(c.pid)?.let { e ->
             val n = e.project.categories.sumOf { cat -> cat.tasks.count { !it.separator } }
-            ConfirmDialog("Delete “${e.name}”?", "Its ${e.project.categories.size} categories and $n tasks go too. This can't be undone.", "Delete", { confirm = null }) {
-                scope.launch { engine.edit(e.id, Ops.projectDelete()) }
+            ConfirmDialog("Delete project “${e.name}”?", "Its ${e.project.categories.size} categories and $n tasks go too. This can't be undone.", "Delete", { confirm = null }) {
+                val wasCurrent = current?.id == e.id
+                scope.launch {
+                    if (engine.edit(e.id, Ops.projectDelete()).applied && wasCurrent) {
+                        engine.state.value.projects.firstOrNull()?.let { engine.setCurrent(it.id) }
+                    }
+                }
             }
         }
         is Confirm.DeleteCategory -> entry(c.pid)?.let { e ->
             val cat = e.project.category(c.cat) ?: return@let
-            ConfirmDialog("Delete “${cat.name}”?", "Its ${countTasks(e.project, cat)} tasks and sub-categories go too. This can't be undone.", "Delete", { confirm = null }) {
+            ConfirmDialog("Delete category “${cat.name}”?", deletedWith(e.project, cat), "Delete", { confirm = null }) {
                 scope.launch { engine.edit(e.id, Ops.categoryDelete(cat.id)) }
             }
         }

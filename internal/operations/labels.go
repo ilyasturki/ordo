@@ -7,9 +7,9 @@ import (
 )
 
 var StatusLabels = map[string]string{
-	domain.StatusTodo:       "To do",
-	domain.StatusInProgress: "Doing",
-	domain.StatusCompleted:  "Done",
+	domain.StatusTodo:       "Todo",
+	domain.StatusInProgress: "In Progress",
+	domain.StatusCompleted:  "Completed",
 	domain.StatusCancelled:  "Cancelled",
 }
 

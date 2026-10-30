@@ -16,6 +16,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The project picker dialog (`ctrl+p`) has the rounded border of the other dialogs, so it stands out from the list behind it. The full-screen picker stays frameless
 - Four tag marks instead of eight: `t`, `T`, the filter and the app offer the four coloured dots and drop the diamonds. A diamond already in a project file, or sent by an older app, reads as its colour's dot
 - The native app moves like any other Android app: its pages open and close, and follow the back gesture, with the system's own animation, and the custom motion is gone (the status circle's bounce, the Mark done button's scale, the tab colour fade, the expressive motion scheme). Sounds and haptics are unchanged
+- The native app does what the TUI does: Mark done stays on the task's page, statuses read Todo, In Progress, Completed and Cancelled (in the app's messages too), a new separator lands first in its category and needs no label, labels read as typed and can be cleared, a task or separator the filter would hide is refused with the TUI's words, finished rows keep their marks, an empty category says No tasks, the filter lists Category before Tag, a sub-category's menu adds a sibling, and deleting the open project opens the first one. "Details" is now "description"
 - Undo brings back a category deleted in the native app, with its sub-categories and tasks, through a new `category.restore` op in [`docs/sync.md`](docs/sync.md)
 
 ### Fixed

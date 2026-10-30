@@ -28,6 +28,10 @@ data class Hidden(override val cat: String, val count: Int, val peeking: Boolean
     override val key get() = "h:$cat"
 }
 
+data class NoTasks(override val cat: String) : Line {
+    override val key get() = "n:$cat"
+}
+
 // The list the TUI draws (internal/app/sync.go rebuildPositions): every category header, rows in
 // file order with the finished ones in place, and a line counting what the filter hides.
 object Board {
@@ -36,6 +40,7 @@ object Board {
         val out = ArrayList<Line>()
         for (cat in project.categories) {
             out += Header(cat, names[cat.parentId].orEmpty())
+            val first = out.size
             val shown = shownRows(cat, filter, held)
             val peeking = peek == cat.id
             var i = 0
@@ -59,6 +64,7 @@ object Board {
             }
             val hidden = cat.tasks.indices.count { !shown[it] && !cat.tasks[it].separator }
             if (hidden > 0) out += Hidden(cat.id, hidden, peeking)
+            if (out.size == first && project.categories.none { it.parentId == cat.id }) out += NoTasks(cat.id)
         }
         return out
     }

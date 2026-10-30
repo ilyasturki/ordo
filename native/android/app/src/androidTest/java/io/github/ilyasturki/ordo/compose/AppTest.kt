@@ -4,6 +4,7 @@ import android.view.KeyEvent
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasParent
@@ -74,12 +75,59 @@ class AppTest : AppFixture() {
     fun aFinishedRowStaysWhereItIs() {
         val before = engine.state.value.project(PID)!!.project.categories[0].tasks.map { it.id }
         scrollTo("Export a project as Markdown")
-        compose.onNode(statusOf("Export a project as Markdown", "To do")).performClick()
+        compose.onNode(statusOf("Export a project as Markdown", "Todo")).performClick()
         compose.waitUntil(5_000) { task("Export a project as Markdown")?.status == "in_progress" }
-        compose.onNode(statusOf("Export a project as Markdown", "Doing")).performClick()
+        compose.onNode(statusOf("Export a project as Markdown", "In Progress")).performClick()
         compose.waitUntil(5_000) { task("Export a project as Markdown")?.status == "completed" }
-        compose.onNode(statusOf("Export a project as Markdown", "Done")).assertExists()
+        compose.onNode(statusOf("Export a project as Markdown", "Completed")).assertExists()
         assertEquals(before, engine.state.value.project(PID)!!.project.categories[0].tasks.map { it.id })
+    }
+
+    @Test
+    fun aFinishedRowKeepsItsMarks() {
+        scrollTo("Shared action layer")
+        assertEquals("completed", task("Shared action layer")?.status)
+        compose.onNodeWithText("1d", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun aSeparatorReadsAsTyped() {
+        scrollTo("Later")
+        compose.onNodeWithText("Later").assertExists()
+    }
+
+    @Test
+    fun aSeparatorLandsFirstInItsCategoryWithNoLabelNeeded() {
+        scrollTo("Research")
+        compose.onNodeWithText("Research").performClick()
+        compose.onNodeWithText("Add a separator").performClick()
+        compose.onNodeWithText("Add").performClick()
+        compose.waitUntil(5_000) { engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }.tasks.first().separator }
+        assertEquals("", engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }.tasks.first().title)
+    }
+
+    @Test
+    fun theFilterRefusesASeparator() {
+        runBlocking { engine.setFilter(PID, Filter(statuses = setOf("todo"))) }
+        scrollTo("Research")
+        compose.onNodeWithText("Research").performClick()
+        compose.onNodeWithText("Add a separator").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Clear the filter to add a separator"), 5_000)
+    }
+
+    @Test
+    fun theFilterRefusesATaskItWouldHide() {
+        runBlocking { engine.setFilter(PID, Filter(priorities = setOf("medium"))) }
+        scrollTo("hidden by the filter")
+        compose.onNodeWithContentDescription("Add a task").performClick()
+        compose.onNodeWithText("Clear the filter to add a task here").assertExists()
+        compose.onNode(hasSetTextAction()).performTextInput("Water the plants")
+        compose.onNodeWithText("Save").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Priority").performClick()
+        compose.onNodeWithText("Medium").performClick()
+        compose.onNodeWithText("Clear the filter to add a task here").assertDoesNotExist()
+        compose.onNodeWithText("Save").performClick()
+        compose.waitUntil(5_000) { task("Water the plants")?.priority == "medium" }
     }
 
     @Test
@@ -97,7 +145,7 @@ class AppTest : AppFixture() {
         Thread.sleep(1_500)
         compose.onNodeWithContentDescription("Not synced").assertDoesNotExist()
         scrollTo("Recurring tasks")
-        compose.onNode(statusOf("Recurring tasks", "To do")).performClick()
+        compose.onNode(statusOf("Recurring tasks", "Todo")).performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithContentDescription("Not synced").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithContentDescription("Not synced").performClick()
         compose.onNodeWithText("Can't reach your server").assertIsDisplayed()
@@ -106,17 +154,21 @@ class AppTest : AppFixture() {
     }
 
     @Test
-    fun theTaskPageShowsWhatIsSetAndMarksDone() {
+    fun theTaskPageShowsWhatIsSetAndMarkDoneStaysOnIt() {
         openTask("Tap a row to focus it")
         compose.onNodeWithContentDescription("Mark done").assertIsDisplayed()
         compose.onNodeWithText("Medium").assertExists()
         compose.onNodeWithText("Green").assertExists()
         compose.onNodeWithText("2h").assertExists()
-        compose.onNodeWithContentDescription("Status: To do").assertExists()
-        compose.onNodeWithText("Add details").assertExists()
+        compose.onNodeWithContentDescription("Status: Todo").assertExists()
+        compose.onNodeWithText("Add a description").assertExists()
         compose.onNodeWithContentDescription("Mark done").performClick()
         compose.waitUntil(5_000) { task("Tap a row to focus it")?.status == "completed" }
-        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Add a task").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Mark todo"), 5_000)
+        compose.onNodeWithContentDescription("More").assertIsDisplayed()
+        compose.waitUntilAtLeastOneExists(hasText("Undo"), 5_000)
+        compose.onNodeWithText("Undo").performClick()
+        compose.waitUntil(5_000) { task("Tap a row to focus it")?.status == "todo" }
     }
 
     @Test
@@ -154,10 +206,26 @@ class AppTest : AppFixture() {
         scrollTo("Research")
         compose.onNodeWithText("Research").performClick()
         compose.onNodeWithText("Delete category").performClick()
-        compose.onNodeWithText("Delete “Research”?").assertIsDisplayed()
+        compose.onNodeWithText("Delete category “Research”?").assertIsDisplayed()
+        compose.onNodeWithText("Its 2 tasks go too.").assertIsDisplayed()
         compose.onNodeWithText("Cancel").performClick()
-        compose.onNodeWithText("Delete “Research”?").assertDoesNotExist()
+        compose.onNodeWithText("Delete category “Research”?").assertDoesNotExist()
         assertNotNull(engine.state.value.project(PID)!!.project.categories.firstOrNull { it.name == "Research" })
         compose.onAllNodesWithContentDescription("Add a task").onFirst().assertExists()
+    }
+
+    @Test
+    fun undoBringsADeletedCategoryBackWhereItWas() {
+        val before = engine.state.value.project(PID)!!.project.categories.map { it.name }
+        scrollTo("Documentation")
+        compose.onNodeWithText("Documentation").performClick()
+        compose.onNodeWithText("Delete category").performClick()
+        compose.onNodeWithText("Delete category “Documentation”?").assertIsDisplayed()
+        compose.onNodeWithText("Its sub-category and 5 tasks go too.").assertIsDisplayed()
+        compose.onNodeWithText("Delete").performClick()
+        compose.waitUntil(5_000) { engine.state.value.project(PID)!!.project.categories.none { it.name == "API" } }
+        compose.waitUntilAtLeastOneExists(hasText("Undo"), 5_000)
+        compose.onNodeWithText("Undo").performClick()
+        compose.waitUntil(5_000) { engine.state.value.project(PID)!!.project.categories.map { it.name } == before }
     }
 }

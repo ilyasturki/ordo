@@ -36,7 +36,37 @@ class BoardTest {
                 .plus(it.children.map { c -> "  " + c.task.id + if (c.muted) "~" else "" })
                 .joinToString(",")
             is Hidden -> "(${it.count} hidden${if (it.peeking) ", peeking" else ""})"
+            is NoTasks -> "(no tasks)"
         }
+    }
+
+    @Test
+    fun anEmptyCategoryWithoutSubCategoriesSaysSo() {
+        val empty = Project(
+            id = "p",
+            categories = listOf(
+                Category("a", "A"),
+                Category("b", "B"),
+                Category("b1", "B1", parentId = "b"),
+                Category("c", "C", tasks = listOf(task("s", kind = "separator"))),
+            ),
+        )
+        assertEquals(
+            listOf("# A", "(no tasks)", "# B", "# B1 < B", "(no tasks)", "# C", "s"),
+            shape(Board.lines(empty, Filter.NONE)),
+        )
+        assertEquals(
+            listOf("# A", "(no tasks)", "# B", "# B1 < B", "(no tasks)", "# C", "(no tasks)"),
+            shape(Board.lines(empty, Filter(statuses = setOf(Status.TODO)))),
+        )
+    }
+
+    @Test
+    fun aCategoryWhoseRowsTheFilterHidesCountsThemInstead() {
+        assertEquals(
+            listOf("# Feature", "(5 hidden)", "# UI < Feature", "(1 hidden)", "# Fix", "(1 hidden)"),
+            shape(Board.lines(project, Filter(tags = setOf("blue")))),
+        )
     }
 
     @Test

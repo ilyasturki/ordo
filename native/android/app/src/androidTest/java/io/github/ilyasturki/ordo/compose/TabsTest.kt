@@ -57,6 +57,20 @@ class TabsTest : AppFixture(NAMES) {
     }
 
     @Test
+    fun deletingTheOpenProjectOpensTheFirstOne() {
+        settled()
+        compose.onNodeWithText("Zed", useUnmergedTree = true).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Zed", useUnmergedTree = true).performClick()
+        compose.onNodeWithText("Delete project").performClick()
+        compose.onNodeWithText("Delete", useUnmergedTree = true).performClick()
+        compose.waitUntil(5_000) { engine.state.value.projects.none { it.name == "Zed" } }
+        compose.waitUntil(5_000) { engine.state.value.prefs.current == PID }
+        compose.waitForIdle()
+        assertUnder("Ab")
+    }
+
+    @Test
     fun theUnderlineFollowsTheFingerBetweenTwoTabs() {
         settled()
         compose.onNodeWithText("Ordo app", useUnmergedTree = true).performClick()

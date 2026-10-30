@@ -43,7 +43,7 @@ func held(t *testing.T, s *core.Session, pid string) domain.Project {
 func TestPerformQueuesWhatTheServerReplays(t *testing.T) {
 	s, pid := opened(t)
 	a := s.Perform(pid, op(operations.Op{Action: "status.cycle", IDs: []string{"a"}}))
-	if a.Status != operations.Applied || a.Msg != "Marked doing" {
+	if a.Status != operations.Applied || a.Msg != "Marked in progress" {
 		t.Fatalf("answer = %+v", a)
 	}
 	if a.Queue == nil || a.Queue.Action != "status.set" || a.Queue.Value != domain.StatusInProgress {
