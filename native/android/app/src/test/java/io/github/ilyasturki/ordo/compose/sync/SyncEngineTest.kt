@@ -274,6 +274,27 @@ class SyncEngineTest {
     }
 
     @Test
+    fun whatWaitsOutOfSightGoesToWorkManager() = test {
+        val asked = java.util.concurrent.atomic.AtomicInteger()
+        val core = PipeCore().also(cores::add)
+        val e = paired(SyncEngine(Store(dir), { core }, scope, "test phone", quiet, background = { asked.incrementAndGet() }))
+        e.foreground(true)
+        e.edit(PID, Ops.cycle(EXPORT))
+        assertEquals("in sight, the app's own timer syncs it", 0, asked.get())
+        e.foreground(false)
+        assertEquals("leaving with an edit waiting", 1, asked.get())
+        server.stop()
+        assertEquals(Round.RETRY, e.sync())
+        assertEquals("a failed round out of sight", 2, asked.get())
+        e.edit(PID, Ops.cycle(RECURRING))
+        assertEquals("an edit out of sight", 3, asked.get())
+        server.start()
+        assertEquals(Round.OK, e.sync())
+        e.foreground(false)
+        assertEquals("nothing waits, nothing to hand over", 3, asked.get())
+    }
+
+    @Test
     fun undoPutsBackWhatAnEditChanged() = test {
         val e = paired(engine())
         val snacks = Collections.synchronizedList(mutableListOf<Snack>())
