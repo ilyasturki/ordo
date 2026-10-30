@@ -2,6 +2,7 @@ package operations_test
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/ilyasturki/ordo/internal/domain"
@@ -95,6 +96,8 @@ func TestUndoPutsBackWhatAnOpChanged(t *testing.T) {
 		{"add a category", operations.Op{Action: "category.add", New: "k1", Title: "Docs"}, 1},
 		{"add a sub-category", operations.Op{Action: "category.add", New: "k1", Parent: "c1", Title: "Sub"}, 1},
 		{"rename a category", operations.Op{Action: "category.rename", Cat: "c2", Title: "Bugs"}, 1},
+		{"delete the first category", operations.Op{Action: "category.delete", Cat: "c1"}, 1},
+		{"delete the last category", operations.Op{Action: "category.delete", Cat: "c2"}, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			p := undoBoard(t)
@@ -137,6 +140,105 @@ func TestUndoKeepsTheRowsTimestamps(t *testing.T) {
 		if want := original.Categories[0].Tasks[i]; task != want {
 			t.Fatalf("row %d = %+v, want %+v", i, task, want)
 		}
+	}
+}
+
+// nestedBoard is c1 [s1, s2] and c2, the sub-categories holding a row each.
+func nestedBoard(t *testing.T) *domain.Project {
+	t.Helper()
+	p := undoBoard(t)
+	for _, c := range []struct{ id, name string }{{"s1", "One"}, {"s2", "Two"}} {
+		if _, err := operations.Apply(p, operations.Op{Action: "category.add", New: c.id, Parent: "c1", Title: c.name}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := operations.CreateTask(p, c.id, operations.TaskFields{Title: "in " + c.id, ID: "t" + c.id}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return p
+}
+
+func TestUndoPutsBackADeletedCategoryWithItsSubCategories(t *testing.T) {
+	for _, cat := range []string{"c1", "s1", "s2"} {
+		t.Run(cat, func(t *testing.T) {
+			p := nestedBoard(t)
+			original := operations.Clone(*p)
+			op := operations.Op{Action: "category.delete", Cat: cat}
+			if _, err := operations.Apply(p, op); err != nil {
+				t.Fatal(err)
+			}
+			undo := operations.Undo(original, *p, op)
+			if len(undo) != 1 || !operations.Replayable(undo[0].Action) {
+				t.Fatalf("undo = %+v", undo)
+			}
+			if _, err := operations.Apply(p, undo[0]); err != nil {
+				t.Fatal(err)
+			}
+			if got, want := plain(t, *p), plain(t, original); got != want {
+				t.Fatalf("after undo:\n%s\nwant:\n%s", got, want)
+			}
+			if _, err := operations.Apply(p, undo[0]); !errors.Is(err, operations.ErrNoChange) {
+				t.Fatalf("restoring twice: %v", err)
+			}
+		})
+	}
+}
+
+func TestACategoryRestoreOutlivesWhatItWasMadeBeside(t *testing.T) {
+	sub := domain.Category{ID: "s9", Name: "Nine", ParentID: "gone", Tasks: []domain.Task{}}
+	p := nestedBoard(t)
+	if _, err := operations.Apply(p, operations.Op{Action: "category.restore", Before: "gone", Cats: []domain.Category{sub}}); err != nil {
+		t.Fatal(err)
+	}
+	if last := p.Categories[len(p.Categories)-1]; last.ID != "s9" || last.ParentID != "" {
+		t.Fatalf("a sub-category whose parent is gone = %+v", last)
+	}
+	sub.ID, sub.Name, sub.ParentID = "s8", "Eight", "c1"
+	if _, err := operations.Apply(p, operations.Op{Action: "category.restore", Before: "c2", Cats: []domain.Category{sub}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.Categories[domain.BlockEnd(p.Categories, 0)-1]; got.ID != "s8" {
+		t.Fatalf("a sub-category lands among its siblings, not above another level: %+v", got)
+	}
+	held := domain.Category{ID: "c9", Name: "Held", Tasks: []domain.Task{{ID: "a", Title: "a", Status: domain.StatusTodo}, {ID: "r1", Title: "r1", Status: domain.StatusTodo}}}
+	if _, err := operations.Apply(p, operations.Op{Action: "category.restore", Cats: []domain.Category{held}}); err != nil {
+		t.Fatal(err)
+	}
+	if tasks := p.Categories[len(p.Categories)-1].Tasks; len(tasks) != 1 || tasks[0].ID != "r1" {
+		t.Fatalf("a row the project holds again stays where it is: %+v", tasks)
+	}
+}
+
+func TestRefusedCategoryRestores(t *testing.T) {
+	task := domain.Task{ID: "r1", Title: "x", Status: domain.StatusTodo}
+	for _, tc := range []struct {
+		name string
+		cats []domain.Category
+		msg  string
+	}{
+		{"a sibling has the name", []domain.Category{{ID: "c9", Name: " FIX "}}, "A category with that name already exists"},
+		{"no name", []domain.Category{{ID: "c9", Name: " "}}, "A category needs a name"},
+		{"a bad id", []domain.Category{{ID: "c/9", Name: "Nine"}}, "Can't restore that category"},
+		{"a second category not under the first", []domain.Category{{ID: "c9", Name: "Nine"}, {ID: "c8", Name: "Eight"}}, "Can't restore that category"},
+		{"a sub-category holding one", []domain.Category{{ID: "c9", Name: "Nine", ParentID: "c1"}, {ID: "c8", Name: "Eight", ParentID: "c9"}}, "Can't restore that category"},
+		{"a row twice", []domain.Category{{ID: "c9", Name: "Nine", Tasks: []domain.Task{task, task}}}, "Can't restore that category"},
+		{"a row without a title", []domain.Category{{ID: "c9", Name: "Nine", Tasks: []domain.Task{{ID: "r1", Title: " ", Status: domain.StatusTodo}}}}, "A task needs a title"},
+		{"a control character", []domain.Category{{ID: "c9", Name: "a\x1bb"}}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := board(t)
+			before := plain(t, *p)
+			_, err := operations.Apply(p, operations.Op{Action: "category.restore", Cats: tc.cats})
+			if operations.VerdictOf(err) != operations.Refused {
+				t.Fatalf("err = %v", err)
+			}
+			if msg, _ := operations.Explain(err); tc.msg != "" && msg != tc.msg {
+				t.Fatalf("%q, want %q", msg, tc.msg)
+			}
+			if plain(t, *p) != before {
+				t.Fatal("a refused restore changed the project")
+			}
+		})
 	}
 }
 

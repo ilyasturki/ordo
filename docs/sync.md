@@ -81,6 +81,7 @@ An op names its rows by ID and says where they end up, never how far they moved,
 | `category.add` | `new`, `parent`, `title` | Adds a category last among the top-level ones, or last among `parent`'s sub-categories. |
 | `category.rename` | `cat`, `title` | Renames the category. |
 | `category.delete` | `cat` | Deletes the category with its sub-categories and all their tasks. |
+| `category.restore` | `cats`, `before` | Puts back a category a delete removed, above its sibling `before`, or last among its siblings without it. `cats` is the category followed by its sub-categories, with their tasks. |
 | `project.create` | `title` | Creates the project `project` names, with no categories. |
 | `project.rename` | `title` | Renames the project. |
 | `project.delete` | | Deletes the project. |
@@ -88,6 +89,8 @@ An op names its rows by ID and says where they end up, never how far they moved,
 `new` is a client-minted ID (see [IDs](file-format.md#ids-and-timestamps)), so the ops queued after an add can name its row or category. An add whose `new` is already in the project is `unchanged`. A row an op was made beside can be gone by the time it lands: `task.insert` then adds first in `cat`, `task.add`, `task.place`, `task.restore` and `category.add` drop a missing `parent` and land top-level, and `task.place` and `task.restore` put a missing `before` last.
 
 `task.restore` takes `rows` as the Task objects of [file-format.md](file-format.md#task) and checks them like a file it imports. It skips the rows the project holds again; the subtasks of a row that is back go last under it. A category name a sibling already has is `refused`, and so is a project name another project has.
+
+`category.restore` takes `cats` as the Category objects of [file-format.md](file-format.md#category) and checks them like a file it imports. It skips the categories and rows the project holds again, drops a missing parent and lands top-level, and puts a missing `before` last. A name a sibling already has is `refused`.
 
 `status.cycle`, `task.shift`, `task.nest` and `task.unnest` step from the state they were made on, so the server refuses them from a queue. The client runs them on its copy and queues the `status.set` or `task.place` that describes where they landed; `operations.Perform` returns that op.
 

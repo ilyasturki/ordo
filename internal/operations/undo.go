@@ -34,6 +34,15 @@ func Undo(before, after domain.Project, op Op) []Op {
 		if ci, err := before.FindCategoryByID(op.Cat); err == nil {
 			return []Op{{Action: "category.rename", Cat: op.Cat, Title: before.Categories[ci].Name}}
 		}
+	case "category.delete":
+		if ci, err := before.FindCategoryByID(op.Cat); err == nil {
+			end := domain.BlockEnd(before.Categories, ci)
+			restore := Op{Action: "category.restore", Cats: slices.Clone(before.Categories[ci:end])}
+			if end < len(before.Categories) && before.Categories[end].ParentID == before.Categories[ci].ParentID {
+				restore.Before = before.Categories[end].ID
+			}
+			return []Op{restore}
+		}
 	case "project.create":
 		return []Op{{Action: "project.delete"}}
 	case "project.rename":

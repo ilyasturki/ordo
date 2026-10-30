@@ -62,6 +62,7 @@ func TestReplayingAnOpChangesNothingMore(t *testing.T) {
 		{Action: "category.add", New: "k2", Parent: "c1", Title: "Sub"},
 		{Action: "category.rename", Cat: "c1", Title: "Renamed"},
 		{Action: "category.delete", Cat: "c2"},
+		{Action: "category.restore", Before: "c1", Cats: []domain.Category{{ID: "k3", Name: "Back", Tasks: []domain.Task{{ID: "r9", Title: "back", Status: domain.StatusTodo}}}}},
 	}
 	for _, op := range ops {
 		t.Run(op.Action, func(t *testing.T) {

@@ -7,7 +7,10 @@ import (
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
-var errBadRows = refuse("Can't restore those rows")
+var (
+	errBadRows       = refuse("Can't restore those rows")
+	errBadCategories = refuse("Can't restore that category")
+)
 
 // restoreRows puts back rows a delete removed, as they were. A row the project holds again stays
 // where it is, and the children it had go back last under it.
@@ -79,6 +82,89 @@ func checkRows(rows []domain.Task) error {
 		}
 		if err := checkRow(t); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// restoreCategories puts back a category a delete removed, with its sub-categories and their tasks,
+// as they were: above op.Before when that sibling is still there, else last among its siblings. A
+// category or a row the project holds again stays where it is.
+func restoreCategories(p *domain.Project, op Op) (Outcome, error) {
+	if err := checkCategories(op.Cats); err != nil {
+		return Outcome{}, err
+	}
+	var cats []domain.Category
+	for _, c := range op.Cats {
+		if _, err := p.FindCategoryByID(c.ID); err == nil {
+			continue
+		}
+		c.Tasks = slices.DeleteFunc(slices.Clone(c.Tasks), func(t domain.Task) bool {
+			_, _, err := LocateTask(p, t.ID)
+			return err == nil
+		})
+		holder := domain.Project{Categories: []domain.Category{{Tasks: c.Tasks}}}
+		domain.NormalizeNesting(&holder)
+		domain.NormalizeTags(&holder)
+		c.Tasks = holder.Categories[0].Tasks
+		cats = append(cats, c)
+	}
+	if len(cats) == 0 {
+		return Outcome{}, ErrNoChange
+	}
+	parent := cats[0].ParentID
+	index := len(p.Categories)
+	if pi, err := p.FindCategoryByID(parent); err != nil || p.Categories[pi].ParentID != "" {
+		parent = ""
+	} else {
+		index = domain.BlockEnd(p.Categories, pi)
+	}
+	if bi, err := p.FindCategoryByID(op.Before); err == nil && p.Categories[bi].ParentID == parent {
+		index = bi
+	}
+	cats[0].ParentID = parent
+	for i, c := range cats {
+		if domain.CategoryNameConflict(p.Categories, c.ParentID, c.Name, -1) >= 0 {
+			return Outcome{}, domain.ErrDuplicateCategoryName
+		}
+		p.InsertCategory(index+i, c)
+	}
+	return Outcome{Msg: "Restored " + quote(cats[0].Name), Row: cats[0].ID}, nil
+}
+
+// checkCategories takes the categories of a restore as untrusted, like an imported file: each one
+// well formed, and every one after the first a sub-category of it.
+func checkCategories(cats []domain.Category) error {
+	if len(cats) == 0 {
+		return ErrNoChange
+	}
+	if err := domain.ValidateProjectText(domain.Project{Categories: cats}); err != nil {
+		return err
+	}
+	seenCats := make(map[string]bool, len(cats))
+	seenRows := make(map[string]bool)
+	for i, c := range cats {
+		if domain.ValidateID(c.ID) != nil || seenCats[c.ID] {
+			return errBadCategories
+		}
+		seenCats[c.ID] = true
+		if i > 0 && (c.ParentID != cats[0].ID || cats[0].ParentID != "") {
+			return errBadCategories
+		}
+		switch {
+		case strings.TrimSpace(c.Name) == "":
+			return ErrNameRequired
+		case c.EstimateMinutes < 0:
+			return ErrNegativeEstimate
+		}
+		for _, t := range c.Tasks {
+			if domain.ValidateID(t.ID) != nil || seenRows[t.ID] {
+				return errBadCategories
+			}
+			seenRows[t.ID] = true
+			if err := checkRow(t); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

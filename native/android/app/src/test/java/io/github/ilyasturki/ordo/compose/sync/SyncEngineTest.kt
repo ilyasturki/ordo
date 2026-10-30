@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit
 private const val PID = "0rd0-web-fixture"
 private const val EXPORT = "aaaaaaaa-0000-4000-8000-000000000005"
 private const val RECURRING = "aaaaaaaa-0000-4000-8000-000000000007"
+private const val DOCUMENTATION = "cccccccc-0000-4000-8000-000000000019"
 
 // Holds the next /api/sync request until released, so a test can edit while a round is out.
 class Gate : Interceptor {
@@ -309,6 +310,30 @@ class SyncEngineTest {
         assertEquals("Export a project as Markdown", e.task(EXPORT).title)
         assertEquals(Round.OK, e.sync())
         assertEquals("Export a project as Markdown", serverTask(EXPORT).title)
+        collecting.cancel()
+    }
+
+    @Test
+    fun undoBringsADeletedCategoryBackOnTheServerToo() = test {
+        val e = paired(engine())
+        val names = { p: Project -> p.categories.map { it.name } }
+        val before = names(e.state.value.project(PID)!!.project)
+        val snacks = Collections.synchronizedList(mutableListOf<Snack>())
+        val collecting = launch { e.snacks.collect { snacks += it } }
+        e.edit(PID, Ops.categoryDelete(DOCUMENTATION))
+        assertEquals(Round.OK, e.sync())
+        assertEquals(before - "Documentation" - "API", names(Project.parse(server.project(PID))))
+        val undo = withTimeout(5_000) {
+            while (snacks.none { it.action == "Undo" }) kotlinx.coroutines.delay(20)
+            snacks.first { it.action == "Undo" }
+        }
+        undo.run!!()
+        assertEquals(before, names(e.state.value.project(PID)!!.project))
+        assertEquals(Round.OK, e.sync())
+        val back = Project.parse(server.project(PID))
+        assertEquals(before, names(back))
+        assertEquals(4, back.categories.first { it.name == "Documentation" }.tasks.size)
+        assertEquals("Documentation", back.categories.first { it.id == back.categories.first { c -> c.name == "API" }.parentId }.name)
         collecting.cancel()
     }
 

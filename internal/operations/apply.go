@@ -33,6 +33,8 @@ type Op struct {
 	Lines   []string `json:"lines,omitempty"`
 	// Rows are the rows a task.restore puts back: one top-level row then its children, or one row.
 	Rows []domain.Task `json:"rows,omitempty"`
+	// Cats are the categories a category.restore puts back: one category then its sub-categories.
+	Cats []domain.Category `json:"cats,omitempty"`
 }
 
 type Outcome struct {
@@ -74,6 +76,7 @@ var appliers = map[string]applier{
 	"category.add":     addCategory,
 	"category.rename":  renameCategory,
 	"category.delete":  deleteCategory,
+	"category.restore": restoreCategories,
 }
 
 var gestures = map[string]bool{"status.cycle": true, "task.shift": true, "task.nest": true, "task.unnest": true}
