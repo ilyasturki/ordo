@@ -30,10 +30,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.NavKey
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LicenceKey
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
+import io.github.ilyasturki.ordo.compose.ui.NavKey
 import io.github.ilyasturki.ordo.compose.ui.home.ConfirmDialog
 import io.github.ilyasturki.ordo.compose.ui.home.ago
 import kotlinx.coroutines.launch

@@ -1,5 +1,6 @@
 package io.github.ilyasturki.ordo.compose
 
+import android.view.KeyEvent
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
@@ -7,91 +8,42 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasParent
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
-import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import io.github.ilyasturki.ordo.compose.core.GoCore
-import io.github.ilyasturki.ordo.compose.data.Session
-import io.github.ilyasturki.ordo.compose.data.Store
-import io.github.ilyasturki.ordo.compose.data.StoredProject
 import io.github.ilyasturki.ordo.compose.model.Filter
-import io.github.ilyasturki.ordo.compose.model.Task
-import io.github.ilyasturki.ordo.compose.sync.Delays
-import io.github.ilyasturki.ordo.compose.sync.SyncEngine
-import io.github.ilyasturki.ordo.compose.ui.App
-import io.github.ilyasturki.ordo.compose.ui.OrdoTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Before
-import org.junit.Rule
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
 
-private const val PID = "0rd0-web-fixture"
-
-// The app on the seed project, signed in to a server that never answers, so nothing leaves the phone.
 @OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
-class AppTest {
-    @get:Rule
-    val compose = createComposeRule()
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private lateinit var engine: SyncEngine
-    private lateinit var dir: File
-
-    @Before
-    fun setUp() {
-        val ins = InstrumentationRegistry.getInstrumentation()
-        val raw = ins.context.assets.open("seed.json").bufferedReader().use { it.readText() }
-        ins.targetContext.cacheDir.listFiles { f -> f.name.startsWith("ui-") }?.forEach { it.deleteRecursively() }
-        dir = File(ins.targetContext.cacheDir, "ui-${System.nanoTime()}")
-        val store = Store(dir)
-        store.saveSession(Session("http://127.0.0.1:9", "token"))
-        store.saveProject(StoredProject(PID, "Ordo", "stamp"), raw)
-        engine = SyncEngine(
-            store, ::GoCore, scope, "test",
-            Delays(sync = 50, poll = 600_000, firstBackoff = 100, maxBackoff = 200, reconnect = 600_000),
-        )
-        runBlocking {
-            engine.boot()
-            engine.foreground(true)
-        }
-        compose.setContent { OrdoTheme { App(engine, scope) } }
-    }
-
-    // The next test's setUp deletes the files: this one's screen may still be writing until the rule disposes it.
-    @After
-    fun tearDown() = runBlocking { scope.coroutineContext.job.cancelAndJoin() }
-
-    private fun task(title: String): Task? =
-        engine.state.value.project(PID)?.project?.categories?.flatMap { it.tasks }?.firstOrNull { it.title == title }
-
-    private fun scrollTo(text: String) {
-        compose.onNodeWithTag("list").performScrollToNode(hasText(text, substring = true))
-    }
-
+class AppTest : AppFixture() {
     private fun statusOf(title: String, status: String): SemanticsMatcher =
         hasContentDescription("$status, change status") and hasParent(hasText(title, substring = true))
+
+    private fun openTask(title: String) {
+        scrollTo(title)
+        compose.onNodeWithText(title).performClick()
+        compose.waitUntilAtLeastOneExists(hasContentDescription("More"), 10_000)
+    }
+
+    private fun backToList() {
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 10_000)
+    }
 
     @Test
     fun theFilterCountsWhatItHidesAndAPeekShowsIt() {
@@ -120,6 +72,7 @@ class AppTest {
 
     @Test
     fun theAddSheetPutsTheTaskFirstInItsCategory() {
+        scrollTo("Tap a row to focus it")
         compose.onNodeWithContentDescription("Add a task").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Water the plants")
         compose.onNode(hasSetTextAction()).performImeAction()
@@ -142,8 +95,7 @@ class AppTest {
 
     @Test
     fun theTaskPageShowsWhatIsSetAndMarksDone() {
-        scrollTo("Tap a row to focus it")
-        compose.onNodeWithText("Tap a row to focus it").performClick()
+        openTask("Tap a row to focus it")
         compose.onNodeWithContentDescription("Mark done").assertIsDisplayed()
         compose.onNodeWithText("Medium").assertExists()
         compose.onNodeWithText("Green").assertExists()
@@ -156,10 +108,31 @@ class AppTest {
     }
 
     @Test
+    fun theBackKeyClosesThePageAndWhatWasTypedLands() {
+        openTask("Tap a row to focus it")
+        compose.onNodeWithText("Tap a row to focus it").performTextReplacement("Tap a row to edit it")
+        backToList()
+        compose.waitUntil(5_000) { task("Tap a row to edit it") != null }
+        assertNull(task("Tap a row to focus it"))
+    }
+
+    @Test
+    fun aTaskDeletedOnItsPageOffersUndoOnTheList() {
+        openTask("Tap a row to focus it")
+        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithText("Delete").performClick()
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 10_000)
+        compose.waitUntilAtLeastOneExists(hasText("Undo"), 5_000)
+        compose.onNodeWithText("Undo").performClick()
+        compose.waitUntil(5_000) { task("Tap a row to focus it") != null }
+    }
+
+    @Test
     fun aRowLiftedAndLetGoInPlaceStaysShut() {
         scrollTo("Recurring tasks")
         compose.onNodeWithText("Recurring tasks").performTouchInput { longClick() }
         compose.waitForIdle()
+        Thread.sleep(1_000)
         compose.onNodeWithContentDescription("Mark done").assertDoesNotExist()
         assertEquals("todo", task("Recurring tasks")?.status)
     }

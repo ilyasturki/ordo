@@ -1,12 +1,5 @@
 package io.github.ilyasturki.ordo.compose.ui.home
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -74,20 +67,11 @@ fun CategoryHeader(header: Header, onClick: () -> Unit) {
 fun StatusIcon(status: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val active = status == Status.IN_PROGRESS || status == Status.COMPLETED
     IconButton(onClick = onClick, modifier = modifier) {
-        AnimatedContent(
-            targetState = status,
-            transitionSpec = {
-                (scaleIn(spring(dampingRatio = 0.5f, stiffness = 600f), initialScale = 0.6f) + fadeIn()) togetherWith
-                    (scaleOut(targetScale = 0.6f) + fadeOut())
-            },
-            label = "status",
-        ) { s ->
-            Icon(
-                Icons.status(s),
-                contentDescription = "${Status.label(s)}, change status",
-                tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Icon(
+            Icons.status(status),
+            contentDescription = "${Status.label(status)}, change status",
+            tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

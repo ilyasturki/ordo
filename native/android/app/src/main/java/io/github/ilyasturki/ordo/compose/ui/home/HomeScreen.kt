@@ -1,6 +1,5 @@
 package io.github.ilyasturki.ordo.compose.ui.home
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,13 +46,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.NavKey
 import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.sync.Entry
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.LocalSnackbar
+import io.github.ilyasturki.ordo.compose.ui.NavKey
 import io.github.ilyasturki.ordo.compose.ui.SettingsKey
 import io.github.ilyasturki.ordo.compose.ui.SignInKey
 import io.github.ilyasturki.ordo.compose.ui.TaskKey
@@ -292,10 +291,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ProjectTab(name: String, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
-    val color by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        label = "tab",
-    )
+    val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
     Box(
         Modifier
             .height(48.dp)

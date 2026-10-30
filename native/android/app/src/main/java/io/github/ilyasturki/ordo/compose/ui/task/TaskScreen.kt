@@ -1,10 +1,5 @@
 package io.github.ilyasturki.ordo.compose.ui.task
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,13 +36,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,8 +51,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.NavKey
 import io.github.ilyasturki.ordo.compose.model.Description
 import io.github.ilyasturki.ordo.compose.model.Estimates
 import io.github.ilyasturki.ordo.compose.model.Ops
@@ -71,6 +65,7 @@ import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.LocalSnackbar
+import io.github.ilyasturki.ordo.compose.ui.NavKey
 import io.github.ilyasturki.ordo.compose.ui.TaskKey
 import io.github.ilyasturki.ordo.compose.ui.home.Picker
 import io.github.ilyasturki.ordo.compose.ui.home.StatusIcon
@@ -157,14 +152,10 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
             saveDetails()
         }
     }
-    val pendingTitle by rememberUpdatedState(suspend { saveTitle() })
-    val pendingDetails by rememberUpdatedState(suspend { saveDetails() })
-    DisposableEffect(tid) {
-        onDispose {
-            appScope.launch {
-                pendingTitle()
-                pendingDetails()
-            }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        appScope.launch {
+            saveTitle()
+            saveDetails()
         }
     }
 
@@ -209,7 +200,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
             )
         },
         floatingActionButton = {
-            AnimatedVisibility(!task.separator && !WindowInsets.isImeVisible, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
+            if (!task.separator && !WindowInsets.isImeVisible) {
                 val label = if (done) "Mark open" else "Mark done"
                 ExtendedFloatingActionButton(
                     text = { Text(label) },

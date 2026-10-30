@@ -60,8 +60,6 @@ dependencies {
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.process)
-    implementation(libs.navigation3.runtime)
-    implementation(libs.navigation3.ui)
     implementation(libs.work.runtime)
     implementation(libs.okhttp)
     implementation(libs.okhttp.sse)
