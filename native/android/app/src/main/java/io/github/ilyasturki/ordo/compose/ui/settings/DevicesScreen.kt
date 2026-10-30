@@ -6,6 +6,7 @@ import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,15 +24,16 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -162,23 +164,27 @@ fun DevicesScreen(back: () -> Unit) {
 
 @Composable
 private fun DeviceRow(d: DeviceInfo, onRevoke: () -> Unit) {
-    val mark = MaterialTheme.colorScheme.primary
-    ListItem(
-        leadingContent = { Icon(Icons.Phone, null) },
-        supportingContent = {
-            val paired = "Paired ${dayOf(d.createdAt)}" + if (d.from != "") " by ${d.from}" else ""
-            Text("$paired · seen ${dayOf(d.lastSeen)}")
-        },
-        trailingContent = {
-            IconButton(onClick = onRevoke) { Icon(Icons.Logout, "Sign out ${d.name}") }
-        },
+    val colors = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            if (!d.self) AnnotatedString(d.name) else buildAnnotatedString {
-                append(d.name)
-                withStyle(SpanStyle(color = mark)) { append(" · this device") }
-            },
-        )
+        Icon(Icons.Phone, null, tint = colors.onSurfaceVariant)
+        Spacer(Modifier.width(20.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (!d.self) AnnotatedString(d.name) else buildAnnotatedString {
+                    append(d.name)
+                    withStyle(SpanStyle(color = colors.primary)) { append(" · this device") }
+                },
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            val paired = "Paired ${dayOf(d.createdAt)}" + if (d.from != "") " by ${d.from}" else ""
+            Text("$paired · seen ${dayOf(d.lastSeen)}", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+        }
+        IconButton(onClick = onRevoke) { Icon(Icons.Logout, "Sign out ${d.name}", tint = colors.onSurfaceVariant) }
     }
 }
 
@@ -213,7 +219,8 @@ private fun PairSheet(hasPassphrase: Boolean, onDismiss: () -> Unit) {
     }
     LaunchedEffect(Unit) { if (!hasPassphrase) make() }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val sheet = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet) {
         Column(
             Modifier
                 .fillMaxWidth()
