@@ -17,9 +17,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.clearText
-import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
@@ -29,13 +28,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.TabIndicatorScope
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSearchBarState
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,8 +53,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -107,11 +106,10 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     // Saved: a task opened from the results comes back to them.
     var searching by rememberSaveable { mutableStateOf(false) }
-    val search = rememberTextFieldState()
-    val query = search.text.toString()
+    var query by rememberSaveable { mutableStateOf("") }
     val closeSearch = {
         searching = false
-        search.clearText()
+        query = ""
     }
     BackHandler(searching, closeSearch)
     val uis = remember { mutableStateMapOf<String, ListUi>() }
@@ -141,7 +139,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
         topBar = {
             Column(Modifier.statusBarsPadding()) {
                 if (searching && current != null) {
-                    ProjectSearchBar(current.name, search, closeSearch)
+                    ProjectSearchBar(current.name, query, { query = it }, closeSearch)
                 } else Row(verticalAlignment = Alignment.CenterVertically) {
                     PrimaryScrollableTabRow(
                         selectedTabIndex = pager.currentPage.coerceIn(0, projects.lastIndex.coerceAtLeast(0)),
@@ -333,30 +331,30 @@ fun HomeScreen(open: (NavKey) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProjectSearchBar(project: String, search: TextFieldState, onClose: () -> Unit) {
+private fun ProjectSearchBar(project: String, query: String, onQuery: (String) -> Unit, onClose: () -> Unit) {
     val focus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
-    val bar = rememberSearchBarState()
-    SearchBar(
-        state = bar,
-        inputField = {
-            SearchBarDefaults.InputField(
-                search,
-                bar,
-                onSearch = { focusManager.clearFocus() },
-                modifier = Modifier.focusRequester(focus),
-                placeholder = { Text("Search $project", maxLines = 1) },
-                leadingIcon = { IconButton(onClick = onClose) { Icon(Icons.Back, "Close search") } },
-                trailingIcon = if (search.text.isEmpty()) null else ({ IconButton(onClick = search::clearText) { Icon(Icons.Close, "Clear") } }),
-            )
-        },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp),
+    val container = SearchBarDefaults.colors().containerColor
+    // SearchBarDefaults.InputField opens no keyboard on focus: it hands over to the expanded search bar, which results in place don't use.
+    TextField(
+        query,
+        onQuery,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp).focusRequester(focus),
+        placeholder = { Text("Search $project", maxLines = 1) },
+        leadingIcon = { IconButton(onClick = onClose) { Icon(Icons.Back, "Close search") } },
+        trailingIcon = if (query == "") null else ({ IconButton(onClick = { onQuery("") }) { Icon(Icons.Close, "Clear") } }),
+        singleLine = true,
+        shape = SearchBarDefaults.inputFieldShape,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = container,
+            unfocusedContainerColor = container,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
     )
-    LaunchedEffect(Unit) {
-        focus.requestFocus()
-        keyboard?.show()
-    }
+    LaunchedEffect(Unit) { focus.requestFocus() }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
