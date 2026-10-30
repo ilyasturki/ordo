@@ -21,6 +21,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Fixed
 
 - Creating a project from the picker, or deleting the current project, no longer replaces the directory's link to another project, and deleting the linked project drops its link
+- The native app's tab underline sits exactly under its tab, at rest and mid-swipe; it was 16dp too far right
 
 ## [0.13.0] - 2026-10-29
 

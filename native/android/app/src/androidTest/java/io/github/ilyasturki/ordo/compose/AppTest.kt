@@ -4,6 +4,7 @@ import android.view.KeyEvent
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasParent
 import androidx.compose.ui.test.hasSetTextAction
@@ -11,6 +12,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -18,6 +20,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.unit.width
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ilyasturki.ordo.compose.model.Filter
@@ -43,6 +46,15 @@ class AppTest : AppFixture() {
     private fun backToList() {
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 10_000)
+    }
+
+    @Test
+    fun theUnderlineSitsUnderTheOnlyTab() {
+        scrollTo("Tap a row to focus it")
+        val bar = compose.onNodeWithTag("indicator", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val label = compose.onNodeWithText("Ordo", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(label.left.value, bar.left.value, 1f)
+        assertEquals(label.width.value, bar.width.value, 1f)
     }
 
     @Test

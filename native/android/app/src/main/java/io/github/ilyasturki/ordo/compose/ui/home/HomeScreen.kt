@@ -40,6 +40,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -61,6 +62,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.max
 
 private sealed interface HomeSheet {
     data class Add(val pid: String) : HomeSheet
@@ -116,7 +118,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             Column(Modifier.statusBarsPadding()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     PrimaryScrollableTabRow(
-                        selectedTabIndex = pager.currentPage.coerceIn(0, projects.size),
+                        selectedTabIndex = pager.currentPage.coerceIn(0, projects.lastIndex.coerceAtLeast(0)),
                         modifier = Modifier.weight(1f),
                         containerColor = Color.Transparent,
                         edgePadding = 4.dp,
@@ -329,11 +331,13 @@ private fun TabIndicatorScope.PagerIndicator(pager: PagerState, count: Int) {
             val a = positions[page]
             val b = positions[next]
             val width: Dp = lerp(a.contentWidth, b.contentWidth, f)
-            val center: Dp = lerp(a.left + a.width / 2, b.left + b.width / 2, f)
+            val start: Dp = lerp(a.left + (a.width - a.contentWidth) / 2, b.left + (b.width - b.contentWidth) / 2, f)
             val w = width.roundToPx()
             val placeable = measurable.measure(constraints.copy(minWidth = w, maxWidth = w))
-            layout(placeable.width, placeable.height) { placeable.placeRelative((center - width / 2).roundToPx(), 0) }
-        },
+            // PrimaryScrollableTabRow places this node at half the selected tab's width left over by the node's: taken back off here.
+            val shift = max(0, (a.width.roundToPx() - constraints.maxWidth) / 2)
+            layout(constraints.maxWidth, placeable.height) { placeable.placeRelative(start.roundToPx() - shift, 0) }
+        }.testTag("indicator"),
         width = Dp.Unspecified,
     )
 }
