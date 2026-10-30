@@ -199,7 +199,7 @@ fun NoTasksLine() {
         "No tasks",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 56.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+        modifier = Modifier.padding(start = 52.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
     )
 }
 

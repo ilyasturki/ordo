@@ -4,11 +4,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.lerp
@@ -40,6 +40,11 @@ class TabsTest : AppFixture(NAMES) {
         compose.waitForIdle()
     }
 
+    private fun tap(name: String) {
+        compose.onNodeWithText(name, useUnmergedTree = true).performScrollTo().performClick()
+        compose.waitForIdle()
+    }
+
     @Test
     fun theUnderlineSitsUnderATabNarrowerThanItsMinimum() {
         settled()
@@ -50,8 +55,7 @@ class TabsTest : AppFixture(NAMES) {
     fun theUnderlineSitsUnderEachTabItIsMovedToAsTheRowScrolls() {
         settled()
         for (name in listOf("Ordo app", "Planning the next big release", "Zed", "Zulu field notes", "Zzz the very last project", "Zed", "Ab")) {
-            compose.onNodeWithText(name, useUnmergedTree = true).performClick()
-            compose.waitForIdle()
+            tap(name)
             assertUnder(name)
         }
     }
@@ -59,9 +63,8 @@ class TabsTest : AppFixture(NAMES) {
     @Test
     fun deletingTheOpenProjectOpensTheFirstOne() {
         settled()
-        compose.onNodeWithText("Zed", useUnmergedTree = true).performClick()
-        compose.waitForIdle()
-        compose.onNodeWithText("Zed", useUnmergedTree = true).performClick()
+        tap("Zed")
+        tap("Zed")
         compose.onNodeWithText("Delete project").performClick()
         compose.onNodeWithText("Delete", useUnmergedTree = true).performClick()
         compose.waitUntil(5_000) { engine.state.value.projects.none { it.name == "Zed" } }
@@ -73,22 +76,19 @@ class TabsTest : AppFixture(NAMES) {
     @Test
     fun theUnderlineFollowsTheFingerBetweenTwoTabs() {
         settled()
-        compose.onNodeWithText("Ordo app", useUnmergedTree = true).performClick()
-        compose.waitForIdle()
+        tap("Ordo app")
         val a = label("Ordo app")
         val b = label("Planning the next big release")
-        compose.onAllNodesWithTag("list").onFirst().performTouchInput {
+        compose.onRoot().performTouchInput {
             down(center)
             moveBy(Offset(-width * 0.2f, 0f), 100)
             moveBy(Offset(-width * 0.2f, 0f), 100)
         }
         compose.waitForIdle()
         val bar = bar()
-        val aStart = a.left
-        val bStart = b.left
-        val f = (bar.left - aStart) / (bStart - aStart)
+        val f = (bar.left - a.left) / (b.left - a.left)
         assertTrue("the finger is between the tabs, at $f", f > 0.1f && f < 0.9f)
         assertEquals(lerp(a.width, b.width, f).value, bar.width.value, 1f)
-        compose.onAllNodesWithTag("list").onFirst().performTouchInput { up() }
+        compose.onRoot().performTouchInput { up() }
     }
 }

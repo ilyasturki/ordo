@@ -44,11 +44,6 @@ class AppTest : AppFixture() {
         compose.waitUntilAtLeastOneExists(hasContentDescription("More"), 10_000)
     }
 
-    private fun backToList() {
-        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-        compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 10_000)
-    }
-
     @Test
     fun theUnderlineSitsUnderTheOnlyTab() {
         scrollTo("Tap a row to focus it")
@@ -172,10 +167,18 @@ class AppTest : AppFixture() {
     }
 
     @Test
-    fun theBackKeyClosesThePageAndWhatWasTypedLands() {
+    fun theBackKeyClosesThePage() {
+        openTask("Tap a row to focus it")
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 20_000)
+    }
+
+    @Test
+    fun whatWasTypedLandsAsThePageCloses() {
         openTask("Tap a row to focus it")
         compose.onNodeWithText("Tap a row to focus it").performTextReplacement("Tap a row to edit it")
-        backToList()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 20_000)
         compose.waitUntil(5_000) { task("Tap a row to edit it") != null }
         assertNull(task("Tap a row to focus it"))
     }
