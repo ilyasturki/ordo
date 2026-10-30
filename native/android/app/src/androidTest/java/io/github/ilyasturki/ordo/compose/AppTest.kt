@@ -57,15 +57,6 @@ class AppTest : AppFixture() {
         return focused
     }
 
-    @Test
-    fun theUnderlineSitsUnderTheOnlyTab() {
-        scrollTo("Tap a row to focus it")
-        val bar = compose.onNodeWithTag("indicator", useUnmergedTree = true).getUnclippedBoundsInRoot()
-        val label = compose.onNodeWithText("Ordo", useUnmergedTree = true).getUnclippedBoundsInRoot()
-        assertEquals(label.left.value, bar.left.value, 1f)
-        assertEquals(label.width.value, bar.width.value, 1f)
-    }
-
     private fun keyboardIsUp(): Boolean {
         var up = false
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
@@ -86,6 +77,24 @@ class AppTest : AppFixture() {
             if (compose.onAllNodesWithContentDescription(gone).fetchSemanticsNodes().isNotEmpty()) back()
         }
         compose.onNodeWithContentDescription(gone).assertDoesNotExist()
+    }
+
+    // A key goes to the focused window, a page's only once it has opened.
+    private fun closePage(until: SemanticsMatcher) {
+        compose.waitUntil(30_000) {
+            if (pageHasFocus()) InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            Thread.sleep(2_000)
+            compose.onAllNodes(until).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
+    fun theUnderlineSitsUnderTheOnlyTab() {
+        scrollTo("Tap a row to focus it")
+        val bar = compose.onNodeWithTag("indicator", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val label = compose.onNodeWithText("Ordo", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(label.left.value, bar.left.value, 1f)
+        assertEquals(label.width.value, bar.width.value, 1f)
     }
 
     @Test
@@ -189,13 +198,13 @@ class AppTest : AppFixture() {
         val temp = images.newTemp().apply { writeBytes(byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3)) }
         val kept = images.keep(temp, "offline.png")
         runBlocking { engine.attach(PID, task("Recurring tasks")!!.id, listOf(kept)) }
-        compose.waitUntil(15_000) { compose.onAllNodesWithContentDescription("Not synced").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Not synced"), 20_000)
         compose.onNodeWithContentDescription("Not synced").performClick()
-        compose.onNodeWithText("1 edit and 1 photo wait safely on this phone.").assertIsDisplayed()
+        compose.waitUntilAtLeastOneExists(hasText("1 edit and 1 photo wait safely on this phone."), 20_000)
         back()
-        scrollTo("Recurring tasks")
-        compose.onNodeWithText("Recurring tasks").performClick()
-        compose.onNodeWithContentDescription("offline").assertIsDisplayed()
+        compose.waitUntil(20_000) { compose.onAllNodes(hasText("1 edit and 1 photo wait safely on this phone.")).fetchSemanticsNodes().isEmpty() }
+        openTask("Recurring tasks")
+        compose.waitUntilAtLeastOneExists(hasContentDescription("offline"), 20_000)
         compose.onNodeWithContentDescription("Remove offline").assertIsDisplayed()
     }
 
@@ -252,6 +261,7 @@ class AppTest : AppFixture() {
 
     @Test
     fun theSearchNarrowsTheListInPlaceAndBackClosesIt() {
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Search"), 20_000)
         compose.onNodeWithContentDescription("Search").performClick()
         compose.waitUntil(30_000) { keyboardIsUp() }
         compose.onNode(hasSetTextAction()).performTextInput("pairing")
@@ -259,14 +269,14 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Recurring tasks").assertDoesNotExist()
         compose.onNodeWithContentDescription("Add a task").assertDoesNotExist()
         compose.onNodeWithText("Pairing link login").performClick()
-        compose.onNodeWithContentDescription("Back").assertIsDisplayed()
-        backUntil("Back")
+        compose.waitUntilAtLeastOneExists(hasContentDescription("More"), 20_000)
+        closePage(hasContentDescription("Close search"))
         compose.onNodeWithText("Pairing link login").assertIsDisplayed()
         compose.onNodeWithText("Recurring tasks").assertDoesNotExist()
         compose.onNode(hasSetTextAction()).performTextReplacement("no such task anywhere")
         compose.onNodeWithText("Nothing matches").assertIsDisplayed()
         backUntil("Close search")
-        compose.onNodeWithContentDescription("Search").assertIsDisplayed()
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Search"), 20_000)
         compose.onNodeWithContentDescription("Add a task").assertIsDisplayed()
         scrollTo("Recurring tasks")
         compose.onNodeWithText("Recurring tasks").assertExists()

@@ -13,24 +13,27 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
@@ -40,8 +43,11 @@ import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.geometry.Offset
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import io.github.ilyasturki.ordo.compose.core.GoCore
 import io.github.ilyasturki.ordo.compose.data.Session
 import io.github.ilyasturki.ordo.compose.data.Store
@@ -51,8 +57,6 @@ import io.github.ilyasturki.ordo.compose.sync.Api
 import io.github.ilyasturki.ordo.compose.sync.Delays
 import io.github.ilyasturki.ordo.compose.sync.ServerError
 import io.github.ilyasturki.ordo.compose.sync.SyncEngine
-import io.github.ilyasturki.ordo.compose.ui.App
-import io.github.ilyasturki.ordo.compose.ui.OrdoTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -72,7 +76,6 @@ import org.junit.runner.RunWith
 import java.io.ByteArrayOutputStream
 import java.io.File
 
-private const val PID = "0rd0-web-fixture"
 private const val WAIT = 30_000L
 
 // The app against the real ordo serve scripts/native.sh starts for these tests: -e server, -e passphrase.
@@ -80,7 +83,7 @@ private const val WAIT = 30_000L
 @RunWith(AndroidJUnit4::class)
 class ServerTest {
     @get:Rule
-    val compose = createComposeRule()
+    val compose = createEmptyComposeRule()
 
     private val ins = InstrumentationRegistry.getInstrumentation()
     private val args = InstrumentationRegistry.getArguments()
@@ -92,6 +95,7 @@ class ServerTest {
     private val monitors = mutableListOf<Instrumentation.ActivityMonitor>()
     private lateinit var engine: SyncEngine
     private lateinit var dir: File
+    private lateinit var scenario: ActivityScenario<MainActivity>
 
     @Before
     fun setUp() {
@@ -106,32 +110,79 @@ class ServerTest {
     }
 
     @After
-    fun tearDown() = runBlocking {
+    fun tearDown() {
         monitors.forEach(ins::removeMonitor)
-        // Its event stream would stay open: OkHttp queues a host's calls past five, and a queued call never times out.
-        engine.foreground(false)
-        scope.coroutineContext.job.cancelAndJoin()
+        ins.runOnMainSync {
+            val monitor = ActivityLifecycleMonitorRegistry.getInstance()
+            for (stage in listOf(Stage.RESUMED, Stage.PAUSED, Stage.STOPPED)) monitor.getActivitiesInStage(stage).forEach { it.finish() }
+        }
+        if (::scenario.isInitialized) scenario.close()
+        runBlocking {
+            // Devices left behind push the next test's rows off the screen.
+            engine.signOut()
+            // Its event stream would stay open: OkHttp queues a host's calls past five, and a queued call never times out.
+            engine.foreground(false)
+            scope.coroutineContext.job.cancelAndJoin()
+        }
     }
 
-    private fun show() = compose.setContent { OrdoTheme { App(engine, scope) } }
+    private fun show() {
+        (ins.targetContext.applicationContext as OrdoApp).use(engine)
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+    }
 
     private fun signedIn() {
         runBlocking { assertNull(engine.login(server, passphrase)) }
         show()
     }
 
-    private fun shows(text: String) = compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+    // No activity is on screen for a moment as one replaces another, and the rule then throws.
+    private fun exists(matcher: SemanticsMatcher) =
+        runCatching { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false)
 
-    private fun waitForText(text: String) = compose.waitUntil(WAIT) { shows(text) }
+    private fun waitFor(matcher: SemanticsMatcher) = compose.waitUntil(WAIT) { exists(matcher) }
 
-    private fun waitForDescription(text: String) =
-        compose.waitUntil(WAIT) { compose.onAllNodesWithContentDescription(text).fetchSemanticsNodes().isNotEmpty() }
+    private fun waitForText(text: String) = waitFor(hasText(text))
 
-    private fun field(i: Int): SemanticsNodeInteraction = compose.onAllNodes(hasSetTextAction())[i]
+    private fun waitForDescription(text: String) = waitFor(hasContentDescription(text))
+
+    private fun tapText(text: String) {
+        waitForText(text)
+        compose.onNodeWithText(text).performClick()
+    }
+
+    private fun tapDescription(text: String) {
+        waitForDescription(text)
+        compose.onNodeWithContentDescription(text).performClick()
+    }
+
+    private fun openDevices() {
+        tapDescription("Account and settings")
+        tapText("Devices")
+        waitForText("$name · this device")
+    }
+
+    private fun field(i: Int): SemanticsNodeInteraction {
+        compose.waitUntil(WAIT) { runCatching { compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size > i }.getOrDefault(false) }
+        return compose.onAllNodes(hasSetTextAction())[i]
+    }
 
     private fun back() {
         ins.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         compose.waitForIdle()
+    }
+
+    // A key goes to the focused window, a page's only once it has opened.
+    private fun backFromPage() {
+        compose.waitUntil(WAIT) {
+            var focused = false
+            ins.runOnMainSync {
+                val top = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).singleOrNull()
+                focused = top is PageActivity && top.hasWindowFocus()
+            }
+            focused
+        }
+        back()
     }
 
     private fun inDialog(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isDialog()))
@@ -140,9 +191,10 @@ class ServerTest {
         engine.state.value.project(PID)!!.project.categories.flatMap { it.tasks }.first { it.title == title }
 
     private fun openTask(title: String) {
+        waitFor(hasTestTag("list"))
         compose.onNodeWithTag("list").performScrollToNode(hasText(title, substring = true))
         compose.onNodeWithText(title).performClick()
-        compose.onNodeWithContentDescription("Add an image").assertIsDisplayed()
+        waitForDescription("Add an image")
     }
 
     private fun images(title: String) = Description.refs(task(title).description)
@@ -192,15 +244,16 @@ class ServerTest {
     @Test
     fun thePassphraseIsOfferedOnceTheAddressNamesAServerThatTakesOne() {
         show()
+        val address = field(0)
         compose.onAllNodesWithText("Passphrase").assertCountEquals(0)
-        field(0).performTextInput(server)
+        address.performTextInput(server)
         waitForText("Passphrase")
         field(1).performTextInput("not the passphrase")
-        compose.onNodeWithText("Sign in").performClick()
+        compose.onNodeWithText("Sign in").performScrollTo().performClick()
         waitForText("Wrong passphrase")
         assertNull(engine.state.value.session)
         field(1).performTextReplacement(passphrase)
-        compose.onNodeWithText("Sign in").performClick()
+        compose.onNodeWithText("Sign in").performScrollTo().performClick()
         waitForDescription("Add a task")
         assertEquals(listOf("Ordo"), engine.state.value.projects.map { it.name })
     }
@@ -213,11 +266,12 @@ class ServerTest {
         }
         assertTrue(engine.state.value.session!!.expired)
         show()
-        compose.onNodeWithContentDescription("Not synced").performClick()
+        tapDescription("Not synced")
+        waitFor(hasText("Sign in again") and hasClickAction())
         compose.onNode(hasText("Sign in again") and hasClickAction()).performClick()
         waitForText("Passphrase")
         field(1).performTextInput(passphrase)
-        compose.onNodeWithText("Sign in").performClick()
+        field(1).performImeAction()
         compose.waitUntil(WAIT) { engine.state.value.signedIn }
     }
 
@@ -226,9 +280,7 @@ class ServerTest {
         val other = "other ${System.nanoTime()}"
         val token = runBlocking { Api(server, "").login(passphrase, other) }
         signedIn()
-        compose.onNodeWithContentDescription("Account and settings").performClick()
-        compose.onNodeWithText("Devices").performClick()
-        waitForText("$name · this device")
+        openDevices()
         compose.onNodeWithContentDescription("Sign out $other").performScrollTo().performClick()
         waitForText("Sign out “$other”?")
         inDialog("Sign out").performClick()
@@ -240,9 +292,7 @@ class ServerTest {
     @Test
     fun revokingThisDeviceEndsAtTheSignInScreen() {
         signedIn()
-        compose.onNodeWithContentDescription("Account and settings").performClick()
-        compose.onNodeWithText("Devices").performClick()
-        waitForText("$name · this device")
+        openDevices()
         compose.onNodeWithContentDescription("Sign out $name").performScrollTo().performClick()
         waitForText("This phone signs out and forgets its copy of your projects.")
         inDialog("Sign out").performClick()
@@ -253,9 +303,7 @@ class ServerTest {
     @Test
     fun signingOutAsksFirstAndEndsAtTheSignInScreen() {
         signedIn()
-        compose.onNodeWithContentDescription("Account and settings").performClick()
-        compose.onNodeWithText("Devices").performClick()
-        waitForText("$name · this device")
+        openDevices()
         compose.onNodeWithText("Sign out").performScrollTo().performClick()
         waitForText("Sign out?")
         inDialog("Sign out").performClick()
@@ -266,14 +314,12 @@ class ServerTest {
     @Test
     fun aNewDevicePairsFromTheLinkBesideTheCode() {
         signedIn()
-        compose.onNodeWithContentDescription("Account and settings").performClick()
-        compose.onNodeWithText("Devices").performClick()
-        waitForText("$name · this device")
+        openDevices()
         compose.onNodeWithText("Pair a new device").performScrollTo().performClick()
         waitForText("Type the passphrase again to make a pairing code.")
         compose.onNode(hasSetTextAction()).performTextInput(passphrase)
         compose.onNodeWithText("Make a code").performClick()
-        compose.waitUntil(WAIT) { compose.onAllNodes(hasTestTag("qr")).fetchSemanticsNodes().isNotEmpty() }
+        waitFor(hasTestTag("qr"))
         compose.onNodeWithTag("qr").assertIsDisplayed()
         compose.onNodeWithText("Share the link").assertExists()
         val link = compose.onNode(hasText("/pair/", substring = true)).fetchSemanticsNode()
@@ -302,10 +348,10 @@ class ServerTest {
         val stored = images("Recurring tasks").single().file!!
         synced()
         assertArrayEquals(bytes, onServer(stored))
-        compose.onNodeWithContentDescription("Holiday in Rome").performClick()
-        compose.onNodeWithTag("viewer").assertIsDisplayed()
+        tapDescription("Holiday in Rome")
+        waitFor(hasTestTag("viewer"))
         compose.waitUntil(WAIT) { compose.onAllNodes(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).fetchSemanticsNodes().isEmpty() }
-        back()
+        backFromPage()
         waitForDescription("Remove Holiday in Rome")
         compose.onNodeWithContentDescription("Remove Holiday in Rome").performClick()
         compose.waitUntil(WAIT) { images("Recurring tasks").isEmpty() }
@@ -367,8 +413,8 @@ class ServerTest {
         compose.onNodeWithContentDescription("Add an image").performClick()
         compose.onNodeWithText("Choose a photo").performClick()
         compose.waitUntil(WAIT) { images("Pairing link login").size == 2 }
-        compose.onNodeWithContentDescription("first").performClick()
-        compose.onNodeWithText("1 of 2").assertIsDisplayed()
+        tapDescription("first")
+        waitForText("1 of 2")
         compose.onNodeWithTag("viewer").performTouchInput { swipeLeft() }
         waitForText("2 of 2")
         compose.waitForIdle()
@@ -383,7 +429,7 @@ class ServerTest {
         compose.waitForIdle()
         compose.onNodeWithTag("viewer").performTouchInput { swipeRight() }
         waitForText("1 of 2")
-        back()
+        backFromPage()
         waitForDescription("Mark done")
     }
 
@@ -397,10 +443,12 @@ class ServerTest {
             val temp = other.images.newTemp().apply { writeBytes(bytes) }
             other.attach(PID, idOf(other, "Material 3 motion specs"), listOf(other.images.keep(temp, "remote.png")))
             other.sync()
+            other.signOut()
         }
         signedIn()
         openTask("Material 3 motion specs")
-        compose.onNodeWithContentDescription("remote").performClick()
+        tapDescription("remote")
+        waitFor(hasTestTag("viewer"))
         compose.waitUntil(WAIT) { compose.onAllNodes(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).fetchSemanticsNodes().isEmpty() }
         val stored = images("Material 3 motion specs").single().file!!
         assertArrayEquals(bytes, engine.images.file(stored)!!.readBytes())
