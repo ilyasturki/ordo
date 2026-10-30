@@ -47,6 +47,7 @@ object Ops {
         op("task.title", "ids" to listOf(id), "title" to title, "base" to base)
     fun description(id: String, text: String, base: String) =
         op("task.description", "ids" to listOf(id), "text" to text, "base" to base)
+    fun attach(id: String, lines: List<String>) = op("task.attach", "ids" to listOf(id), "lines" to lines)
     fun add(cat: String, title: String, parent: String = "") =
         op("task.add", "cat" to cat, "title" to title, "parent" to parent)
     fun insert(cat: String, after: String, title: String) =

@@ -1,5 +1,10 @@
 package io.github.ilyasturki.ordo.compose.ui.task
 
+import android.content.ActivityNotFoundException
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,7 +25,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,21 +45,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.ilyasturki.ordo.compose.data.ImageRefused
+import io.github.ilyasturki.ordo.compose.data.Images
+import io.github.ilyasturki.ordo.compose.data.Kept
 import io.github.ilyasturki.ordo.compose.model.Description
 import io.github.ilyasturki.ordo.compose.model.Estimates
+import io.github.ilyasturki.ordo.compose.model.ImageRef
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.model.Priority
 import io.github.ilyasturki.ordo.compose.model.Status
@@ -67,13 +78,18 @@ import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.LocalSnackbar
 import io.github.ilyasturki.ordo.compose.ui.NavKey
 import io.github.ilyasturki.ordo.compose.ui.TaskKey
+import io.github.ilyasturki.ordo.compose.ui.ViewerKey
 import io.github.ilyasturki.ordo.compose.ui.home.Picker
 import io.github.ilyasturki.ordo.compose.ui.home.StatusIcon
 import io.github.ilyasturki.ordo.compose.ui.home.TagDot
 import io.github.ilyasturki.ordo.compose.ui.home.plainFieldColors
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.IOException
 
 private val space = Regex("\\s+")
 
@@ -84,6 +100,8 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
     val appScope = LocalAppScope.current
     val scope = rememberCoroutineScope()
     val feedback = rememberFeedback()
+    val context = LocalContext.current
+    val snackbar = LocalSnackbar.current
     val state by engine.state.collectAsStateWithLifecycle()
     val project = state.project(pid)?.project
     val found = project?.find(tid)
@@ -161,6 +179,64 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
 
     fun edit(op: kotlinx.serialization.json.JsonObject, quiet: Boolean = true) {
         scope.launch { engine.edit(pid, op, quiet) }
+    }
+
+    fun followDescription() {
+        engine.state.value.project(pid)?.project?.find(tid)?.second?.description?.let { descBase = it }
+    }
+
+    // Outlives the page: the picker's result can arrive as it closes.
+    fun attach(take: (Images) -> List<Kept>) {
+        appScope.launch {
+            try {
+                val kept = withContext(Dispatchers.IO) { take(engine.images) }
+                if (kept.isEmpty()) return@launch
+                saveDetails()
+                engine.attach(pid, tid, kept)
+                followDescription()
+                feedback.commit()
+            } catch (e: ImageRefused) {
+                feedback.reject()
+                snackbar.showSnackbar(e.message.orEmpty())
+            } catch (e: IOException) {
+                feedback.reject()
+                snackbar.showSnackbar("Can't read that image")
+            }
+        }
+    }
+
+    fun removeImage(ref: ImageRef) {
+        scope.launch {
+            saveDetails()
+            val current = engine.state.value.project(pid)?.project?.find(tid)?.second ?: return@launch
+            val (text, lines) = Description.fields(current.description)
+            val line = lines.firstOrNull { it.contains("(${ref.target})") } ?: return@launch
+            engine.edit(pid, Ops.description(tid, Description.join(text, lines - line), current.description), said = "Image removed")
+            followDescription()
+        }
+    }
+
+    val pickImages = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+        if (uris.isNotEmpty()) attach { images -> uris.map { images.take(context.contentResolver, it) } }
+    }
+    // Saved: the camera app can push this one out of memory.
+    var photo by rememberSaveable { mutableStateOf<String?>(null) }
+    val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
+        val file = photo?.let(::File)
+        photo = null
+        if (taken && file != null) {
+            attach { images -> listOf(images.take(context.contentResolver, Uri.fromFile(file), alt = "photo").also { file.delete() }) }
+        }
+    }
+    fun openCamera() {
+        val file = File(context.cacheDir, "camera/${System.currentTimeMillis()}.jpg").apply { parentFile?.mkdirs() }
+        photo = file.path
+        try {
+            takePicture.launch(FileProvider.getUriForFile(context, "${context.packageName}.files", file))
+        } catch (_: ActivityNotFoundException) {
+            photo = null
+            scope.launch { snackbar.showSnackbar("No camera app on this phone") }
+        }
     }
 
     val parent = if (task.parentId != "") cat.tasks.firstOrNull { it.id == task.parentId } else null
@@ -265,7 +341,20 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                     colors = plainFieldColors(),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )
-                Properties(task, Description.images(task.description), menu, { menu = it }, ::edit)
+                val refs = Description.refs(task.description)
+                if (refs.isNotEmpty()) {
+                    Thumbnails(refs, onOpen = { open(ViewerKey(pid, tid, it)) }, onRemove = ::removeImage)
+                }
+                Properties(
+                    task,
+                    menu,
+                    { menu = it },
+                    ::edit,
+                    onPick = {
+                        pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onCamera = ::openCamera,
+                )
                 if (task.parentId == "") {
                     Subtasks(pid, cat.id, task, children, open)
                 }
@@ -278,7 +367,14 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
 // The fields that are set as chips, then one small button for each of the others.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Properties(task: Task, images: Int, menu: String, setMenu: (String) -> Unit, edit: (kotlinx.serialization.json.JsonObject, Boolean) -> Unit) {
+private fun Properties(
+    task: Task,
+    menu: String,
+    setMenu: (String) -> Unit,
+    edit: (kotlinx.serialization.json.JsonObject, Boolean) -> Unit,
+    onPick: () -> Unit,
+    onCamera: () -> Unit,
+) {
     val id = task.id
     val statusSet = task.status == Status.IN_PROGRESS || task.status == Status.CANCELLED
     @Composable
@@ -309,8 +405,26 @@ private fun Properties(task: Task, images: Int, menu: String, setMenu: (String) 
         Field("estimate", task.estimateMinutes > 0, Icons.Schedule, "Add an estimate", Estimates.format(task.estimateMinutes), { Icon(Icons.Schedule, null, Modifier.size(18.dp)) }) {
             Picker(menu == "estimate", { setMenu("") }, Estimates.presets + 0, { if (it == 0) "None" else Estimates.format(it) }, { edit(Ops.estimate(id, it), true) })
         }
-        if (images > 0) {
-            AssistChip(onClick = {}, enabled = false, label = { Text(if (images == 1) "1 image" else "$images images") }, leadingIcon = { Icon(Icons.Image, null, Modifier.size(18.dp)) })
+        Box {
+            IconButton(onClick = { setMenu("image") }) { Icon(Icons.AddPhoto, "Add an image", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            DropdownMenu(expanded = menu == "image", onDismissRequest = { setMenu("") }) {
+                DropdownMenuItem(
+                    text = { Text("Choose a photo") },
+                    leadingIcon = { Icon(Icons.Image, null) },
+                    onClick = {
+                        setMenu("")
+                        onPick()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Take a photo") },
+                    leadingIcon = { Icon(Icons.Camera, null) },
+                    onClick = {
+                        setMenu("")
+                        onCamera()
+                    },
+                )
+            }
         }
     }
 }

@@ -44,8 +44,9 @@ data class Prefs(
 
 // The phone's copy, as files: one per project (its meta line, then the core's JSON), the queue,
 // the session and the prefs. Each write lands whole or not at all.
-class Store(private val dir: File) {
+class Store(private val dir: File, imageCache: File = File(dir, "image-cache")) {
     private val projects = File(dir, "projects")
+    val images = Images(File(dir, "uploads"), imageCache)
 
     init {
         projects.mkdirs()
@@ -86,6 +87,7 @@ class Store(private val dir: File) {
         projects.listFiles().orEmpty().forEach(File::delete)
         File(dir, "queue.json").delete()
         File(dir, "prefs.json").delete()
+        images.wipe()
     }
 
     private fun read(name: String): String? = File(dir, name).takeIf(File::exists)?.readText()

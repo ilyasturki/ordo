@@ -15,10 +15,12 @@ import io.github.ilyasturki.ordo.compose.ui.OrdoTheme
 import io.github.ilyasturki.ordo.compose.ui.SettingsKey
 import io.github.ilyasturki.ordo.compose.ui.SignInKey
 import io.github.ilyasturki.ordo.compose.ui.TaskKey
+import io.github.ilyasturki.ordo.compose.ui.ViewerKey
 import io.github.ilyasturki.ordo.compose.ui.settings.LicenceScreen
 import io.github.ilyasturki.ordo.compose.ui.settings.SettingsScreen
 import io.github.ilyasturki.ordo.compose.ui.signin.SignInScreen
 import io.github.ilyasturki.ordo.compose.ui.task.TaskScreen
+import io.github.ilyasturki.ordo.compose.ui.task.ViewerScreen
 
 private const val KEY = "key"
 
@@ -37,6 +39,7 @@ class PageActivity : ComponentActivity() {
                 App(application as OrdoApp, signedOut = { LaunchedEffect(Unit) { finish() } }) {
                     when (key) {
                         is TaskKey -> TaskScreen(key.pid, key.tid, open = ::openPage, back = ::finish)
+                        is ViewerKey -> ViewerScreen(key.pid, key.tid, key.start, back = ::finish)
                         SettingsKey -> SettingsScreen(open = ::openPage, back = ::finish)
                         LicenceKey -> LicenceScreen(back = ::finish)
                         SignInKey -> SignInScreen(onBack = ::finish)

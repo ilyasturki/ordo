@@ -34,7 +34,7 @@ class OrdoApp : Application() {
         super.onCreate()
         use(
             SyncEngine(
-                store = Store(File(filesDir, "ordo")),
+                store = Store(File(filesDir, "ordo"), File(cacheDir, "images")),
                 newCore = ::GoCore,
                 scope = scope,
                 deviceName = deviceName(),

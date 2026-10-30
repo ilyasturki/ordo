@@ -18,9 +18,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val engine = (applicationContext as OrdoApp).engine
         engine.awaitBoot()
         val s = engine.state.value
-        if (!s.signedIn || s.pending == 0) return Result.success()
+        if (!s.signedIn || !s.waiting) return Result.success()
         return when (engine.sync()) {
-            Round.OK -> if (engine.state.value.pending > 0) Result.retry() else Result.success()
+            Round.OK -> if (engine.state.value.waiting) Result.retry() else Result.success()
             Round.RETRY -> Result.retry()
             Round.STOP -> Result.success()
         }

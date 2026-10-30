@@ -114,6 +114,10 @@ class Server : AutoCloseable {
 
     fun pairLink(): String = ordo("serve", "pair", "--base-url", url).lineSequence().first { it.startsWith("http") }.trim()
 
+    // An image as the server stored it, null while it hasn't.
+    fun attachment(name: String): ByteArray? =
+        File(dir, "data").walkTopDown().firstOrNull { it.name == name }?.readBytes()
+
     fun revoke(device: String) {
         val id = ordo("serve", "devices").lineSequence().first { it.contains(device) }.substringBefore(' ')
         ordo("serve", "revoke", id)

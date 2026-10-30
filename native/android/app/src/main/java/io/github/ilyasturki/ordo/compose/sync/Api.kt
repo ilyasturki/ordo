@@ -16,11 +16,13 @@ import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -56,18 +58,22 @@ private data class TokenAnswer(val token: String)
 private data class ErrorAnswer(val error: String = "")
 
 private val jsonType = "application/json".toMediaType()
+private val bytesType = "application/octet-stream".toMediaType()
 
 // /api of docs/sync.md, with the device token as a bearer.
 class Api(val server: String, private val token: String, private val http: OkHttpClient = client) {
+    // An image takes longer than an answer on a slow line, though a stall still fails.
+    private val transfers: OkHttpClient by lazy { http.newBuilder().callTimeout(120, TimeUnit.SECONDS).build() }
+
     private fun request(path: String): Request.Builder {
         val b = Request.Builder().url(server.trimEnd('/') + path)
         if (token != "") b.header("Authorization", "Bearer $token")
         return b
     }
 
-    private suspend fun <T> call(req: Request, out: KSerializer<T>): T {
+    private suspend fun <T> call(req: Request, out: KSerializer<T>, via: OkHttpClient = http): T {
         val res = try {
-            http.newCall(req).await()
+            via.newCall(req).await()
         } catch (e: IOException) {
             throw Offline(e)
         }
@@ -111,6 +117,26 @@ class Api(val server: String, private val token: String, private val http: OkHtt
 
     suspend fun logout() {
         post("/api/logout", JsonObject(emptyMap()), Unit.serializer())
+    }
+
+    suspend fun putImage(name: String, file: File) {
+        call(request("/api/attachments/$name").put(file.asRequestBody(bytesType)).build(), Unit.serializer(), transfers)
+    }
+
+    suspend fun image(name: String, to: File) {
+        val res = try {
+            transfers.newCall(request("/api/attachments/$name").build()).await()
+        } catch (e: IOException) {
+            throw Offline(e)
+        }
+        res.use {
+            if (!it.isSuccessful) throw ServerError(it.code, "ordo serve answered ${it.code}")
+            try {
+                to.outputStream().use { out -> it.body.byteStream().copyTo(out) }
+            } catch (e: IOException) {
+                throw Offline(e)
+            }
+        }
     }
 
     // Calls changed with a project's ID each time ordo serve sees its file change, until cancelled.

@@ -23,6 +23,9 @@ sealed interface NavKey
 data class TaskKey(val pid: String, val tid: String) : NavKey
 
 @Serializable
+data class ViewerKey(val pid: String, val tid: String, val start: Int) : NavKey
+
+@Serializable
 data object SettingsKey : NavKey
 
 @Serializable

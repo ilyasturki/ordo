@@ -3,6 +3,7 @@ package io.github.ilyasturki.ordo.compose.sync
 import io.github.ilyasturki.ordo.compose.core.CoreApi
 import io.github.ilyasturki.ordo.compose.core.perform
 import io.github.ilyasturki.ordo.compose.core.replay
+import io.github.ilyasturki.ordo.compose.data.Kept
 import io.github.ilyasturki.ordo.compose.data.Prefs
 import io.github.ilyasturki.ordo.compose.data.Queued
 import io.github.ilyasturki.ordo.compose.data.Session
@@ -33,6 +34,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.sse.EventSource
+import java.io.File
 import java.text.Collator
 
 data class Entry(
@@ -58,6 +60,8 @@ data class SyncState(
     val projects: List<Entry> = emptyList(),
     val prefs: Prefs = Prefs(),
     val pending: Int = 0,
+    // Images on the phone the server hasn't stored yet, each named by an edit that waits behind it.
+    val uploads: Int = 0,
     val syncing: Boolean = false,
     val lastSync: Long = 0,
     val trouble: Trouble? = null,
@@ -65,6 +69,22 @@ data class SyncState(
     val error: String = "",
 ) {
     val signedIn: Boolean get() = session != null && !session.expired
+    val waiting: Boolean get() = pending > 0 || uploads > 0
+
+    // What hasn't reached the server, in words: "2 edits and 1 photo".
+    val waitingWords: String
+        get() = listOfNotNull(
+            when (pending) {
+                0 -> null
+                1 -> "1 edit"
+                else -> "$pending edits"
+            },
+            when (uploads) {
+                0 -> null
+                1 -> "1 photo"
+                else -> "$uploads photos"
+            },
+        ).joinToString(" and ")
 
     fun project(id: String): Entry? = projects.firstOrNull { it.id == id }
 }
@@ -108,8 +128,11 @@ class SyncEngine(
     // Made by boot, on the lane: loading the Go library stays off the main thread.
     private lateinit var core: CoreApi
 
+    val images get() = store.images
+
     private val booted = CompletableDeferred<Unit>()
     private var queue: List<Queued> = emptyList()
+    private var unsent: List<String> = emptyList()
     private var seq = 0L
     private val opened = HashSet<String>()
     private var timer: Job? = null
@@ -141,6 +164,8 @@ class SyncEngine(
         }
         queue = store.queue()
         seq = queue.lastOrNull()?.seq ?: 0
+        images.sweep()
+        unsent = images.waiting()
         publish {
             copy(
                 booted = true,
@@ -148,6 +173,7 @@ class SyncEngine(
                 projects = entries.sortedWith(byName),
                 prefs = store.prefs(),
                 pending = queue.size,
+                uploads = unsent.size,
                 trouble = if (session?.expired == true) Trouble.Expired else null,
             )
         }
@@ -167,8 +193,8 @@ class SyncEngine(
         }
     }
 
-    // Runs a user's edit on the phone's copy and queues what the server replays.
-    suspend fun edit(pid: String, op: JsonObject, quiet: Boolean = false): Answer = withContext(lane) {
+    // Runs a user's edit on the phone's copy and queues what the server replays. said speaks for an op that answers no message.
+    suspend fun edit(pid: String, op: JsonObject, quiet: Boolean = false, said: String = ""): Answer = withContext(lane) {
         _state.value.project(pid)?.let(::ensureOpen)
         val a = core.perform(pid, op)
         val queued = a.queue
@@ -181,11 +207,42 @@ class SyncEngine(
             return@withContext a
         }
         land(pid, listOf(queued))
-        if (!quiet && a.msg != "") {
+        val msg = a.msg.ifEmpty { said }
+        if (!quiet && msg != "") {
             val undo = a.undo
-            if (undo.isEmpty()) snack(a.msg) else snack(a.msg, "Undo") { replay(pid, undo) }
+            if (undo.isEmpty()) snack(msg) else snack(msg, "Undo") { replay(pid, undo) }
         }
         a
+    }
+
+    // Queues the op naming images already kept on the phone: the bytes go first, so a crash
+    // between the two leaves a file to upload, never a line the server can't show.
+    suspend fun attach(pid: String, tid: String, kept: List<Kept>): Answer = withContext(lane) {
+        tracked()
+        val a = edit(pid, Ops.attach(tid, kept.map(Kept::line)))
+        if (a.queue == null) {
+            schedule(delays.sync)
+            if (!foreground) background()
+        }
+        a
+    }
+
+    private fun tracked() {
+        unsent = images.waiting()
+        publish { copy(uploads = unsent.size) }
+    }
+
+    // The image's file on the phone, fetched the first time; null when it can't be had right now.
+    suspend fun image(name: String): File? {
+        images.file(name)?.let { return it }
+        val s = session?.takeUnless { it.expired } ?: return null
+        return try {
+            withContext(io) { images.cached(name) { api(s).image(name, it) } }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
     }
 
     // Applies ops as they are, an undo's, and queues those that changed something.
@@ -258,6 +315,7 @@ class SyncEngine(
         timer?.cancel()
         publish { copy(syncing = true) }
         try {
+            if (!upload(s)) return Round.STOP
             val sent = queue
             val last = sent.lastOrNull()?.seq ?: seq
             val busy = sent.mapTo(HashSet()) { it.project }
@@ -272,7 +330,7 @@ class SyncEngine(
             failures = 0
             failingSince = 0
             publish { copy(lastSync = clock(), trouble = null, error = "") }
-            schedule(if (queue.isNotEmpty()) delays.sync else if (foreground) delays.poll else -1)
+            schedule(if (waiting) delays.sync else if (foreground) delays.poll else -1)
             return Round.OK
         } catch (e: CancellationException) {
             throw e
@@ -280,6 +338,29 @@ class SyncEngine(
             return if (session == s) failed(e) else Round.STOP
         } finally {
             publish { copy(syncing = false) }
+        }
+    }
+
+    private val waiting: Boolean get() = queue.isNotEmpty() || unsent.isNotEmpty()
+
+    // Sends the images ahead of the ops naming them, those kept meanwhile too: once none is left,
+    // the caller takes the queue with nothing in between. False when the session changed under it.
+    private suspend fun upload(s: Session): Boolean {
+        while (true) {
+            val name = unsent.firstOrNull() ?: return true
+            val file = images.file(name)
+            if (file != null) {
+                try {
+                    withContext(io) { api(s).putImage(name, file) }
+                } catch (e: ServerError) {
+                    // The same bytes get the same answer: one bad image can't hold back every edit behind it.
+                    if (e.status == 401 || e.status == 408 || e.status == 429 || e.status >= 500) throw e
+                    snack("The server refused an image: ${e.message}")
+                }
+                if (session != s) return false
+                images.stored(name)
+            }
+            tracked()
         }
     }
 
@@ -295,7 +376,7 @@ class SyncEngine(
         val trouble = when {
             e is ServerError && e.status == 409 -> Trouble.Outdated(message)
             e is ServerError && e.status in 400..499 -> Trouble.Refused(message)
-            queue.isNotEmpty() && (failures >= delays.failuresBeforeTrouble || now - failingSince >= delays.graceBeforeTrouble) ->
+            waiting && (failures >= delays.failuresBeforeTrouble || now - failingSince >= delays.graceBeforeTrouble) ->
                 Trouble.Failing(failingSince, message, e is Offline)
             else -> _state.value.trouble
         }
@@ -303,7 +384,7 @@ class SyncEngine(
         if (trouble is Trouble.Outdated) return Round.STOP
         backoff = minOf(delays.maxBackoff, if (backoff == 0L) delays.firstBackoff else backoff * 2)
         // Out of sight, WorkManager retries what waits; nothing else needs the radio.
-        if (foreground) schedule(backoff) else if (queue.isNotEmpty()) background()
+        if (foreground) schedule(backoff) else if (waiting) background()
         return Round.RETRY
     }
 
@@ -386,7 +467,7 @@ class SyncEngine(
             foreground = wanted
             listen(foreground)
             if (!foreground) {
-                if (queue.isEmpty()) {
+                if (!waiting) {
                     timer?.cancel()
                     timer = null
                 } else {
@@ -482,7 +563,8 @@ class SyncEngine(
         for (id in opened) core.close(id)
         opened.clear()
         queue = emptyList()
-        publish { copy(projects = emptyList(), pending = 0, prefs = Prefs()) }
+        unsent = emptyList()
+        publish { copy(projects = emptyList(), pending = 0, uploads = 0, prefs = Prefs()) }
     }
 
     suspend fun setCurrent(pid: String) = withContext(lane) {
