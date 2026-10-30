@@ -44,6 +44,7 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import io.github.ilyasturki.ordo.compose.sync.parseServer
 import io.github.ilyasturki.ordo.compose.ui.Icons
+import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
 import kotlinx.coroutines.delay
@@ -55,6 +56,8 @@ fun SignInScreen(onBack: (() -> Unit)?) {
     val engine = LocalEngine.current
     val state by engine.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    // Signing in closes this screen; what follows, the confirm included, outlives it.
+    val appScope = LocalAppScope.current
     val clipboard = LocalClipboard.current
     val context = LocalContext.current
     val feedback = rememberFeedback()
@@ -89,7 +92,7 @@ fun SignInScreen(onBack: (() -> Unit)?) {
         if (busy) return
         busy = true
         error = null
-        scope.launch {
+        appScope.launch {
             error = engine.pair(text)
             busy = false
             finished(error)
@@ -101,7 +104,7 @@ fun SignInScreen(onBack: (() -> Unit)?) {
         if (busy || at == null || passphrase == "") return
         busy = true
         passError = null
-        scope.launch {
+        appScope.launch {
             passError = engine.login(at, passphrase)
             busy = false
             finished(passError)

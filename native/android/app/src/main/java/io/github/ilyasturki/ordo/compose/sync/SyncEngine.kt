@@ -555,7 +555,8 @@ class SyncEngine(
     }
 
     suspend fun signIn(next: Session) {
-        withContext(lane) {
+        // Published, the session closes the screen calling this: the first sync can't be its to cancel.
+        val first = withContext(lane) {
             val previous = session
             if (previous != null && previous.server != next.server) wipe()
             store.saveSession(next)
@@ -564,8 +565,9 @@ class SyncEngine(
             failingSince = 0
             publish { copy(session = next, trouble = null) }
             if (foreground) listen(true)
+            scope.launch { sync() }
         }
-        sync()
+        first.join()
     }
 
     private fun expire() {

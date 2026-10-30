@@ -112,6 +112,18 @@ class SyncEngineTest {
     }
 
     @Test
+    fun aSignInWhoseScreenClosesStillSyncs() = test {
+        val e = engine()
+        e.boot()
+        val link = server.pairLink()
+        val pairing = launch(Dispatchers.Default) { e.pair(link) }
+        e.state.first { it.session != null }
+        pairing.cancel()
+        withTimeout(10_000) { e.state.first { it.projects.isNotEmpty() } }
+        assertEquals(listOf("Ordo"), e.state.value.projects.map { it.name })
+    }
+
+    @Test
     fun anEditReachesTheServerFile() = test {
         val e = paired(engine())
         assertTrue(e.edit(PID, Ops.cycle(EXPORT)).applied)
