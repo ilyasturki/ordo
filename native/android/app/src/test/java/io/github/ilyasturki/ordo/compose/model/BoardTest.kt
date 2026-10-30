@@ -95,6 +95,7 @@ class BoardTest {
                 ),
             ),
             Category("docs", "Docs", tasks = listOf(titled("c", "Guide"), titled("d", "Notes"))),
+            Category("idle", "Idle"),
         ),
     )
 
@@ -118,6 +119,7 @@ class BoardTest {
     @Test
     fun aSearchMatchesACategoryNameWithAllItsRows() {
         assertEquals(listOf("# Docs", "c", "d"), found("docs"))
+        assertEquals(listOf("# Idle", "(no tasks)"), found("idle"))
     }
 
     @Test

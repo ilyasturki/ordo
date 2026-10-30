@@ -100,6 +100,7 @@ object Board {
                     }
                 }
                 is Hidden -> {}
+                is NoTasks -> if (named) out += line
             }
         }
         return out
