@@ -1,23 +1,39 @@
 package io.github.ilyasturki.ordo.compose.model
 
+private val stored = Regex("""^attachments/([0-9a-f]{32}\.(?:png|jpg|gif|webp))$""")
+
+data class ImageRef(val name: String, val target: String) {
+    // The name the server stores it under; null for a path only the machine that wrote it can open.
+    val file: String? get() = stored.matchEntire(target)?.groupValues?.get(1)
+}
+
 // The image lines of a description, read as app/src/lib/model.ts reads them.
 object Description {
     private val ref = Regex("""!\[([^\[\]\n]*)]\(([^()\n]+)\)""")
     private val space = Regex("\\s+")
-    private val stored = Regex("""^attachments/[0-9a-f]{32}\.(?:png|jpg|gif|webp)$""")
 
     private fun isImage(target: String): Boolean {
         val t = target.trim()
         return stored.matches(t) || t.startsWith("/")
     }
 
-    fun images(description: String): Int {
-        if (!description.contains("![")) return 0
+    fun refs(description: String): List<ImageRef> {
+        if (!description.contains("![")) return emptyList()
         return ref.findAll(description)
-            .map { it.groupValues[2].trim() }
-            .filter(::isImage)
-            .distinct()
-            .count()
+            .map { ImageRef(it.groupValues[1].trim(), it.groupValues[2].trim()) }
+            .filter { isImage(it.target) }
+            .distinctBy { it.target }
+            .toList()
+    }
+
+    fun images(description: String): Int = refs(description).size
+
+    // As the TUI's search reads a description (attachments.Display): each reference turned into its label.
+    fun display(description: String): String {
+        if (!description.contains("![")) return description
+        return ref.replace(description) { m ->
+            if (isImage(m.groupValues[2])) "▣ " + m.groupValues[1].trim().ifEmpty { "image" } else m.value
+        }
     }
 
     fun preview(description: String): String {

@@ -22,6 +22,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.unit.width
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
@@ -208,6 +209,28 @@ class AppTest : AppFixture() {
         compose.waitUntilAtLeastOneExists(hasText("Undo"), 20_000)
         compose.onNodeWithText("Undo").performClick()
         compose.waitUntil(20_000) { task("Tap a row to focus it") != null }
+    }
+
+    @Test
+    fun theSearchNarrowsTheListInPlaceAndBackClosesIt() {
+        compose.onNodeWithContentDescription("Search").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("pairing")
+        compose.onNodeWithText("Pairing link login").assertIsDisplayed()
+        compose.onNodeWithText("Recurring tasks").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Add a task").assertDoesNotExist()
+        compose.onNodeWithText("Pairing link login").performClick()
+        compose.onNodeWithContentDescription("Mark done").assertIsDisplayed()
+        Espresso.pressBack()
+        compose.onNodeWithText("Pairing link login").assertIsDisplayed()
+        compose.onNodeWithText("Recurring tasks").assertDoesNotExist()
+        compose.onNode(hasSetTextAction()).performTextReplacement("no such task anywhere")
+        compose.onNodeWithText("Nothing matches").assertIsDisplayed()
+        Espresso.closeSoftKeyboard()
+        Espresso.pressBack()
+        compose.onNodeWithContentDescription("Search").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Add a task").assertIsDisplayed()
+        scrollTo("Recurring tasks")
+        compose.onNodeWithText("Recurring tasks").assertExists()
     }
 
     @Test

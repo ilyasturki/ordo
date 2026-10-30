@@ -1,5 +1,6 @@
 package io.github.ilyasturki.ordo.compose.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -7,13 +8,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
@@ -23,10 +29,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.TabIndicatorScope
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,12 +44,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -91,6 +104,15 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     val snackbar = LocalSnackbar.current
     var sheet by remember { mutableStateOf<HomeSheet?>(null) }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
+    // Saved: a task opened from the results comes back to them.
+    var searching by rememberSaveable { mutableStateOf(false) }
+    val search = rememberTextFieldState()
+    val query = search.text.toString()
+    val closeSearch = {
+        searching = false
+        search.clearText()
+    }
+    BackHandler(searching, closeSearch)
     val uis = remember { mutableStateMapOf<String, ListUi>() }
     val lastCat = remember { mutableStateMapOf<String, String>() }
 
@@ -117,7 +139,9 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     Scaffold(
         topBar = {
             Column(Modifier.statusBarsPadding()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                if (searching && current != null) {
+                    ProjectSearchBar(current.name, search, closeSearch)
+                } else Row(verticalAlignment = Alignment.CenterVertically) {
                     PrimaryScrollableTabRow(
                         selectedTabIndex = pager.currentPage.coerceIn(0, projects.lastIndex.coerceAtLeast(0)),
                         modifier = Modifier.weight(1f),
@@ -147,6 +171,9 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                     }
                     if (current != null) {
                         val active = filterOf(current).active
+                        IconButton(onClick = { searching = true }) {
+                            Icon(Icons.Search, "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         IconButton(onClick = { sheet = HomeSheet.Filters(current.id) }) {
                             Icon(Icons.Filter, if (active) "Filter, on" else "Filter", tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -159,7 +186,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             }
         },
         floatingActionButton = {
-            if (current != null && current.project.categories.isNotEmpty()) {
+            if (!searching && current != null && current.project.categories.isNotEmpty()) {
                 FloatingActionButton(onClick = { sheet = HomeSheet.Add(current.id) }) { Icon(Icons.Add, "Add a task") }
             }
         },
@@ -192,8 +219,9 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             HorizontalPager(
                 state = pager,
                 key = { latest.getOrNull(it)?.id ?: it },
-                modifier = Modifier.fillMaxSize().padding(top = pad.calculateTopPadding()),
+                modifier = Modifier.fillMaxSize().padding(top = pad.calculateTopPadding()).then(if (searching) Modifier.imePadding() else Modifier),
                 beyondViewportPageCount = 1,
+                userScrollEnabled = !searching,
             ) { page ->
                 val entry = projects.getOrNull(page) ?: return@HorizontalPager
                 ProjectList(
@@ -204,6 +232,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                     onOpen = { open(TaskKey(entry.id, it)) },
                     onHeader = { sheet = HomeSheet.CategoryMenu(entry.id, it.id) },
                     onNewCategory = { sheet = HomeSheet.NewCategory(entry.id, "") },
+                    query = query,
                 )
             }
         }
@@ -299,6 +328,30 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProjectSearchBar(project: String, search: TextFieldState, onClose: () -> Unit) {
+    val focus = remember { FocusRequester() }
+    val keyboard = LocalFocusManager.current
+    val bar = rememberSearchBarState()
+    SearchBar(
+        state = bar,
+        inputField = {
+            SearchBarDefaults.InputField(
+                search,
+                bar,
+                onSearch = { keyboard.clearFocus() },
+                modifier = Modifier.focusRequester(focus),
+                placeholder = { Text("Search $project", maxLines = 1) },
+                leadingIcon = { IconButton(onClick = onClose) { Icon(Icons.Back, "Close search") } },
+                trailingIcon = if (search.text.isEmpty()) null else ({ IconButton(onClick = search::clearText) { Icon(Icons.Close, "Clear") } }),
+            )
+        },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp),
+    )
+    LaunchedEffect(Unit) { focus.requestFocus() }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.ilyasturki.ordo.compose.model.Block
 import io.github.ilyasturki.ordo.compose.model.Board
@@ -60,12 +62,16 @@ fun ProjectList(
     onOpen: (String) -> Unit,
     onHeader: (Category) -> Unit,
     onNewCategory: () -> Unit,
+    query: String = "",
 ) {
     val engine = LocalEngine.current
     val scope = rememberCoroutineScope()
     val feedback = rememberFeedback()
     val pid = entry.id
-    val lines = remember(entry.project, filter, ui) { Board.lines(entry.project, filter, ui.peek, ui.held) }
+    val searching = query.isNotBlank()
+    val lines = remember(entry.project, filter, ui, query) {
+        if (searching) Board.search(Board.lines(entry.project, filter, held = ui.held), query) else Board.lines(entry.project, filter, ui.peek, ui.held)
+    }
     var dragOrder by remember { mutableStateOf<List<Line>?>(null) }
     val shown = dragOrder ?: lines
     // A lifted row's release also reaches the row as a tap: that one neither opens it nor steps its status.
@@ -91,6 +97,18 @@ fun ProjectList(
         return
     }
 
+    if (searching && shown.isEmpty()) {
+        Text(
+            "Nothing matches",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(top = 64.dp),
+        )
+        return
+    }
+
+    LaunchedEffect(query) { if (searching) listState.scrollToItem(0) }
     val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 96.dp
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("list"), contentPadding = PaddingValues(bottom = bottom)) {
         items(shown, key = { it.key }) { line ->
@@ -108,6 +126,7 @@ fun ProjectList(
                             shadowElevation = lift,
                             color = if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surface,
                             modifier = Modifier.longPressDraggableHandle(
+                                enabled = !searching,
                                 onDragStarted = {
                                     lifting = true
                                     feedback.hold()

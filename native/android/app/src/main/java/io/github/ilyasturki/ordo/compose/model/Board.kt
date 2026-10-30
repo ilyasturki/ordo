@@ -77,6 +77,42 @@ object Board {
         muted = !task.separator && (hidden || (task.id in held && !filter.taskVisible(task, cat))),
     )
 
+    // What the TUI's search matches (internal/app/search.go rowMatches), as a narrower list: a row
+    // stays when it or a subtask matches, and under a category whose name matches, every row stays.
+    fun search(lines: List<Line>, query: String): List<Line> {
+        val q = query.trim()
+        if (q == "") return lines
+        val out = ArrayList<Line>()
+        var header: Header? = null
+        var named = false
+        for (line in lines) {
+            when (line) {
+                is Header -> {
+                    header = line
+                    named = contains(line.category.name, q)
+                    if (named) out += line
+                }
+                is Block -> {
+                    val children = if (named) line.children else line.children.filter { matches(it.task, q) }
+                    if (named || children.isNotEmpty() || matches(line.row.task, q)) {
+                        if (!named) header?.let { out += it }
+                        header = null
+                        out += line.copy(children = children)
+                    }
+                }
+                is Hidden -> {}
+            }
+        }
+        return out
+    }
+
+    private fun matches(task: Task, query: String): Boolean =
+        contains(task.title, query) || contains(Description.display(task.description), query)
+
+    // The TUI's smartcase: an uppercase letter in the query makes it case-sensitive.
+    private fun contains(text: String, query: String): Boolean =
+        text.contains(query, ignoreCase = query.none(Char::isUpperCase))
+
     fun shownRows(cat: Category, filter: Filter, held: Set<String> = emptySet()): BooleanArray {
         val tasks = cat.tasks
         val shown = BooleanArray(tasks.size) { i ->

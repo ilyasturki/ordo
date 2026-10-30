@@ -77,6 +77,61 @@ class BoardTest {
         )
     }
 
+    private fun titled(id: String, title: String, description: String = "", parent: String = "", kind: String = "") =
+        Task(id = id, parentId = parent, title = title, description = description, kind = kind)
+
+    private val searched = Project(
+        id = "p",
+        name = "P",
+        categories = listOf(
+            Category(
+                "feat", "Feature",
+                tasks = listOf(
+                    titled("a", "Parent"),
+                    titled("a1", "Pair a phone", parent = "a"),
+                    titled("a2", "Other child", parent = "a"),
+                    titled("sep", "Later", kind = "separator"),
+                    titled("b", "Done", "Reach ordo\n![holiday](attachments/00000000000000000000000000000000.png)"),
+                ),
+            ),
+            Category("docs", "Docs", tasks = listOf(titled("c", "Guide"), titled("d", "Notes"))),
+        ),
+    )
+
+    private fun found(query: String, filter: Filter = Filter.NONE) = shape(Board.search(Board.lines(searched, filter), query))
+
+    @Test
+    fun aSearchKeepsTheRowsThatMatchUnderTheirCategory() {
+        assertEquals(listOf("# Feature", "a,  a1"), found("pair"))
+        assertEquals(listOf("# Feature", "sep"), found("later"))
+        assertEquals(listOf("# Feature", "b"), found("reach"))
+        assertEquals(emptyList<String>(), found("nothing like this"))
+    }
+
+    @Test
+    fun aSearchIsSmartcase() {
+        assertEquals(listOf("# Feature", "a,  a1"), found("pair"))
+        assertEquals(listOf("# Feature", "a,  a1"), found("Pair"))
+        assertEquals(emptyList<String>(), found("PAIR"))
+    }
+
+    @Test
+    fun aSearchMatchesACategoryNameWithAllItsRows() {
+        assertEquals(listOf("# Docs", "c", "d"), found("docs"))
+    }
+
+    @Test
+    fun aSearchReadsAnImageByItsLabelNotItsFileName() {
+        assertEquals(listOf("# Feature", "b"), found("▣ holiday"))
+        assertEquals(emptyList<String>(), found("attachments/"))
+    }
+
+    @Test
+    fun aSearchStaysInsideTheFilterAndCountsNothingHidden() {
+        val f = Filter(statuses = setOf(Status.COMPLETED))
+        assertEquals(emptyList<String>(), found("pair", f))
+    }
+
     @Test
     fun aParentShowsWhenAChildMatchesAndSeparatorsHide() {
         val f = Filter(priorities = setOf("high"))
