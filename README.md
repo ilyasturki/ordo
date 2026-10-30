@@ -98,7 +98,7 @@ The layout follows Google Tasks. Projects are tabs across the top, and each cate
 
 The TUI doesn't watch the file: once an edit from the app lands, the TUI's next edit is refused and marked, and `r` shows the change, dropping the TUI edits made since.
 
-A native Android app is on trial beside it, in `native/`: Kotlin and Jetpack Compose, the same Go code for the edits, bound with gomobile, and the same pairing and sync. `just native` builds it with the flake's Android SDK and installs it on the connected phone as Ordo Native, next to the Capacitor app.
+A native Android app is on trial beside it, in `native/`: Kotlin and Jetpack Compose, the same Go code for the edits, bound with gomobile, and the same pairing and sync. `just native` builds it with the flake's Android SDK and installs it on the connected phone as Ordo Native, next to the Capacitor app. It searches the open project, shows a task's images and takes new ones from the photo picker or the camera, even with no signal: a photo waits on the phone with the edits and reaches `ordo serve` later, app open or not. Settings → Devices lists the paired devices, signs one out, and shows the code and link that pair a new one. A server with a passphrase offers it on the sign-in screen once you type the server's address.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/phone-dark.png">
