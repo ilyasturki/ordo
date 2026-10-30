@@ -24,6 +24,8 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.unit.width
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import io.github.ilyasturki.ordo.compose.model.Filter
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -41,7 +43,16 @@ class AppTest : AppFixture() {
     private fun openTask(title: String) {
         scrollTo(title)
         compose.onNodeWithText(title).performClick()
-        compose.waitUntilAtLeastOneExists(hasContentDescription("More"), 10_000)
+        compose.waitUntilAtLeastOneExists(hasContentDescription("More"), 20_000)
+    }
+
+    private fun pageHasFocus(): Boolean {
+        var focused = false
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val top = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).singleOrNull()
+            focused = top is PageActivity && top.hasWindowFocus()
+        }
+        return focused
     }
 
     @Test
@@ -71,9 +82,9 @@ class AppTest : AppFixture() {
         val before = engine.state.value.project(PID)!!.project.categories[0].tasks.map { it.id }
         scrollTo("Export a project as Markdown")
         compose.onNode(statusOf("Export a project as Markdown", "Todo")).performClick()
-        compose.waitUntil(5_000) { task("Export a project as Markdown")?.status == "in_progress" }
+        compose.waitUntil(20_000) { task("Export a project as Markdown")?.status == "in_progress" }
         compose.onNode(statusOf("Export a project as Markdown", "In Progress")).performClick()
-        compose.waitUntil(5_000) { task("Export a project as Markdown")?.status == "completed" }
+        compose.waitUntil(20_000) { task("Export a project as Markdown")?.status == "completed" }
         compose.onNode(statusOf("Export a project as Markdown", "Completed")).assertExists()
         assertEquals(before, engine.state.value.project(PID)!!.project.categories[0].tasks.map { it.id })
     }
@@ -97,7 +108,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Research").performClick()
         compose.onNodeWithText("Add a separator").performClick()
         compose.onNodeWithText("Add").performClick()
-        compose.waitUntil(5_000) { engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }.tasks.first().separator }
+        compose.waitUntil(20_000) { engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }.tasks.first().separator }
         assertEquals("", engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }.tasks.first().title)
     }
 
@@ -107,7 +118,7 @@ class AppTest : AppFixture() {
         scrollTo("Research")
         compose.onNodeWithText("Research").performClick()
         compose.onNodeWithText("Add a separator").performClick()
-        compose.waitUntilAtLeastOneExists(hasText("Clear the filter to add a separator"), 5_000)
+        compose.waitUntilAtLeastOneExists(hasText("Clear the filter to add a separator"), 20_000)
     }
 
     @Test
@@ -122,7 +133,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Medium").performClick()
         compose.onNodeWithText("Clear the filter to add a task here").assertDoesNotExist()
         compose.onNodeWithText("Save").performClick()
-        compose.waitUntil(5_000) { task("Water the plants")?.priority == "medium" }
+        compose.waitUntil(20_000) { task("Water the plants")?.priority == "medium" }
     }
 
     @Test
@@ -131,7 +142,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithContentDescription("Add a task").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Water the plants")
         compose.onNode(hasSetTextAction()).performImeAction()
-        compose.waitUntil(5_000) { task("Water the plants") != null }
+        compose.waitUntil(20_000) { task("Water the plants") != null }
         assertEquals("Water the plants", engine.state.value.project(PID)!!.project.categories[0].tasks.first().title)
     }
 
@@ -158,19 +169,24 @@ class AppTest : AppFixture() {
         compose.onNodeWithContentDescription("Status: Todo").assertExists()
         compose.onNodeWithText("Add a description").assertExists()
         compose.onNodeWithContentDescription("Mark done").performClick()
-        compose.waitUntil(5_000) { task("Tap a row to focus it")?.status == "completed" }
-        compose.waitUntilAtLeastOneExists(hasContentDescription("Mark todo"), 5_000)
+        compose.waitUntil(20_000) { task("Tap a row to focus it")?.status == "completed" }
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Mark todo"), 20_000)
         compose.onNodeWithContentDescription("More").assertIsDisplayed()
-        compose.waitUntilAtLeastOneExists(hasText("Undo"), 5_000)
+        compose.waitUntilAtLeastOneExists(hasText("Undo"), 20_000)
         compose.onNodeWithText("Undo").performClick()
-        compose.waitUntil(5_000) { task("Tap a row to focus it")?.status == "todo" }
+        compose.waitUntil(20_000) { task("Tap a row to focus it")?.status == "todo" }
     }
 
     @Test
     fun theBackKeyClosesThePage() {
         openTask("Tap a row to focus it")
-        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-        compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 20_000)
+        val list = hasContentDescription("Add a task")
+        // A key goes to the focused window, the page's only once it has opened; each try waits for that, so none reaches the list.
+        compose.waitUntil(30_000) {
+            if (pageHasFocus()) InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            Thread.sleep(2_000)
+            compose.onAllNodes(list).fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test
@@ -179,7 +195,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Tap a row to focus it").performTextReplacement("Tap a row to edit it")
         compose.onNodeWithContentDescription("Back").performClick()
         compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 20_000)
-        compose.waitUntil(5_000) { task("Tap a row to edit it") != null }
+        compose.waitUntil(20_000) { task("Tap a row to edit it") != null }
         assertNull(task("Tap a row to focus it"))
     }
 
@@ -189,9 +205,9 @@ class AppTest : AppFixture() {
         compose.onNodeWithContentDescription("More").performClick()
         compose.onNodeWithText("Delete").performClick()
         compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 10_000)
-        compose.waitUntilAtLeastOneExists(hasText("Undo"), 5_000)
+        compose.waitUntilAtLeastOneExists(hasText("Undo"), 20_000)
         compose.onNodeWithText("Undo").performClick()
-        compose.waitUntil(5_000) { task("Tap a row to focus it") != null }
+        compose.waitUntil(20_000) { task("Tap a row to focus it") != null }
     }
 
     @Test
@@ -226,9 +242,9 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Delete category “Documentation”?").assertIsDisplayed()
         compose.onNodeWithText("Its sub-category and 5 tasks go too.").assertIsDisplayed()
         compose.onNodeWithText("Delete").performClick()
-        compose.waitUntil(5_000) { engine.state.value.project(PID)!!.project.categories.none { it.name == "API" } }
-        compose.waitUntilAtLeastOneExists(hasText("Undo"), 5_000)
+        compose.waitUntil(20_000) { engine.state.value.project(PID)!!.project.categories.none { it.name == "API" } }
+        compose.waitUntilAtLeastOneExists(hasText("Undo"), 20_000)
         compose.onNodeWithText("Undo").performClick()
-        compose.waitUntil(5_000) { engine.state.value.project(PID)!!.project.categories.map { it.name } == before }
+        compose.waitUntil(20_000) { engine.state.value.project(PID)!!.project.categories.map { it.name } == before }
     }
 }

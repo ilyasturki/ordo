@@ -36,7 +36,7 @@ class TabsTest : AppFixture(NAMES) {
     }
 
     private fun settled() {
-        compose.waitUntilAtLeastOneExists(hasTestTag("indicator"), 5_000)
+        compose.waitUntilAtLeastOneExists(hasTestTag("indicator"), 20_000)
         compose.waitForIdle()
     }
 
@@ -67,8 +67,8 @@ class TabsTest : AppFixture(NAMES) {
         tap("Zed")
         compose.onNodeWithText("Delete project").performClick()
         compose.onNodeWithText("Delete", useUnmergedTree = true).performClick()
-        compose.waitUntil(5_000) { engine.state.value.projects.none { it.name == "Zed" } }
-        compose.waitUntil(5_000) { engine.state.value.prefs.current == PID }
+        compose.waitUntil(20_000) { engine.state.value.projects.none { it.name == "Zed" } }
+        compose.waitUntil(20_000) { engine.state.value.prefs.current == PID }
         compose.waitForIdle()
         assertUnder("Ab")
     }

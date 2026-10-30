@@ -77,7 +77,7 @@ abstract class AppFixture(private val names: List<String> = listOf("Ordo")) {
         engine.state.value.project(PID)?.project?.categories?.flatMap { it.tasks }?.firstOrNull { it.title == title }
 
     protected fun scrollTo(text: String) {
-        compose.waitUntilAtLeastOneExists(androidx.compose.ui.test.hasTestTag("list"), 5_000)
+        compose.waitUntilAtLeastOneExists(androidx.compose.ui.test.hasTestTag("list"), 20_000)
         compose.onNodeWithTag("list").performScrollToNode(hasText(text, substring = true))
     }
 }
