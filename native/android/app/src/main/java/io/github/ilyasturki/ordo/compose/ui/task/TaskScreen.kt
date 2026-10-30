@@ -187,7 +187,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
 
     // Outlives the page: the picker's result can arrive as it closes.
     fun attach(take: (Images) -> List<Kept>) {
-        appScope.launch {
+        appScope.launch(Dispatchers.Main) {
             try {
                 val kept = withContext(Dispatchers.IO) { take(engine.images) }
                 if (kept.isEmpty()) return@launch

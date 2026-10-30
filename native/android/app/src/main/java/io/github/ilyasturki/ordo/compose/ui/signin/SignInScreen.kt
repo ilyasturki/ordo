@@ -47,6 +47,7 @@ import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -92,7 +93,7 @@ fun SignInScreen(onBack: (() -> Unit)?) {
         if (busy) return
         busy = true
         error = null
-        appScope.launch {
+        appScope.launch(Dispatchers.Main) {
             error = engine.pair(text)
             busy = false
             finished(error)
@@ -104,7 +105,7 @@ fun SignInScreen(onBack: (() -> Unit)?) {
         if (busy || at == null || passphrase == "") return
         busy = true
         passError = null
-        appScope.launch {
+        appScope.launch(Dispatchers.Main) {
             passError = engine.login(at, passphrase)
             busy = false
             finished(passError)
