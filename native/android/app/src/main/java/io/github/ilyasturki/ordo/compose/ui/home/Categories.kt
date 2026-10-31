@@ -151,7 +151,7 @@ fun CategoriesScreen(pid: String, back: () -> Unit) {
     }
 
     sheet?.let { s ->
-        val filter = (state.prefs.filters[pid] ?: Filter.NONE).pruned(entry.project)
+        val filter = (state.views[pid]?.filter ?: Filter.NONE).pruned(entry.project)
         CategorySheets(entry, filter, s) { sheet = it }
     }
 }
