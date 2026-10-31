@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,8 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -178,20 +180,31 @@ private fun SeparatorRow(label: String, child: Boolean, onOpen: () -> Unit, modi
         modifier
             .fillMaxWidth()
             .clickable(onClick = onOpen)
+            .then(if (label == "") Modifier.semantics { contentDescription = "Separator" } else Modifier)
             .padding(start = if (child) 56.dp else 20.dp, end = 16.dp)
-            .height(40.dp),
+            .height(48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (label != "") {
+            SeparatorRule(Modifier.width(20.dp))
+            Spacer(Modifier.width(10.dp))
             Text(
                 label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
         }
-        HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+        SeparatorRule(Modifier.weight(1f))
     }
+}
+
+@Composable
+private fun SeparatorRule(modifier: Modifier) {
+    Box(modifier.height(3.dp).background(MaterialTheme.colorScheme.onSurface, CircleShape))
 }
 
 @Composable

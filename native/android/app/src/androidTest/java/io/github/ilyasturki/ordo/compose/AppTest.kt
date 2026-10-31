@@ -129,6 +129,44 @@ class AppTest : AppFixture() {
     }
 
     @Test
+    fun anUnlabelledSeparatorOpensLikeALabelledOne() {
+        scrollTo("Research")
+        compose.onNodeWithText("Research").performClick()
+        compose.onNodeWithText("Add a separator").performClick()
+        compose.onNodeWithText("Add").performClick()
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Separator"), 20_000)
+        compose.onNodeWithContentDescription("Separator").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Separator label"), 20_000)
+    }
+
+    @Test
+    fun theAddSheetNamesPriorityAndColourUntilTheyAreSet() {
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 20_000)
+        compose.onNodeWithContentDescription("Add a task").performClick()
+        compose.onNodeWithText("Priority").performClick()
+        compose.onNodeWithText("Medium").performClick()
+        compose.onNodeWithText("Priority").assertDoesNotExist()
+        compose.onNodeWithText("Medium").assertExists()
+        compose.onNodeWithText("Colour").performClick()
+        compose.onNodeWithText("Green").performClick()
+        compose.onNodeWithText("Colour").assertDoesNotExist()
+        compose.onNodeWithText("Green").assertExists()
+    }
+
+    @Test
+    fun theTaskPageNamesPriorityAndColourUntilTheyAreSet() {
+        openTask("Drag to reorder")
+        compose.onNodeWithText("Colour").performClick()
+        compose.onNodeWithText("Cyan").performClick()
+        compose.waitUntil(20_000) { task("Drag to reorder")?.tagColor == "cyan" }
+        compose.onNodeWithText("Colour").assertDoesNotExist()
+        compose.onNodeWithText("Priority").performClick()
+        compose.onNodeWithText("High").performClick()
+        compose.waitUntil(20_000) { task("Drag to reorder")?.priority == "high" }
+        compose.onNodeWithText("Priority").assertDoesNotExist()
+    }
+
+    @Test
     fun theFilterRefusesASeparator() {
         runBlocking { engine.setFilter(PID, Filter(statuses = setOf("todo"))) }
         scrollTo("Research")
@@ -145,7 +183,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Clear the filter to add a task here").assertExists()
         compose.onNode(hasSetTextAction()).performTextInput("Water the plants")
         compose.onNodeWithText("Save").assertIsNotEnabled()
-        compose.onNodeWithContentDescription("Priority").performClick()
+        compose.onNodeWithText("Priority").performClick()
         compose.onNodeWithText("Medium").performClick()
         compose.onNodeWithText("Clear the filter to add a task here").assertDoesNotExist()
         compose.onNodeWithText("Save").performClick()

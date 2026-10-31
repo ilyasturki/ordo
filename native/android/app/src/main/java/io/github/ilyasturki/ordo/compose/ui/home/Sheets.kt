@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -168,6 +170,11 @@ fun deletedWith(project: Project, cat: Category): String {
         1 -> "Its sub-category and $taskWord go too."
         else -> "Its $subs sub-categories and $taskWord go too."
     }
+}
+
+@Composable
+fun WordChip(icon: ImageVector, word: String, onClick: () -> Unit) {
+    AssistChip(onClick, label = { Text(word) }, leadingIcon = { Icon(icon, null, Modifier.size(18.dp)) })
 }
 
 // Picks one value from a short list, anchored to what opened it.
@@ -297,15 +304,15 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
                     }
                     Box {
                         if (priority == "") {
-                            IconButton(onClick = { menu = "priority" }) { Icon(Icons.Flag, "Priority", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            WordChip(Icons.Flag, "Priority") { menu = "priority" }
                         } else {
                             InputChip(selected = true, onClick = { menu = "priority" }, label = { Text(Priority.label(priority)) }, leadingIcon = { Icon(Icons.priority(priority), null, Modifier.size(18.dp)) })
                         }
-                        Picker(menu == "priority", { menu = "" }, listOf("") + Priority.all, Priority::label, { priority = it })
+                        Picker(menu == "priority", { menu = "" }, listOf("") + Priority.all, Priority::label, { priority = it }, leading = { if (it != "") Icon(Icons.priority(it), null) })
                     }
                     Box {
                         if (tag == "") {
-                            IconButton(onClick = { menu = "tag" }) { Icon(Icons.Label, "Tag", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            WordChip(Icons.Palette, "Colour") { menu = "tag" }
                         } else {
                             InputChip(selected = true, onClick = { menu = "tag" }, label = { Text(Tags.label(tag)) }, leadingIcon = { TagDot(tag) })
                         }

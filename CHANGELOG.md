@@ -14,6 +14,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The `(N hidden by the filter)` row stays while it shows those tasks and reads `(hide the N filtered out)`: `enter` or `space` on it hides them again with the cursor on it, and so does `esc` from anywhere in the category. Leaving the category still hides them, and the saved filter never changes
 - The project picker lists the most recently used project first, where it was alphabetical or in a hand-made order. A project is as recent as the later of its last open on this device and its last edit anywhere, one never opened here counts by its last edit, and a tie falls to the name. `J` and `K` no longer reorder the picker, and `state.json` drops `project_order` for `last_opened`, so an older file still loads. `ordo project list` and completion stay alphabetical
 - The app's project tabs follow the same order, by the later of the last time you had a project open or edited it on the phone and its last edit anywhere. The order is set when the app starts and each time it comes back to the front, and stays put in between: opening, editing or syncing a project never moves a tab under your finger, and a project that appears meanwhile goes last
+- The Android app draws a separator like the terminal does, a thick rule with a short lead before a bold label, in full contrast
+- The Android app's add sheet and task page say "Priority" and "Colour" beside their icons until a value is set, the colour control takes a palette icon instead of a label shape, and the priority menu shows each level's arrows
 
 ### Removed
 

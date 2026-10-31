@@ -82,6 +82,7 @@ import io.github.ilyasturki.ordo.compose.ui.ViewerKey
 import io.github.ilyasturki.ordo.compose.ui.home.Picker
 import io.github.ilyasturki.ordo.compose.ui.home.StatusIcon
 import io.github.ilyasturki.ordo.compose.ui.home.TagDot
+import io.github.ilyasturki.ordo.compose.ui.home.WordChip
 import io.github.ilyasturki.ordo.compose.ui.home.plainFieldColors
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
 import kotlinx.coroutines.Dispatchers
@@ -380,12 +381,12 @@ private fun Properties(
     val id = task.id
     val statusSet = task.status == Status.IN_PROGRESS || task.status == Status.CANCELLED
     @Composable
-    fun Field(key: String, set: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector, add: String, label: String, leading: @Composable () -> Unit, picker: @Composable () -> Unit) {
+    fun Field(key: String, set: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector, add: String, label: String, leading: @Composable () -> Unit, word: Boolean = false, picker: @Composable () -> Unit) {
         Box {
-            if (set) {
-                InputChip(selected = true, onClick = { setMenu(key) }, label = { Text(label) }, leadingIcon = leading)
-            } else {
-                IconButton(onClick = { setMenu(key) }) { Icon(icon, add, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            when {
+                set -> InputChip(selected = true, onClick = { setMenu(key) }, label = { Text(label) }, leadingIcon = leading)
+                word -> WordChip(icon, add) { setMenu(key) }
+                else -> IconButton(onClick = { setMenu(key) }) { Icon(icon, add, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             picker()
         }
@@ -398,10 +399,10 @@ private fun Properties(
         Field("status", statusSet, Icons.status(task.status), "Status: ${Status.label(task.status)}", Status.label(task.status), { Icon(Icons.status(task.status), null, Modifier.size(18.dp)) }) {
             Picker(menu == "status", { setMenu("") }, Status.all, Status::label, { edit(Ops.status(id, it), false) }, leading = { Icon(Icons.status(it), null) })
         }
-        Field("priority", task.priority != "", Icons.Flag, "Add a priority", Priority.label(task.priority), { Icon(Icons.priority(task.priority), null, Modifier.size(18.dp)) }) {
-            Picker(menu == "priority", { setMenu("") }, Priority.all + "", Priority::label, { edit(Ops.priority(id, it), true) })
+        Field("priority", task.priority != "", Icons.Flag, "Priority", Priority.label(task.priority), { Icon(Icons.priority(task.priority), null, Modifier.size(18.dp)) }, word = true) {
+            Picker(menu == "priority", { setMenu("") }, Priority.all + "", Priority::label, { edit(Ops.priority(id, it), true) }, leading = { if (it != "") Icon(Icons.priority(it), null) })
         }
-        Field("tag", task.tagColor != "", Icons.Label, "Add a tag", Tags.label(task.tagColor), { TagDot(task.tagColor) }) {
+        Field("tag", task.tagColor != "", Icons.Palette, "Colour", Tags.label(task.tagColor), { TagDot(task.tagColor) }, word = true) {
             Picker(menu == "tag", { setMenu("") }, Tags.all + "", Tags::label, { edit(Ops.tag(id, it), true) }, leading = { if (it != "") TagDot(it) })
         }
         Field("estimate", task.estimateMinutes > 0, Icons.Schedule, "Add an estimate", Estimates.format(task.estimateMinutes), { Icon(Icons.Schedule, null, Modifier.size(18.dp)) }) {
