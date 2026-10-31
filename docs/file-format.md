@@ -9,7 +9,10 @@ Version 0.9.0, released as phasionary, carried its own sync, made of a change jo
 ├── projects/
 │   ├── <id>.json                one project per file
 │   ├── <id>.json.tmp            a write in progress
-│   ├── <id>.json.lock           flock for that project
+│   ├── <id>.json.lock           flock for that project and its view file
+│   ├── <id>.view.json           what every device shows of it, see Views
+│   ├── .directories.json        which directory opens which project, see Directory links
+│   ├── .directories.json.lock   flock for that file
 │   ├── .global.lock             flock for creating and renaming projects
 │   └── attachments/             images, see Images
 │       ├── <hash>.<ext>             one image, never rewritten
@@ -18,9 +21,9 @@ Version 0.9.0, released as phasionary, carried its own sync, made of a change jo
 └── web.json                     devices paired with `ordo serve` and who paired them, mode 0600
 ```
 
-Only `projects/` travels between devices, `attachments/` included. `state.json` holds folds, cursor positions, each project's TUI filter, when each project was last opened there and which directory opens which project; it belongs to one device and stays there, and so does `web.json`, which holds hashes of the paired devices' tokens and of the pending pairing codes, and which device paired which so that revoking one revokes those it paired. The config file, `~/.config/ordo/config.json`, is per device too.
+Only `projects/` travels between devices, `attachments/` included, and with it each project's folds and filter and the directory links. `state.json` holds cursor positions and when each project was last opened there; it belongs to one device and stays there, and so does `web.json`, which holds hashes of the paired devices' tokens and of the pending pairing codes, and which device paired which so that revoking one revokes those it paired. The config file, `~/.config/ordo/config.json`, is per device too.
 
-A file in `projects/` is a project only when its name is `<id>.json`, `<id>` is a valid ID, and the `id` inside the file is that same `<id>`. Ordo ignores every other file in the directory, from the `.tmp` and `.lock` sidecars to renamed and conflict copies.
+A file in `projects/` is a project only when its name is `<id>.json`, `<id>` is a valid ID, and the `id` inside the file is that same `<id>`. An ID holds no dot, so `<id>.view.json` and `.directories.json` are never projects. Ordo reads those two by their exact names and ignores every other file in the directory, from the `.tmp` and `.lock` sidecars to renamed and conflict copies.
 
 ## Project JSON
 
@@ -139,6 +142,61 @@ A category can hold sub-categories, and a task can hold subtasks, one level deep
 
 Ordo repairs a file that breaks these rules when it loads it. A child whose parent is missing, is itself a child or is a separator becomes top-level where it stands, and so does a separator with a `parent_id`. Every other child joins its parent's children, which follow the parent in the order they had in the file. The repair reaches the file on the next save.
 
+## Views
+
+`<id>.view.json` holds what every device shows of one project. It stays apart from the project file because a fold toggled there would restamp `updated_at`, trip the check in [Edits from outside](#edits-from-outside) and show up as a change to the tasks.
+
+```json
+{
+  "folds": ["de2e32f7-b882-b2cb-309a-9048dbf3936c", "9652ac64-1187-6d0e-3f4c-5a2b7d8e9f01"],
+  "filter": {
+    "statuses": ["todo", "in_progress"],
+    "priorities": ["high", "none"],
+    "categories": ["de2e32f7-b882-b2cb-309a-9048dbf3936c"],
+    "tags": ["green", "none"]
+  }
+}
+```
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `folds` | array | Optional. IDs of the folded categories and of the folded tasks that have subtasks. |
+| `filter` | object | Optional. A list holds the values to keep, any of which matches, and a task must match every list that isn't empty. |
+| `filter.statuses` | array | Optional. Task statuses. |
+| `filter.priorities` | array | Optional. Priorities, with `none` for a task without one. |
+| `filter.categories` | array | Optional. Category IDs. A sub-category shows when its parent is listed. |
+| `filter.tags` | array | Optional. Tag marks, with `none` for a task without one. |
+
+- Ordo writes the lists sorted and leaves out what is empty, so two devices that agree write the same bytes.
+- A missing file reads as nothing folded and no filter. A file that doesn't parse reads the same way, and Ordo refuses to write over it.
+- A reader drops a value no filter offers and an ID that isn't valid. It keeps in the file a category the project doesn't hold, and shows the project as if the filter didn't name it: a view can arrive before the project that holds its category.
+- Writing merges under the project's lock: reload the file, replace only the field that changed, keep every other key, and leave the file untouched when nothing changed. Folds and filter are each one value, so the last writer of a field wins. The write itself is the one in [Writing a file](#writing-a-file). A client on another device sends its changes through `ordo serve`, see [sync.md](sync.md#views).
+- Clearing folds and filter leaves the file holding `{}`, so an older device's `state.json` can't bring them back. Deleting the project deletes the file.
+- Reading never writes. An open TUI applies a change to the file within a second without a keypress, with the cursor on the same row, unless a dialog or an input is open, where it waits until that closes.
+
+A view isn't part of the project's format, so it needs no schema bump: an ordo that doesn't know these files skips them.
+
+## Directory links
+
+`.directories.json` says which project opens in which directory, as one object:
+
+```json
+{
+  "~/Projects/ordo": "872e2818-9fd7-44c6-e33e-e6ef4c934ef0",
+  "/srv/www": "9b0f1c34-52de-41aa-8c77-0e1d2f3a4b5c"
+}
+```
+
+A directory under the home directory is written from `~`, so the same place matches across machines whatever `$HOME` is, and any other stays absolute. Writing merges one key under `.directories.json.lock`: reload, change that key, keep the others, so two machines linking different directories keep each other's links. A link can name a project that isn't on disk: the TUI then opens the project picker.
+
+## From older builds
+
+Builds before these files kept folds, filter and links in `state.json`, as `folded_categories`, `filters` and `directory_projects`. The first run of a newer build moves them and removes the keys:
+
+- A project with no view file gets one from those keys. One already there, from another device, wins, and the keys are dropped.
+- A directory with no link gets one. A key already in `.directories.json` wins.
+- The entry of a project not on disk stays in `state.json` until one is.
+
 ## IDs and timestamps
 
 An ID is 1 to 64 characters from `A-Z`, `a-z`, `0-9`, `-` and `_`. Ordo makes them from 16 random bytes printed as lowercase hex in 8-4-4-4-12 groups, the same for projects, categories and tasks. An ID never changes and is never reused, even after the thing it named is deleted.
@@ -178,7 +236,7 @@ A reader then sees either the old file or the new one in full. Syncthing should 
 
 Ordo holds a flock on `<id>.json.lock` while it reads, changes and writes a project, and on `.global.lock` while it creates or renames one, since that is where it checks names for duplicates. These are advisory locks inside one machine and protect nothing across devices. Two devices that edit the same project between syncs end in a Syncthing conflict, locks or not.
 
-A client on the same machine as ordo takes the same locks. A client on another device has no use for them. Keep `*.lock` in `.stignore`, or the lock files replicate as empty files.
+A client on the same machine as ordo takes the same locks, `<id>.json.lock` for `<id>.view.json` too and `.directories.json.lock` for `.directories.json`. A client on another device has no use for them. Keep `*.lock` in `.stignore`, or the lock files replicate as empty files.
 
 ## Edits from outside
 
@@ -196,4 +254,4 @@ The CLI and `ordo serve` do each change as one read, change and write under the 
 
 ## Conflict copies
 
-When two devices change the same file before Syncthing reconciles them, Syncthing keeps one version as `<id>.json` and renames the other to `<id>.sync-conflict-<date>-<time>-<device>.json`. Ordo ignores conflict copies: it never loads, edits, deletes or mentions one. Reporting them is Syncthing's job, and merging the two and deleting the copy is a manual one.
+When two devices change the same file before Syncthing reconciles them, Syncthing keeps one version as `<id>.json` and renames the other to `<id>.sync-conflict-<date>-<time>-<device>.json`. Ordo ignores conflict copies: it never loads, edits, deletes or mentions one. Reporting them is Syncthing's job, and merging the two and deleting the copy is a manual one. The same goes for `<id>.view.sync-conflict-*.json` and `.directories.sync-conflict-*.json`: the stem of neither is a valid ID, and Ordo only reads those two files by their exact names.

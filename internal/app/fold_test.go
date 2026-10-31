@@ -44,10 +44,6 @@ func (s *stubStateManager) SetFoldedCategories(projectID string, categoryIDs []s
 	s.folded[projectID] = append([]string(nil), categoryIDs...)
 	return nil
 }
-func (s *stubStateManager) DeleteFoldedCategories(projectID string) error {
-	delete(s.folded, projectID)
-	return nil
-}
 func (s *stubStateManager) GetCursor(projectID string) data.Cursor {
 	return s.cursors[projectID]
 }
@@ -74,10 +70,7 @@ func (s *stubStateManager) SetFilter(projectID string, filter data.Filter) error
 	s.filters[projectID] = filter
 	return nil
 }
-func (s *stubStateManager) DeleteFilter(projectID string) error {
-	delete(s.filters, projectID)
-	return nil
-}
+func (s *stubStateManager) ViewChanged(projectID string) bool { return false }
 
 func withStubStateManager(m *model) *stubStateManager {
 	stub := newStubStateManager()

@@ -18,6 +18,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The Android app's add sheet and task page say "Priority" and "Colour" beside their icons until a value is set, the colour control takes a palette icon instead of a label shape, and the priority menu shows each level's arrows
 - The app's top bar has two lines: the name of the category taking most of the screen with the search, filter and settings buttons, then the project tabs on their own line, at a larger size. Settings is a gear instead of an account icon
 - The app's `+` opens the add sheet on the category the top bar names, not on the last one used, and the sheet can still change it. A category the filter hides falls back to the first one it shows
+- Folds, the filter and which directory opens which project now travel with `projects/`: `<id>.view.json` for each project and `.directories.json` for the links, with directories under your home written from `~`. The first run moves them out of `state.json` and leaves what another device already wrote alone. A change arriving applies in an open TUI within a second, with the cursor on its row. Conflict copies of these files are ignored, as Syncthing reports them. See [`docs/file-format.md`](docs/file-format.md)
 
 ### Removed
 

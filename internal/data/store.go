@@ -474,6 +474,7 @@ func (s *Store) DeleteProject(id string) error {
 		return err
 	}
 	_ = os.Remove(s.tmpPath(id))
+	_ = os.Remove(s.viewPath(id))
 	s.forget(id)
 	return nil
 }

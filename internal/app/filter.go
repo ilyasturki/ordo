@@ -8,9 +8,7 @@ import (
 
 func loadFilterState(sm data.StateRepository, project domain.Project) FilterState {
 	f := filterStateFrom(sm.GetFilter(project.ID))
-	if f.pruneCategories(project.Categories) {
-		_ = sm.SetFilter(project.ID, f.saved())
-	}
+	f.pruneCategories(project.Categories)
 	return f
 }
 

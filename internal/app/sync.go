@@ -80,6 +80,8 @@ func (m *model) takeReloaded(project domain.Project) {
 	m.project = project
 	m.checkSaves()
 	m.ui.History.Reset()
+	// A view that landed before this copy lost category IDs in memory: the file still has them.
+	m.readView()
 	m.rebuildPositions()
 
 	if hadSel && !m.restoreCursor(prev) {
@@ -215,9 +217,7 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 }
 
 func (m *model) rebuildPositions() {
-	if m.ui.Filter.pruneCategories(m.project.Categories) {
-		m.saveFilter()
-	}
+	m.ui.Filter.pruneCategories(m.project.Categories)
 	prev, had := m.selectedPosition()
 	positions := rebuildPositions(m.project.Categories, &m.ui.Filter, &m.ui.Fold, m.ui.Screen.ExpandDescriptions, m.ui.Screen.ExpandedTaskID)
 	m.ui.Selection.SetPositions(positions)

@@ -180,9 +180,11 @@ The command runs in the background. It gets the task through environment variabl
 ```
 ~/.local/share/ordo/
 ├── projects/
-│   └── <id>.json    one project per file
-├── state.json       this machine's folds, cursors, filters, project open times and directory links
-└── web.json         devices paired with ordo serve
+│   ├── <id>.json          one project per file
+│   ├── <id>.view.json     its folds and filter, on every device
+│   └── .directories.json  which directory opens which project
+├── state.json             this machine's cursors and project open times
+└── web.json               devices paired with ordo serve
 ```
 
 Edits save in the background as you make them, and `u` / `ctrl+r` undo and redo them within a session. Only `projects/` belongs in a sync folder; add `(?d)*.tmp` and `*.lock` to `.stignore` so the write and lock sidecars stay local. [`docs/file-format.md`](docs/file-format.md) documents the format for any other app that reads or writes these files.

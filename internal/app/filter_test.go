@@ -758,7 +758,6 @@ func TestEachProjectOpensWithItsOwnFilter(t *testing.T) {
 	m.ui.Picker = ProjectPickerState{projects: []domain.Project{alpha, beta}, selected: 1}
 	m.ui.ConfirmDelete = ConfirmDeleteState{Kind: ConfirmDeleteProject, ProjectID: beta.ID}
 	m.confirmDeleteProject()
-	assert.NotContains(t, stub.filters, beta.ID)
 }
 
 func TestDeletedCategoryLeavesTheFilter(t *testing.T) {
@@ -770,7 +769,7 @@ func TestDeletedCategoryLeavesTheFilter(t *testing.T) {
 		f := loadFilterState(stub, m.project)
 
 		assert.Equal(t, 1, f.CategoryCount())
-		assert.Equal(t, []string{"c2"}, stub.filters["p1"].Categories)
+		assert.Equal(t, []string{"gone", "c2"}, stub.filters["p1"].Categories, "a load never writes: a view can arrive before its category")
 	})
 	t.Run("on delete", func(t *testing.T) {
 		m := newTestModel(t, sampleProject())
@@ -783,7 +782,7 @@ func TestDeletedCategoryLeavesTheFilter(t *testing.T) {
 		m.confirmDeleteAction()
 
 		assert.False(t, m.ui.Filter.HasActiveFilter())
-		assert.NotContains(t, stub.filters, "p1")
+		assert.Equal(t, []string{"c1"}, stub.filters["p1"].Categories, "prunes in memory only")
 		assert.Contains(t, rowIDs(m), "task:t4", "the rest of the project shows again")
 	})
 }

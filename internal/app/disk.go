@@ -49,3 +49,32 @@ func (m *model) noticeOutsideChange() {
 		m.ui.Screen.StatusMsg = "Changed on disk: reloaded"
 	}
 }
+
+// noticeViewChange applies a view file another writer changed, on the same terms as a reload.
+func (m *model) noticeViewChange() {
+	if m.deps.StateManager == nil || m.project.ID == "" || !m.ui.Modes.IsNormal() {
+		return
+	}
+	if !m.deps.StateManager.ViewChanged(m.project.ID) || !m.readView() {
+		return
+	}
+	m.rebuildPositions()
+	m.ensureVisible()
+	m.ui.Screen.StatusMsg = "Changed on disk: folds and filter applied"
+}
+
+// readView takes the folds and filter the view file holds, reporting whether what shows differs.
+func (m *model) readView() bool {
+	if m.deps.StateManager == nil {
+		return false
+	}
+	fold := loadFoldState(m.deps.StateManager, m.project)
+	filter := loadFilterState(m.deps.StateManager, m.project)
+	changed := !m.ui.Fold.sameAs(fold)
+	m.ui.Fold = fold
+	if !m.ui.Filter.sameValues(filter) {
+		m.ui.Filter.takeValues(filter)
+		changed = true
+	}
+	return changed
+}

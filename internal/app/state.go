@@ -247,9 +247,6 @@ func (f *FilterState) FilteredOut(task domain.Task, categoryID, parentCategoryID
 	return (f.holds(task.ID) || f.peeks(categoryID)) && !f.TaskVisible(task, categoryID, parentCategoryID)
 }
 
-// savedNone stands for the "" no-priority and untagged buckets in state.json, which stays readable that way.
-const savedNone = "none"
-
 func (f *FilterState) saved() data.Filter {
 	return data.Filter{
 		Statuses:   savedValues(f.statuses),
@@ -263,7 +260,7 @@ func savedValues(set map[string]bool) []string {
 	values := slices.Collect(maps.Keys(set))
 	for i, v := range values {
 		if v == "" {
-			values[i] = savedNone
+			values[i] = data.FilterNone
 		}
 	}
 	slices.Sort(values)
@@ -288,7 +285,7 @@ func filterStateFrom(saved data.Filter) FilterState {
 
 func restoreValues(set map[string]bool, saved, offered []string) {
 	for _, v := range saved {
-		if v == savedNone {
+		if v == data.FilterNone {
 			v = ""
 		}
 		if slices.Contains(offered, v) {
@@ -297,16 +294,26 @@ func restoreValues(set map[string]bool, saved, offered []string) {
 	}
 }
 
-// pruneCategories drops deleted categories, which would otherwise hide every task.
-func (f *FilterState) pruneCategories(categories []domain.Category) bool {
-	pruned := false
+// pruneCategories drops categories the project doesn't hold, which would otherwise
+// hide every task. In memory only: a view can arrive before the project holding its categories.
+func (f *FilterState) pruneCategories(categories []domain.Category) {
 	for id := range f.categories {
 		if !slices.ContainsFunc(categories, func(c domain.Category) bool { return c.ID == id }) {
 			delete(f.categories, id)
-			pruned = true
 		}
 	}
-	return pruned
+}
+
+func (f *FilterState) sameValues(o FilterState) bool {
+	return maps.Equal(f.statuses, o.statuses) && maps.Equal(f.priorities, o.priorities) &&
+		maps.Equal(f.categories, o.categories) && maps.Equal(f.tags, o.tags)
+}
+
+// takeValues takes a filter set elsewhere; rows held or peeked at go with the old one.
+func (f *FilterState) takeValues(o FilterState) {
+	f.releaseHeld()
+	f.endPeek()
+	f.statuses, f.priorities, f.categories, f.tags = o.statuses, o.priorities, o.categories, o.tags
 }
 
 func (f *FilterState) ClearAll() {
@@ -466,6 +473,8 @@ func NewFoldStateFrom(foldedIDs []string) FoldState {
 func (f FoldState) Clone() FoldState {
 	return FoldState{folded: maps.Clone(f.folded)}
 }
+
+func (f *FoldState) sameAs(o FoldState) bool { return maps.Equal(f.folded, o.folded) }
 
 func (f *FoldState) FoldedIDs() []string {
 	return slices.Collect(maps.Keys(f.folded))

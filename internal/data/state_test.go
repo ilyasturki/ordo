@@ -3,6 +3,7 @@ package data
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -232,22 +233,19 @@ func TestLoadStateWithoutCursorsIsNotAnError(t *testing.T) {
 	if got := m.GetCursor("p1"); !got.IsZero() {
 		t.Fatalf("want no cursor, got %+v", got)
 	}
-	if got := m.GetProjectForDir(); got != "p1" {
-		t.Fatalf("legacy dir link lost: %q", got)
-	}
 }
 
 func TestFilterRoundTripsThroughDisk(t *testing.T) {
 	dir := t.TempDir()
 	m := newLoadedStateManager(t, dir, "")
 
-	want := Filter{Statuses: []string{"todo"}, Priorities: []string{"none", "high"}, Categories: []string{"c1"}, Tags: []string{"green"}}
+	want := Filter{Statuses: []string{"todo"}, Priorities: []string{"high", "none"}, Categories: []string{"c1"}, Tags: []string{"green"}}
 	if err := m.SetFilter("p1", want); err != nil {
 		t.Fatalf("set filter: %v", err)
 	}
 
 	fresh := newLoadedStateManager(t, dir, "")
-	if got := fresh.GetFilter("p1"); !got.sameAs(want) {
+	if got := fresh.GetFilter("p1"); !reflect.DeepEqual(got, want) {
 		t.Fatalf("filter: want %+v, got %+v", want, got)
 	}
 	if got := fresh.GetFilter("p2"); !got.IsZero() {
@@ -266,28 +264,12 @@ func TestSetFilterEmptyClearsProject(t *testing.T) {
 		t.Fatalf("clear filter: %v", err)
 	}
 
-	raw, err := os.ReadFile(filepath.Join(dir, "state.json"))
+	raw, err := os.ReadFile(filepath.Join(dir, "projects", "p1.view.json"))
 	if err != nil {
-		t.Fatalf("read state: %v", err)
+		t.Fatalf("read the view file: %v", err)
 	}
-	if strings.Contains(string(raw), "filters") {
+	if strings.Contains(string(raw), "filter") {
 		t.Fatalf("a cleared filter left an entry:\n%s", raw)
-	}
-}
-
-func TestDeleteFilterRemovesEntry(t *testing.T) {
-	dir := t.TempDir()
-	m := newLoadedStateManager(t, dir, "")
-
-	if err := m.SetFilter("p1", Filter{Tags: []string{"none"}}); err != nil {
-		t.Fatalf("set filter: %v", err)
-	}
-	if err := m.DeleteFilter("p1"); err != nil {
-		t.Fatalf("delete filter: %v", err)
-	}
-
-	if got := newLoadedStateManager(t, dir, "").GetFilter("p1"); !got.IsZero() {
-		t.Fatalf("filter survived delete: %+v", got)
 	}
 }
 
@@ -306,7 +288,7 @@ func TestFilterAndCursorWritersDoNotClobber(t *testing.T) {
 	}
 
 	fresh := newLoadedStateManager(t, dir, "")
-	if got := fresh.GetFilter("p1"); !got.sameAs(filter) {
+	if got := fresh.GetFilter("p1"); !slices.Equal(got.Statuses, filter.Statuses) {
 		t.Fatalf("filter clobbered by a cursor write: %+v", got)
 	}
 	if got := fresh.GetCursor("p1"); got != cursor {

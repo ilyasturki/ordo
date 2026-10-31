@@ -221,9 +221,7 @@ func (m *model) confirmDeleteProject() {
 		_, _ = m.deps.StateManager.UnlinkDir()
 	}
 	_ = m.deps.StateManager.DeleteLastOpened(deleteID)
-	_ = m.deps.StateManager.DeleteFoldedCategories(deleteID)
 	_ = m.deps.StateManager.DeleteCursor(deleteID)
-	_ = m.deps.StateManager.DeleteFilter(deleteID)
 	m.forgetPendingCursor(deleteID)
 
 	if m.project.ID == deleteID {

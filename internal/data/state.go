@@ -7,7 +7,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"sync"
 
 	"github.com/ilyasturki/ordo/internal/fsutil"
@@ -28,7 +27,7 @@ func (c Cursor) IsZero() bool {
 	return c.Kind == ""
 }
 
-// Filter is the TUI's task filter for one project. A list holds the values to
+// Filter is the task filter of one project. A list holds the values to
 // keep, any of which matches; a task must match every non-empty list.
 type Filter struct {
 	Statuses   []string `json:"statuses,omitempty"`
@@ -41,26 +40,14 @@ func (f Filter) IsZero() bool {
 	return len(f.Statuses) == 0 && len(f.Priorities) == 0 && len(f.Categories) == 0 && len(f.Tags) == 0
 }
 
-func (f Filter) sameAs(o Filter) bool {
-	return sameSet(f.Statuses, o.Statuses) && sameSet(f.Priorities, o.Priorities) &&
-		sameSet(f.Categories, o.Categories) && sameSet(f.Tags, o.Tags)
-}
-
-func (f Filter) clone() Filter {
-	return Filter{
-		Statuses:   slices.Clone(f.Statuses),
-		Priorities: slices.Clone(f.Priorities),
-		Categories: slices.Clone(f.Categories),
-		Tags:       slices.Clone(f.Tags),
-	}
-}
-
 type State struct {
+	// Older builds kept these three here: Load moves them to projects/, and nothing writes them any more.
 	DirectoryProjects map[string]string   `json:"directory_projects,omitempty"`
-	LastOpened        map[string]string   `json:"last_opened,omitempty"`
 	FoldedCategories  map[string][]string `json:"folded_categories,omitempty"`
-	Cursors           map[string]Cursor   `json:"cursors,omitempty"`
 	Filters           map[string]Filter   `json:"filters,omitempty"`
+
+	LastOpened map[string]string `json:"last_opened,omitempty"`
+	Cursors    map[string]Cursor `json:"cursors,omitempty"`
 }
 
 // StateRepository abstracts persistence of UI state. Implemented by *StateManager.
@@ -73,16 +60,16 @@ type StateRepository interface {
 	DeleteLastOpened(projectID string) error
 	GetFoldedCategories(projectID string) []string
 	SetFoldedCategories(projectID string, categoryIDs []string) error
-	DeleteFoldedCategories(projectID string) error
 	GetCursor(projectID string) Cursor
 	SetCursor(projectID string, cursor Cursor) error
 	DeleteCursor(projectID string) error
 	GetFilter(projectID string) Filter
 	SetFilter(projectID string, filter Filter) error
-	DeleteFilter(projectID string) error
+	ViewChanged(projectID string) bool
 }
 
-// StateManager reads and writes state.json. Multiple processes may share that
+// StateManager reads and writes state.json, and the view files and directory links
+// beside the projects. Multiple processes may share that
 // file — the TUI, the CLI, a second TUI on the same data dir — and every save
 // rewrites it whole, so writes go through update: reload, apply, save. The
 // mutex covers concurrent goroutines within one process.
@@ -91,24 +78,68 @@ type StateManager struct {
 	path       string
 	currentDir string
 	state      State
+	views      *Store
+
+	watchedView string
+	viewWatch   *FileWatch
+	viewOutside bool
 }
 
 var _ StateRepository = (*StateManager)(nil)
 
-// NewStateManager creates a state manager that persists to <stateDir>/state.json.
-// currentDir is the working directory that owns the linked project; pass "" for an
-// unscoped (global fallback) entry.
+// NewStateManager creates a state manager that persists to <stateDir>/state.json,
+// with the view files and directory links in <stateDir>/projects.
+// currentDir is the working directory that owns the linked project; pass "" for no directory.
 func NewStateManager(stateDir, currentDir string) *StateManager {
 	return &StateManager{
 		path:       filepath.Join(stateDir, "state.json"),
 		currentDir: currentDir,
+		views:      NewStore(filepath.Join(stateDir, "projects")),
 	}
 }
 
 func (m *StateManager) Load() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.load()
+	if err := m.load(); err != nil {
+		return err
+	}
+	m.migrate()
+	return nil
+}
+
+// migrate moves what older builds kept in state.json. The file is saved last, so a
+// crash on the way repeats the move; an entry that can't move yet, for a project
+// not on disk or a write that failed, waits for the next start.
+func (m *StateManager) migrate() {
+	s := &m.state
+	if len(s.DirectoryProjects)+len(s.FoldedCategories)+len(s.Filters) == 0 {
+		return
+	}
+	ids := make(map[string]bool)
+	for id := range s.FoldedCategories {
+		ids[id] = true
+	}
+	for id := range s.Filters {
+		ids[id] = true
+	}
+	for id := range ids {
+		if !m.views.HasProject(id) || m.views.seedView(id, View{Folds: s.FoldedCategories[id], Filter: s.Filters[id]}) != nil {
+			continue
+		}
+		delete(s.FoldedCategories, id)
+		delete(s.Filters, id)
+	}
+	for dir, id := range s.DirectoryProjects {
+		// "" came from a last_project_id of long ago: no directory ever read it.
+		if dir != "" {
+			if _, err := m.views.mergeLink(dir, id, true); err != nil {
+				continue
+			}
+		}
+		delete(s.DirectoryProjects, dir)
+	}
+	_ = m.save()
 }
 
 // load refreshes the in-memory state from disk. Callers hold m.mu. On any error
@@ -124,35 +155,11 @@ func (m *StateManager) load() error {
 		return err
 	}
 
-	// Use a temporary struct to handle migration from old format
-	var raw struct {
-		LastProjectID     string              `json:"last_project_id"`
-		DirectoryProjects map[string]string   `json:"directory_projects,omitempty"`
-		LastOpened        map[string]string   `json:"last_opened,omitempty"`
-		FoldedCategories  map[string][]string `json:"folded_categories,omitempty"`
-		Cursors           map[string]Cursor   `json:"cursors,omitempty"`
-		Filters           map[string]Filter   `json:"filters,omitempty"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	var fresh State
+	if err := json.Unmarshal(data, &fresh); err != nil {
 		return err
 	}
-
-	m.state.DirectoryProjects = raw.DirectoryProjects
-	m.state.LastOpened = raw.LastOpened
-	m.state.FoldedCategories = raw.FoldedCategories
-	m.state.Cursors = raw.Cursors
-	m.state.Filters = raw.Filters
-	if m.state.DirectoryProjects == nil {
-		m.state.DirectoryProjects = make(map[string]string)
-	}
-
-	// Migrate old last_project_id to directory_projects[""] if not already set
-	if raw.LastProjectID != "" {
-		if _, ok := m.state.DirectoryProjects[""]; !ok {
-			m.state.DirectoryProjects[""] = raw.LastProjectID
-		}
-	}
-
+	m.state = fresh
 	return nil
 }
 
@@ -199,45 +206,28 @@ func (m *StateManager) update(fn func(*State) bool) error {
 // GetProjectForDir returns the project ID owned by the manager's current
 // directory, or "" if none is linked.
 func (m *StateManager) GetProjectForDir() string {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.state.DirectoryProjects == nil {
+	if m.currentDir == "" {
 		return ""
 	}
-	return m.state.DirectoryProjects[m.currentDir]
+	return m.views.directoryProject(m.currentDir)
 }
 
 // SetProjectForDir links the manager's current directory to the given project ID.
 func (m *StateManager) SetProjectForDir(id string) error {
-	return m.update(func(s *State) bool {
-		if s.DirectoryProjects == nil {
-			s.DirectoryProjects = make(map[string]string)
-		}
-		s.DirectoryProjects[m.currentDir] = id
-		return true
-	})
+	if m.currentDir == "" {
+		return nil
+	}
+	_, err := m.views.mergeLink(m.currentDir, id, false)
+	return err
 }
 
 // UnlinkDir removes the link for the manager's current directory. Returns the
 // previously linked project ID (empty if none was linked).
 func (m *StateManager) UnlinkDir() (string, error) {
-	var prev string
-	err := m.update(func(s *State) bool {
-		if s.DirectoryProjects == nil {
-			return false
-		}
-		id, ok := s.DirectoryProjects[m.currentDir]
-		if !ok {
-			return false
-		}
-		prev = id
-		delete(s.DirectoryProjects, m.currentDir)
-		return true
-	})
-	if err != nil {
-		return "", err
+	if m.currentDir == "" {
+		return "", nil
 	}
-	return prev, nil
+	return m.views.mergeLink(m.currentDir, "", false)
 }
 
 // GetLastOpened re-reads state.json first, like GetFoldedCategories: another TUI
@@ -273,64 +263,45 @@ func (m *StateManager) DeleteLastOpened(projectID string) error {
 	})
 }
 
-// GetFoldedCategories returns the collapsed category IDs for a project. It
-// re-reads state.json first: another process may fold categories while the TUI
-// is running, and the TUI reads this at project open, so a cached read would
-// show yesterday's folds until a restart.
+// GetFoldedCategories returns the folded category and task IDs for a project.
 func (m *StateManager) GetFoldedCategories(projectID string) []string {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	// A failed reload leaves the cache intact; stale folds beat no folds, and
-	// there is no error channel here to report on.
-	_ = m.load()
-	if m.state.FoldedCategories == nil {
-		return nil
-	}
-	return slices.Clone(m.state.FoldedCategories[projectID])
+	view, _ := m.views.View(projectID)
+	return view.Folds
 }
 
 func (m *StateManager) SetFoldedCategories(projectID string, categoryIDs []string) error {
-	return m.update(func(s *State) bool { return setProjectIDs(&s.FoldedCategories, projectID, categoryIDs) })
+	return m.writeView(projectID, ViewChange{Folds: &categoryIDs})
 }
 
-// setProjectIDs reports no change for the same set in any order, so a fold toggle saves at most the list it touched.
-func setProjectIDs(byProject *map[string][]string, projectID string, ids []string) bool {
-	prev := (*byProject)[projectID]
-	if len(prev) == len(ids) && containsAll(prev, ids) {
+// writeView sees past its own write, but not past an outside one that landed just
+// before it: that one's fields are in the file and not yet on screen.
+func (m *StateManager) writeView(projectID string, change ViewChange) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	watched := m.viewWatch != nil && m.watchedView == projectID
+	if watched && m.viewWatch.Changed() {
+		m.viewOutside = true
+	}
+	err := m.views.MergeView(projectID, change)
+	if watched {
+		m.viewWatch.Changed()
+	}
+	return err
+}
+
+// ViewChanged reports, once per version, that another writer changed the project's
+// view file. The first call for a project starts watching it from now.
+func (m *StateManager) ViewChanged(projectID string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.viewWatch == nil || m.watchedView != projectID {
+		m.watchedView, m.viewOutside = projectID, false
+		m.viewWatch = NewFileWatch(m.views.viewPath(projectID))
 		return false
 	}
-	if len(ids) == 0 {
-		delete(*byProject, projectID)
-		return true
-	}
-	if *byProject == nil {
-		*byProject = make(map[string][]string)
-	}
-	(*byProject)[projectID] = slices.Clone(ids)
-	return true
-}
-
-func sameSet(a, b []string) bool {
-	return len(a) == len(b) && containsAll(a, b)
-}
-
-func containsAll(set, ids []string) bool {
-	for _, id := range ids {
-		if !slices.Contains(set, id) {
-			return false
-		}
-	}
-	return true
-}
-
-func (m *StateManager) DeleteFoldedCategories(projectID string) error {
-	return m.update(func(s *State) bool {
-		if _, ok := s.FoldedCategories[projectID]; !ok {
-			return false
-		}
-		delete(s.FoldedCategories, projectID)
-		return true
-	})
+	changed := m.viewWatch.Changed() || m.viewOutside
+	m.viewOutside = false
+	return changed
 }
 
 // GetCursor returns the remembered cursor for a project, or the zero Cursor when
@@ -388,43 +359,11 @@ func (m *StateManager) DeleteCursor(projectID string) error {
 	})
 }
 
-// GetFilter re-reads state.json first, like GetFoldedCategories: the TUI reads
-// it at project open, and a second instance may have changed it since.
 func (m *StateManager) GetFilter(projectID string) Filter {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	_ = m.load()
-	return m.state.Filters[projectID].clone()
+	view, _ := m.views.View(projectID)
+	return view.Filter
 }
 
-// SetFilter clears the entry for an empty filter, so a cleared filter leaves nothing behind.
 func (m *StateManager) SetFilter(projectID string, filter Filter) error {
-	return m.update(func(s *State) bool {
-		prev, ok := s.Filters[projectID]
-		if filter.IsZero() {
-			if !ok {
-				return false
-			}
-			delete(s.Filters, projectID)
-			return true
-		}
-		if ok && prev.sameAs(filter) {
-			return false
-		}
-		if s.Filters == nil {
-			s.Filters = make(map[string]Filter)
-		}
-		s.Filters[projectID] = filter.clone()
-		return true
-	})
-}
-
-func (m *StateManager) DeleteFilter(projectID string) error {
-	return m.update(func(s *State) bool {
-		if _, ok := s.Filters[projectID]; !ok {
-			return false
-		}
-		delete(s.Filters, projectID)
-		return true
-	})
+	return m.writeView(projectID, ViewChange{Filter: &filter})
 }

@@ -222,6 +222,7 @@ func TestOutsideChangeKeepsThePeekAndTheCursorOnItsRow(t *testing.T) {
 	web := data.NewStore(m.deps.Store.(*data.Store).Dir)
 	withStubStateManager(m)
 	m.ui.Filter.statuses[domain.StatusTodo] = true
+	m.saveFilter()
 	m.rebuildPositions()
 	cat := m.project.Categories[0].ID
 	selectRow(t, m, selection.FocusHidden, cat)
@@ -241,6 +242,7 @@ func TestOutsideChangeKeepsARowHeldForTheFilter(t *testing.T) {
 	web := data.NewStore(m.deps.Store.(*data.Store).Dir)
 	withStubStateManager(m)
 	m.ui.Filter.statuses[domain.StatusTodo] = true
+	m.saveFilter()
 	m.rebuildPositions()
 	first := m.project.Categories[0].Tasks[0].ID
 	selectRow(t, m, selection.FocusTask, first)
