@@ -21,19 +21,6 @@ jobs:
                   go-version: stable
                   cache: true
 
-            - name: Setup Bun
-              uses: oven-sh/setup-bun@v2
-
-            - name: Cache Bun packages
-              uses: actions/cache@v6
-              with:
-                  path: ~/.bun/install/cache
-                  key: bun-${{ runner.os }}-${{ hashFiles('app/bun.lock') }}
-                  restore-keys: bun-${{ runner.os }}-
-
-            - name: Build the app bundle
-              run: scripts/web.sh
-
             - name: Vet
               run: go vet ./...
 
@@ -46,11 +33,8 @@ jobs:
             - name: Smoke test
               run: scripts/smoke.sh ./ordo
 
-    app:
+    native:
         runs-on: ubuntu-latest
-        defaults:
-            run:
-                working-directory: app
         steps:
             - name: Checkout code
               uses: actions/checkout@v6
@@ -62,11 +46,11 @@ jobs:
                   import pathlib, sys, xml.dom.minidom
 
                   broken = []
-                  for path in sorted(pathlib.Path('android/app/src').rglob('*.xml')):
+                  for path in sorted(pathlib.Path('native/android/app/src').rglob('*.xml')):
                       try:
                           xml.dom.minidom.parse(str(path))
                       except Exception as error:
-                          broken.append(f'::error file=app/{path}::{error}')
+                          broken.append(f'::error file={path}::{error}')
 
                   print('\n'.join(broken))
                   sys.exit(1 if broken else 0)
@@ -77,38 +61,44 @@ jobs:
               with:
                   go-version: stable
                   cache: true
+                  cache-dependency-path: |
+                      go.sum
+                      native/core/go.sum
 
-            - name: Setup Bun
-              uses: oven-sh/setup-bun@v2
-
-            - name: Cache Bun packages
-              uses: actions/cache@v6
+            # Android Gradle Plugin 9.5 (native/android/gradle/libs.versions.toml) needs 17 at minimum.
+            - name: Setup Java
+              uses: actions/setup-java@v5
               with:
-                  path: ~/.bun/install/cache
-                  key: bun-${{ runner.os }}-${{ hashFiles('app/bun.lock') }}
-                  restore-keys: bun-${{ runner.os }}-
+                  distribution: temurin
+                  java-version: '21'
 
-            # The tests run the real core.
-            - name: Build the core to WebAssembly
-              run: ../scripts/wasm.sh
+            # Tracks nix/android-sdk.nix.
+            - name: Setup Android SDK
+              uses: android-actions/setup-android@v4
+              with:
+                  packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;29.0.14206865'
 
-            - name: Install
-              run: bun install --frozen-lockfile
+            - name: Setup Gradle
+              uses: gradle/actions/setup-gradle@v6
 
-            - name: Format
-              run: bun run format
-
-            - name: Check
-              run: bun run check
-
+            # The wrapper's Go tests, the bound core, then the JVM tests against it and a real ordo serve.
             - name: Test
-              run: bun run test
-
-            # The Go job builds the browser bundle; this is the one the APK ships.
-            - name: Build for the Android app
-              run: bun run build
+              run: scripts/native.sh test
               env:
-                  BUILD_TARGET: app
+                  ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/29.0.14206865
+
+            # Unsigned, without the release job's keystore: R8 and the resources, on every push rather than first at a tag.
+            - name: Build the release APK
+              run: native/android/gradlew -p native/android assembleRelease
+
+            - name: Check the release leaves out the adb sign-in
+              run: |
+                  apk=native/android/app/build/outputs/apk/release/app-release-unsigned.apk
+                  manifest=$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump xmltree --file AndroidManifest.xml "$apk")
+                  if grep -q DevSignInActivity <<<"$manifest"; then
+                      echo "::error::$apk declares DevSignInActivity"
+                      exit 1
+                  fi
 
     nix-build:
         runs-on: ubuntu-latest

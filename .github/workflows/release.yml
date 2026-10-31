@@ -55,19 +55,6 @@ jobs:
                   go-version: stable
                   cache: true
 
-            - name: Setup Bun
-              uses: oven-sh/setup-bun@v2
-
-            - name: Cache Bun packages
-              uses: actions/cache@v6
-              with:
-                  path: ~/.bun/install/cache
-                  key: bun-${{ runner.os }}-${{ hashFiles('app/bun.lock') }}
-                  restore-keys: bun-${{ runner.os }}-
-
-            - name: Build the app bundle
-              run: scripts/web.sh
-
             - name: Build binaries
               env:
                   CGO_ENABLED: '0'
@@ -146,8 +133,11 @@ jobs:
               with:
                   go-version: stable
                   cache: true
+                  cache-dependency-path: |
+                      go.sum
+                      native/core/go.sum
 
-            # Android Gradle Plugin 8.13 (app/android/build.gradle) needs 17 at minimum, targets 21.
+            # Android Gradle Plugin 9.5 (native/android/gradle/libs.versions.toml) needs 17 at minimum.
             - name: Setup Java
               if: steps.keystore.outputs.enabled == 'true'
               uses: actions/setup-java@v5
@@ -155,40 +145,25 @@ jobs:
                   distribution: temurin
                   java-version: '21'
 
-            # Tracks app/android/variables.gradle: compileSdkVersion = 36.
+            # Tracks nix/android-sdk.nix.
             - name: Setup Android SDK
               if: steps.keystore.outputs.enabled == 'true'
               uses: android-actions/setup-android@v4
               with:
-                  packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+                  packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;29.0.14206865'
 
             - name: Setup Gradle
               if: steps.keystore.outputs.enabled == 'true'
               uses: gradle/actions/setup-gradle@v6
 
-            - name: Setup Bun
+            - name: Bind the Go core
               if: steps.keystore.outputs.enabled == 'true'
-              uses: oven-sh/setup-bun@v2
-
-            - name: Cache Bun packages
-              if: steps.keystore.outputs.enabled == 'true'
-              uses: actions/cache@v6
-              with:
-                  path: ~/.bun/install/cache
-                  key: bun-${{ runner.os }}-${{ hashFiles('app/bun.lock') }}
-                  restore-keys: bun-${{ runner.os }}-
-
-            - name: Build the app into the Android project
-              if: steps.keystore.outputs.enabled == 'true'
-              run: |
-                  scripts/wasm.sh
-                  cd app
-                  bun install --frozen-lockfile
-                  bun run android:sync
+              run: scripts/native.sh core
+              env:
+                  ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/29.0.14206865
 
             - name: Assemble the signed APK
               if: steps.keystore.outputs.enabled == 'true'
-              working-directory: app/android
               env:
                   KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
                   ORDO_KEYSTORE: ${{ runner.temp }}/ordo.jks
@@ -198,16 +173,14 @@ jobs:
                   VERSION_CODE: ${{ needs.check-version.outputs.android-version-code }}
               run: |
                   printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$ORDO_KEYSTORE"
-                  ./gradlew assembleRelease \
-                      -PordoVersionName="${GITHUB_REF_NAME#v}" \
-                      -PordoVersionCode="$VERSION_CODE"
+                  native/android/gradlew -p native/android assembleRelease -PordoVersionCode="$VERSION_CODE"
 
             - name: Upload the APK to the release
               if: steps.keystore.outputs.enabled == 'true'
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  out=app/android/app/build/outputs/apk/release
+                  out=native/android/app/build/outputs/apk/release
                   if [ ! -f "$out/app-release.apk" ]; then
                       echo "::error::No signed APK at $out/app-release.apk, only: $(cd "$out" && echo *). Gradle skipped signing: check the four ANDROID_* secrets."
                       exit 1
