@@ -49,15 +49,6 @@ class AppTest : AppFixture() {
         compose.waitUntilAtLeastOneExists(hasContentDescription("More"), 20_000)
     }
 
-    private fun pageHasFocus(): Boolean {
-        var focused = false
-        InstrumentationRegistry.getInstrumentation().runOnMainSync {
-            val top = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).singleOrNull()
-            focused = top is PageActivity && top.hasWindowFocus()
-        }
-        return focused
-    }
-
     private fun keyboardIsUp(): Boolean {
         var up = false
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
@@ -78,15 +69,6 @@ class AppTest : AppFixture() {
             if (compose.onAllNodesWithContentDescription(gone).fetchSemanticsNodes().isNotEmpty()) back()
         }
         compose.onNodeWithContentDescription(gone).assertDoesNotExist()
-    }
-
-    // A key goes to the focused window, a page's only once it has opened.
-    private fun closePage(until: SemanticsMatcher) {
-        compose.waitUntil(30_000) {
-            if (pageHasFocus()) InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-            Thread.sleep(2_000)
-            compose.onAllNodes(until).fetchSemanticsNodes().isNotEmpty()
-        }
     }
 
     @Test

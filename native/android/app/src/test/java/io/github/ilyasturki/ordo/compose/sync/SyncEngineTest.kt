@@ -35,6 +35,7 @@ private const val PID = "0rd0-web-fixture"
 private const val EXPORT = "aaaaaaaa-0000-4000-8000-000000000005"
 private const val RECURRING = "aaaaaaaa-0000-4000-8000-000000000007"
 private const val DOCUMENTATION = "cccccccc-0000-4000-8000-000000000019"
+private const val FEATURE = "cccccccc-0000-4000-8000-000000000008"
 
 // Holds the next /api/sync request until released, so a test can edit while a round is out.
 class Gate : Interceptor {
@@ -347,6 +348,43 @@ class SyncEngineTest {
         assertEquals(4, back.categories.first { it.name == "Documentation" }.tasks.size)
         assertEquals("Documentation", back.categories.first { it.id == back.categories.first { c -> c.name == "API" }.parentId }.name)
         collecting.cancel()
+    }
+
+    @Test
+    fun aDraggedCategoryReachesTheServerAndUndoPutsItBack() = test {
+        val e = paired(engine())
+        val names = { p: Project -> p.categories.map { it.name } }
+        val before = names(e.state.value.project(PID)!!.project)
+        val snacks = Collections.synchronizedList(mutableListOf<Snack>())
+        val collecting = launch { e.snacks.collect { snacks += it } }
+        assertTrue(e.edit(PID, Ops.categoryPlace(DOCUMENTATION, FEATURE)).applied)
+        val moved = listOf("Documentation", "API", "Feature", "Fix", "Ergonomy", "Research")
+        assertEquals(moved, names(e.state.value.project(PID)!!.project))
+        assertEquals(Round.OK, e.sync())
+        assertEquals(moved, names(Project.parse(server.project(PID))))
+        val undo = withTimeout(5_000) {
+            while (snacks.none { it.action == "Undo" }) kotlinx.coroutines.delay(20)
+            snacks.first { it.action == "Undo" }
+        }
+        assertEquals("Moved “Documentation”", undo.message)
+        undo.run!!()
+        assertEquals(before, names(e.state.value.project(PID)!!.project))
+        assertEquals(Round.OK, e.sync())
+        assertEquals(before, names(Project.parse(server.project(PID))))
+        collecting.cancel()
+    }
+
+    @Test
+    fun aDraggedCategoryLandsOnAFileChangedSince() = test {
+        val e = paired(engine())
+        val names = { p: Project -> p.categories.map { it.name } }
+        assertTrue(e.edit(PID, Ops.categoryPlace(DOCUMENTATION, FEATURE)).applied)
+        server.ordo("category", "delete", FEATURE, "-p", PID, "--force")
+        assertEquals(Round.OK, e.sync())
+        val landed = listOf("Fix", "Ergonomy", "Research", "Documentation", "API")
+        assertEquals(landed, names(Project.parse(server.project(PID))))
+        assertEquals(landed, names(e.state.value.project(PID)!!.project))
+        assertEquals(0, e.state.value.pending)
     }
 
     @Test

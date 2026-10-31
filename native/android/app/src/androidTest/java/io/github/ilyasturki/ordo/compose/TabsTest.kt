@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -43,6 +44,18 @@ class TabsTest : AppFixture(NAMES) {
     private fun tap(name: String) {
         compose.onNodeWithText(name, useUnmergedTree = true).performScrollTo().performClick()
         compose.waitForIdle()
+    }
+
+    @Test
+    fun aHeldTabGoesToItsProjectAndOpensItsCategories() {
+        settled()
+        compose.onNodeWithText("Zed", useUnmergedTree = true).performScrollTo().performTouchInput { longClick() }
+        compose.waitUntilAtLeastOneExists(hasTestTag("categories"), 20_000)
+        compose.onNodeWithText("Zed categories").assertExists()
+        compose.waitUntil(20_000) { engine.state.value.prefs.current == "$PID-${NAMES.indexOf("Zed")}" }
+        closePage(until = hasTestTag("indicator"))
+        settled()
+        assertUnder("Zed")
     }
 
     @Test

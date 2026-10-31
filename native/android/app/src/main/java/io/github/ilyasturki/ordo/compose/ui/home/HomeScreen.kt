@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.sync.Entry
+import io.github.ilyasturki.ordo.compose.ui.CategoriesKey
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.LocalSnackbar
@@ -81,16 +82,13 @@ private sealed interface HomeSheet {
     data class Add(val pid: String) : HomeSheet
     data class Filters(val pid: String) : HomeSheet
     data class ProjectMenu(val pid: String) : HomeSheet
-    data class CategoryMenu(val pid: String, val cat: String) : HomeSheet
-    data class NewCategory(val pid: String, val parent: String) : HomeSheet
-    data class NewSeparator(val pid: String, val cat: String) : HomeSheet
+    data class OfCategory(val pid: String, val sheet: CategorySheet) : HomeSheet
     data object NewProject : HomeSheet
     data object Sync : HomeSheet
 }
 
 private sealed interface Confirm {
     data class DeleteProject(val pid: String) : Confirm
-    data class DeleteCategory(val pid: String, val cat: String) : Confirm
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -158,7 +156,12 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                                     if (i == pager.currentPage) sheet = HomeSheet.ProjectMenu(p.id)
                                     else scope.launch { pager.animateScrollToPage(i) }
                                 },
-                                onLongClick = { sheet = HomeSheet.ProjectMenu(p.id) },
+                                onLongClick = {
+                                    scope.launch {
+                                        if (i != pager.currentPage) pager.scrollToPage(i)
+                                        open(CategoriesKey(p.id))
+                                    }
+                                },
                             )
                         }
                         NewProjectTab { sheet = HomeSheet.NewProject }
@@ -229,8 +232,9 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                     ui = uis[entry.id] ?: ListUi(),
                     onUi = { uis[entry.id] = it },
                     onOpen = { open(TaskKey(entry.id, it)) },
-                    onHeader = { sheet = HomeSheet.CategoryMenu(entry.id, it.id) },
-                    onNewCategory = { sheet = HomeSheet.NewCategory(entry.id, "") },
+                    onHeader = { sheet = HomeSheet.OfCategory(entry.id, CategorySheet.Menu(it.id)) },
+                    onCategories = { open(CategoriesKey(entry.id)) },
+                    onNewCategory = { sheet = HomeSheet.OfCategory(entry.id, CategorySheet.New("")) },
                     query = query,
                 )
             }
@@ -254,40 +258,16 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             NameSheet(e.name, "Project name", "Rename", onDismiss = { sheet = null }, onDone = { name ->
                 name == e.name || engine.edit(e.id, Ops.projectRename(name), quiet = true).applied
             }) {
-                SheetAction(Icons.NewFolder, "New category") { sheet = HomeSheet.NewCategory(e.id, "") }
+                SheetAction(Icons.NewFolder, "New category") { sheet = HomeSheet.OfCategory(e.id, CategorySheet.New("")) }
                 SheetAction(Icons.Delete, "Delete project", danger = true) {
                     sheet = null
                     confirm = Confirm.DeleteProject(e.id)
                 }
             }
         }
-        is HomeSheet.CategoryMenu -> entry(s.pid)?.let { e ->
-            val cat = e.project.category(s.cat) ?: return@let
-            NameSheet(cat.name, "Category name", "Rename", onDismiss = { sheet = null }, onDone = { name ->
-                name == cat.name || engine.edit(e.id, Ops.categoryRename(cat.id, name), quiet = true).applied
-            }) {
-                SheetAction(Icons.NewFolder, "New sub-category") { sheet = HomeSheet.NewCategory(e.id, cat.parentId.ifEmpty { cat.id }) }
-                SheetAction(Icons.Separator, "Add a separator") {
-                    if (filterOf(e).active) {
-                        sheet = null
-                        feedback.reject()
-                        scope.launch { snackbar.showSnackbar("Clear the filter to add a separator") }
-                    } else {
-                        sheet = HomeSheet.NewSeparator(e.id, cat.id)
-                    }
-                }
-                SheetAction(Icons.Delete, "Delete category", danger = true) {
-                    sheet = null
-                    confirm = Confirm.DeleteCategory(e.id, cat.id)
-                }
-            }
+        is HomeSheet.OfCategory -> entry(s.pid)?.let { e ->
+            CategorySheets(e, filterOf(e), s.sheet) { next -> sheet = next?.let { HomeSheet.OfCategory(e.id, it) } }
         }
-        is HomeSheet.NewCategory -> NameSheet("", if (s.parent == "") "New category" else "New sub-category", "Add", onDismiss = { sheet = null }, onDone = { name ->
-            engine.edit(s.pid, Ops.categoryAdd(name, s.parent), quiet = true).applied.also { if (it) feedback.commit() }
-        })
-        is HomeSheet.NewSeparator -> NameSheet("", "Separator label", "Add", blankAllowed = true, onDismiss = { sheet = null }, onDone = { label ->
-            engine.edit(s.pid, Ops.separator(s.cat, "", label), quiet = true).applied
-        })
         HomeSheet.NewProject -> NameSheet("", "New project", "Add", onDismiss = { sheet = null }, onDone = { name ->
             val pid = engine.createProject(name)
             if (pid != null) {
@@ -318,12 +298,6 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                         engine.state.value.projects.firstOrNull()?.let { engine.setCurrent(it.id) }
                     }
                 }
-            }
-        }
-        is Confirm.DeleteCategory -> entry(c.pid)?.let { e ->
-            val cat = e.project.category(c.cat) ?: return@let
-            ConfirmDialog("Delete category “${cat.name}”?", deletedWith(e.project, cat), "Delete", { confirm = null }) {
-                scope.launch { engine.edit(e.id, Ops.categoryDelete(cat.id)) }
             }
         }
     }

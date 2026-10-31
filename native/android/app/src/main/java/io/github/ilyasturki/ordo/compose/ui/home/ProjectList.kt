@@ -61,6 +61,7 @@ fun ProjectList(
     onUi: (ListUi) -> Unit,
     onOpen: (String) -> Unit,
     onHeader: (Category) -> Unit,
+    onCategories: () -> Unit,
     onNewCategory: () -> Unit,
     query: String = "",
 ) {
@@ -114,7 +115,7 @@ fun ProjectList(
         items(shown, key = { it.key }) { line ->
             ReorderableItem(reorder, key = line.key) { dragging ->
                 when (line) {
-                    is Header -> CategoryHeader(line) { onHeader(line.category) }
+                    is Header -> CategoryHeader(line, onCategories) { onHeader(line.category) }
                     is Hidden -> HiddenLine(line) {
                         onUi(if (line.peeking) ui.copy(peek = null) else ui.copy(peek = line.cat))
                     }

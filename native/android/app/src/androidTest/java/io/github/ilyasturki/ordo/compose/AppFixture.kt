@@ -1,6 +1,8 @@
 package io.github.ilyasturki.ordo.compose
 
+import android.view.KeyEvent
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -79,5 +81,23 @@ abstract class AppFixture(private val names: List<String> = listOf("Ordo")) {
     protected fun scrollTo(text: String) {
         compose.waitUntilAtLeastOneExists(androidx.compose.ui.test.hasTestTag("list"), 20_000)
         compose.onNodeWithTag("list").performScrollToNode(hasText(text, substring = true))
+    }
+
+    protected fun pageHasFocus(): Boolean {
+        var focused = false
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val top = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).singleOrNull()
+            focused = top is PageActivity && top.hasWindowFocus()
+        }
+        return focused
+    }
+
+    // A key goes to the focused window, a page's only once it has opened.
+    protected fun closePage(until: SemanticsMatcher) {
+        compose.waitUntil(30_000) {
+            if (pageHasFocus()) InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            Thread.sleep(2_000)
+            compose.onAllNodes(until).fetchSemanticsNodes().isNotEmpty()
+        }
     }
 }

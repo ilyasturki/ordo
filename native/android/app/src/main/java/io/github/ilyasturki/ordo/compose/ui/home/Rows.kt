@@ -3,6 +3,7 @@ package io.github.ilyasturki.ordo.compose.ui.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,7 +46,7 @@ import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.marks
 
 @Composable
-fun CategoryHeader(header: Header, onClick: () -> Unit) {
+fun CategoryHeader(header: Header, onLongClick: () -> Unit, onClick: () -> Unit) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Text(
         buildAnnotatedString {
@@ -58,7 +59,7 @@ fun CategoryHeader(header: Header, onClick: () -> Unit) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(start = 20.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
     )
 }

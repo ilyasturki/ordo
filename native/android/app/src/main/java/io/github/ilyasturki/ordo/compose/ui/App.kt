@@ -26,6 +26,9 @@ data class TaskKey(val pid: String, val tid: String) : NavKey
 data class ViewerKey(val pid: String, val tid: String, val start: Int) : NavKey
 
 @Serializable
+data class CategoriesKey(val pid: String) : NavKey
+
+@Serializable
 data object SettingsKey : NavKey
 
 @Serializable

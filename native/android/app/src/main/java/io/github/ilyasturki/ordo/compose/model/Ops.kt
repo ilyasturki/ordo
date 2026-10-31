@@ -61,6 +61,7 @@ object Ops {
     fun categoryAdd(title: String, parent: String = "") =
         op("category.add", "title" to title, "parent" to parent)
     fun categoryRename(cat: String, title: String) = op("category.rename", "cat" to cat, "title" to title)
+    fun categoryPlace(cat: String, before: String) = op("category.place", "cat" to cat, "before" to before)
     fun categoryDelete(cat: String) = op("category.delete", "cat" to cat)
     fun projectCreate(title: String) = op("project.create", "title" to title)
     fun projectRename(title: String) = op("project.rename", "title" to title)

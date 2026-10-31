@@ -4,6 +4,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- A long press on a project tab or a category header in the app opens that project's categories on a page of their own, as a tree. Drag a row to reorder it among its siblings, its sub-categories with it, and every move offers Undo; a tap opens the menu the header's tap does, and the `+` adds a category. On another project's tab the app goes to that project first. Tapping the current tab still opens the project's menu. The move reaches `ordo serve` as a new `category.place` op in [`docs/sync.md`](docs/sync.md)
+
 ### Changed
 
 - The TUI notices an outside change to the open project's file within a second, without a keypress. With no edit waiting it reloads by itself, keeps the cursor on the same row and says `Changed on disk: reloaded`; a dialog or an input left open waits until it closes. With an edit waiting or refused, `[changed on disk: r drops N edits]` shows at once instead of at the next save, and `r` and the quit confirmations work as before

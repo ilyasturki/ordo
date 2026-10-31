@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import io.github.ilyasturki.ordo.compose.model.json
 import io.github.ilyasturki.ordo.compose.ui.App
+import io.github.ilyasturki.ordo.compose.ui.CategoriesKey
 import io.github.ilyasturki.ordo.compose.ui.DevicesKey
 import io.github.ilyasturki.ordo.compose.ui.LicenceKey
 import io.github.ilyasturki.ordo.compose.ui.NavKey
@@ -17,6 +18,7 @@ import io.github.ilyasturki.ordo.compose.ui.SettingsKey
 import io.github.ilyasturki.ordo.compose.ui.SignInKey
 import io.github.ilyasturki.ordo.compose.ui.TaskKey
 import io.github.ilyasturki.ordo.compose.ui.ViewerKey
+import io.github.ilyasturki.ordo.compose.ui.home.CategoriesScreen
 import io.github.ilyasturki.ordo.compose.ui.settings.DevicesScreen
 import io.github.ilyasturki.ordo.compose.ui.settings.LicenceScreen
 import io.github.ilyasturki.ordo.compose.ui.settings.SettingsScreen
@@ -42,6 +44,7 @@ class PageActivity : ComponentActivity() {
                     when (key) {
                         is TaskKey -> TaskScreen(key.pid, key.tid, open = ::openPage, back = ::finish)
                         is ViewerKey -> ViewerScreen(key.pid, key.tid, key.start, back = ::finish)
+                        is CategoriesKey -> CategoriesScreen(key.pid, back = ::finish)
                         SettingsKey -> SettingsScreen(open = ::openPage, back = ::finish)
                         DevicesKey -> DevicesScreen(back = ::finish)
                         LicenceKey -> LicenceScreen(back = ::finish)
