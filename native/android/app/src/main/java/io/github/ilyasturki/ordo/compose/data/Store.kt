@@ -40,6 +40,8 @@ data class Queued(
 data class Prefs(
     val current: String = "",
     val filters: Map<String, Filter> = emptyMap(),
+    // When each project was last the page shown or edited here, in epoch milliseconds.
+    val opened: Map<String, Long> = emptyMap(),
 )
 
 // The phone's copy, as files: one per project (its meta line, then the core's JSON), the queue,

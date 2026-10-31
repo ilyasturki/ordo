@@ -35,7 +35,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.sse.EventSource
 import java.io.File
-import java.text.Collator
 
 data class Entry(
     val id: String,
@@ -148,8 +147,9 @@ class SyncEngine(
     private var stream: EventSource? = null
     private var streamGen = 0
 
-    private val byName = Collator.getInstance().apply { strength = Collator.PRIMARY }
-        .let { c -> Comparator<Entry> { a, b -> c.compare(a.name, b.name) } }
+    // The tabs' order, frozen while the app stays in front: boot and a return to the front rank it again, and
+    // an edit, a sync or a new project only add or drop a tab, so none moves under a finger.
+    private var order: List<String> = emptyList()
 
     private inline fun publish(f: SyncState.() -> SyncState) = _state.update(f)
 
@@ -164,14 +164,16 @@ class SyncEngine(
         }
         queue = store.queue()
         seq = queue.lastOrNull()?.seq ?: 0
+        val prefs = store.prefs().let { p -> if (p.current.isEmpty()) p else p.copy(opened = p.opened + (p.current to clock())) }
+        order = rankProjects(entries, prefs.opened).map(Entry::id)
         images.sweep()
         unsent = images.waiting()
         publish {
             copy(
                 booted = true,
                 session = session,
-                projects = entries.sortedWith(byName),
-                prefs = store.prefs(),
+                projects = arranged(entries),
+                prefs = prefs,
                 pending = queue.size,
                 uploads = unsent.size,
                 trouble = if (session?.expired == true) Trouble.Expired else null,
@@ -262,8 +264,9 @@ class SyncEngine(
         if (ops.any { it.action == "project.delete" }) {
             core.close(pid)
             opened -= pid
-            publish { copy(projects = projects.filter { it.id != pid }, pending = queue.size) }
+            publish { copy(projects = projects.filter { it.id != pid }, pending = queue.size, prefs = prefs.forgetting(pid)) }
             store.saveQueue(queue)
+            store.savePrefs(_state.value.prefs)
             store.deleteProject(pid)
         } else {
             val raw = core.project(pid).ifEmpty { error("The project is not open") }
@@ -271,7 +274,8 @@ class SyncEngine(
             val prev = _state.value.project(pid)
             opened += pid
             val e = Entry(pid, p.name, prev?.stamp.orEmpty(), raw, p, prev?.error)
-            publish { copy(projects = (projects.filter { it.id != pid } + e).sortedWith(byName), pending = queue.size) }
+            publish { copy(projects = arranged(projects.filter { it.id != pid } + e), pending = queue.size) }
+            stamp(pid)
             // The queue first: an op that is queued brings the server's copy back, a copy saved without its op stays behind.
             store.saveQueue(queue)
             store.saveProject(StoredProject(pid, p.name, e.stamp, e.error), raw)
@@ -433,8 +437,9 @@ class SyncEngine(
             opened -= p.id
             gone += p.id
         }
-        publish { copy(projects = next.sortedWith(byName), pending = queue.size) }
+        publish { copy(projects = arranged(next), pending = queue.size, prefs = gone.fold(prefs) { p, id -> p.forgetting(id) }) }
         store.saveQueue(queue)
+        if (gone.isNotEmpty()) store.savePrefs(_state.value.prefs)
         for (e in saves) store.saveProject(StoredProject(e.id, e.name, e.stamp, e.error), e.raw)
         for (id in gone) store.deleteProject(id)
     }
@@ -463,6 +468,7 @@ class SyncEngine(
         awaitBoot()
         val front = withContext(lane) {
             foreground = wanted
+            if (foreground) reorder()
             listen(foreground)
             if (!foreground) {
                 if (!waiting) {
@@ -603,11 +609,38 @@ class SyncEngine(
         opened.clear()
         queue = emptyList()
         unsent = emptyList()
+        order = emptyList()
         publish { copy(projects = emptyList(), pending = 0, uploads = 0, prefs = Prefs()) }
     }
 
     suspend fun setCurrent(pid: String) = withContext(lane) {
-        val prefs = _state.value.prefs.copy(current = pid)
+        val prefs = _state.value.prefs.copy(current = pid, opened = _state.value.prefs.opened + (pid to clock()))
+        publish { copy(prefs = prefs) }
+        store.savePrefs(prefs)
+    }
+
+    // The tabs in the frozen order, a project it doesn't know last, the best ranked first.
+    private fun arranged(entries: List<Entry>): List<Entry> {
+        val at = order.withIndex().associate { it.value to it.index }
+        val (known, fresh) = entries.partition { it.id in at }
+        val next = known.sortedBy { at.getValue(it.id) } + rankProjects(fresh, _state.value.prefs.opened)
+        order = next.map(Entry::id)
+        return next
+    }
+
+    // The app came to the front: the project on screen counts as opened now, and the tabs rank again.
+    private fun reorder() {
+        val prefs = _state.value.prefs
+        val shown = prefs.current.takeIf { id -> _state.value.project(id) != null }
+        val next = if (shown == null) prefs else prefs.copy(opened = prefs.opened + (shown to clock()))
+        order = rankProjects(_state.value.projects, next.opened).map(Entry::id)
+        publish { copy(projects = arranged(projects), prefs = next) }
+        if (next !== prefs) store.savePrefs(next)
+    }
+
+    // An edit made here keeps the project at the front of the next ranking.
+    private fun stamp(pid: String) {
+        val prefs = _state.value.prefs.let { it.copy(opened = it.opened + (pid to clock())) }
         publish { copy(prefs = prefs) }
         store.savePrefs(prefs)
     }
@@ -620,3 +653,5 @@ class SyncEngine(
 }
 
 private fun JsonObject.with(key: String, value: String): JsonObject = JsonObject(this + (key to JsonPrimitive(value)))
+
+private fun Prefs.forgetting(pid: String) = copy(opened = opened - pid)
