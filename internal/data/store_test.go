@@ -347,29 +347,6 @@ func TestLoadProjectByID_RejectsMismatchedID(t *testing.T) {
 	assert.ErrorIs(t, err, ErrProjectNotFound)
 }
 
-func TestConflictFiles(t *testing.T) {
-	tmpDir := filepath.Join(t.TempDir(), "[sync]")
-	store := NewStore(tmpDir)
-	project, err := store.CreateProject("Live")
-	require.NoError(t, err)
-	other, err := store.CreateProject("Other")
-	require.NoError(t, err)
-
-	assert.Empty(t, store.ConflictFiles(project.ID))
-
-	names := []string{
-		project.ID + ".sync-conflict-20260921-203208-ICE5FOT.json",
-		project.ID + ".sync-conflict-20261001-101010-ABCDEFG.json",
-	}
-	for _, name := range names {
-		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, name), []byte("{}"), 0o644))
-	}
-
-	assert.Equal(t, names, store.ConflictFiles(project.ID))
-	assert.Empty(t, store.ConflictFiles(other.ID))
-	assert.Empty(t, store.ConflictFiles("../"+project.ID))
-}
-
 func TestLoadReadsADiamondTagAsItsDot(t *testing.T) {
 	tmpDir := t.TempDir()
 	store := NewStore(tmpDir)

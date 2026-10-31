@@ -139,9 +139,10 @@ func TestOutsideEditKeepsTheRefusalInTheHeaderUntilReload(t *testing.T) {
 
 func TestHeaderMarkShowsWhileScrolled(t *testing.T) {
 	m, web, p := sharedModel(t)
-	onWeb(t, web, p.ID, func(p *domain.Project) { p.Name = "Elsewhere" })
 	m.ui.Screen.Height = 6
-	hit(m, "G", "l")
+	hit(m, "G")
+	onWeb(t, web, p.ID, func(p *domain.Project) { p.Name = "Elsewhere" })
+	hit(m, "l")
 
 	view := m.renderView()
 	require.Contains(t, view, scrollMoreAbove)

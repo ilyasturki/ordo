@@ -4,6 +4,14 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Changed
+
+- The TUI notices an outside change to the open project's file within a second, without a keypress. With no edit waiting it reloads by itself, keeps the cursor on the same row and says `Changed on disk: reloaded`; a dialog or an input left open waits until it closes. With an edit waiting or refused, `[changed on disk: r drops N edits]` shows at once instead of at the next save, and `r` and the quit confirmations work as before
+
+### Removed
+
+- The status-line notice about Syncthing conflict copies. Ordo ignores them; reporting them is Syncthing's job
+
 ## [0.14.0] - 2026-10-31
 
 ### Added

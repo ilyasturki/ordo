@@ -112,7 +112,7 @@ type model struct {
 }
 
 func (m model) Init() tea.Cmd {
-	return m.listenSaveErrors()
+	return tea.Batch(m.listenSaveErrors(), diskTick())
 }
 
 // listenSaveErrors subscribes to the async saver's error channel so a failed
@@ -138,6 +138,7 @@ func (m model) listenSaveErrors() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
 	if updated, ok := next.(model); ok {
+		updated.noticeOutsideChange()
 		updated.collapseLeftRow()
 		updated.releaseFilteredOut()
 		updated.releasePeek()
@@ -201,6 +202,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ui.Screen.StatusMsg = saveFailedMessage(m.ui.Save.Err)
 		}
 		return m, m.listenSaveErrors()
+	case diskTickMsg:
+		return m, diskTick()
 	case tea.KeyPressMsg:
 		m.ui.Screen.StatusMsg = ""
 		span, shown := m.shownCursorSpan()
@@ -1027,9 +1030,6 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	m.ui.Fold = foldState
 	m.ui.Filter = filterState
 	m.ui.Screen.ExpandDescriptions = expandDescriptions
-	if startMode == modes.ModeNormal {
-		m.announceConflicts("")
-	}
 	// Reopen on the row this project was last left on. Runs after the fold state
 	// is in place so a cursor inside a folded category resolves to that
 	// category's header rather than to a row that isn't rendered. The viewport

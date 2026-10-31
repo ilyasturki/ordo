@@ -10,13 +10,18 @@ Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
 Hide
 Type "clear && (sleep 2 && ./ordo -p Default task status 'Add user preferences panel' completed -q >/dev/null 2>&1 &) ; ./ordo -p Default"
 Enter
-Sleep 3000ms
+Sleep 800ms
 Show
 
-# The TUI's next edit is refused, and the header says what r would drop.
+# The title editor is open as the file changes, so no reload takes the row away.
 Type "gg"
 Type "jj"
-Type "l"
+Enter
+Sleep 2200ms
+
+# Committing the title is refused, and the header says what r would drop.
+Type "!"
+Enter
 Sleep 500ms
 Screenshot "/tmp/ordo-vt/vhs-out/86_refused.png"
 

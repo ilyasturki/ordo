@@ -14,9 +14,39 @@ var ErrStaleProject = errors.New("project changed on disk since it was loaded")
 // a snapshot taken before a reload can't pass the reloaded copy's check.
 type lineage struct {
 	version os.FileInfo
-	queued  int // snapshots handed in so far
-	saved   int // the last of them that reached disk
+	watch   FileWatch // sees past the versions this copy wrote or already reported
+	queued  int       // snapshots handed in so far
+	saved   int       // the last of them that reached disk
 	err     error
+}
+
+// FileWatch tells when a file moved on from the version it last saw, by stat
+// alone, so it can run on every tick. Not safe for concurrent use.
+type FileWatch struct {
+	path string
+	seen os.FileInfo
+}
+
+// NewFileWatch starts from the file as it is now, missing or not.
+func NewFileWatch(path string) *FileWatch {
+	w := &FileWatch{path: path}
+	w.Changed()
+	return w
+}
+
+// Changed reports a new version once, a removal or a return counting as one.
+// A caller that wrote the file itself calls it to see past its own write.
+func (w *FileWatch) Changed() bool {
+	info, err := os.Stat(w.path)
+	if err != nil {
+		info = nil
+	}
+	same := w.seen == nil && info == nil
+	if w.seen != nil && info != nil {
+		same = sameVersion(w.seen, info)
+	}
+	w.seen = info
+	return !same
 }
 
 // UnsavedError names a project whose last edits never reached disk.
@@ -48,7 +78,38 @@ func (s *Store) adopt(id string, info os.FileInfo) {
 	if s.copies == nil {
 		s.copies = make(map[string]*lineage)
 	}
-	s.copies[id] = &lineage{version: info}
+	s.copies[id] = &lineage{version: info, watch: FileWatch{path: s.projectPath(id), seen: info}}
+}
+
+// wrote moves l to the version its own save just put on disk.
+func (s *Store) wrote(id string, l *lineage, info os.FileInfo) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	l.version = info
+	l.watch = FileWatch{path: s.projectPath(id), seen: info}
+}
+
+// OutsideChange reports, once per version, that another writer changed the file
+// of the open copy of id. Edits the copy still holds are refused from then on,
+// whatever stopped them before. A snapshot in flight holds the answer back: its
+// rename lands before its version is noted.
+func (s *Store) OutsideChange(id string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	l := s.copies[id]
+	if l == nil || l.version == nil || (l.queued != l.saved && l.err == nil) {
+		return false
+	}
+	if !l.watch.Changed() {
+		return false
+	}
+	if l.queued != l.saved {
+		l.err = ErrStaleProject
+		if l.watch.seen == nil {
+			l.err = ErrProjectNotFound
+		}
+	}
+	return true
 }
 
 func (s *Store) forget(id string) {

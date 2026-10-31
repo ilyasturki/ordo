@@ -182,7 +182,13 @@ A client on the same machine as ordo takes the same locks. A client on another d
 
 ## Edits from outside
 
-The TUI keeps the open project in memory and saves snapshots of it. When it loads the file it notes its identity (inode, size, modification time), each of its own saves moves the note to the version it wrote, and every snapshot is checked against the note of the load it came from. If Syncthing, the CLI, `ordo serve` or another app has changed the file in between, the save is refused, and so is every later one until a reload. The TUI then marks the project `[changed on disk: r drops N edits]`, and `q`, `ctrl+c`, switching projects and creating one ask before dropping those edits. `r` waits for any save still in flight, loads the file again and drops the refused edits, so the other writer's change always wins. Quitting anyway exits with status 1 and names the lost edits on stderr.
+The TUI keeps the open project in memory and saves snapshots of it. When it loads the file it notes its identity (inode, size, modification time), each of its own saves moves the note to the version it wrote, and every snapshot is checked against the note of the load it came from. If Syncthing, the CLI, `ordo serve` or another app has changed the file in between, the save is refused, and so is every later one until a reload.
+
+The TUI also compares the file with the note about once a second, without a keypress, and after every key; its own saves move the note, so they never count. What a change does depends on the open copy:
+
+- **No edit waiting to be saved:** the TUI reloads the file and says `Changed on disk: reloaded`, with the cursor on the same row while that row exists. A dialog or an input left open is not disturbed: the reload comes as it closes. Undo history starts over, as with `r`.
+- **An edit waiting or refused:** nothing reloads, and the project is marked `[changed on disk: r drops N edits]` at once. `q`, `ctrl+c`, switching projects and creating one ask before dropping those edits. `r` waits for any save still in flight, loads the file again and drops the refused edits, so the other writer's change always wins. Quitting anyway exits with status 1 and names the lost edits on stderr.
+- **The file is gone or unreadable:** the copy stays on screen and the status line says so once. Its saves stay refused, and the next readable version reloads as above.
 
 A snapshot queued before a reload keeps the note of the load it came from, so it can't land after the reload and overwrite the change the reload just showed.
 
@@ -190,4 +196,4 @@ The CLI and `ordo serve` do each change as one read, change and write under the 
 
 ## Conflict copies
 
-When two devices change the same file before Syncthing reconciles them, Syncthing keeps one version as `<id>.json` and renames the other to `<id>.sync-conflict-<date>-<time>-<device>.json`. Ordo never loads, edits or deletes a conflict copy. When a project with one opens, the TUI names the file in its status line. Merging the two and deleting the copy is a manual job.
+When two devices change the same file before Syncthing reconciles them, Syncthing keeps one version as `<id>.json` and renames the other to `<id>.sync-conflict-<date>-<time>-<device>.json`. Ordo ignores conflict copies: it never loads, edits, deletes or mentions one. Reporting them is Syncthing's job, and merging the two and deleting the copy is a manual one.

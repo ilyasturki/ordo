@@ -3,7 +3,6 @@ package app
 import (
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/data"
@@ -39,38 +38,6 @@ func saveFailedMessage(err error) string {
 	return "Save failed: " + err.Error()
 }
 
-func conflictNotice(names []string) string {
-	if len(names) == 1 {
-		return "Conflict: " + names[0]
-	}
-	return fmt.Sprintf("Conflict: %s (+%d more)", names[0], len(names)-1)
-}
-
-// Shows msg, or the open project's conflict copies the status line has not named yet.
-func (m *model) announceConflicts(msg string) {
-	if m.deps.Store == nil {
-		m.ui.Screen.StatusMsg = msg
-		return
-	}
-	names := m.deps.Store.ConflictFiles(m.project.ID)
-	var seen []string
-	if m.ui.Screen.AnnouncedProject == m.project.ID {
-		seen = m.ui.Screen.AnnouncedConflicts
-	}
-	var fresh []string
-	for _, name := range names {
-		if !slices.Contains(seen, name) {
-			fresh = append(fresh, name)
-		}
-	}
-	m.ui.Screen.AnnouncedProject = m.project.ID
-	m.ui.Screen.AnnouncedConflicts = names
-	if len(fresh) > 0 {
-		msg = conflictNotice(fresh)
-	}
-	m.ui.Screen.StatusMsg = msg
-}
-
 // invalidateLayout drops the memoized layout so the next render/scroll rebuilds
 // it. Call after any change that alters what rows exist or how tall they are.
 func (m *model) invalidateLayout() {
@@ -87,23 +54,32 @@ func (m *model) reloadProject() {
 	}
 	dropped, _ := m.deps.Store.Unsaved(m.project.ID)
 
-	prev, hadSel := m.currentCursor()
-
 	project, err := m.deps.Store.LoadProject(m.project.ID)
 	if err != nil {
 		m.ui.Screen.StatusMsg = "Reload failed: " + err.Error()
 		return
 	}
 
-	m.project = project
-	m.checkSaves()
-	m.ui.History.Reset()
 	m.ui.Filter.releaseHeld()
 	m.ui.Filter.endPeek()
 	// The move that used the cut up may be among the dropped edits: a copy would then duplicate the rows.
 	if dropped > 0 && m.ui.Clipboard.Moved {
 		m.ui.Clipboard.IsCut, m.ui.Clipboard.Moved = true, false
 	}
+	m.takeReloaded(project)
+	msg := "Reloaded from disk"
+	if dropped > 0 {
+		msg = fmt.Sprintf("Reloaded from disk, dropping %d edit%s", dropped, plural(dropped, "", "s"))
+	}
+	m.ui.Screen.StatusMsg = msg
+}
+
+// takeReloaded opens the copy just read from disk, with the cursor on its row while that row exists.
+func (m *model) takeReloaded(project domain.Project) {
+	prev, hadSel := m.currentCursor()
+	m.project = project
+	m.checkSaves()
+	m.ui.History.Reset()
 	m.rebuildPositions()
 
 	if hadSel && !m.restoreCursor(prev) {
@@ -112,11 +88,6 @@ func (m *model) reloadProject() {
 	}
 
 	m.ensureVisible()
-	msg := "Reloaded from disk"
-	if dropped > 0 {
-		msg = fmt.Sprintf("Reloaded from disk, dropping %d edit%s", dropped, plural(dropped, "", "s"))
-	}
-	m.announceConflicts(msg)
 }
 
 // restoreSelection moves the cursor onto the row identified by (kind, catID,

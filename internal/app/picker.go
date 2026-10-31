@@ -129,7 +129,7 @@ func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		if m.project.ID == "" {
 			return m, tea.Quit
 		}
-		m.announceConflicts("")
+		m.ui.Screen.StatusMsg = ""
 		m.ui.Picker.reset()
 		m.ui.Modes.ToNormal()
 	}
@@ -384,7 +384,7 @@ func (m *model) openPickedProject(status string) {
 
 	selectedProject := m.ui.Picker.projects[m.ui.Picker.selected]
 	if selectedProject.ID == m.project.ID {
-		m.announceConflicts(status)
+		m.ui.Screen.StatusMsg = status
 		m.ui.Picker.reset()
 		m.ui.Modes.ToNormal()
 		return
@@ -431,7 +431,7 @@ func (m *model) switchToPicked(status string) {
 	// would otherwise arrive pinned to the bottom edge.
 	m.centerOnSelected()
 
-	m.announceConflicts(cmp.Or(status, fmt.Sprintf("Switched to: %s", project.Name)))
+	m.ui.Screen.StatusMsg = cmp.Or(status, fmt.Sprintf("Switched to: %s", project.Name))
 	m.ui.Picker.reset()
 	m.ui.Modes.ToNormal()
 }

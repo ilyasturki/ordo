@@ -31,7 +31,7 @@ type ProjectRepository interface {
 	CreateProject(name string) (domain.Project, error)
 	CheckProjectName(name, excludeID string) error
 	DeleteProject(id string) error
-	ConflictFiles(id string) []string
+	OutsideChange(id string) bool
 	Unsaved(id string) (int, error)
 	DropUnsaved(id string)
 }
@@ -454,22 +454,6 @@ func (s *Store) projectPath(id string) string {
 func (s *Store) projectExists(id string) bool {
 	_, err := os.Stat(s.projectPath(id))
 	return err == nil
-}
-
-// Syncthing names the losing copy of a conflict "<id>.sync-conflict-<date>-<time>-<device>.json".
-func (s *Store) ConflictFiles(id string) []string {
-	if domain.ValidateID(id) != nil {
-		return nil
-	}
-	entries, _ := os.ReadDir(s.Dir)
-	prefix := id + ".sync-conflict-"
-	var names []string
-	for _, entry := range entries {
-		if name := entry.Name(); strings.HasPrefix(name, prefix) && strings.HasSuffix(name, ".json") {
-			names = append(names, name)
-		}
-	}
-	return names
 }
 
 func (s *Store) lockPath(id string) string { return s.projectPath(id) + ".lock" }

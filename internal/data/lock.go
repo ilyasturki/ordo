@@ -74,9 +74,7 @@ func (s *Store) writeSnapshot(id string, data []byte, l *lineage) error {
 		return err
 	}
 	if info != nil {
-		s.mu.Lock()
-		l.version = info
-		s.mu.Unlock()
+		s.wrote(id, l, info)
 	}
 	return nil
 }
