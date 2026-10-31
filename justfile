@@ -32,7 +32,7 @@ native-test:
 native-ui SERIAL *ARGS:
     nix develop .#native --command scripts/native.sh ui {{SERIAL}} {{ARGS}}
 
-# Install and open the Android app on the USB phone, signed in to a throwaway seeded server (--reset reseeds it).
+# Install and open the Android app on the USB phone, signed in to a throwaway seeded server (--reset reseeds it and clears the app).
 dev-phone *ARGS:
     ./scripts/dev.sh {{ARGS}}
 
