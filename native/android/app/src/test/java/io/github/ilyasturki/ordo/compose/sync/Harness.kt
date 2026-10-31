@@ -62,7 +62,7 @@ class PipeCore : CoreApi, AutoCloseable {
     }
 }
 
-// A throwaway ordo serve seeded with testdata/web/seed.json, and the ordo CLI on its files.
+// A throwaway ordo serve seeded with testdata/native/seed.json, and the ordo CLI on its files.
 class Server : AutoCloseable {
     val dir: File = Files.createTempDirectory("ordo-serve").toFile()
     val port = ServerSocket(0).use { it.localPort }
@@ -71,7 +71,7 @@ class Server : AutoCloseable {
     private var process: Process? = null
 
     init {
-        ordo("import", File(repo, "testdata/web/seed.json").path, "-q")
+        ordo("import", File(repo, "testdata/native/seed.json").path, "-q")
         start()
     }
 

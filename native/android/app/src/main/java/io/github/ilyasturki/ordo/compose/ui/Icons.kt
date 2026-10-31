@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
-// Paths from Google's Material Icons (Apache 2.0) on a 24×24 grid, the set app/src/lib/icons.ts draws.
+// Paths from Google's Material Icons (Apache 2.0) on a 24×24 grid.
 object Icons {
     private fun icon(name: String, path: String): ImageVector =
         ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f)

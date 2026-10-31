@@ -79,9 +79,8 @@ class OrdoApp : Application() {
         }
     }
 
-    // What the server's Devices page shows for this phone, told apart from the Capacitor app.
     private fun deviceName(): String {
         val name = Settings.Global.getString(contentResolver, Settings.Global.DEVICE_NAME)?.takeIf(String::isNotBlank) ?: Build.MODEL
-        return "$name · Ordo Native"
+        return "$name · Ordo"
     }
 }

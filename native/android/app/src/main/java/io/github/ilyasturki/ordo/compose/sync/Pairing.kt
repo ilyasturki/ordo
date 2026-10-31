@@ -7,7 +7,7 @@ data class Pairing(val server: String, val code: String)
 
 private val pairPath = Regex("""/pair/([^/?#]+)/?$""")
 
-// The server and code of a pairing link, https://host[/prefix]/pair/<code>, as app/src/lib/api.ts reads it.
+// The server and code of a pairing link, https://host[/prefix]/pair/<code>.
 fun parsePairing(text: String): Pairing? {
     val raw = text.trim()
     if (raw.isEmpty()) return null

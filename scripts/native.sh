@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the native Android app from the flake's native dev shell: internal/core bound with gomobile, then the APK.
+# Build the Android app from the flake's native dev shell: internal/core bound with gomobile, then the APK.
 #
 # Usage: scripts/native.sh core|apk|install [adb serial]|test|ui <adb serial> [am instrument flags]
 set -euo pipefail
@@ -51,13 +51,13 @@ ui)
     data=$(mktemp -d)
     go build -o "$data/ordo" ./cmd/ordo
     export ORDO_DATA_PATH=$data/data ORDO_CONFIG_PATH=$data/config
-    "$data/ordo" import testdata/web/seed.json -q
+    "$data/ordo" import testdata/native/seed.json -q
     "$data/ordo" serve passphrase <<<"$passphrase"
     "$data/ordo" serve --listen "127.0.0.1:$port" >"$data/serve.log" 2>&1 &
     served=$!
     trap 'kill "$served"; rm -rf "$data"' EXIT
     adb -s "$serial" reverse "tcp:$port" "tcp:$port"
-    out=$(adb -s "$serial" shell am instrument -w -e server "http://127.0.0.1:$port" -e passphrase "$passphrase" "${@:3}" io.github.ilyasturki.ordo.compose.dev.test/androidx.test.runner.AndroidJUnitRunner)
+    out=$(adb -s "$serial" shell am instrument -w -e server "http://127.0.0.1:$port" -e passphrase "$passphrase" "${@:3}" io.github.ilyasturki.ordo.dev.test/androidx.test.runner.AndroidJUnitRunner)
     echo "$out"
     grep -q "^OK (" <<<"$out"
     ;;

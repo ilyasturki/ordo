@@ -103,8 +103,8 @@ data class Delays(
     val graceBeforeTrouble: Long = 3 * 60_000,
 )
 
-// The phone's copy of every project and the queue of edits made on it, synced with ordo serve as
-// app/src/lib/state.svelte.ts does. One lane runs every core call and state change in order.
+// The phone's copy of every project and the queue of edits made on it, synced with ordo serve.
+// One lane runs every core call and state change in order.
 class SyncEngine(
     private val store: Store,
     private val newCore: () -> CoreApi,
@@ -501,6 +501,7 @@ class SyncEngine(
     }
 
     suspend fun pair(link: String): String? {
+        awaitBoot()
         val p = parsePairing(link) ?: return "Paste the whole pairing link, https://…/pair/…"
         return try {
             val token = withContext(io) { api(Session(p.server, "")).pair(p.code, deviceName) }

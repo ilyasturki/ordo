@@ -1,5 +1,4 @@
-// Package ordocore is internal/core for the native Android app, bound with gomobile: the calls
-// cmd/ordo-core gives the web app, with JSON strings in and out.
+// Package ordocore is internal/core for the Android app, bound with gomobile, with JSON strings in and out.
 package ordocore
 
 import (

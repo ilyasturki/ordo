@@ -83,7 +83,7 @@ object Priority {
 object Tags {
     val all = listOf("green", "blue", "magenta", "cyan")
 
-    // A diamond mark from a file written before the four dots, or from the Capacitor app, reads as its colour's dot.
+    // A diamond mark from a file written before the four dots reads as its colour's dot.
     fun dot(color: String): String = color.removeSuffix("-diamond")
 
     fun label(color: String): String =

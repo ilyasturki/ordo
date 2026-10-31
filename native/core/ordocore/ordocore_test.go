@@ -21,7 +21,7 @@ type answer struct {
 
 func seeded(t *testing.T) (*ordocore.Core, string) {
 	t.Helper()
-	raw, err := os.ReadFile("../../../testdata/web/seed.json")
+	raw, err := os.ReadFile("../../../testdata/native/seed.json")
 	if err != nil {
 		t.Fatal(err)
 	}

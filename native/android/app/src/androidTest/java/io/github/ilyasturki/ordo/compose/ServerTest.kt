@@ -3,6 +3,7 @@ package io.github.ilyasturki.ordo.compose
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.ClipData
+import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -333,6 +334,21 @@ class ServerTest {
         // The first back may only close the keyboard.
         repeat(2) { if (compose.onAllNodes(hasTestTag("qr")).fetchSemanticsNodes().isNotEmpty()) back() }
         waitForDescription("Sign out $second")
+    }
+
+    @Test
+    fun theAdbWayInSignsInFromAPairingLinkAndOnlyTheShellMayUseIt() {
+        val context = ins.targetContext
+        val component = ComponentName(context, DevSignInActivity::class.java)
+        assertEquals("android.permission.DUMP", context.packageManager.getActivityInfo(component, 0).permission)
+        val minter = runBlocking { Api(server, "").login(passphrase, "minter ${System.nanoTime()}") }
+        val link = runBlocking { Api(server, minter).pairDevice(passphrase).link }
+        (context.applicationContext as OrdoApp).use(engine)
+        context.startActivity(Intent().setComponent(component).putExtra("link", link).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        waitForDescription("Add a task")
+        assertEquals(server, engine.state.value.session?.server)
+        // Signs out the device it paired too, so none stays behind.
+        runBlocking { Api(server, minter).logout() }
     }
 
     @Test
