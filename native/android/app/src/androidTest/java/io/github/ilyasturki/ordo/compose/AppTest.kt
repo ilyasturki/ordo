@@ -1,5 +1,6 @@
 package io.github.ilyasturki.ordo.compose
 
+import android.content.Intent
 import android.view.KeyEvent
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
@@ -318,5 +319,14 @@ class AppTest : AppFixture() {
         compose.waitUntilAtLeastOneExists(hasText("Undo"), 20_000)
         compose.onNodeWithText("Undo").performClick()
         compose.waitUntil(20_000) { engine.state.value.project(PID)!!.project.categories.map { it.name } == before }
+    }
+
+    @Test
+    fun theLauncherOpensTheAppThroughTheOldAppsComponentName() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(context.packageName)
+        val found = context.packageManager.resolveActivity(launcher, 0)!!.activityInfo
+        assertEquals("io.github.ilyasturki.ordo.MainActivity", found.name)
+        assertEquals(MainActivity::class.java.name, found.targetActivity)
     }
 }

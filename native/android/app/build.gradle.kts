@@ -7,7 +7,7 @@ plugins {
 val repo: File = rootProject.projectDir.resolve("../..").canonicalFile
 
 // Set by the release job, so a local assembleRelease leaves the APK unsigned: an APK signed by another key can't update an installed one.
-val keystore: String? = System.getenv("ORDO_KEYSTORE")
+val keystore: String? = System.getenv("ORDO_KEYSTORE")?.takeIf(String::isNotEmpty)
 
 android {
     namespace = "io.github.ilyasturki.ordo.compose"

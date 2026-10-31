@@ -7,7 +7,6 @@ data class ImageRef(val name: String, val target: String) {
     val file: String? get() = stored.matchEntire(target)?.groupValues?.get(1)
 }
 
-// The image lines of a description.
 object Description {
     private val ref = Regex("""!\[([^\[\]\n]*)]\(([^()\n]+)\)""")
     private val space = Regex("\\s+")

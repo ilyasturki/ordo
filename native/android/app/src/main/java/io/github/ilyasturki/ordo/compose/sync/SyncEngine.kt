@@ -501,7 +501,6 @@ class SyncEngine(
     }
 
     suspend fun pair(link: String): String? {
-        awaitBoot()
         val p = parsePairing(link) ?: return "Paste the whole pairing link, https://…/pair/…"
         return try {
             val token = withContext(io) { api(Session(p.server, "")).pair(p.code, deviceName) }

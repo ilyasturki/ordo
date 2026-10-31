@@ -16,13 +16,19 @@
 
         <activity
             android:name=".MainActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- The old app's launcher component: home-screen icons point at this name, so it can't change. -->
+        <activity-alias
+            android:name="io.github.ilyasturki.ordo.MainActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <activity
             android:name=".PageActivity"

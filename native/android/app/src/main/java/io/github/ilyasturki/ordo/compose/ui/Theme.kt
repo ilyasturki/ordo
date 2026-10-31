@@ -53,7 +53,6 @@ private val typography = Typography().run {
     )
 }
 
-// The four tag dots and the priority marks.
 data class Marks(val green: Color, val blue: Color, val magenta: Color, val cyan: Color, val up: Color, val down: Color) {
     fun tag(color: String): Color = when (Tags.dot(color)) {
         "green" -> green

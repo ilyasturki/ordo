@@ -81,7 +81,6 @@ jobs:
             - name: Setup Gradle
               uses: gradle/actions/setup-gradle@v6
 
-            # The wrapper's Go tests, the bound core, then the JVM tests against it and a real ordo serve.
             - name: Test
               run: scripts/native.sh test
               env:

@@ -15,6 +15,7 @@ class DevSignInActivity : Activity() {
         val app = application as OrdoApp
         val link = intent.getStringExtra("link").orEmpty()
         app.scope.launch {
+            app.engine.awaitBoot()
             val refused = app.engine.pair(link) ?: return@launch
             withContext(Dispatchers.Main) { Toast.makeText(app, refused, Toast.LENGTH_LONG).show() }
         }

@@ -2,7 +2,7 @@
 # Run the Android app on the USB phone, signed in to a throwaway ordo serve seeded from testdata/native/seed.json.
 #
 # Usage: scripts/dev.sh [--reset]
-# Data and pairings stay in /tmp/ordo-dev between runs; --reset reseeds them.
+# Data and pairings stay in /tmp/ordo-dev between runs; --reset reseeds them and clears the app's copy and queue.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -10,7 +10,8 @@ cd "$(dirname "$0")/.."
 work=/tmp/ordo-dev
 port=7320
 app=io.github.ilyasturki.ordo.dev
-[[ ${1:-} == --reset ]] && rm -rf "$work"
+reset=${1:-}
+[[ $reset == --reset ]] && rm -rf "$work"
 
 export ORDO_DATA_PATH="$work/data" ORDO_CONFIG_PATH="$work/cfg"
 mkdir -p "$work"
@@ -27,6 +28,7 @@ for _ in $(seq 50); do curl -fs -o /dev/null "http://127.0.0.1:$port/api/hello" 
 
 nix develop .#native --command scripts/native.sh install
 adb reverse "tcp:$port" "tcp:$port"
+[[ $reset == --reset ]] && adb shell pm clear "$app" >/dev/null
 
 # One device on this server, however many runs signed it in.
 for id in $("$work/ordo" serve devices | awk 'NR > 1 { print $1 }'); do

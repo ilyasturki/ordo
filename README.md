@@ -107,9 +107,9 @@ ordo serve passphrase                            # optional: sign in without a l
 ordo serve devices                               # the paired devices; ordo serve revoke <id>
 ```
 
-The server speaks plain HTTP, so keep it on loopback behind a TLS reverse proxy. A paired device stays signed in as long as it's used at least once a year.
+The server speaks plain HTTP, so keep it on loopback behind a TLS reverse proxy: the app sends plain HTTP only to `localhost`, `127.0.0.1` and the emulator's host. A paired device stays signed in as long as it's used at least once a year.
 
-To pair the Android app, tap Scan the code on its sign-in screen and point the camera at the code `ordo serve pair` prints, or at the one Devices → Pair a new device shows on a device already signed in, or paste the link. The link starts with the address `--base-url` gave the server; `ordo serve pair --base-url` overrides it for one link. A server with a passphrase also offers it on the sign-in screen once you type the server's address. Revoking a device also signs out the devices it paired. Anywhere outside `/api`, the server answers a short plain-text page. On NixOS, the flake's module runs it as a service:
+To pair the Android app, tap Scan the code on its sign-in screen and point the camera at the code `ordo serve pair` prints, or at the one Devices → Pair a new device shows on a device already signed in, or paste the link; scanning needs Google Play services. The link starts with the address `--base-url` gave the server; `ordo serve pair --base-url` overrides it for one link. A server with a passphrase also offers it on the sign-in screen once you type the server's address. Revoking a device also signs out the devices it paired. Anywhere outside `/api`, the server answers a short plain-text page. On NixOS, the flake's module runs it as a service:
 
 ```nix
 imports = [ inputs.ordo.nixosModules.default ];
