@@ -1,6 +1,6 @@
 # File format
 
-Version 0.9.0, released as phasionary, carried its own sync, made of a change journal, a SQLite server and a web app. Each change to the data model had to be taught to all three. The server was never deployed, and Syncthing already carried the files between machines, so the whole stack was removed. Ordo syncs through these files alone. Its Android and browser app, synced through `ordo serve`, lives in this repository and edits them through the same code as the TUI, under the same lock. Any other client works on the files described here.
+Version 0.9.0, released as phasionary, carried its own sync, made of a change journal, a SQLite server and a web app. Each change to the data model had to be taught to all three. The server was never deployed, and Syncthing already carried the files between machines, so the whole stack was removed. Ordo syncs through these files alone. Its Android app, synced through `ordo serve`, lives in this repository and edits them through the same code as the TUI, under the same lock. Any other client works on the files described here.
 
 ## Layout
 

@@ -12,54 +12,34 @@ ldflags := "-X github.com/ilyasturki/ordo/internal/version.Version=v" + version 
 run *ARGS:
     go run -ldflags "{{ldflags}}" ./cmd/ordo {{ARGS}}
 
-# Build the binary, with the app bundle `ordo serve` embeds.
-build: web
+# Build the binary.
+build:
     go build -ldflags "{{ldflags}}" -o ordo ./cmd/ordo
 
-# Build internal/core to WebAssembly in app/static, beside the wasm_exec.js of the same Go.
-wasm:
-    ./scripts/wasm.sh
-
-# Build the browser app into internal/web/spa, the bundle `ordo serve` embeds (needs bun).
-web:
-    ./scripts/web.sh
-
-# Install a debug build of the Android app on the connected device (needs bun, a JDK and the Android SDK).
-android: wasm
-    cd app && bun install --frozen-lockfile && bun run android:install
-
-# Bind internal/core into the native Android app's library, native/android/app/libs/ordocore.aar (needs nix: the flake's SDK and NDK).
+# Bind internal/core into the Android app's library, native/android/app/libs/ordocore.aar (needs nix: the flake's SDK and NDK).
 native-core:
     nix develop .#native --command scripts/native.sh core
 
-# Build the native Android app, optimized and signed with the debug key, and install it on the connected device or the one SERIAL names.
+# Build the Android app, optimized and signed with the debug key, and install it on the connected device or the one SERIAL names.
 native *SERIAL:
     nix develop .#native --command scripts/native.sh install {{SERIAL}}
 
-# Run the native app's tests: the Go wrapper's, then the JVM ones against a real core and ordo serve.
+# Run the Android app's tests: the Go wrapper's, then the JVM ones against a real core and ordo serve.
 native-test:
     nix develop .#native --command scripts/native.sh test
 
-# Run the native app's UI tests on the emulator SERIAL names (they install there, never on the phone).
+# Run the Android app's UI tests on the emulator SERIAL names (they install there, never on the phone).
 native-ui SERIAL *ARGS:
     nix develop .#native --command scripts/native.sh ui {{SERIAL}} {{ARGS}}
 
-# Run the app with hot reload in the browser, against a throwaway seeded server (--reset reseeds it).
-dev *ARGS:
-    ./scripts/dev.sh web {{ARGS}}
-
-# Install and open the app on the USB phone, against a throwaway seeded server (--reset reseeds it).
+# Install and open the Android app on the USB phone, signed in to a throwaway seeded server (--reset reseeds it).
 dev-phone *ARGS:
-    ./scripts/dev.sh phone {{ARGS}}
+    ./scripts/dev.sh {{ARGS}}
 
 # Run every test, then the nix build.
 test:
     go test ./...
     nix build
-
-# Recompute this system's hash of the app's node_modules in nix/web-deps-hashes.nix, after a change to app/bun.lock.
-web-deps-hash:
-    ./nix/refresh-web-deps-hash.sh
 
 # Format Go files and tidy go.mod.
 fmt:
@@ -73,11 +53,6 @@ demo:
     vhs assets/social-preview.tape
     nix run nixpkgs#gifsicle -- --batch -O3 --lossy=20 assets/demo-dark.gif assets/demo-light.gif
     ls -lh assets/demo-dark.gif assets/demo-light.gif assets/social-preview.png
-
-# Shoot the README's phone screenshots (needs go, bun, node 22+, chromium and nix).
-phone:
-    ./assets/phone/run.sh
-    ls -lh assets/phone-light.png assets/phone-dark.png
 
 # Bump version (X.Y.Z or major|minor|patch); updates VERSION, commits, tags.
 bump version:

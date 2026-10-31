@@ -1,4 +1,4 @@
-// Package core holds the projects the phone and browser app opened and runs their edits
+// Package core holds the projects the Android app opened and runs their edits
 // through operations, the code `ordo serve` replays them with.
 package core
 

@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -25,16 +26,11 @@ type Server struct {
 	hub     *hub
 	limiter *limiter
 	csrf    *http.CrossOriginProtection
-	app     *app
 
 	globalLimit *limiter
 }
 
-func New(store *data.Store, images *attachments.Store, auth *Auth, logger *log.Logger) (*Server, error) {
-	a, err := loadApp(bundle)
-	if err != nil {
-		return nil, err
-	}
+func New(store *data.Store, images *attachments.Store, auth *Auth, logger *log.Logger) *Server {
 	return &Server{
 		store:   store,
 		images:  images,
@@ -45,27 +41,43 @@ func New(store *data.Store, images *attachments.Store, auth *Auth, logger *log.L
 		// Across every client, so a botnet spreading guesses still meets a ceiling.
 		globalLimit: newLimiter(50, 15*time.Minute),
 		csrf:        http.NewCrossOriginProtection(),
-		app:         a,
-	}, nil
+	}
 }
 
 func (s *Server) Handler() http.Handler {
 	root := http.NewServeMux()
 	root.Handle("/api/", s.api())
-	root.Handle("/", s.app)
-	return secureHeaders(s.app.scripts, root)
+	root.HandleFunc("/", notAPI)
+	return secureHeaders(root)
 }
 
-func secureHeaders(scripts string, h http.Handler) http.Handler {
-	csp := "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; " +
-		"script-src 'self' 'wasm-unsafe-eval'" + scripts + "; connect-src 'self'; object-src 'none'; " +
-		"base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+const (
+	aboutAPI  = "This is ordo's sync API. Pair a device with `ordo serve pair`, then scan its code or paste its link in the Ordo app.\n"
+	aboutPair = "This is an ordo pairing link. Scan its code or paste this address in the Ordo app.\n"
+)
+
+func notAPI(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	about := aboutAPI
+	if strings.HasPrefix(r.URL.Path, "/pair/") {
+		about = aboutPair
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = io.WriteString(w, about)
+}
+
+func secureHeaders(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hd := w.Header()
-		hd.Set("Content-Security-Policy", csp)
+		hd.Set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 		hd.Set("X-Content-Type-Options", "nosniff")
 		hd.Set("Referrer-Policy", "no-referrer")
-		hd.Set("Permissions-Policy", "camera=(self), geolocation=(), microphone=()")
+		hd.Set("Permissions-Policy", "camera=(), geolocation=(), microphone=()")
 		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 			hd.Set("Strict-Transport-Security", "max-age=31536000")
 		}

@@ -44,3 +44,20 @@ ls "$store"/*.png > /dev/null
 for shell in bash zsh fish; do
   expect ordo completion "$shell"
 done
+
+"$bin" serve --listen "unix:$tmp/s.sock" > /dev/null 2>&1 &
+served=$!
+trap 'kill "$served" 2> /dev/null || true; rm -rf "$tmp"' EXIT
+serve_get() {
+  curl -fsS --unix-socket "$tmp/s.sock" "http://ordo$1"
+}
+for _ in $(seq 50); do
+  serve_get /api/hello > "$tmp/out" 2> /dev/null && break
+  sleep 0.1
+done
+grep -q '"protocol"' "$tmp/out"
+serve_get / > "$tmp/out"
+grep -q "sync API" "$tmp/out"
+expect '/pair/' serve pair --base-url https://ordo.example.com
+serve_get "/pair/$(sed -n 's|.*/pair/||p' "$tmp/out")" > "$tmp/out"
+grep -q "Ordo app" "$tmp/out"

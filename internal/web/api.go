@@ -41,7 +41,7 @@ func (s *Server) api() http.Handler {
 	return cors(mux)
 }
 
-// cors lets the phone app, served from its own origin, call the API with its bearer token.
+// cors lets a client on any origin call the API with its bearer token.
 // The wildcard never reaches a cookie: browsers send none to a wildcard origin.
 func cors(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -57,8 +57,7 @@ func cors(h http.Handler) http.Handler {
 	})
 }
 
-// apiDevice takes the phone app's bearer token, or the browser app's cookie under the
-// same cross-origin check as the pages.
+// apiDevice takes a bearer token, or the device cookie under a cross-origin check.
 func (s *Server) apiDevice(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, bearer := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -155,7 +154,7 @@ func requestedName(r *http.Request, name string) string {
 	return deviceName(r)
 }
 
-// signedIn answers a new device's token, or sets it as the pages' cookie when the client asked.
+// signedIn answers a new device's token, or sets it as the device cookie when the client asked.
 func (s *Server) signedIn(w http.ResponseWriter, r *http.Request, token string, cookie bool) {
 	if cookie {
 		s.setCookie(w, r, deviceCookie, token, cookieAge)

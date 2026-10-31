@@ -7,8 +7,6 @@
 # Build artifacts
 /bin/
 /dist/
-/internal/web/spa/*
-!/internal/web/spa/placeholder.html
 
 # Coverage
 *.cover

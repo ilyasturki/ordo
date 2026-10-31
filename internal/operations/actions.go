@@ -5,7 +5,7 @@ type Surface uint8
 
 const (
 	TUI Surface = 1 << iota
-	// App is the phone and browser app, which runs the action through Apply.
+	// App is the Android app, which runs the action through Apply.
 	App
 	Both = TUI | App
 )

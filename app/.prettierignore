@@ -1,5 +1,0 @@
-/android/
-/build/
-/static/ordo-core.wasm
-/static/wasm_exec.js
-bun.lock

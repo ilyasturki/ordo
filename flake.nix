@@ -22,7 +22,6 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          web = pkgs.callPackage ./nix/web.nix { inherit version; };
         in
         {
           ordo = pkgs.buildGoModule {
@@ -42,15 +41,6 @@
               "-X github.com/ilyasturki/ordo/internal/version.BuildDate=${buildDate}"
             ];
             nativeBuildInputs = [ pkgs.installShellFiles ];
-            # Not preBuild: buildGoModule runs that in the vendor derivation too, before vendor/ exists.
-            postConfigure = ''
-              find internal/web/spa -mindepth 1 -maxdepth 1 ! -name placeholder.html -exec rm -rf {} +
-            ''
-            + pkgs.lib.optionalString (web != null) ''
-              cp -R --no-preserve=mode ${web}/. internal/web/spa/
-              GOOS=js GOARCH=wasm CGO_ENABLED=0 go build -o internal/web/spa/ordo-core.wasm ./cmd/ordo-core
-              install -m 644 "$(go env GOROOT)/lib/wasm/wasm_exec.js" internal/web/spa/wasm_exec.js
-            '';
             postInstall = ''
               installShellCompletion --cmd ordo \
                 --bash <($out/bin/ordo completion bash) \
@@ -67,7 +57,6 @@
           };
           default = self.packages.${system}.ordo;
         }
-        // pkgs.lib.optionalAttrs (web != null) { inherit web; }
         // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
           android-sdk = import ./nix/android-sdk.nix { inherit nixpkgs system; };
         }

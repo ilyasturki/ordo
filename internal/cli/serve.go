@@ -42,8 +42,8 @@ func newServeCmd() *cobra.Command {
 	var listen, baseURL string
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "Sync the Android app and serve it to a browser",
-		Long: "Sync the Android app with the project files the terminal app uses, and serve the same app to a browser.\n\n" +
+		Short: "Sync the Android app with this machine's project files",
+		Long: "Answer the sync API of the Android app, on the project files the terminal app uses.\n\n" +
 			"Listen on loopback (or a unix socket with unix:/path) behind a TLS reverse proxy, then\n" +
 			"pair each device once with `ordo serve pair`, or from Devices on a device already paired.\n" +
 			"Devices are kept in web.json beside state.json.",
@@ -63,10 +63,7 @@ func newServeCmd() *cobra.Command {
 				return err
 			}
 			logger := log.New(cmd.ErrOrStderr(), "ordo serve: ", log.LstdFlags)
-			srv, err := web.New(store, attachments.NewStore(dataDir), auth, logger)
-			if err != nil {
-				return err
-			}
+			srv := web.New(store, attachments.NewStore(dataDir), auth, logger)
 			ln, err := listenOn(listen)
 			if err != nil {
 				return err
@@ -92,7 +89,7 @@ func newServeCmd() *cobra.Command {
 			}()
 			fmt.Fprintf(cmd.OutOrStdout(), "Serving %s on %s\n", dataDir, ln.Addr())
 			if auth.BaseURL() == "" {
-				fmt.Fprintln(cmd.OutOrStdout(), "Set --base-url to the address your phone opens, so `ordo serve pair` prints a working link.")
+				fmt.Fprintln(cmd.OutOrStdout(), "Set --base-url to the address your phone reaches, so `ordo serve pair` prints a working link.")
 			}
 			if err := httpSrv.Serve(ln); !errors.Is(err, http.ErrServerClosed) {
 				return err
@@ -101,7 +98,7 @@ func newServeCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&listen, "listen", defaultListen, "address to listen on, host:port or unix:/path/to/socket")
-	cmd.Flags().StringVar(&baseURL, "base-url", "", "public address of the app, e.g. https://ordo.example.com (remembered)")
+	cmd.Flags().StringVar(&baseURL, "base-url", "", "public address of this server, e.g. https://ordo.example.com (remembered)")
 	cmd.AddCommand(newServePairCmd(), newServePassphraseCmd(), newServeDevicesCmd(), newServeRevokeCmd())
 	return cmd
 }
@@ -126,7 +123,11 @@ func newServePairCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pair",
 		Short: "Print a one-time link and QR code that pairs a device",
-		Args:  cobra.NoArgs,
+		Long: "Print a one-time link, and on a terminal its QR code, that pairs a device with this server.\n" +
+			"Scan the code or paste the link on the sign-in screen of the Ordo app.\n\n" +
+			"The link starts with the address `ordo serve --base-url` remembered. Pass --base-url when\n" +
+			"serve has none, or the device reaches the server another way.",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			auth, _, err := webAuth()
 			if err != nil {
@@ -138,6 +139,7 @@ func newServePairCmd() *cobra.Command {
 			}
 			if base == "" {
 				base = "http://localhost:" + strings.TrimPrefix(defaultListen, "127.0.0.1:")
+				fmt.Fprintln(cmd.ErrOrStderr(), "No address remembered, so this link names localhost, which a phone can't reach. Pass --base-url with the address it opens.")
 			}
 			token, err := auth.NewPairing()
 			if err != nil {
@@ -150,11 +152,11 @@ func newServePairCmd() *cobra.Command {
 					return err
 				}
 			}
-			fmt.Fprintf(out, "%s\n\nOpen it on the device within %d minutes; it works once.\n", link, int(web.PairTTL.Minutes()))
+			fmt.Fprintf(out, "%s\n\nScan the code or paste the link in the Ordo app within %d minutes; it works once.\n", link, int(web.PairTTL.Minutes()))
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&baseURL, "base-url", "", "address the device opens (default: the one serve remembers)")
+	cmd.Flags().StringVar(&baseURL, "base-url", "", "address the device reaches the server at (default: the one serve remembers)")
 	return cmd
 }
 

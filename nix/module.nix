@@ -11,7 +11,7 @@ let
 in
 {
   options.services.ordo-web = {
-    enable = lib.mkEnableOption "`ordo serve`, which syncs the Ordo app and serves it to a browser";
+    enable = lib.mkEnableOption "`ordo serve`, which syncs the Ordo app";
 
     package = lib.mkOption {
       type = lib.types.package;

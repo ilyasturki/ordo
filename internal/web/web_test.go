@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log"
@@ -15,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"testing/fstest"
 	"time"
 
 	"github.com/ilyasturki/ordo/internal/attachments"
@@ -64,10 +61,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	auth := NewAuth(dir)
-	srv, err := New(store, attachments.NewStore(projects), auth, log.New(io.Discard, "", 0))
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := New(store, attachments.NewStore(projects), auth, log.New(io.Discard, "", 0))
 	token, err := auth.NewPairing()
 	if err != nil {
 		t.Fatal(err)
@@ -293,59 +287,64 @@ func TestAuthFileStaysPrivate(t *testing.T) {
 	}
 }
 
-func appServer(t *testing.T, files fstest.MapFS) http.Handler {
-	t.Helper()
-	a, err := loadApp(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return secureHeaders(a.scripts, a)
-}
-
 func get(h http.Handler, path string) *httptest.ResponseRecorder {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 	return rec
 }
 
-func TestTheAppRoutesItself(t *testing.T) {
-	const boot = "\n\t\t\t\timport('/_app/start.js');\n\t\t\t"
-	h := appServer(t, fstest.MapFS{
-		"spa/index.html":              {Data: []byte("<html><script>" + boot + "</script></html>")},
-		"spa/placeholder.html":        {Data: []byte("placeholder")},
-		"spa/_app/immutable/start.js": {Data: []byte("start()")},
-		"spa/ordo-core.wasm":          {Data: []byte("\x00asm")},
-		"spa/_app/version.json":       {Data: []byte("{}")},
-	})
-	for _, path := range []string{"/", "/p/x/t/y", "/pair/CODE", "/devices", "/missing.js"} {
+func TestABrowserIsToldThisIsTheSyncAPI(t *testing.T) {
+	h := newFixture(t).h
+	for _, path := range []string{"/", "/p/x/t/y", "/devices", "/index.html", "/ordo-core.wasm", "/pair"} {
 		rec := get(h, path)
-		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "import(") || rec.Header().Get("Cache-Control") != "no-cache" {
-			t.Errorf("%s: %d %q %q", path, rec.Code, rec.Body, rec.Header().Get("Cache-Control"))
+		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "text/plain; charset=utf-8" || rec.Body.String() != aboutAPI {
+			t.Errorf("%s: %d %q %q", path, rec.Code, rec.Header().Get("Content-Type"), rec.Body)
 		}
 	}
-	if rec := get(h, "/_app/immutable/start.js"); rec.Body.String() != "start()" || !strings.Contains(rec.Header().Get("Cache-Control"), "immutable") {
-		t.Fatalf("hashed asset: %q %q", rec.Body, rec.Header().Get("Cache-Control"))
+	if !strings.Contains(aboutAPI, "sync API") || !strings.Contains(aboutAPI, "ordo serve pair") {
+		t.Fatalf("about = %q", aboutAPI)
 	}
-	if rec := get(h, "/ordo-core.wasm"); rec.Header().Get("Content-Type") != "application/wasm" || rec.Header().Get("Cache-Control") != "no-cache" {
-		t.Fatalf("wasm: %q %q", rec.Header().Get("Content-Type"), rec.Header().Get("Cache-Control"))
-	}
-	sum := sha256.Sum256([]byte(boot))
 	csp := get(h, "/").Header().Get("Content-Security-Policy")
-	if !strings.Contains(csp, "'sha256-"+base64.StdEncoding.EncodeToString(sum[:])+"'") || !strings.Contains(csp, "'wasm-unsafe-eval'") {
+	if !strings.Contains(csp, "default-src 'none'") || strings.Contains(csp, "script-src") {
 		t.Fatalf("csp = %q", csp)
 	}
-	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("POST /: %d", rec.Code)
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/", nil))
+	if rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != "GET, HEAD" {
+		t.Fatalf("POST /: %d %q", rec.Code, rec.Header().Get("Allow"))
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodHead, "/", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("HEAD /: %d", rec.Code)
 	}
 }
 
-func TestABuildWithoutTheAppShowsThePlaceholder(t *testing.T) {
-	h := appServer(t, fstest.MapFS{"spa/placeholder.html": {Data: []byte("built without its web app")}})
-	if rec := get(h, "/p/x"); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "without its web app") {
-		t.Fatalf("placeholder: %d %q", rec.Code, rec.Body)
+func TestAPairingLinkOpenedInABrowserStaysUnspent(t *testing.T) {
+	f := newFixture(t)
+	code, err := f.auth.NewPairing()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := get(f.h, "/pair/"+code)
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "text/plain; charset=utf-8" || !strings.Contains(rec.Body.String(), "Ordo app") {
+		t.Fatalf("pair page: %d %q %q", rec.Code, rec.Header().Get("Content-Type"), rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), code) {
+		t.Fatalf("the page repeats the code: %q", rec.Body)
+	}
+	if rec := f.api(http.MethodPost, "/api/pair", "", pairRequest{Token: code, Name: "Pixel"}); rec.Code != http.StatusOK {
+		t.Fatalf("pair after the page: %d %q", rec.Code, rec.Body)
+	}
+}
+
+func TestTheAPIStaysUnderItsPrefix(t *testing.T) {
+	h := newFixture(t).h
+	if rec := get(h, "/api/hello"); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"protocol"`) {
+		t.Fatalf("hello: %d %q", rec.Code, rec.Body)
+	}
+	if rec := get(h, "/api/missing"); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("unknown API path, no token: %d %q", rec.Code, rec.Body)
 	}
 }
 
