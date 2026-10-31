@@ -26,8 +26,8 @@ func TestStateManagerConcurrentWritersDoNotClobber(t *testing.T) {
 	tui := newLoadedStateManager(t, dir, "/work/project")
 	other := newLoadedStateManager(t, dir, "/work/project")
 
-	if err := tui.SetProjectOrder([]string{"p1", "p2"}); err != nil {
-		t.Fatalf("set order: %v", err)
+	if err := tui.SetLastOpened("p1", "2026-01-02T03:04:05Z"); err != nil {
+		t.Fatalf("set last opened: %v", err)
 	}
 	// other's cache predates the write above; its own save must not erase it.
 	if err := other.SetFoldedCategories("p1", []string{"cat-a"}); err != nil {
@@ -35,8 +35,8 @@ func TestStateManagerConcurrentWritersDoNotClobber(t *testing.T) {
 	}
 
 	fresh := newLoadedStateManager(t, dir, "/work/project")
-	if got := fresh.GetProjectOrder(); !slices.Equal(got, []string{"p1", "p2"}) {
-		t.Fatalf("project order clobbered: %v", got)
+	if got := fresh.GetLastOpened(); got["p1"] != "2026-01-02T03:04:05Z" {
+		t.Fatalf("last opened clobbered: %v", got)
 	}
 	if got := fresh.GetFoldedCategories("p1"); !slices.Equal(got, []string{"cat-a"}) {
 		t.Fatalf("folds clobbered: %v", got)
@@ -311,6 +311,57 @@ func TestFilterAndCursorWritersDoNotClobber(t *testing.T) {
 	}
 	if got := fresh.GetCursor("p1"); got != cursor {
 		t.Fatalf("cursor clobbered by a filter write: %+v", got)
+	}
+}
+
+func TestLastOpenedRoundTripsAndDeletes(t *testing.T) {
+	dir := t.TempDir()
+	m := newLoadedStateManager(t, dir, "")
+	if err := m.SetLastOpened("p1", "2026-01-02T03:04:05Z"); err != nil {
+		t.Fatalf("set: %v", err)
+	}
+	if err := m.SetLastOpened("p2", "2026-02-02T03:04:05Z"); err != nil {
+		t.Fatalf("set: %v", err)
+	}
+	if err := m.DeleteLastOpened("p1"); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+
+	got := newLoadedStateManager(t, dir, "").GetLastOpened()
+	if len(got) != 1 || got["p2"] != "2026-02-02T03:04:05Z" {
+		t.Fatalf("last opened: %v", got)
+	}
+}
+
+// A state.json written before the picker ranked by recency still carries
+// project_order; it loads, the order is ignored, and the next save drops it.
+func TestStateWithOldProjectOrderLoadsAndDropsIt(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state.json")
+	old := `{"directory_projects":{"/w":"p1"},"project_order":["p2","p1"],"cursors":{"p1":{"kind":"task","task_id":"t1"}}}`
+	if err := os.WriteFile(path, []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	m := newLoadedStateManager(t, dir, "/w")
+	if got := m.GetProjectForDir(); got != "p1" {
+		t.Fatalf("link lost: %q", got)
+	}
+	if got := m.GetLastOpened(); len(got) != 0 {
+		t.Fatalf("an old file has no open times: %v", got)
+	}
+	if err := m.SetLastOpened("p1", "2026-01-02T03:04:05Z"); err != nil {
+		t.Fatal(err)
+	}
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(written), "project_order") {
+		t.Fatalf("project_order survived a save: %s", written)
+	}
+	if got := newLoadedStateManager(t, dir, "/w").GetCursor("p1"); got.TaskID != "t1" {
+		t.Fatalf("cursor lost: %+v", got)
 	}
 }
 

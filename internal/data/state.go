@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -56,7 +57,7 @@ func (f Filter) clone() Filter {
 
 type State struct {
 	DirectoryProjects map[string]string   `json:"directory_projects,omitempty"`
-	ProjectOrder      []string            `json:"project_order,omitempty"`
+	LastOpened        map[string]string   `json:"last_opened,omitempty"`
 	FoldedCategories  map[string][]string `json:"folded_categories,omitempty"`
 	Cursors           map[string]Cursor   `json:"cursors,omitempty"`
 	Filters           map[string]Filter   `json:"filters,omitempty"`
@@ -67,8 +68,9 @@ type StateRepository interface {
 	GetProjectForDir() string
 	SetProjectForDir(id string) error
 	UnlinkDir() (string, error)
-	GetProjectOrder() []string
-	SetProjectOrder(order []string) error
+	GetLastOpened() map[string]string
+	SetLastOpened(projectID, at string) error
+	DeleteLastOpened(projectID string) error
 	GetFoldedCategories(projectID string) []string
 	SetFoldedCategories(projectID string, categoryIDs []string) error
 	DeleteFoldedCategories(projectID string) error
@@ -126,7 +128,7 @@ func (m *StateManager) load() error {
 	var raw struct {
 		LastProjectID     string              `json:"last_project_id"`
 		DirectoryProjects map[string]string   `json:"directory_projects,omitempty"`
-		ProjectOrder      []string            `json:"project_order,omitempty"`
+		LastOpened        map[string]string   `json:"last_opened,omitempty"`
 		FoldedCategories  map[string][]string `json:"folded_categories,omitempty"`
 		Cursors           map[string]Cursor   `json:"cursors,omitempty"`
 		Filters           map[string]Filter   `json:"filters,omitempty"`
@@ -136,7 +138,7 @@ func (m *StateManager) load() error {
 	}
 
 	m.state.DirectoryProjects = raw.DirectoryProjects
-	m.state.ProjectOrder = raw.ProjectOrder
+	m.state.LastOpened = raw.LastOpened
 	m.state.FoldedCategories = raw.FoldedCategories
 	m.state.Cursors = raw.Cursors
 	m.state.Filters = raw.Filters
@@ -172,7 +174,7 @@ func (m *StateManager) save() error {
 	}
 	// Same atomic write the project store uses. state.json is rewritten whole on
 	// every fold toggle and project switch, so a crash mid-write would truncate
-	// it and lose every fold and the project ordering — cheap to prevent, and
+	// it and lose every fold and the open times — cheap to prevent, and
 	// the projects beside it already get this treatment.
 	return fsutil.WriteAtomic(m.path, data, 0o644)
 }
@@ -238,17 +240,35 @@ func (m *StateManager) UnlinkDir() (string, error) {
 	return prev, nil
 }
 
-func (m *StateManager) GetProjectOrder() []string {
+// GetLastOpened re-reads state.json first, like GetFoldedCategories: another TUI
+// may have opened a project since this manager last loaded. The values are
+// RFC 3339 timestamps, the format of a project's updated_at.
+func (m *StateManager) GetLastOpened() map[string]string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return slices.Clone(m.state.ProjectOrder)
+	_ = m.load()
+	return maps.Clone(m.state.LastOpened)
 }
 
-func (m *StateManager) SetProjectOrder(order []string) error {
+func (m *StateManager) SetLastOpened(projectID, at string) error {
 	return m.update(func(s *State) bool {
-		// Clone: the cache outlives this call, and the caller is free to keep
-		// mutating the slice it passed in.
-		s.ProjectOrder = slices.Clone(order)
+		if s.LastOpened[projectID] == at {
+			return false
+		}
+		if s.LastOpened == nil {
+			s.LastOpened = make(map[string]string)
+		}
+		s.LastOpened[projectID] = at
+		return true
+	})
+}
+
+func (m *StateManager) DeleteLastOpened(projectID string) error {
+	return m.update(func(s *State) bool {
+		if _, ok := s.LastOpened[projectID]; !ok {
+			return false
+		}
+		delete(s.LastOpened, projectID)
 		return true
 	})
 }

@@ -181,7 +181,7 @@ The command runs in the background. It gets the task through environment variabl
 ~/.local/share/ordo/
 ├── projects/
 │   └── <id>.json    one project per file
-├── state.json       this machine's folds, cursors, filters, project order and directory links
+├── state.json       this machine's folds, cursors, filters, project open times and directory links
 └── web.json         devices paired with ordo serve
 ```
 

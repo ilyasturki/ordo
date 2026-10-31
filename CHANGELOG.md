@@ -8,6 +8,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - The TUI notices an outside change to the open project's file within a second, without a keypress. With no edit waiting it reloads by itself, keeps the cursor on the same row and says `Changed on disk: reloaded`; a dialog or an input left open waits until it closes. With an edit waiting or refused, `[changed on disk: r drops N edits]` shows at once instead of at the next save, and `r` and the quit confirmations work as before
 - The `(N hidden by the filter)` row stays while it shows those tasks and reads `(hide the N filtered out)`: `enter` or `space` on it hides them again with the cursor on it, and so does `esc` from anywhere in the category. Leaving the category still hides them, and the saved filter never changes
+- The project picker lists the most recently used project first, where it was alphabetical or in a hand-made order. A project is as recent as the later of its last open on this device and its last edit anywhere, one never opened here counts by its last edit, and a tie falls to the name. `J` and `K` no longer reorder the picker, and `state.json` drops `project_order` for `last_opened`, so an older file still loads. `ordo project list` and completion stay alphabetical
 
 ### Removed
 

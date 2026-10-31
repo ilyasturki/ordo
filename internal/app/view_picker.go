@@ -45,7 +45,6 @@ func (m model) pickerNormalHints(link string) []ui.Hint {
 		{Key: "a", Label: "new"},
 		{Key: "/", Label: "search"},
 		{Key: "l", Label: link},
-		{Key: "J/K", Label: "move"},
 		{Key: "d", Label: "delete"},
 		{Key: "esc", Label: back},
 	}

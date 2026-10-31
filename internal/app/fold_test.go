@@ -14,6 +14,7 @@ type stubStateManager struct {
 	folded  map[string][]string
 	cursors map[string]data.Cursor
 	filters map[string]data.Filter
+	opened  map[string]string
 }
 
 func newStubStateManager() *stubStateManager {
@@ -24,11 +25,18 @@ func newStubStateManager() *stubStateManager {
 	}
 }
 
-func (s *stubStateManager) GetProjectForDir() string             { return "" }
-func (s *stubStateManager) SetProjectForDir(id string) error     { return nil }
-func (s *stubStateManager) UnlinkDir() (string, error)           { return "", nil }
-func (s *stubStateManager) GetProjectOrder() []string            { return nil }
-func (s *stubStateManager) SetProjectOrder(order []string) error { return nil }
+func (s *stubStateManager) GetProjectForDir() string         { return "" }
+func (s *stubStateManager) SetProjectForDir(id string) error { return nil }
+func (s *stubStateManager) UnlinkDir() (string, error)       { return "", nil }
+func (s *stubStateManager) GetLastOpened() map[string]string { return s.opened }
+func (s *stubStateManager) SetLastOpened(id, at string) error {
+	if s.opened == nil {
+		s.opened = make(map[string]string)
+	}
+	s.opened[id] = at
+	return nil
+}
+func (s *stubStateManager) DeleteLastOpened(id string) error { delete(s.opened, id); return nil }
 func (s *stubStateManager) GetFoldedCategories(projectID string) []string {
 	return s.folded[projectID]
 }

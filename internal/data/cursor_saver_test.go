@@ -45,8 +45,9 @@ func (r *recordingRepo) snapshot() (map[string]Cursor, int) {
 func (r *recordingRepo) GetProjectForDir() string                   { return "" }
 func (r *recordingRepo) SetProjectForDir(string) error              { return nil }
 func (r *recordingRepo) UnlinkDir() (string, error)                 { return "", nil }
-func (r *recordingRepo) GetProjectOrder() []string                  { return nil }
-func (r *recordingRepo) SetProjectOrder([]string) error             { return nil }
+func (r *recordingRepo) GetLastOpened() map[string]string           { return nil }
+func (r *recordingRepo) SetLastOpened(string, string) error         { return nil }
+func (r *recordingRepo) DeleteLastOpened(string) error              { return nil }
 func (r *recordingRepo) GetFoldedCategories(string) []string        { return nil }
 func (r *recordingRepo) SetFoldedCategories(string, []string) error { return nil }
 func (r *recordingRepo) DeleteFoldedCategories(string) error        { return nil }

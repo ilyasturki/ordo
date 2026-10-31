@@ -1031,6 +1031,9 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	m.ui.Fold = foldState
 	m.ui.Filter = filterState
 	m.ui.Screen.ExpandDescriptions = expandDescriptions
+	if startMode == modes.ModeNormal {
+		m.markOpened(project.ID)
+	}
 	// Reopen on the row this project was last left on. Runs after the fold state
 	// is in place so a cursor inside a folded category resolves to that
 	// category's header rather than to a row that isn't rendered. The viewport
@@ -1047,7 +1050,7 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 	}
 
 	if startMode == modes.ModeProjectPicker {
-		ordered := orderProjects(projects, stateManager.GetProjectOrder())
+		ordered := orderProjects(projects, stateManager.GetLastOpened())
 		selected := 0
 		for i, p := range ordered {
 			if p.ID == project.ID {

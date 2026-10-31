@@ -114,7 +114,7 @@ func TestPickerJumps(t *testing.T) {
 func TestPickerVisibleCount_AdaptsToTerminalHeight(t *testing.T) {
 	m := newPickerModel(t, 50, 160, 30)
 	hintRows := m.pickerHintRows()
-	require.Equal(t, 2, hintRows, "the dialog footer wraps once at its 70-column cap")
+	require.Equal(t, 1, hintRows, "the dialog footer fits one row at its 70-column cap")
 
 	assert.Equal(t, 30-ui.DialogChromeHeight-pickerOwnRows-hintRows-pickerScrollReserve, m.pickerVisibleCount())
 
@@ -170,7 +170,7 @@ func TestPickerView_FitsWithinScreenHeight(t *testing.T) {
 func TestHandlePickerKey_PagingAndJumps(t *testing.T) {
 	m := newPickerModel(t, 30, 160, 24)
 	visible := m.pickerVisibleCount()
-	require.Equal(t, 11, visible)
+	require.Equal(t, 12, visible)
 	m.ui.Picker.selected = 0
 
 	// G jumps to the last project.

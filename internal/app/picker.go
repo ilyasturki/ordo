@@ -3,8 +3,9 @@ package app
 import (
 	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/ilyasturki/ordo/internal/domain"
@@ -23,8 +24,7 @@ func (m *model) openProjectPicker() {
 		return
 	}
 
-	order := m.deps.StateManager.GetProjectOrder()
-	projects = orderProjects(projects, order)
+	projects = orderProjects(projects, m.deps.StateManager.GetLastOpened())
 
 	currentIdx := 0
 	for i, p := range projects {
@@ -44,36 +44,38 @@ func (m *model) openProjectPicker() {
 	m.ui.Modes.ToProjectPicker()
 }
 
-func orderProjects(projects []domain.Project, order []string) []domain.Project {
-	if len(order) == 0 {
-		return projects
-	}
-
-	projectMap := make(map[string]domain.Project)
+// orderProjects ranks the most recently used first: a project is as recent as
+// the later of its last open on this device and its updated_at, so an edit made
+// anywhere counts. One never opened here ranks by updated_at alone; ties fall
+// to the name.
+func orderProjects(projects []domain.Project, lastOpened map[string]string) []domain.Project {
+	rank := make(map[string]time.Time, len(projects))
 	for _, p := range projects {
-		projectMap[p.ID] = p
+		rank[p.ID] = recency(p, lastOpened)
 	}
-
-	var ordered []domain.Project
-	seen := make(map[string]bool)
-	for _, id := range order {
-		if p, ok := projectMap[id]; ok {
-			ordered = append(ordered, p)
-			seen[id] = true
-		}
-	}
-
-	var remaining []domain.Project
-	for _, p := range projects {
-		if !seen[p.ID] {
-			remaining = append(remaining, p)
-		}
-	}
-	sort.Slice(remaining, func(i, j int) bool {
-		return strings.ToLower(remaining[i].Name) < strings.ToLower(remaining[j].Name)
+	ordered := slices.Clone(projects)
+	slices.SortStableFunc(ordered, func(a, b domain.Project) int {
+		return cmp.Or(
+			rank[b.ID].Compare(rank[a.ID]),
+			cmp.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)),
+			cmp.Compare(a.ID, b.ID),
+		)
 	})
+	return ordered
+}
 
-	return append(ordered, remaining...)
+func recency(p domain.Project, lastOpened map[string]string) time.Time {
+	updated, _ := time.Parse(time.RFC3339, p.UpdatedAt)
+	opened, _ := time.Parse(time.RFC3339, lastOpened[p.ID])
+	if opened.After(updated) {
+		return opened
+	}
+	return updated
+}
+
+// markOpened stamps a project as used now, so it leads the picker.
+func (m *model) markOpened(id string) {
+	_ = m.deps.StateManager.SetLastOpened(id, time.Now().UTC().Format(time.RFC3339Nano))
 }
 
 func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
@@ -107,10 +109,6 @@ func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		m.ui.Picker.jumpToFirst(visible)
 	case "G", "end":
 		m.ui.Picker.jumpToLast(visible)
-	case "J":
-		m.moveProjectDown()
-	case "K":
-		m.moveProjectUp()
 	case "enter":
 		if m.ui.Picker.isOnNewProject() {
 			m.ui.Picker.startAdding()
@@ -222,7 +220,7 @@ func (m *model) confirmDeleteProject() {
 	if m.linkedProjectID() == deleteID {
 		_, _ = m.deps.StateManager.UnlinkDir()
 	}
-	m.removeProjectFromOrder(deleteID)
+	_ = m.deps.StateManager.DeleteLastOpened(deleteID)
 	_ = m.deps.StateManager.DeleteFoldedCategories(deleteID)
 	_ = m.deps.StateManager.DeleteCursor(deleteID)
 	_ = m.deps.StateManager.DeleteFilter(deleteID)
@@ -263,7 +261,7 @@ func (m *model) confirmDeleteProject() {
 	if err != nil {
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Error reloading projects: %v", err)
 	} else {
-		projects = orderProjects(projects, m.deps.StateManager.GetProjectOrder())
+		projects = orderProjects(projects, m.deps.StateManager.GetLastOpened())
 		m.ui.Picker.projects = projects
 		if m.ui.Picker.selected >= len(projects) {
 			m.ui.Picker.selected = len(projects) - 1
@@ -294,9 +292,9 @@ func (m model) handlePickerAddKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	return m, cmd
 }
 
-// handlePickerFilterKey drives the type-to-filter sub-mode. Reorder (J/K) and
-// delete (d) aren't handled here — their keys are filter text — so those actions
-// stay operating on the full, unfiltered list.
+// handlePickerFilterKey drives the type-to-filter sub-mode. Delete (d) isn't
+// handled here — its key is filter text — so that action stays operating on the
+// full, unfiltered list.
 func (m model) handlePickerFilterKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	visible := m.pickerVisibleCount()
 	switch msg.String() {
@@ -349,9 +347,7 @@ func (m *model) createPickedProject(name string) {
 	}
 
 	m.linkDirIfUnset(project.ID)
-	order := m.deps.StateManager.GetProjectOrder()
-	order = append(order, project.ID)
-	_ = m.deps.StateManager.SetProjectOrder(order)
+	m.markOpened(project.ID)
 
 	// The project we are leaving keeps its cursor for the next time it is opened.
 	m.saveCursorState()
@@ -411,6 +407,7 @@ func (m *model) switchToPicked(status string) {
 	// only establish a directory link when none exists yet, never override one.
 	// The link is changed deliberately via `l` here or `project link`/`add`.
 	m.linkDirIfUnset(project.ID)
+	m.markOpened(project.ID)
 
 	// Hand the outgoing project its cursor back before adopting the incoming
 	// project's, so switching away and back returns to the same row.
@@ -530,45 +527,4 @@ func (p *ProjectPickerState) ensureVisible(visible int) {
 	if p.scrollOffset < 0 {
 		p.scrollOffset = 0
 	}
-}
-
-func (m *model) moveProjectDown() {
-	if m.ui.Picker.isOnNewProject() || m.ui.Picker.selected >= len(m.ui.Picker.projects)-1 {
-		return
-	}
-	idx := m.ui.Picker.selected
-	m.ui.Picker.projects[idx], m.ui.Picker.projects[idx+1] =
-		m.ui.Picker.projects[idx+1], m.ui.Picker.projects[idx]
-	m.ui.Picker.moveSelection(1, m.pickerVisibleCount())
-	m.saveProjectOrder()
-}
-
-func (m *model) moveProjectUp() {
-	if m.ui.Picker.isOnNewProject() || m.ui.Picker.selected <= 0 {
-		return
-	}
-	idx := m.ui.Picker.selected
-	m.ui.Picker.projects[idx], m.ui.Picker.projects[idx-1] =
-		m.ui.Picker.projects[idx-1], m.ui.Picker.projects[idx]
-	m.ui.Picker.moveSelection(-1, m.pickerVisibleCount())
-	m.saveProjectOrder()
-}
-
-func (m *model) saveProjectOrder() {
-	order := make([]string, len(m.ui.Picker.projects))
-	for i, p := range m.ui.Picker.projects {
-		order[i] = p.ID
-	}
-	_ = m.deps.StateManager.SetProjectOrder(order)
-}
-
-func (m *model) removeProjectFromOrder(id string) {
-	order := m.deps.StateManager.GetProjectOrder()
-	var newOrder []string
-	for _, pid := range order {
-		if pid != id {
-			newOrder = append(newOrder, pid)
-		}
-	}
-	_ = m.deps.StateManager.SetProjectOrder(newOrder)
 }
