@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-31
+
 ### Added
 
 - `l` in the project picker, dialog or full screen, unlinks this directory on the row marked `(linked)`, and the footer reads `l unlink` there. The unlink holds for the rest of the session: opening or creating a project no longer links the directory until `l` links it again
@@ -11,10 +13,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ### Changed
 
-- `enter` or `space` on a category's `(N hidden by the filter)` row shows those tasks in place, marked `(filtered out)`, until the cursor leaves the category, where it used to clear the whole filter. The filter and its saved copy stay as they were; `f` → Clear all filters still clears it
-- The project picker dialog (`ctrl+p`) has the rounded border of the other dialogs, so it stands out from the list behind it. The full-screen picker stays frameless
-- Four tag marks instead of eight: `t`, `T`, the filter and the app offer the four coloured dots and drop the diamonds. A diamond already in a project file, or sent by an older app, reads as its colour's dot
-- The Android app is now native, in `native/`: Kotlin and Jetpack Compose with Material 3. The release APK keeps the app id `io.github.ilyasturki.ordo` and its signing key, so it updates the old app in place, but starts signed out: pair it again. Edits the old app hasn't synced stay behind, so let it sync before updating. Plain http now reaches only `localhost`, `127.0.0.1` and the emulator's host, so a server on plain http in a LAN needs TLS first. Scan the code needs Google Play services; without them, paste the link. Its edits run through the TUI's own Go code, bound with gomobile, and it syncs with `ordo serve` over the same API, in the background too once the app is closed. Finished tasks stay in place, struck through, and the filter follows the TUI's rules, counting what it hides in each category; a tap on that count shows the hidden rows until you change project or filter. Projects are tabs over a pager that follows the finger, one `+` opens a sheet on the keyboard to add tasks, and the task page shows only the fields that are set, with Mark done floating at the bottom right. The not-synced icon only shows once edits stay stuck, and tapping it says why. On a paired server, the device shows as "<model> · Ordo". `just native` builds and installs it as Ordo Dev, `just native-test` and `just native-ui <emulator>` test it, and `just dev-phone` runs it on the USB phone, signed in by itself to a throwaway seeded server
+- **Breaking:** the Android app is now native, in Kotlin and Jetpack Compose with Material 3. The release APK keeps the app id `io.github.ilyasturki.ordo`, its signing key and its launcher name, so it updates the old app in place and home-screen icons keep working, but it starts signed out: pair it again. Edits the old app hasn't synced stay behind, so let it sync before updating. Plain http now reaches only `localhost`, `127.0.0.1` and the emulator's host, so a server on plain http in a LAN needs TLS first. Scan the code needs Google Play services; without them, paste the link
+- The app's edits run through the TUI's own Go code, bound with gomobile, and it syncs with `ordo serve` over the same API, in the background too once the app is closed
+- Finished tasks stay in place in the app, struck through, and its filter follows the TUI's rules, counting what it hides in each category; a tap on that count shows the hidden rows until you change project or filter
+- Projects are tabs over a pager that follows the finger, one `+` opens a sheet on the keyboard to add tasks, and the task page shows only the fields that are set, with Mark done floating at the bottom right. The not-synced icon only shows once edits stay stuck, and tapping it says why. On a paired server, the device shows as `<model> · Ordo`
 - Search in the app: the icon beside the filter opens a search bar on the keyboard and narrows the open project's list in place, matching what the TUI's `/` matches: titles, descriptions, separators and category names, smartcase. Back closes it
 - Images in the app: a task's thumbnails open a full-screen viewer with pinch to zoom and a swipe between images, and the row of unset fields adds one from the photo picker or the camera. A photo waits on the phone with the edits, counted in the not-synced explanation, and reaches `ordo serve` later even with the app closed. Formats the server refuses, such as a phone's HEIC, become a JPEG
 - Settings → Devices in the app: the paired devices with this one marked, signing one out behind a confirm, Sign out, and Pair a new device with the code, the link and the share sheet
@@ -23,16 +25,19 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The app does what the TUI does: Mark done stays on the task's page, statuses read Todo, In Progress, Completed and Cancelled (in the app's messages too), a new separator lands first in its category and needs no label, labels read as typed and can be cleared, a task or separator the filter would hide is refused with the TUI's words, finished rows keep their marks, an empty category says No tasks, the filter lists Category before Tag, a sub-category's menu adds a sibling, and deleting the open project opens the first one. "Details" is now "description"
 - Undo brings back a category deleted in the app, with its sub-categories and tasks, through a new `category.restore` op in [`docs/sync.md`](docs/sync.md)
 - `ordo serve pair` says to scan the code or paste the link in the Ordo app, and warns when it has no address to put in the link but localhost, which a phone can't reach
+- `enter` or `space` on a category's `(N hidden by the filter)` row shows those tasks in place, marked `(filtered out)`, until the cursor leaves the category, where it used to clear the whole filter. The filter and its saved copy stay as they were; `f` → Clear all filters still clears it
+- The project picker dialog (`ctrl+p`) has the rounded border of the other dialogs, so it stands out from the list behind it. The full-screen picker stays frameless
+- Four tag marks instead of eight: `t`, `T`, the filter and the app offer the four coloured dots and drop the diamonds. A diamond already in a project file, or sent by an older app, reads as its colour's dot
+- `just native` builds and installs the app as Ordo Dev, `just native-test` and `just native-ui <emulator>` test it, and `just dev-phone` runs it on the USB phone, signed in by itself to a throwaway seeded server
 
 ### Removed
 
 - **Breaking:** the browser app and the old Capacitor Android app. `ordo serve` now answers only its sync API, under `/api`, and a short plain-text page anywhere else, so a browser can no longer open your projects and a device pairs through `ordo serve pair` or Devices on a paired device. Every build of `ordo serve` is now the same, with no bundle and no placeholder page. Selecting several tasks and nesting a task by dragging it went with the old app
-- `just dev`, `just web`, `just wasm`, `just android`, `just phone` and `just web-deps-hash`. `nix build` no longer needs node
+- `just web`, `just wasm`, `just android`, `just phone` and `just web-deps-hash`. `nix build` no longer needs node
 
 ### Fixed
 
 - Creating a project from the picker, or deleting the current project, no longer replaces the directory's link to another project, and deleting the linked project drops its link
-- The app's tab underline sits exactly under its tab, at rest and mid-swipe; it was 16dp too far right
 
 ## [0.13.0] - 2026-10-29
 
@@ -511,7 +516,8 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
 
-[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/ilyasturki/ordo/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/ilyasturki/ordo/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/ilyasturki/ordo/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/ilyasturki/ordo/compare/v0.11.0...v0.12.0
