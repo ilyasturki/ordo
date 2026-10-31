@@ -242,6 +242,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                 ProjectList(
                     entry = entry,
                     filter = filterOf(entry),
+                    folds = state.views[entry.id]?.folds.orEmpty(),
                     ui = uis[entry.id] ?: ListUi(),
                     onUi = { uis[entry.id] = it },
                     onOpen = { open(TaskKey(entry.id, it)) },
@@ -257,10 +258,16 @@ fun HomeScreen(open: (NavKey) -> Unit) {
 
     fun entry(pid: String): Entry? = projects.firstOrNull { it.id == pid }
 
+    // As the TUI's add does: what just went into a folded category stays in sight.
+    suspend fun reveal(e: Entry, cat: String) {
+        engine.setFolded(e.id, cat, false)
+        e.project.category(cat)?.parentId?.takeIf { it != "" }?.let { engine.setFolded(e.id, it, false) }
+    }
+
     when (val s = sheet) {
         null -> {}
         is HomeSheet.Add -> entry(s.pid)?.let { e ->
-            AddSheet(e, filterOf(e), s.cat, onDismiss = { sheet = null })
+            AddSheet(e, filterOf(e), s.cat, onDismiss = { sheet = null }) { cat -> scope.launch { reveal(e, cat) } }
         }
         is HomeSheet.Filters -> entry(s.pid)?.let { e ->
             FilterSheet(e.project, filterOf(e), onChange = { f ->

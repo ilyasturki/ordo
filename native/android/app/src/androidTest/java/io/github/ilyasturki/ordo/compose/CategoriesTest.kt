@@ -67,8 +67,7 @@ class CategoriesTest : AppFixture() {
         compose.waitForIdle()
     }
 
-    @Test
-    fun aHeldHeaderOpensThePageAndADragStays() {
+    private fun heldHeaderOpensThePageAndADragStays() {
         openPage()
         compose.onNodeWithText("Ordo categories").assertIsDisplayed()
         dragHandle("Research", over = "Feature")
@@ -79,6 +78,30 @@ class CategoriesTest : AppFixture() {
         closePage(until = hasContentDescription("Add a task"))
         compose.onNodeWithTag("list").performScrollToIndex(0)
         research().assertIsDisplayed()
+    }
+
+    @Test
+    fun aHeldHeaderOpensThePageAndADragStays() = heldHeaderOpensThePageAndADragStays()
+
+    @Test
+    fun aHeldFoldedHeaderOpensThePageAndStaysFolded() {
+        val research = engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }
+        runBlocking { engine.setFolded(PID, research.id, true) }
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Unfold Research"), 20_000)
+        heldHeaderOpensThePageAndADragStays()
+        assertEquals(setOf(research.id), engine.state.value.views[PID]!!.folds)
+        compose.onNodeWithContentDescription("Unfold Research").assertExists()
+    }
+
+    @Test
+    fun aTapOnAFoldedHeaderStillOpensItsMenu() {
+        val research = engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }
+        runBlocking { engine.setFolded(PID, research.id, true) }
+        scrollTo("Research")
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Unfold Research"), 20_000)
+        compose.onNodeWithText("Research").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Delete category"), 20_000)
+        assertEquals(setOf(research.id), engine.state.value.views[PID]!!.folds)
     }
 
     @Test

@@ -60,6 +60,7 @@ data class ListUi(val peek: String? = null, val held: Set<String> = emptySet())
 fun ProjectList(
     entry: Entry,
     filter: Filter,
+    folds: Set<String>,
     ui: ListUi,
     onUi: (ListUi) -> Unit,
     onOpen: (String) -> Unit,
@@ -74,9 +75,11 @@ fun ProjectList(
     val feedback = rememberFeedback()
     val pid = entry.id
     val searching = query.isNotBlank()
-    val lines = remember(entry.project, filter, ui, query) {
-        if (searching) Board.search(Board.lines(entry.project, filter, held = ui.held), query) else Board.lines(entry.project, filter, ui.peek, ui.held)
+    val lines = remember(entry.project, filter, folds, ui, query) {
+        if (searching) Board.search(Board.lines(entry.project, filter, held = ui.held), query) else Board.lines(entry.project, filter, ui.peek, ui.held, folds)
     }
+    // Search looks through folds without changing them, so nothing there has a fold to toggle.
+    val fold = { id: String, folded: Boolean -> scope.launch { engine.setFolded(pid, id, !folded) }; Unit }
     var dragOrder by remember { mutableStateOf<List<Line>?>(null) }
     val shown = dragOrder ?: lines
     // A filter arriving from another device ends them too.
@@ -129,7 +132,11 @@ fun ProjectList(
         items(shown, key = { it.key }) { line ->
             ReorderableItem(reorder, key = line.key) { dragging ->
                 when (line) {
-                    is Header -> CategoryHeader(line, onCategories) { onHeader(line.category) }
+                    is Header -> CategoryHeader(
+                        line,
+                        onLongClick = onCategories,
+                        onFold = if (searching) null else ({ fold(line.category.id, line.folded) }),
+                    ) { onHeader(line.category) }
                     is Hidden -> HiddenLine(line) {
                         onUi(if (line.peeking) ui.copy(peek = null) else ui.copy(peek = line.cat))
                     }
@@ -155,8 +162,11 @@ fun ProjectList(
                                         dragOrder = null
                                     } else {
                                         feedback.commit()
+                                        val into = headerAbove(order, line)
                                         scope.launch {
                                             engine.edit(pid, op, quiet = true)
+                                            // As adding to it does: the row stays in sight where it landed.
+                                            if (into?.folded == true) engine.setFolded(pid, into.category.id, false)
                                             dragOrder = null
                                         }
                                     }
@@ -173,7 +183,13 @@ fun ProjectList(
                                     }
                                 }
                                 val open = { id: String -> if (tapping()) onOpen(id) }
-                                TaskRow(line.row, child = false, onCycle = { cycle(line.row.task.id, line.row.task.status) }, onOpen = { open(line.row.task.id) })
+                                TaskRow(
+                                    line.row,
+                                    child = false,
+                                    onCycle = { cycle(line.row.task.id, line.row.task.status) },
+                                    onOpen = { open(line.row.task.id) },
+                                    onFold = if (searching) null else ({ fold(line.row.task.id, line.row.folded) }),
+                                )
                                 for (c in line.children) {
                                     TaskRow(c, child = true, onCycle = { cycle(c.task.id, c.task.status) }, onOpen = { open(c.task.id) })
                                 }
@@ -193,11 +209,16 @@ private fun next(status: String): String = when (status) {
     else -> Status.TODO
 }
 
+private fun headerAbove(order: List<Line>, block: Block): Header? {
+    val i = order.indexOfFirst { it.key == block.key }
+    return (i - 1 downTo 0).firstNotNullOfOrNull { order[it] as? Header }
+}
+
 // Where a dropped block lands: under the header above it, above the next block of its category.
 internal fun dropOp(order: List<Line>, block: Block): JsonObject? {
     val i = order.indexOfFirst { it.key == block.key }
     if (i < 0) return null
-    val header = (i - 1 downTo 0).firstNotNullOfOrNull { order[it] as? Header } ?: return null
+    val header = headerAbove(order, block) ?: return null
     var before = ""
     for (j in i + 1 until order.size) {
         val l = order[j]

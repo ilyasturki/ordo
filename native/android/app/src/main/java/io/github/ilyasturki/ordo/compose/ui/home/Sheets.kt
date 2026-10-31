@@ -236,7 +236,7 @@ fun <T> Picker(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> Unit) {
+fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> Unit, onAdded: (String) -> Unit) {
     val engine = LocalEngine.current
     val scope = rememberCoroutineScope()
     val feedback = rememberFeedback()
@@ -277,6 +277,7 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
             if (tag != "") engine.edit(pid, Ops.tag(row, tag), quiet = true)
             if (estimate > 0) engine.edit(pid, Ops.estimate(row, estimate), quiet = true)
             details = null
+            onAdded(cat)
         }
     }
 

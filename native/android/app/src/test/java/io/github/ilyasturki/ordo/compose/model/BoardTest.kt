@@ -260,4 +260,82 @@ class BoardTest {
         assertEquals("""{"folds":[]}""", json.encodeToString(ViewEdit.serializer(), ViewEdit(folds = emptySet())))
         assertEquals("""{"filter":{}}""", json.encodeToString(ViewEdit.serializer(), ViewEdit(filter = Filter())))
     }
+
+    @Test
+    fun aFoldedCategoryShowsItsHeaderAlone() {
+        val lines = Board.lines(project, Filter.NONE, folds = setOf("fix"))
+        assertEquals(
+            listOf("# Feature", "a,  a1,  a2", "sep", "b", "c", "# UI < Feature", "d", "# Fix"),
+            shape(lines),
+        )
+    }
+
+    @Test
+    fun aFoldedParentHidesItsSubCategoriesAndCountsThem() {
+        val lines = Board.lines(project, Filter.NONE, folds = setOf("feat"))
+        assertEquals(listOf("# Feature", "# Fix", "e"), shape(lines))
+        val header = lines[0] as Header
+        assertTrue(header.folded)
+        assertEquals(Status.IN_PROGRESS, header.status)
+        assertEquals(3, header.done)
+        assertEquals(6, header.total)
+    }
+
+    @Test
+    fun aFoldedSubCategoryHidesItsRowsAndCountsNothing() {
+        val lines = Board.lines(project, Filter.NONE, folds = setOf("ui"))
+        val header = lines.filterIsInstance<Header>().first { it.category.id == "ui" }
+        assertTrue(header.folded)
+        assertEquals(Status.COMPLETED, header.status)
+        assertEquals(0, header.total)
+        assertEquals(listOf("# UI < Feature", "# Fix"), shape(lines).drop(5).take(2))
+    }
+
+    @Test
+    fun aFoldedRowHidesItsSubtasksAndKeepsTheirCount() {
+        val lines = Board.lines(project, Filter.NONE, folds = setOf("a"))
+        val a = lines.filterIsInstance<Block>().first { it.row.task.id == "a" }
+        assertTrue(a.children.isEmpty())
+        assertTrue(a.row.folded)
+        assertEquals(1, a.row.childDone)
+        assertEquals(2, a.row.childTotal)
+    }
+
+    @Test
+    fun aFoldOnARowWithNoSubtasksMarksNothing() {
+        val b = Board.lines(project, Filter.NONE, folds = setOf("b")).filterIsInstance<Block>().first { it.row.task.id == "b" }
+        assertFalse(b.row.folded)
+    }
+
+    @Test
+    fun aFoldedRowStaysForASubtaskTheFilterKeeps() {
+        val lines = Board.lines(project, Filter(priorities = setOf("high")), folds = setOf("a"))
+        val a = lines.filterIsInstance<Block>().first { it.row.task.id == "a" }
+        assertTrue("its parent shows while the filter keeps a subtask", a.row.folded)
+        assertTrue(a.children.isEmpty())
+    }
+
+    @Test
+    fun aFoldedCategoryShowsNoHiddenLine() {
+        val lines = Board.lines(project, Filter(statuses = setOf("todo")), folds = setOf("feat", "fix"))
+        assertEquals(listOf("# Feature", "# Fix"), shape(lines))
+    }
+
+    @Test
+    fun aPeekDoesNotOpenAFoldedRow() {
+        val lines = Board.lines(project, Filter(statuses = setOf("completed")), peek = "feat", folds = setOf("a"))
+        val a = lines.filterIsInstance<Block>().first { it.row.task.id == "a" }
+        assertTrue(a.children.isEmpty())
+    }
+
+    @Test
+    fun searchLooksThroughFolds() {
+        val lines = Board.search(Board.lines(project, Filter.NONE), "a1")
+        assertEquals(listOf("# Feature", "a,  a1"), shape(lines))
+    }
+
+    @Test
+    fun aFoldNamingNothingChangesNothing() {
+        assertEquals(shape(Board.lines(project, Filter.NONE)), shape(Board.lines(project, Filter.NONE, folds = setOf("gone"))))
+    }
 }

@@ -47,23 +47,61 @@ import io.github.ilyasturki.ordo.compose.model.Status
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.marks
 
+// The chevron is a target of its own: a tap or a long press anywhere else on the header is the header's, and a drag never starts from either.
 @Composable
-fun CategoryHeader(header: Header, onLongClick: () -> Unit, onClick: () -> Unit) {
+fun CategoryHeader(header: Header, onLongClick: () -> Unit, onFold: (() -> Unit)?, onClick: () -> Unit) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    Text(
-        buildAnnotatedString {
-            if (header.parentName != "") {
-                withStyle(SpanStyle(color = muted)) { append(header.parentName + "  ›  ") }
-            }
-            append(header.category.name)
-        },
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
+    Row(
+        Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(start = 20.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
-    )
+            .padding(start = 20.dp, end = 4.dp, top = 4.dp)
+            .defaultMinSize(minHeight = 48.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            buildAnnotatedString {
+                if (header.parentName != "") {
+                    withStyle(SpanStyle(color = muted)) { append(header.parentName + "  ›  ") }
+                }
+                append(header.category.name)
+            },
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+        )
+        if (header.folded) {
+            Spacer(Modifier.width(8.dp))
+            FoldedMarks(header)
+        }
+        if (onFold != null) {
+            FoldButton(header.folded, header.category.name, onFold)
+        } else {
+            Spacer(Modifier.width(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun FoldedMarks(header: Header) {
+    val est = Estimates.format(header.category.estimateMinutes)
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (header.status != "") {
+            Chip(Icons.status(header.status), if (header.total > 0) "${header.done}/${header.total}" else "")
+        }
+        if (est != "") Chip(Icons.Schedule, est)
+    }
+}
+
+@Composable
+private fun FoldButton(folded: Boolean, name: String, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            if (folded) Icons.ExpandMore else Icons.ExpandLess,
+            if (folded) "Unfold $name" else "Fold $name",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
@@ -80,7 +118,7 @@ fun StatusIcon(status: String, onClick: () -> Unit, modifier: Modifier = Modifie
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier, onFold: (() -> Unit)? = null) {
     val t = row.task
     if (t.separator) {
         SeparatorRow(t.title, child, onOpen, modifier)
@@ -147,6 +185,7 @@ fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, m
         if (t.tagColor != "") {
             Box(Modifier.height(48.dp), contentAlignment = Alignment.Center) { TagDot(t.tagColor, Modifier.alpha(if (done) 0.5f else 1f)) }
         }
+        if (onFold != null && row.childTotal > 0) FoldButton(row.folded, "subtasks of ${t.title}", onFold)
     }
 }
 
@@ -169,8 +208,10 @@ private fun Chip(icon: ImageVector, label: String, tint: Color = MaterialTheme.c
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, Modifier.size(14.dp), tint = tint)
-        Spacer(Modifier.width(4.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = tint)
+        if (label != "") {
+            Spacer(Modifier.width(4.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, color = tint)
+        }
     }
 }
 

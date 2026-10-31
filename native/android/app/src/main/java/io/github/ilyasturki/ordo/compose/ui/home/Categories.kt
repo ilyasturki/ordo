@@ -94,10 +94,15 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
             }
         }
         is CategorySheet.New -> NameSheet("", if (sheet.parent == "") "New category" else "New sub-category", "Add", onDismiss = dismiss, onDone = { name ->
-            engine.edit(pid, Ops.categoryAdd(name, sheet.parent), quiet = true).applied.also { if (it) feedback.commit() }
+            engine.edit(pid, Ops.categoryAdd(name, sheet.parent), quiet = true).applied.also {
+                if (it) feedback.commit()
+                if (it && sheet.parent != "") engine.setFolded(pid, sheet.parent, false)
+            }
         })
         is CategorySheet.NewSeparator -> NameSheet("", "Separator label", "Add", blankAllowed = true, onDismiss = dismiss, onDone = { label ->
-            engine.edit(pid, Ops.separator(sheet.cat, "", label), quiet = true).applied
+            engine.edit(pid, Ops.separator(sheet.cat, "", label), quiet = true).applied.also {
+                if (it) engine.setFolded(pid, sheet.cat, false)
+            }
         })
         is CategorySheet.Delete -> {
             val cat = entry.project.category(sheet.cat) ?: return

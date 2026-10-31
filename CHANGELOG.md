@@ -7,6 +7,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Added
 
 - A long press on a project tab or a category header in the app opens that project's categories on a page of their own, as a tree. Drag a row to reorder it among its siblings, its sub-categories with it, and every move offers Undo; a tap opens the menu the header's tap does, and the `+` adds a category. On another project's tab the app goes to that project first. Tapping the current tab still opens the project's menu. The move reaches `ordo serve` as a new `category.place` op in [`docs/sync.md`](docs/sync.md)
+- Folds in the app: a chevron folds a category or a task with subtasks, as `za` does in the TUI. A folded category shows its status, how many of its tasks are finished and its estimate, and hides its sub-categories; a folded task keeps its subtask count. A tap on the header still opens its menu, search looks through folds, and adding to a folded category unfolds it
 
 ### Changed
 

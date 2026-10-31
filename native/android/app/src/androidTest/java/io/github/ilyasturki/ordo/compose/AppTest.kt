@@ -408,4 +408,72 @@ class AppTest : AppFixture() {
         assertEquals("io.github.ilyasturki.ordo.MainActivity", found.name)
         assertEquals(MainActivity::class.java.name, found.targetActivity)
     }
+
+    @Test
+    fun theChevronFoldsACategoryAndATapStillOpensItsMenu() {
+        scrollTo("Research")
+        compose.onNodeWithContentDescription("Fold Research").performClick()
+        compose.onNodeWithContentDescription("Unfold Research").assertExists()
+        compose.waitUntil(20_000) { engine.state.value.views[PID]?.folds?.size == 1 }
+        val folded = engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }
+        assertEquals(setOf(folded.id), engine.state.value.views[PID]!!.folds)
+        for (t in folded.tasks) compose.onNodeWithText(t.title).assertDoesNotExist()
+
+        compose.onNodeWithText("Research").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Delete category"), 20_000)
+        back()
+
+        compose.onNodeWithContentDescription("Unfold Research").performClick()
+        compose.waitUntil(20_000) { engine.state.value.views[PID]?.folds?.isEmpty() == true }
+        scrollTo(folded.tasks.first { !it.separator }.title)
+    }
+
+    @Test
+    fun aFoldedParentHidesItsSubCategories() {
+        scrollTo("Documentation")
+        val cats = engine.state.value.project(PID)!!.project.categories
+        val parent = cats.first { it.name == "Documentation" }
+        val sub = cats.first { it.parentId == parent.id }
+        compose.onNodeWithContentDescription("Fold Documentation").performClick()
+        compose.waitUntil(20_000) { engine.state.value.views[PID]?.folds == setOf(parent.id) }
+        compose.onNodeWithContentDescription("Fold ${sub.name}").assertDoesNotExist()
+    }
+
+    @Test
+    fun theChevronFoldsARowWithoutOpeningIt() {
+        val parent = engine.state.value.project(PID)!!.project.categories.flatMap { it.tasks }.first { t ->
+            engine.state.value.project(PID)!!.project.categories.flatMap { it.tasks }.any { it.parentId == t.id }
+        }
+        val kid = engine.state.value.project(PID)!!.project.categories.flatMap { it.tasks }.first { it.parentId == parent.id }
+        scrollTo(parent.title)
+        compose.onNodeWithText(kid.title).assertExists()
+        compose.onNodeWithContentDescription("Fold subtasks of ${parent.title}").performClick()
+        compose.waitUntil(20_000) { engine.state.value.views[PID]?.folds == setOf(parent.id) }
+        compose.onNodeWithText(kid.title).assertDoesNotExist()
+        compose.onNodeWithContentDescription("More").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Unfold subtasks of ${parent.title}").performClick()
+        compose.waitUntilAtLeastOneExists(hasText(kid.title), 20_000)
+    }
+
+    @Test
+    fun aFoldArrivingAppliesWithTheListInPlace() {
+        scrollTo("Research")
+        val research = engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }
+        runBlocking { engine.setFolded(PID, research.id, true) }
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Unfold Research"), 20_000)
+        compose.onNodeWithText("Research").assertIsDisplayed()
+    }
+
+    @Test
+    fun searchLooksThroughAFold() {
+        val research = engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }
+        val title = research.tasks.first { !it.separator }.title
+        runBlocking { engine.setFolded(PID, research.id, true) }
+        scrollTo("Research")
+        compose.onNodeWithContentDescription("Search").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput(title)
+        compose.waitUntilAtLeastOneExists(hasText(title), 20_000)
+        compose.onNodeWithContentDescription("Unfold Research").assertDoesNotExist()
+        assertEquals(setOf(research.id), engine.state.value.views[PID]!!.folds)
+    }
 }
