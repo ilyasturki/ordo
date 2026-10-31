@@ -35,11 +35,13 @@ class CategoriesTest : AppFixture() {
     private fun order() = engine.state.value.project(PID)!!.project.categories.map { it.name }
 
     // The top bar can name the same category, without the row's click.
-    private fun research() = compose.onNode(hasText("Research") and hasClickAction())
+    private fun header(name: String) = compose.onNode(hasText(name) and hasClickAction())
 
-    private fun openPage() {
-        scrollTo("Research")
-        research().performTouchInput { longClick() }
+    private fun research() = header("Research")
+
+    private fun openPage(name: String = "Research") {
+        scrollTo(name)
+        header(name).performTouchInput { longClick() }
         compose.waitUntil(20_000) { pageHasFocus() }
         compose.waitUntilAtLeastOneExists(hasTestTag("categories"), 20_000)
     }
@@ -67,8 +69,8 @@ class CategoriesTest : AppFixture() {
         compose.waitForIdle()
     }
 
-    private fun heldHeaderOpensThePageAndADragStays() {
-        openPage()
+    private fun heldHeaderOpensThePageAndADragStays(header: String = "Research") {
+        openPage(header)
         compose.onNodeWithText("Ordo categories").assertIsDisplayed()
         dragHandle("Research", over = "Feature")
         val moved = listOf("Research", "Feature", "Fix", "Ergonomy", "Documentation", "API")
@@ -85,23 +87,25 @@ class CategoriesTest : AppFixture() {
 
     @Test
     fun aHeldFoldedHeaderOpensThePageAndStaysFolded() {
-        val research = engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }
-        runBlocking { engine.setFolded(PID, research.id, true) }
-        compose.waitUntilAtLeastOneExists(hasContentDescription("Unfold Research"), 20_000)
-        heldHeaderOpensThePageAndADragStays()
-        assertEquals(setOf(research.id), engine.state.value.views[PID]!!.folds)
-        compose.onNodeWithContentDescription("Unfold Research").assertExists()
+        val ergonomy = engine.state.value.project(PID)!!.project.categories.first { it.name == "Ergonomy" }
+        runBlocking { engine.setFolded(PID, ergonomy.id, true) }
+        scrollTo("Ergonomy")
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Unfold Ergonomy"), 20_000)
+        heldHeaderOpensThePageAndADragStays("Ergonomy")
+        assertEquals(setOf(ergonomy.id), engine.state.value.views[PID]!!.folds)
+        scrollTo("Ergonomy")
+        compose.onNodeWithContentDescription("Unfold Ergonomy").assertExists()
     }
 
     @Test
     fun aTapOnAFoldedHeaderStillOpensItsMenu() {
-        val research = engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }
-        runBlocking { engine.setFolded(PID, research.id, true) }
-        scrollTo("Research")
-        compose.waitUntilAtLeastOneExists(hasContentDescription("Unfold Research"), 20_000)
-        compose.onNodeWithText("Research").performClick()
+        val ergonomy = engine.state.value.project(PID)!!.project.categories.first { it.name == "Ergonomy" }
+        runBlocking { engine.setFolded(PID, ergonomy.id, true) }
+        scrollTo("Ergonomy")
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Unfold Ergonomy"), 20_000)
+        compose.onNodeWithText("Ergonomy").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Delete category"), 20_000)
-        assertEquals(setOf(research.id), engine.state.value.views[PID]!!.folds)
+        assertEquals(setOf(ergonomy.id), engine.state.value.views[PID]!!.folds)
     }
 
     @Test
