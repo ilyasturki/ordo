@@ -164,7 +164,7 @@ class SyncEngine(
         }
         queue = store.queue()
         seq = queue.lastOrNull()?.seq ?: 0
-        val prefs = store.prefs().let { p -> if (p.current.isEmpty()) p else p.copy(opened = p.opened + (p.current to clock())) }
+        val prefs = store.prefs()
         order = rankProjects(entries, prefs.opened).map(Entry::id)
         images.sweep()
         unsent = images.waiting()
