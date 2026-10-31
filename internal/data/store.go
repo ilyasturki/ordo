@@ -468,6 +468,7 @@ func (s *Store) DeleteProject(id string) error {
 	defer f.Close()
 	err = os.Remove(s.projectPath(id))
 	if errors.Is(err, fs.ErrNotExist) {
+		_ = os.Remove(s.viewPath(id))
 		return ErrProjectNotFound
 	}
 	if err != nil {

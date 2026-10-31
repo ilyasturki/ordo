@@ -123,12 +123,14 @@ func (m *StateManager) migrate() {
 	for id := range s.Filters {
 		ids[id] = true
 	}
+	moved := false
 	for id := range ids {
 		if !m.views.HasProject(id) || m.views.seedView(id, View{Folds: s.FoldedCategories[id], Filter: s.Filters[id]}) != nil {
 			continue
 		}
 		delete(s.FoldedCategories, id)
 		delete(s.Filters, id)
+		moved = true
 	}
 	for dir, id := range s.DirectoryProjects {
 		// "" came from a last_project_id of long ago: no directory ever read it.
@@ -138,8 +140,11 @@ func (m *StateManager) migrate() {
 			}
 		}
 		delete(s.DirectoryProjects, dir)
+		moved = true
 	}
-	_ = m.save()
+	if moved {
+		_ = m.save()
+	}
 }
 
 // load refreshes the in-memory state from disk. Callers hold m.mu. On any error
@@ -180,8 +185,8 @@ func (m *StateManager) save() error {
 		return err
 	}
 	// Same atomic write the project store uses. state.json is rewritten whole on
-	// every fold toggle and project switch, so a crash mid-write would truncate
-	// it and lose every fold and the open times — cheap to prevent, and
+	// every cursor move and project switch, so a crash mid-write would truncate
+	// it and lose the cursors and the open times — cheap to prevent, and
 	// the projects beside it already get this treatment.
 	return fsutil.WriteAtomic(m.path, data, 0o644)
 }
@@ -230,7 +235,7 @@ func (m *StateManager) UnlinkDir() (string, error) {
 	return m.views.mergeLink(m.currentDir, "", false)
 }
 
-// GetLastOpened re-reads state.json first, like GetFoldedCategories: another TUI
+// GetLastOpened re-reads state.json first: another TUI
 // may have opened a project since this manager last loaded. The values are
 // RFC 3339 timestamps, the format of a project's updated_at.
 func (m *StateManager) GetLastOpened() map[string]string {
@@ -274,15 +279,25 @@ func (m *StateManager) SetFoldedCategories(projectID string, categoryIDs []strin
 }
 
 // writeView sees past its own write, but not past an outside one that landed just
-// before it: that one's fields are in the file and not yet on screen.
+// before it: that one's fields are in the file and not yet on screen. Both checks
+// run under the project's lock, so a writer holding it can't land between them.
+// A project deleted while it was open gets no file back.
 func (m *StateManager) writeView(projectID string, change ViewChange) error {
+	lock, err := m.views.acquireProjectLock(projectID)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
+	if !m.views.projectExists(projectID) {
+		return nil
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	watched := m.viewWatch != nil && m.watchedView == projectID
 	if watched && m.viewWatch.Changed() {
 		m.viewOutside = true
 	}
-	err := m.views.MergeView(projectID, change)
+	err = m.views.mergeViewLocked(projectID, change)
 	if watched {
 		m.viewWatch.Changed()
 	}
@@ -305,7 +320,7 @@ func (m *StateManager) ViewChanged(projectID string) bool {
 }
 
 // GetCursor returns the remembered cursor for a project, or the zero Cursor when
-// none is stored. Like GetFoldedCategories it re-reads state.json first: the TUI
+// none is stored. It re-reads state.json first: the TUI
 // reads this at project open, and a second TUI instance may have written its own
 // cursor since this manager last loaded.
 func (m *StateManager) GetCursor(projectID string) Cursor {

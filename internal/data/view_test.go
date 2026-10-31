@@ -451,6 +451,7 @@ func TestLinkingAgainLeavesTheFile(t *testing.T) {
 
 func TestViewChangedSeesOthersNotItself(t *testing.T) {
 	store, dir := viewStore(t)
+	onDisk(t, store, "p1")
 	m := newLoadedStateManager(t, dir, "")
 	if m.ViewChanged("p1") {
 		t.Fatal("the first call starts the watch")
@@ -474,8 +475,104 @@ func TestViewChangedSeesOthersNotItself(t *testing.T) {
 	}
 }
 
+func TestAWriteOfADeletedProjectBringsNoFileBack(t *testing.T) {
+	store, dir := viewStore(t)
+	onDisk(t, store, "p1")
+	m := newLoadedStateManager(t, dir, "")
+	if err := store.DeleteProject("p1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.SetFoldedCategories("p1", []string{"c1"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := store.View("p1"); ok {
+		t.Fatal("the view file came back")
+	}
+}
+
+func TestDeletingAProjectAlreadyGoneStillDeletesItsView(t *testing.T) {
+	store, _ := viewStore(t)
+	folds := []string{"c1"}
+	if err := store.MergeView("p1", ViewChange{Folds: &folds}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DeleteProject("p1"); err != ErrProjectNotFound {
+		t.Fatalf("err = %v", err)
+	}
+	if _, ok := store.View("p1"); ok {
+		t.Fatal("the view file stayed")
+	}
+}
+
+func TestAFileInAnotherShapeIsLeftAloneWhenNothingChanges(t *testing.T) {
+	store, _ := viewStore(t)
+	path := store.viewPath("p1")
+	writeFile(t, path, "{\"filter\":{\"statuses\":[\"todo\"]},\"folds\":[\"c1\"]}\n")
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	same := []string{"c1"}
+	if err := store.MergeView("p1", ViewChange{Folds: &same}); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(before, after) {
+		t.Fatal("an unchanged write replaced the file")
+	}
+}
+
+func TestAWriteOverANullFileWorks(t *testing.T) {
+	store, _ := viewStore(t)
+	writeFile(t, store.viewPath("p1"), "null")
+	folds := []string{"c1"}
+	if err := store.MergeView("p1", ViewChange{Folds: &folds}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := store.View("p1"); !slices.Equal(got.Folds, folds) {
+		t.Fatalf("view = %+v", got)
+	}
+}
+
+func TestFoldsOfNothingButBadIDsClearTheField(t *testing.T) {
+	store, _ := viewStore(t)
+	folds := []string{"../x"}
+	if err := store.MergeView("p1", ViewChange{Folds: &folds, Filter: &Filter{Statuses: []string{"todo"}}}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(store.viewPath("p1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "folds") {
+		t.Fatalf("file = %s", raw)
+	}
+}
+
+func TestMigrationLeavesStateAloneWhenNothingMoved(t *testing.T) {
+	_, dir := viewStore(t)
+	legacyState(t, dir, `{"folded_categories": {"later": ["c1"]}}`)
+	path := filepath.Join(dir, "state.json")
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newLoadedStateManager(t, dir, "")
+	after, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(before, after) {
+		t.Fatal("a start with nothing to move rewrote state.json")
+	}
+}
+
 func TestViewChangedKeepsAnOutsideWriteJustBeforeItsOwn(t *testing.T) {
 	store, dir := viewStore(t)
+	onDisk(t, store, "p1")
 	m := newLoadedStateManager(t, dir, "")
 	m.ViewChanged("p1")
 

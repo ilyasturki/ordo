@@ -2,6 +2,8 @@ package app
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -704,6 +706,9 @@ func TestFilterSavesOnEveryChange(t *testing.T) {
 
 func TestFilterAndItsCursorSurviveARestart(t *testing.T) {
 	dir := t.TempDir()
+	projects := filepath.Join(dir, "projects")
+	require.NoError(t, os.MkdirAll(projects, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(projects, sampleProject().ID+".json"), []byte("{}"), 0o644))
 	before := data.NewStateManager(dir, "")
 	require.NoError(t, before.Load())
 	m := newTestModel(t, sampleProject())

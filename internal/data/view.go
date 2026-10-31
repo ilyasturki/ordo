@@ -105,9 +105,14 @@ func (s *Store) MergeView(id string, change ViewChange) error {
 		return err
 	}
 	defer lock.Close()
+	return s.mergeViewLocked(id, change)
+}
+
+func (s *Store) mergeViewLocked(id string, change ViewChange) error {
 	return mergeJSON(s.viewPath(id), func(doc map[string]json.RawMessage, _ bool) error {
 		if change.Folds != nil {
-			if err := setField(doc, "folds", cleanIDs(*change.Folds), len(*change.Folds) == 0); err != nil {
+			folds := cleanIDs(*change.Folds)
+			if err := setField(doc, "folds", folds, len(folds) == 0); err != nil {
 				return err
 			}
 		}
@@ -132,7 +137,8 @@ func (s *Store) seedView(id string, view View) error {
 		if existed {
 			return nil
 		}
-		if err := setField(doc, "folds", cleanIDs(view.Folds), len(view.Folds) == 0); err != nil {
+		folds := cleanIDs(view.Folds)
+		if err := setField(doc, "folds", folds, len(folds) == 0); err != nil {
 			return err
 		}
 		filter := view.Filter.cleaned()
@@ -168,18 +174,23 @@ func mergeJSON(path string, apply func(doc map[string]json.RawMessage, existed b
 		if err := json.Unmarshal(raw, &doc); err != nil {
 			return fmt.Errorf("%s: %w", filepath.Base(path), err)
 		}
+		// A file holding null leaves the map nil.
+		if doc == nil {
+			doc = make(map[string]json.RawMessage)
+		}
+	}
+	before, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return err
 	}
 	if err := apply(doc, existed); err != nil {
 		return err
-	}
-	if !existed && len(doc) == 0 {
-		return nil
 	}
 	out, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return err
 	}
-	if bytes.Equal(out, raw) {
+	if bytes.Equal(out, before) {
 		return nil
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

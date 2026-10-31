@@ -19,11 +19,18 @@ func newLoadedStateManager(t *testing.T, dir, currentDir string) *StateManager {
 	return m
 }
 
+func stateDirWithP1(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	onDisk(t, NewStore(filepath.Join(dir, "projects")), "p1")
+	return dir
+}
+
 // The TUI and another process each hold their own StateManager over the same
 // file, and every save rewrites it whole. Without the reload-before-write, the
 // second manager's save would drop the first manager's key.
 func TestStateManagerConcurrentWritersDoNotClobber(t *testing.T) {
-	dir := t.TempDir()
+	dir := stateDirWithP1(t)
 	tui := newLoadedStateManager(t, dir, "/work/project")
 	other := newLoadedStateManager(t, dir, "/work/project")
 
@@ -47,7 +54,7 @@ func TestStateManagerConcurrentWritersDoNotClobber(t *testing.T) {
 // Another process folds a category while the TUI has the project open; the TUI
 // reads folds at project open, so its next read must see the new value.
 func TestGetFoldedCategoriesSeesOtherProcessWrites(t *testing.T) {
-	dir := t.TempDir()
+	dir := stateDirWithP1(t)
 	tui := newLoadedStateManager(t, dir, "")
 	other := newLoadedStateManager(t, dir, "")
 
@@ -65,7 +72,7 @@ func TestGetFoldedCategoriesSeesOtherProcessWrites(t *testing.T) {
 }
 
 func TestSetFoldedCategoriesEmptyClearsProject(t *testing.T) {
-	dir := t.TempDir()
+	dir := stateDirWithP1(t)
 	m := newLoadedStateManager(t, dir, "")
 
 	if err := m.SetFoldedCategories("p1", []string{"cat-a"}); err != nil {
@@ -84,7 +91,7 @@ func TestSetFoldedCategoriesEmptyClearsProject(t *testing.T) {
 // A returned fold slice must not alias the cache, or a caller sorting it in
 // place would silently rewrite state.
 func TestGetFoldedCategoriesReturnsCopy(t *testing.T) {
-	dir := t.TempDir()
+	dir := stateDirWithP1(t)
 	m := newLoadedStateManager(t, dir, "")
 	if err := m.SetFoldedCategories("p1", []string{"cat-a"}); err != nil {
 		t.Fatalf("set folds: %v", err)
@@ -124,7 +131,7 @@ func TestUnlinkDirReturnsPreviousAndIsNoOpWhenUnlinked(t *testing.T) {
 
 // Run with -race: the cursor saver writes from its own goroutine.
 func TestStateManagerConcurrentWritesAreSerialized(t *testing.T) {
-	dir := t.TempDir()
+	dir := stateDirWithP1(t)
 	m := newLoadedStateManager(t, dir, "")
 
 	var wg sync.WaitGroup
@@ -199,7 +206,7 @@ func TestDeleteCursorRemovesEntry(t *testing.T) {
 // The TUI writes its cursor on exit while another process may be writing
 // folds; neither whole-file rewrite may drop the other's key.
 func TestCursorAndFoldWritersDoNotClobber(t *testing.T) {
-	dir := t.TempDir()
+	dir := stateDirWithP1(t)
 	tui := newLoadedStateManager(t, dir, "")
 	other := newLoadedStateManager(t, dir, "")
 
@@ -236,7 +243,7 @@ func TestLoadStateWithoutCursorsIsNotAnError(t *testing.T) {
 }
 
 func TestFilterRoundTripsThroughDisk(t *testing.T) {
-	dir := t.TempDir()
+	dir := stateDirWithP1(t)
 	m := newLoadedStateManager(t, dir, "")
 
 	want := Filter{Statuses: []string{"todo"}, Priorities: []string{"high", "none"}, Categories: []string{"c1"}, Tags: []string{"green"}}
@@ -254,7 +261,7 @@ func TestFilterRoundTripsThroughDisk(t *testing.T) {
 }
 
 func TestSetFilterEmptyClearsProject(t *testing.T) {
-	dir := t.TempDir()
+	dir := stateDirWithP1(t)
 	m := newLoadedStateManager(t, dir, "")
 
 	if err := m.SetFilter("p1", Filter{Statuses: []string{"todo"}}); err != nil {
@@ -274,7 +281,7 @@ func TestSetFilterEmptyClearsProject(t *testing.T) {
 }
 
 func TestFilterAndCursorWritersDoNotClobber(t *testing.T) {
-	dir := t.TempDir()
+	dir := stateDirWithP1(t)
 	tui := newLoadedStateManager(t, dir, "")
 	other := newLoadedStateManager(t, dir, "")
 
