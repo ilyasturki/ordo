@@ -21,6 +21,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - The status-line notice about Syncthing conflict copies. Ordo ignores them; reporting them is Syncthing's job
 
+### Fixed
+
+- The app's name and add sheets rise with the keyboard in one motion: the keyboard no longer covers them before they jump above it
+
 ## [0.14.0] - 2026-10-31
 
 ### Added

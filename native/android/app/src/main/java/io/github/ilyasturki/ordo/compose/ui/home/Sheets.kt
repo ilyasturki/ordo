@@ -8,9 +8,19 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -32,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
@@ -44,6 +55,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -52,6 +64,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.ilyasturki.ordo.compose.model.Category
 import io.github.ilyasturki.ordo.compose.model.Estimates
@@ -81,7 +94,27 @@ fun plainFieldColors() = TextFieldDefaults.colors(
     unfocusedIndicatorColor = Color.Transparent,
 )
 
-// A sheet docked to the keyboard around one name: the IME insets lift it as the keyboard rises.
+// A height that grew with the keyboard would move the Expanded anchor on each keyboard frame, and each move restarts the sheet's spring, which then only runs once the keyboard has stopped.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun KeyboardSheet(sheet: SheetState, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.risesWithKeyboard(),
+        sheetState = sheet,
+        dragHandle = null,
+        contentWindowInsets = { WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Vertical) },
+        content = content,
+    )
+}
+
+// Composed so that the insets are the sheet's window's, the only one the keyboard animates. The sheet keeps its navigation bar padding, which the IME inset already counts.
+private fun Modifier.risesWithKeyboard(): Modifier = composed {
+    val lift = WindowInsets.ime.exclude(WindowInsets.navigationBars)
+    offset { IntOffset(0, -lift.getBottom(this)) }
+}
+
+// A sheet around one name, docked to the keyboard.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NameSheet(
@@ -105,7 +138,7 @@ fun NameSheet(
             }
         }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, dragHandle = null) {
+    KeyboardSheet(sheet, onDismiss) {
         Column(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextField(
@@ -250,7 +283,7 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
         }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, dragHandle = null) {
+    KeyboardSheet(sheet, onDismiss) {
         Column(Modifier.padding(top = 8.dp, bottom = 4.dp)) {
             TextField(
                 title,

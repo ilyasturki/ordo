@@ -2,6 +2,8 @@ package io.github.ilyasturki.ordo.compose
 
 import android.content.Intent
 import android.view.KeyEvent
+import android.view.inspector.WindowInspector
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
@@ -22,6 +24,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -198,6 +201,51 @@ class AppTest : AppFixture() {
         compose.onNode(hasSetTextAction()).performImeAction()
         compose.waitUntil(20_000) { task("Water the plants") != null }
         assertEquals("Water the plants", engine.state.value.project(PID)!!.project.categories[0].tasks.first().title)
+    }
+
+    // Where the keyboard starts on the screen, in dp; null while it is down.
+    private fun keyboardTop(): Float? {
+        var top: Float? = null
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            for (window in WindowInspector.getGlobalWindowViews()) {
+                val insets = ViewCompat.getRootWindowInsets(window) ?: continue
+                if (insets.isVisible(WindowInsetsCompat.Type.ime())) {
+                    top = (window.height - insets.getInsets(WindowInsetsCompat.Type.ime()).bottom) / compose.density.density
+                }
+            }
+        }
+        return top
+    }
+
+    // A sheet whose height follows the keyboard moves its own anchor on every keyboard frame, and slides up only once the keyboard has stopped.
+    private fun assertTheSheetKeepsItsSizeOnTheKeyboard() {
+        val pane = SemanticsMatcher.keyIsDefined(SemanticsProperties.PaneTitle)
+        // Under instrumentation the sheet's window takes focus too late for the focus request to raise the keyboard.
+        compose.onNode(hasSetTextAction()).performClick()
+        compose.waitUntil(30_000) { keyboardTop() != null }
+        compose.waitUntil(30_000) {
+            compose.onNode(hasSetTextAction()).getUnclippedBoundsInRoot().bottom.value <= keyboardTop()!!
+        }
+        val up = compose.onNode(pane).getUnclippedBoundsInRoot()
+        back()
+        compose.waitUntil(30_000) { keyboardTop() == null }
+        compose.waitForIdle()
+        val down = compose.onNode(pane).getUnclippedBoundsInRoot()
+        assertEquals(down.height.value, up.height.value, 1f)
+    }
+
+    @Test
+    fun theNameSheetKeepsItsSizeOnTheKeyboard() {
+        scrollTo("Tap a row to focus it")
+        compose.onNodeWithText("Ordo").performClick()
+        assertTheSheetKeepsItsSizeOnTheKeyboard()
+    }
+
+    @Test
+    fun theAddSheetKeepsItsSizeOnTheKeyboard() {
+        scrollTo("Tap a row to focus it")
+        compose.onNodeWithContentDescription("Add a task").performClick()
+        assertTheSheetKeepsItsSizeOnTheKeyboard()
     }
 
     @Test
