@@ -1,4 +1,4 @@
-Output "/tmp/ordo-vt/vhs-out/94_picker_recent.gif"
+Output "/tmp/ordo-vt/vhs-out/95_picker_recent.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
@@ -17,7 +17,7 @@ Ctrl+P
 Sleep 500ms
 Type "jjj"
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/94_picker_before.png"
+Screenshot "/tmp/ordo-vt/vhs-out/95_picker_before.png"
 Sleep 500ms
 
 Enter
@@ -26,7 +26,7 @@ Sleep 500ms
 # The project just opened leads the list, the one left before it follows.
 Ctrl+P
 Sleep 500ms
-Screenshot "/tmp/ordo-vt/vhs-out/94_picker_alpha_first.png"
+Screenshot "/tmp/ordo-vt/vhs-out/95_picker_alpha_first.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
