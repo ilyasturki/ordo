@@ -75,6 +75,7 @@ var appliers = map[string]applier{
 	"task.restore":     restoreRows,
 	"category.add":     addCategory,
 	"category.rename":  renameCategory,
+	"category.place":   placeCategory,
 	"category.delete":  deleteCategory,
 	"category.restore": restoreCategories,
 }
@@ -530,6 +531,14 @@ func renameCategory(p *domain.Project, op Op) (Outcome, error) {
 		return Outcome{}, err
 	}
 	return Outcome{Msg: "Renamed to " + quote(cat.Name)}, nil
+}
+
+func placeCategory(p *domain.Project, op Op) (Outcome, error) {
+	cat, err := PlaceCategory(p, op.Cat, op.Before)
+	if err != nil {
+		return Outcome{}, err
+	}
+	return Outcome{Msg: "Moved " + quote(cat.Name), Row: cat.ID}, nil
 }
 
 func deleteCategory(p *domain.Project, op Op) (Outcome, error) {

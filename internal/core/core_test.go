@@ -2,6 +2,7 @@ package core_test
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 
 	"github.com/ilyasturki/ordo/internal/core"
@@ -38,6 +39,36 @@ func held(t *testing.T, s *core.Session, pid string) domain.Project {
 		t.Fatal(err)
 	}
 	return p
+}
+
+func TestACategoryDragQueuesItselfAndItsUndo(t *testing.T) {
+	s, pid := opened(t)
+	order := func() []string {
+		var ids []string
+		for _, c := range held(t, s, pid).Categories {
+			ids = append(ids, c.ID)
+		}
+		return ids
+	}
+	if a := s.Perform(pid, op(operations.Op{Action: "category.add", New: "c2", Title: "Fix"})); a.Status != operations.Applied {
+		t.Fatalf("add = %+v", a)
+	}
+	a := s.Perform(pid, op(operations.Op{Action: "category.place", Cat: "c2", Before: "c1"}))
+	if a.Status != operations.Applied || a.Queue == nil || a.Queue.Action != "category.place" || len(a.Undo) != 1 {
+		t.Fatalf("answer = %+v", a)
+	}
+	if got, want := order(), []string{"c2", "c1"}; !slices.Equal(got, want) {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+	if r := s.Replay(pid, op(*a.Queue)); r.Status != operations.Unchanged {
+		t.Fatalf("landing twice = %+v", r)
+	}
+	if u := s.Perform(pid, op(a.Undo[0])); u.Status != operations.Applied {
+		t.Fatalf("undo = %+v", u)
+	}
+	if got, want := order(), []string{"c1", "c2"}; !slices.Equal(got, want) {
+		t.Fatalf("after undo = %v, want %v", got, want)
+	}
 }
 
 func TestPerformQueuesWhatTheServerReplays(t *testing.T) {

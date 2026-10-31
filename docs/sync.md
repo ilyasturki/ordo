@@ -80,13 +80,14 @@ An op names its rows by ID and says where they end up, never how far they moved,
 | `task.restore` | `cat`, `parent`, `before`, `rows` | Puts back rows a delete removed, with their IDs and every field, above `before` in `cat`, under `parent` when set, or last without `before`. `rows` is one top-level row followed by its subtasks, or one row. |
 | `category.add` | `new`, `parent`, `title` | Adds a category last among the top-level ones, or last among `parent`'s sub-categories. |
 | `category.rename` | `cat`, `title` | Renames the category. |
+| `category.place` | `cat`, `before` | Moves the category with its sub-categories above its sibling `before`, or last among its siblings without it. It stays under its parent. |
 | `category.delete` | `cat` | Deletes the category with its sub-categories and all their tasks. |
 | `category.restore` | `cats`, `before` | Puts back a category a delete removed, above its sibling `before`, or last among its siblings without it. `cats` is the category followed by its sub-categories, with their tasks. |
 | `project.create` | `title` | Creates the project `project` names, with no categories. |
 | `project.rename` | `title` | Renames the project. |
 | `project.delete` | | Deletes the project. |
 
-`new` is a client-minted ID (see [IDs](file-format.md#ids-and-timestamps)), so the ops queued after an add can name its row or category. An add whose `new` is already in the project is `unchanged`. A row an op was made beside can be gone by the time it lands: `task.insert` then adds first in `cat`, `task.add`, `task.place`, `task.restore` and `category.add` drop a missing `parent` and land top-level, and `task.place` and `task.restore` put a missing `before` last.
+`new` is a client-minted ID (see [IDs](file-format.md#ids-and-timestamps)), so the ops queued after an add can name its row or category. An add whose `new` is already in the project is `unchanged`. A row an op was made beside can be gone by the time it lands: `task.insert` then adds first in `cat`, `task.add`, `task.place`, `task.restore` and `category.add` drop a missing `parent` and land top-level, and `task.place` and `task.restore` put a missing `before` last. `category.place` puts a `before` that is missing or no longer its sibling last among its siblings.
 
 `task.restore` takes `rows` as the Task objects of [file-format.md](file-format.md#task) and checks them like a file it imports. It skips the rows the project holds again; the subtasks of a row that is back go last under it. A category name a sibling already has is `refused`, and so is a project name another project has.
 

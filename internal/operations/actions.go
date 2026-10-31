@@ -47,6 +47,7 @@ var Actions = []Action{
 	{"category.estimate", "Set category estimate", TUI},
 	{"category.nest", "Nest category", TUI},
 	{"category.shift", "Move category", TUI},
+	{"category.place", "Drag a category to a position", App},
 	{"categories.reverse", "Reverse categories", TUI},
 	{"project.manage", "Create, rename or delete a project", TUI},
 }

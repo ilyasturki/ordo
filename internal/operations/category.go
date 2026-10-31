@@ -66,6 +66,32 @@ func MoveCategory(p *domain.Project, categoryID string, delta int) (domain.Categ
 	return p.Categories[at], nil
 }
 
+// PlaceCategory moves the category with its sub-categories above its sibling before; a before that
+// is empty, gone or at another level lands it last among its siblings.
+func PlaceCategory(p *domain.Project, categoryID, before string) (domain.Category, error) {
+	ci, err := p.FindCategoryByID(categoryID)
+	if err != nil {
+		return domain.Category{}, err
+	}
+	if before == categoryID {
+		return p.Categories[ci], ErrNoChange
+	}
+	end := domain.BlockEnd(p.Categories, ci)
+	block := slices.Clone(p.Categories[ci:end])
+	cats := slices.Delete(slices.Clone(p.Categories), ci, end)
+	parent := block[0].ParentID
+	at := len(cats)
+	if pi := slices.IndexFunc(cats, func(c domain.Category) bool { return c.ID == parent }); parent != "" && pi >= 0 {
+		at = domain.BlockEnd(cats, pi)
+	}
+	if bi := slices.IndexFunc(cats, func(c domain.Category) bool { return c.ID == before && c.ParentID == parent }); before != "" && bi >= 0 {
+		at = bi
+	}
+	p.Categories = slices.Insert(cats, at, block...)
+	p.UpdatedAt = domain.NowTimestamp()
+	return block[0], nil
+}
+
 // DeleteCategory removes the identified category and, with it, its
 // sub-categories and every task they held.
 func DeleteCategory(p *domain.Project, categoryID string) error {

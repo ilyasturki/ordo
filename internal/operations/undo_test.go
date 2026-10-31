@@ -184,6 +184,33 @@ func TestUndoPutsBackADeletedCategoryWithItsSubCategories(t *testing.T) {
 	}
 }
 
+func TestUndoPutsADraggedCategoryBack(t *testing.T) {
+	for _, op := range []operations.Op{
+		{Action: "category.place", Cat: "c2", Before: "c1"},
+		{Action: "category.place", Cat: "c1"},
+		{Action: "category.place", Cat: "s2", Before: "s1"},
+		{Action: "category.place", Cat: "s1"},
+	} {
+		t.Run(op.Cat+" above "+op.Before, func(t *testing.T) {
+			p := nestedBoard(t)
+			original := operations.Clone(*p)
+			if _, err := operations.Apply(p, op); err != nil {
+				t.Fatal(err)
+			}
+			undo := operations.Undo(original, *p, op)
+			if len(undo) != 1 || !operations.Replayable(undo[0].Action) {
+				t.Fatalf("undo = %+v", undo)
+			}
+			if _, err := operations.Apply(p, undo[0]); err != nil {
+				t.Fatal(err)
+			}
+			if got, want := plain(t, *p), plain(t, original); got != want {
+				t.Fatalf("after undo:\n%s\nwant:\n%s", got, want)
+			}
+		})
+	}
+}
+
 func TestACategoryRestoreOutlivesWhatItWasMadeBeside(t *testing.T) {
 	sub := domain.Category{ID: "s9", Name: "Nine", ParentID: "gone", Tasks: []domain.Task{}}
 	p := nestedBoard(t)

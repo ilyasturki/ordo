@@ -34,14 +34,14 @@ func Undo(before, after domain.Project, op Op) []Op {
 		if ci, err := before.FindCategoryByID(op.Cat); err == nil {
 			return []Op{{Action: "category.rename", Cat: op.Cat, Title: before.Categories[ci].Name}}
 		}
+	case "category.place":
+		if ci, err := before.FindCategoryByID(op.Cat); err == nil {
+			return []Op{{Action: "category.place", Cat: op.Cat, Before: nextCategory(before.Categories, ci)}}
+		}
 	case "category.delete":
 		if ci, err := before.FindCategoryByID(op.Cat); err == nil {
 			end := domain.BlockEnd(before.Categories, ci)
-			restore := Op{Action: "category.restore", Cats: slices.Clone(before.Categories[ci:end])}
-			if end < len(before.Categories) && before.Categories[end].ParentID == before.Categories[ci].ParentID {
-				restore.Before = before.Categories[end].ID
-			}
-			return []Op{restore}
+			return []Op{{Action: "category.restore", Cats: slices.Clone(before.Categories[ci:end]), Before: nextCategory(before.Categories, ci)}}
 		}
 	case "project.create":
 		return []Op{{Action: "project.delete"}}
@@ -49,6 +49,15 @@ func Undo(before, after domain.Project, op Op) []Op {
 		return []Op{{Action: "project.rename", Title: before.Name}}
 	}
 	return nil
+}
+
+// nextCategory is the sibling right after cats[ci]'s block, empty when the block comes last.
+func nextCategory(cats []domain.Category, ci int) string {
+	end := domain.BlockEnd(cats, ci)
+	if end < len(cats) && cats[end].ParentID == cats[ci].ParentID {
+		return cats[end].ID
+	}
+	return ""
 }
 
 func rowOf(p *domain.Project, id string) (domain.Task, bool) {
