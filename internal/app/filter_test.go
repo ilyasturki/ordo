@@ -14,6 +14,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/ui"
 )
 
 // newTodoFilteredModel shows Alpha, Delta and Epsilon; Beta and Gamma hide in Cat A.
@@ -96,13 +97,14 @@ func TestEnterOnHiddenRowShowsItsCategorysTasks(t *testing.T) {
 
 			m, _ = pressKeys(m, key)
 
-			assert.Equal(t, []string{"project:", "category:c1", "task:t1", "task:t2", "task:t3", "category:c2", "task:t4", "task:t5"}, rowIDs(m))
+			assert.Equal(t, []string{"project:", "category:c1", "task:t1", "task:t2", "task:t3", "hidden:c1", "category:c2", "task:t4", "task:t5"}, rowIDs(m), "the row stays where it is")
 			assert.Equal(t, "task:t2", cursorItem(t, m), "the cursor lands on the first task it shows")
 			lines := screen(m)
+			lineWith(t, lines, "(hide the 2 filtered out)")
 			assert.Contains(t, lineWith(t, lines, "Beta"), "Beta (filtered out)")
 			assert.Contains(t, lineWith(t, lines, "Gamma"), "Gamma (filtered out)")
 			assert.NotContains(t, lineWith(t, lines, "Alpha"), "filtered out")
-			assert.Equal(t, "Hidden again once you leave the category", m.ui.Screen.StatusMsg)
+			assert.Equal(t, "Hidden again by esc, or on leaving the category", m.ui.Screen.StatusMsg)
 			assert.Equal(t, data.Filter{Statuses: []string{"todo"}}, stub.filters["p1"], "the saved filter stays")
 			assert.True(t, m.ui.Filter.IsStatusEnabled(domain.StatusTodo))
 			assert.Equal(t, domain.StatusInProgress, taskStatus(m, "t2"), "no task changed")
@@ -131,6 +133,10 @@ func TestPeekLastsUntilTheCursorLeavesTheCategory(t *testing.T) {
 	})
 	t.Run("down", func(t *testing.T) {
 		m, _ := pressKeys(peekingModel(t), "j", "j")
+		assert.Equal(t, "hidden:c1", cursorItem(t, m))
+		assert.Contains(t, rowIDs(m), "task:t3", "the row is still in the category")
+
+		m, _ = pressKeys(m, "j")
 		assert.Equal(t, "category:c2", cursorItem(t, m))
 		assert.Equal(t, []string{"project:", "category:c1", "task:t1", "hidden:c1", "category:c2", "task:t4", "task:t5"}, rowIDs(m))
 	})
@@ -148,8 +154,113 @@ func TestPeekShowsTheCategorysSeparators(t *testing.T) {
 
 	m, _ = pressKeys(m, "enter")
 
-	assert.Equal(t, []string{"project:", "category:c1", "task:todo", "separator:sep", "task:done"}, rowIDs(m))
+	assert.Equal(t, []string{"project:", "category:c1", "task:todo", "separator:sep", "task:done", "hidden:c1"}, rowIDs(m))
 	assert.Equal(t, "task:done", cursorItem(t, m))
+}
+
+func TestEnterOnTheRowHidesThePeekAgain(t *testing.T) {
+	for _, key := range []string{"enter", "space"} {
+		t.Run(key, func(t *testing.T) {
+			m, _ := pressKeys(peekingModel(t), "j", "j")
+			stub := m.deps.StateManager.(*stubStateManager)
+			m.saveFilter()
+			require.Equal(t, "hidden:c1", cursorItem(t, m))
+
+			m, _ = pressKeys(m, key)
+
+			assert.Equal(t, []string{"project:", "category:c1", "task:t1", "hidden:c1", "category:c2", "task:t4", "task:t5"}, rowIDs(m))
+			assert.Equal(t, "hidden:c1", cursorItem(t, m), "the cursor stays on the row")
+			lineWith(t, screen(m), "(2 hidden by the filter)")
+			assert.Equal(t, "Hidden by the filter again", m.ui.Screen.StatusMsg)
+			assert.Equal(t, data.Filter{Statuses: []string{"todo"}}, stub.filters["p1"], "the saved filter stays")
+
+			m, _ = pressKeys(m, key)
+			assert.Contains(t, rowIDs(m), "task:t2", "and it toggles back")
+		})
+	}
+}
+
+func TestEscHidesThePeekAgain(t *testing.T) {
+	t.Run("from a row it hides, the cursor goes to the hidden row", func(t *testing.T) {
+		m := peekingModel(t)
+		stub := m.deps.StateManager.(*stubStateManager)
+		m.saveFilter()
+
+		m, _ = pressKeys(m, "esc")
+
+		assert.NotContains(t, rowIDs(m), "task:t2")
+		assert.Equal(t, "hidden:c1", cursorItem(t, m))
+		assert.Equal(t, "Hidden by the filter again", m.ui.Screen.StatusMsg)
+		assert.Equal(t, data.Filter{Statuses: []string{"todo"}}, stub.filters["p1"], "the saved filter stays")
+	})
+	t.Run("from a row that stays, the cursor stays", func(t *testing.T) {
+		m, _ := pressKeys(peekingModel(t), "k")
+		require.Equal(t, "task:t1", cursorItem(t, m))
+
+		m, _ = pressKeys(m, "esc")
+
+		assert.NotContains(t, rowIDs(m), "task:t2")
+		assert.Equal(t, "task:t1", cursorItem(t, m))
+	})
+	t.Run("from the category header, the cursor stays", func(t *testing.T) {
+		m, _ := pressKeys(peekingModel(t), "k", "k")
+		require.Equal(t, "category:c1", cursorItem(t, m))
+
+		m, _ = pressKeys(m, "esc")
+
+		assert.NotContains(t, rowIDs(m), "task:t2")
+		assert.Equal(t, "category:c1", cursorItem(t, m))
+	})
+	t.Run("a row an edit took out of the filter stays held", func(t *testing.T) {
+		m, _ := pressKeys(peekingModel(t), "space")
+		require.True(t, m.ui.Filter.holds("t2"))
+
+		m, _ = pressKeys(m, "esc")
+
+		assert.Equal(t, "task:t2", cursorItem(t, m))
+		assert.NotContains(t, rowIDs(m), "task:t3")
+	})
+	t.Run("without a peek it does nothing", func(t *testing.T) {
+		m := onHiddenRow(t)
+		m, _ = pressKeys(m, "esc")
+		assert.Equal(t, "hidden:c1", cursorItem(t, m))
+		assert.Empty(t, m.ui.Screen.StatusMsg)
+	})
+}
+
+func TestEscGoesThroughSearchPeekAndCutOneAtATime(t *testing.T) {
+	m := newTodoFilteredModel(t)
+	selectRow(t, m, selection.FocusTask, "t1")
+	m.cutSelectedTask()
+	selectRow(t, m, selection.FocusHidden, "c1")
+	m, _ = pressKeys(m, "enter")
+	require.True(t, m.ui.Filter.peeks("c1"))
+	m.ui.Search.query = "beta"
+
+	m, _ = pressKeys(m, "esc")
+	assert.Empty(t, m.ui.Search.query)
+	assert.True(t, m.ui.Filter.peeks("c1"), "the search highlight goes first")
+	assert.True(t, m.ui.Clipboard.IsCut)
+
+	m, _ = pressKeys(m, "esc")
+	assert.False(t, m.ui.Filter.peeks("c1"), "then the peek")
+	assert.True(t, m.ui.Clipboard.IsCut, "the cut survives")
+
+	m, _ = pressKeys(m, "esc")
+	assert.False(t, m.ui.Clipboard.IsCut, "then the cut")
+}
+
+func TestHiddenRowCountsTheSameDuringAPeek(t *testing.T) {
+	m := peekingModel(t)
+	assert.Equal(t, 2, hiddenByFilter(m.project.Categories[0], &m.ui.Filter))
+	assert.Equal(t, 0, hiddenByFilter(m.project.Categories[1], &m.ui.Filter), "another category has none")
+
+	m, _ = pressKeys(m, "space")
+	require.True(t, m.ui.Filter.holds("t2"))
+	lineWith(t, screen(m), "(hide the 1 filtered out)")
+
+	m, _ = pressKeys(m, "j")
+	lineWith(t, screen(m), "(hide the 2 filtered out)")
 }
 
 func TestVisualRangeKeepsThePeekUntilVisualModeEnds(t *testing.T) {
@@ -333,6 +444,30 @@ func TestShortcutBarShowsTheFilterIsOn(t *testing.T) {
 
 	selectRow(t, m, selection.FocusHidden, "c1")
 	assert.True(t, strings.HasPrefix(ansi.Strip(m.renderShortcutBar()), "enter show 2"))
+
+	m, _ = pressKeys(m, "enter")
+	assert.True(t, strings.HasPrefix(ansi.Strip(m.renderShortcutBar()), "esc hide 2"), "from a row of the peek")
+
+	m, _ = pressKeys(m, "j", "j")
+	require.Equal(t, "hidden:c1", cursorItem(t, m))
+	assert.True(t, strings.HasPrefix(ansi.Strip(m.renderShortcutBar()), "enter hide 2"), "from the row itself")
+
+	m, _ = pressKeys(m, "enter")
+	assert.True(t, strings.HasPrefix(ansi.Strip(m.renderShortcutBar()), "enter show 2"), "back to where it started")
+}
+
+func TestCutBarSaysEscHidesThePeekFirst(t *testing.T) {
+	m := newTodoFilteredModel(t)
+	selectRow(t, m, selection.FocusTask, "t1")
+	m.cutSelectedTask()
+	assert.Contains(t, ansi.Strip(m.renderShortcutBar()), "esc cancel cut")
+
+	selectRow(t, m, selection.FocusHidden, "c1")
+	m, _ = pressKeys(m, "enter")
+	bar := ansi.Strip(m.renderShortcutBar())
+	assert.Contains(t, bar, "esc hide 2")
+	assert.NotContains(t, bar, "cancel cut")
+	assert.Contains(t, ansi.Strip(ui.RenderHints(cutShortcuts)), "esc cancel cut", "the shared hints stay as they were")
 }
 
 func TestFilterKeyOpensTheDialogFromTheHiddenRow(t *testing.T) {

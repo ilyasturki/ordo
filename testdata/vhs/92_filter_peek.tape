@@ -27,7 +27,7 @@ Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/92_hidden_row.png"
 Sleep 500ms
 
-# enter shows them in place, muted and marked (filtered out).
+# enter shows them in place, muted and marked (filtered out); the row stays.
 Enter
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/92_peek.png"
@@ -43,6 +43,28 @@ Sleep 500ms
 Type "}"
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/92_peek_ended.png"
+Sleep 500ms
+
+# Back on the row, enter shows them, four j reach the row, and enter hides them
+# with the cursor still on it.
+Type "k"
+Enter
+Sleep 200ms
+Type "jjjj"
+Sleep 400ms
+Screenshot "/tmp/ordo-vt/vhs-out/92_peek_on_row.png"
+Sleep 300ms
+Enter
+Sleep 400ms
+Screenshot "/tmp/ordo-vt/vhs-out/92_rehidden.png"
+Sleep 500ms
+
+# esc from a shown task hides them too, and the cursor goes to the row.
+Enter
+Sleep 300ms
+Escape
+Sleep 400ms
+Screenshot "/tmp/ordo-vt/vhs-out/92_esc_rehidden.png"
 Sleep 500ms
 
 Hide

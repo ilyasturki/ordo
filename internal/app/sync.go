@@ -130,13 +130,15 @@ func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool
 	return shown
 }
 
-// hiddenByFilter leaves out separators, which every filter hides.
+// hiddenByFilter leaves out separators, which every filter hides, and counts the same during a peek.
 func hiddenByFilter(cat domain.Category, filter *FilterState) int {
 	if filter == nil || !filter.HasActiveFilter() {
 		return 0
 	}
+	unpeeked := *filter
+	unpeeked.endPeek()
 	n := 0
-	for i, shown := range shownRows(cat, filter, nil) {
+	for i, shown := range shownRows(cat, &unpeeked, nil) {
 		if !shown && !cat.Tasks[i].IsSeparator() {
 			n++
 		}

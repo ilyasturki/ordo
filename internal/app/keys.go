@@ -89,7 +89,7 @@ var normalBindings = []keyBinding{
 		action: void((*model).startAddingSeparator)},
 	{keys: []string{"enter"}, desc: "edit", section: sectionTasks,
 		action: func(m *model) tea.Cmd {
-			if m.showHiddenTasks() {
+			if m.toggleHiddenTasks() {
 				return nil
 			}
 			if pos, ok := m.selectedPosition(); ok && pos.Kind == selection.FocusDescription {
@@ -220,17 +220,20 @@ func matchBinding(prefix rune, key string) *keyBinding {
 
 func (m *model) dispatchNormalKey(key string) tea.Cmd {
 	// Esc undoes one thing per press, innermost first: a pending chord, then an
-	// active search highlight (the vim `:nohlsearch` gesture), then a pending
-	// cut. The cut goes last so that cutting, searching for the destination and
-	// pressing esc only drops the highlight — the cut survives, and a second esc
-	// clears it. Only a cut is dropped, never a plain copy: nothing on screen
-	// marks a copy, so clearing it would be invisible.
+	// active search highlight (the vim `:nohlsearch` gesture), then a peek at
+	// what the filter hides, then a pending cut. The cut goes last so that
+	// cutting, searching or peeking for the destination and pressing esc only
+	// drops that — the cut survives, and another esc clears it. Only a cut is
+	// dropped, never a plain copy: nothing on screen marks a copy, so clearing it
+	// would be invisible.
 	if key == "esc" {
 		switch {
 		case m.ui.Screen.PendingKey != 0:
 			m.ui.Screen.PendingKey = 0
 		case m.ui.Search.query != "":
 			m.clearSearch()
+		case m.ui.Filter.peek != "":
+			m.hidePeek()
 		case m.ui.Clipboard.IsCut:
 			m.ui.Clipboard = ClipboardState{}
 			m.ui.Screen.StatusMsg = "Cut cancelled"

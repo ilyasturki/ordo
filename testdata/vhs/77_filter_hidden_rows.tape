@@ -32,8 +32,8 @@ Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/77_hidden_row_focused.png"
 Sleep 500ms
 
-# enter shows Feature's 4 hidden tasks in place, muted, cursor on the first;
-# the filter stays on.
+# enter shows Feature's 4 hidden tasks in place, muted, cursor on the first; the
+# row stays and offers to hide them, and the filter stays on.
 Enter
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/77_after_enter.png"

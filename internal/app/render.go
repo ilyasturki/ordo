@@ -45,8 +45,11 @@ func withUnsavedMark(line, mark string) string {
 	return line + " " + ui.UnsavedTagStyle.Render(mark)
 }
 
-func renderHiddenLine(hidden, indent int, selected, focused bool, width int) string {
+func renderHiddenLine(hidden int, peeking bool, indent int, selected, focused bool, width int) string {
 	text := fmt.Sprintf("(%d hidden by the filter)", hidden)
+	if peeking {
+		text = fmt.Sprintf("(hide the %d filtered out)", hidden)
+	}
 	line := ui.MutedStyle.Render("  " + strings.Repeat(" ", indent) + text)
 	if selected {
 		line = ui.GetSelectedStyle(focused).Render("> " + strings.Repeat(" ", indent) + text)

@@ -132,7 +132,7 @@ func (m *model) rebuildAndClamp() {
 }
 
 func (m *model) toggleSelectedTask() {
-	if m.showHiddenTasks() {
+	if m.toggleHiddenTasks() {
 		return
 	}
 	m.cycleSelectedTask(false)

@@ -896,8 +896,9 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 		return ui.MutedStyle.Render(placeholderIndent(m.rowIndent(item.CategoryIndex, -1)) + "(no tasks)")
 
 	case LayoutHidden:
-		hidden := hiddenByFilter(m.project.Categories[item.CategoryIndex], &m.ui.Filter)
-		return renderHiddenLine(hidden, m.rowIndent(item.CategoryIndex, -1), isSelected, focused, m.ui.Screen.Width)
+		cat := m.project.Categories[item.CategoryIndex]
+		hidden := hiddenByFilter(cat, &m.ui.Filter)
+		return renderHiddenLine(hidden, m.ui.Filter.peeks(cat.ID), m.rowIndent(item.CategoryIndex, -1), isSelected, focused, m.ui.Screen.Width)
 
 	case LayoutSpacing:
 		return strings.Repeat("\n", item.Height-1)

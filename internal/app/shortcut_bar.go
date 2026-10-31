@@ -74,6 +74,10 @@ func (m model) renderShortcutBar() string {
 		hints = visualShortcuts
 	case m.ui.Clipboard.IsCut:
 		hints = cutShortcuts
+		if hide, ok := m.peekEscHint(); ok {
+			hints = slices.Clone(cutShortcuts)
+			hints[slices.IndexFunc(hints, func(h ui.Hint) bool { return h.Key == "esc" })] = hide
+		}
 	case len(m.taskCommands()) > 0:
 		cmds := m.taskCommands()
 		// Right after help: the bar drops whatever overflows its right end.
@@ -96,11 +100,32 @@ func (m model) normalHints() []ui.Hint {
 			hints[i] = ui.Hint{Key: "f", Label: "filtered", Active: true}
 		}
 	}
-	if pos, ok := m.selectedPosition(); ok && pos.Kind == selection.FocusHidden {
-		n := hiddenByFilter(m.project.Categories[pos.CategoryIndex], &m.ui.Filter)
-		hints = slices.Insert(hints, 0, ui.Hint{Key: "enter", Label: "show " + strconv.Itoa(n)})
+	hide, peeking := m.peekEscHint()
+	pos, ok := m.selectedPosition()
+	switch {
+	case ok && pos.Kind == selection.FocusHidden:
+		cat := m.project.Categories[pos.CategoryIndex]
+		label := "show "
+		if m.ui.Filter.peeks(cat.ID) {
+			label = "hide "
+		}
+		hints = slices.Insert(hints, 0, ui.Hint{Key: "enter", Label: label + strconv.Itoa(hiddenByFilter(cat, &m.ui.Filter))})
+	case peeking:
+		hints = slices.Insert(hints, 0, hide)
 	}
 	return hints
+}
+
+func (m model) peekEscHint() (ui.Hint, bool) {
+	if m.ui.Filter.peek == "" {
+		return ui.Hint{}, false
+	}
+	ci, err := m.project.FindCategoryByID(m.ui.Filter.peek)
+	if err != nil {
+		return ui.Hint{}, false
+	}
+	n := hiddenByFilter(m.project.Categories[ci], &m.ui.Filter)
+	return ui.Hint{Key: "esc", Label: "hide " + strconv.Itoa(n)}, n > 0
 }
 
 // bottomBarHeight is the rows reserved at the bottom of the screen: the search

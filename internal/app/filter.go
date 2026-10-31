@@ -26,11 +26,15 @@ func (m *model) onHiddenRow() bool {
 	return ok && pos.Kind == selection.FocusHidden
 }
 
-// showHiddenTasks peeks at the hidden row's category, reporting whether the cursor was on one.
-func (m *model) showHiddenTasks() bool {
+// toggleHiddenTasks peeks at the hidden row's category or ends the peek, reporting whether the cursor was on one.
+func (m *model) toggleHiddenTasks() bool {
 	pos, ok := m.selectedPosition()
 	if !ok || pos.Kind != selection.FocusHidden {
 		return false
+	}
+	if m.ui.Filter.peeks(pos.ID) {
+		m.hidePeek()
+		return true
 	}
 	shown := make(map[string]bool)
 	for _, p := range m.positions() {
@@ -44,8 +48,21 @@ func (m *model) showHiddenTasks() bool {
 		return p.Kind == selection.FocusTask && p.CategoryIndex == pos.CategoryIndex && !shown[p.ID]
 	})
 	m.ensureVisible()
-	m.ui.Screen.StatusMsg = "Hidden again once you leave the category"
+	m.ui.Screen.StatusMsg = "Hidden again by esc, or on leaving the category"
 	return true
+}
+
+// hidePeek leaves the cursor where it is, or on the hidden row when its own row goes with the peek.
+func (m *model) hidePeek() {
+	category := m.ui.Filter.peek
+	was, _ := m.selectedPosition()
+	m.ui.Filter.endPeek()
+	m.rebuildPositions()
+	if now, ok := m.selectedPosition(); !ok || now.Kind != was.Kind || now.ID != was.ID {
+		m.selectItem(selection.FocusHidden, category)
+	}
+	m.ensureVisible()
+	m.ui.Screen.StatusMsg = "Hidden by the filter again"
 }
 
 // releasePeek waits for normal mode, like releaseFilteredOut.
