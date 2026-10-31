@@ -103,7 +103,7 @@ class CategoriesTest : AppFixture() {
         runBlocking { engine.setFolded(PID, ergonomy.id, true) }
         scrollTo("Ergonomy")
         compose.waitUntilAtLeastOneExists(hasContentDescription("Unfold Ergonomy"), 20_000)
-        compose.onNodeWithText("Ergonomy").performClick()
+        header("Ergonomy").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Delete category"), 20_000)
         assertEquals(setOf(ergonomy.id), engine.state.value.views[PID]!!.folds)
     }

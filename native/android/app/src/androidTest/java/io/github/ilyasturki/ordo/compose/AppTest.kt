@@ -419,7 +419,7 @@ class AppTest : AppFixture() {
         assertEquals(setOf(folded.id), engine.state.value.views[PID]!!.folds)
         for (t in folded.tasks) compose.onNodeWithText(t.title).assertDoesNotExist()
 
-        compose.onNodeWithText("Research").performClick()
+        header("Research").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Delete category"), 20_000)
         back()
 
@@ -461,7 +461,7 @@ class AppTest : AppFixture() {
         val research = engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }
         runBlocking { engine.setFolded(PID, research.id, true) }
         compose.waitUntilAtLeastOneExists(hasContentDescription("Unfold Research"), 20_000)
-        compose.onNodeWithText("Research").assertIsDisplayed()
+        header("Research").assertIsDisplayed()
     }
 
     @Test
