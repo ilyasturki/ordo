@@ -117,7 +117,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     val pager = rememberPagerState(initialPage = projects.indexOfFirst { it.id == state.prefs.current }.coerceAtLeast(0)) { projects.size }
     val current = projects.getOrNull(pager.currentPage.coerceAtMost(projects.lastIndex))
     val latest by rememberUpdatedState(projects)
-    fun filterOf(e: Entry): Filter = (state.prefs.filters[e.id] ?: Filter.NONE).pruned(e.project)
+    fun filterOf(e: Entry): Filter = (state.views[e.id]?.filter ?: Filter.NONE).pruned(e.project)
     fun targetOf(e: Entry) = Board.target(e.project, filterOf(e), focus[e.id])
 
     LaunchedEffect(projects.map { it.id }, state.prefs.current) {

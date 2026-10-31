@@ -46,7 +46,7 @@ func (h *hub) publish(pid string) {
 	}
 }
 
-// events streams the ID of each project file that changes, so an open app syncs at once.
+// events streams the ID of each project whose file or view file changes, so an open app syncs at once.
 func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -75,7 +75,7 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Watch publishes each project file that Syncthing, the TUI or a request writes or deletes.
+// Watch publishes each project and view file that Syncthing, the TUI or a request writes or deletes.
 func (s *Server) Watch(ctx context.Context) error {
 	dir, err := filepath.EvalSymlinks(s.store.Dir)
 	if err != nil {
@@ -101,6 +101,7 @@ func (s *Server) Watch(ctx context.Context) error {
 				return nil
 			}
 			id, isJSON := strings.CutSuffix(filepath.Base(ev.Name), ".json")
+			id = strings.TrimSuffix(id, ".view")
 			if !isJSON || domain.ValidateID(id) != nil || ev.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Rename|fsnotify.Remove) == 0 {
 				continue
 			}

@@ -79,6 +79,8 @@ fun ProjectList(
     }
     var dragOrder by remember { mutableStateOf<List<Line>?>(null) }
     val shown = dragOrder ?: lines
+    // A filter arriving from another device ends them too.
+    LaunchedEffect(filter) { if (ui != ListUi()) onUi(ListUi()) }
     // A lifted row's release also reaches the row as a tap: that one neither opens it nor steps its status.
     var lifting by remember { mutableStateOf(false) }
     var droppedAt by remember { mutableLongStateOf(0L) }

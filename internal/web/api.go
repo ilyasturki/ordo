@@ -278,6 +278,8 @@ type syncRequest struct {
 	Ops      []queuedOp `json:"ops"`
 	// Have is the stamp of each project the client holds; a project whose file still has it comes back without data.
 	Have map[string]string `json:"have"`
+	// Views holds the fold and filter changes the client made since its last answer.
+	Views map[string]data.ViewChange `json:"views"`
 }
 
 type queuedOp struct {
@@ -305,6 +307,8 @@ type syncResponse struct {
 	Protocol int            `json:"protocol"`
 	Results  []opResult     `json:"results"`
 	Projects []projectState `json:"projects"`
+	// Views is never null: the app reads a missing one as a server that doesn't sync views.
+	Views map[string]data.View `json:"views"`
 }
 
 func (s *Server) sync(w http.ResponseWriter, r *http.Request) {
@@ -331,14 +335,18 @@ func (s *Server) sync(w http.ResponseWriter, r *http.Request) {
 		s.applyRun(req.Ops[i:j], results[i:j])
 		i = j
 	}
+	s.applyViews(req.Views)
 	snaps, err := s.store.Snapshots(req.Have)
 	if err != nil {
 		s.log.Printf("sync: %v", err)
 		apiError(w, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
-	resp := syncResponse{Protocol: Protocol, Results: results, Projects: make([]projectState, 0, len(snaps))}
+	resp := syncResponse{Protocol: Protocol, Results: results, Projects: make([]projectState, 0, len(snaps)), Views: make(map[string]data.View)}
 	for _, snap := range snaps {
+		if view, ok := s.store.View(snap.Project.ID); ok {
+			resp.Views[snap.Project.ID] = view
+		}
 		st := projectState{ID: snap.Project.ID, Name: snap.Project.Name, Stamp: snap.Stamp}
 		switch {
 		case snap.Err != nil:
@@ -349,6 +357,19 @@ func (s *Server) sync(w http.ResponseWriter, r *http.Request) {
 		resp.Projects = append(resp.Projects, st)
 	}
 	writeJSON(w, r, resp)
+}
+
+// applyViews runs after the ops, so a project created in the same request has its view, and a
+// project deleted meanwhile gets no file back.
+func (s *Server) applyViews(views map[string]data.ViewChange) {
+	for pid, change := range views {
+		if !s.store.HasProject(pid) {
+			continue
+		}
+		if err := s.store.MergeView(pid, change); err != nil {
+			s.log.Printf("sync view %s: %v", pid, err)
+		}
+	}
 }
 
 // applyRun applies one project's consecutive ops under one lock and one save; a refused op

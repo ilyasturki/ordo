@@ -11,9 +11,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/operations"
 )
@@ -112,6 +116,158 @@ func TestSyncRunsPastARefusedOp(t *testing.T) {
 	}
 	if task := f.task(f.ids["one"]); task.Title != "one" || task.Status != domain.StatusTodo || task.Priority != domain.PriorityHigh {
 		t.Fatalf("task = %+v", task)
+	}
+}
+
+func (f *fixture) syncViews(views map[string]data.ViewChange, have map[string]string) syncResponse {
+	f.t.Helper()
+	rec := f.api(http.MethodPost, "/api/sync", f.cookie, syncRequest{Protocol: Protocol, Have: have, Views: views})
+	if rec.Code != http.StatusOK {
+		f.t.Fatalf("sync: %d %s", rec.Code, rec.Body)
+	}
+	var resp syncResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		f.t.Fatal(err)
+	}
+	return resp
+}
+
+func TestAnAnswerAlwaysHoldsViews(t *testing.T) {
+	f := newFixture(t)
+	rec := f.api(http.MethodPost, "/api/sync", f.cookie, map[string]any{"protocol": Protocol})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("sync: %d %s", rec.Code, rec.Body)
+	}
+	var resp map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if string(resp["views"]) != "{}" {
+		t.Fatalf("views = %s: the app reads null as a server that doesn't sync them", resp["views"])
+	}
+}
+
+func TestAViewReachesTheFileWithNoProjectEdit(t *testing.T) {
+	f := newFixture(t)
+	first := f.syncViews(nil, nil)
+	stamp := first.Projects[0].Stamp
+
+	folds := []string{f.cat}
+	resp := f.syncViews(map[string]data.ViewChange{f.pid: {Folds: &folds}}, map[string]string{f.pid: stamp})
+
+	if got := resp.Views[f.pid]; !slices.Equal(got.Folds, folds) {
+		t.Fatalf("answer = %+v", resp.Views)
+	}
+	if resp.Projects[0].Stamp != stamp || resp.Projects[0].Data != nil {
+		t.Fatal("a fold changed the project")
+	}
+	if view, ok := f.store.View(f.pid); !ok || !slices.Equal(view.Folds, folds) {
+		t.Fatalf("file = %+v, %v", view, ok)
+	}
+}
+
+func TestAViewChangeKeepsWhatItLeavesOut(t *testing.T) {
+	f := newFixture(t)
+	filter := data.Filter{Statuses: []string{domain.StatusTodo}, Priorities: []string{data.FilterNone}}
+	if err := f.store.MergeView(f.pid, data.ViewChange{Filter: &filter}); err != nil {
+		t.Fatal(err)
+	}
+	folds := []string{f.cat}
+
+	resp := f.syncViews(map[string]data.ViewChange{f.pid: {Folds: &folds}}, nil)
+
+	got := resp.Views[f.pid]
+	if !slices.Equal(got.Folds, folds) || !slices.Equal(got.Filter.Priorities, []string{data.FilterNone}) {
+		t.Fatalf("view = %+v", got)
+	}
+
+	rec := f.api(http.MethodPost, "/api/sync", f.cookie, []byte(`{"protocol":1,"views":{"`+f.pid+`":{"folds":[]}}}`))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("sync: %d %s", rec.Code, rec.Body)
+	}
+	view, _ := f.store.View(f.pid)
+	if len(view.Folds) != 0 || view.Filter.IsZero() {
+		t.Fatalf("after clearing the folds: %+v", view)
+	}
+}
+
+func TestAnOldClientLeavesTheViewAlone(t *testing.T) {
+	f := newFixture(t)
+	folds := []string{f.cat}
+	if err := f.store.MergeView(f.pid, data.ViewChange{Folds: &folds}); err != nil {
+		t.Fatal(err)
+	}
+	resp := f.sync([]queuedOp{f.queued("1", operations.Op{Action: "status.set", IDs: []string{f.ids["one"]}, Value: domain.StatusCompleted})}, nil)
+	if statuses(resp.Results)[0] != "applied" {
+		t.Fatalf("results = %v", resp.Results)
+	}
+	if view, _ := f.store.View(f.pid); !slices.Equal(view.Folds, folds) {
+		t.Fatalf("view = %+v", view)
+	}
+}
+
+func TestAViewForAProjectNotOnDiskMakesNoFile(t *testing.T) {
+	f := newFixture(t)
+	folds := []string{f.cat}
+	resp := f.syncViews(map[string]data.ViewChange{"gone-project": {Folds: &folds}, "../up": {Folds: &folds}}, nil)
+	if len(resp.Views) != 0 {
+		t.Fatalf("views = %+v", resp.Views)
+	}
+	for _, name := range []string{"gone-project.view.json", "../up.view.json"} {
+		if _, err := os.Stat(filepath.Join(f.store.Dir, name)); err == nil {
+			t.Fatalf("%s was written", name)
+		}
+	}
+}
+
+func TestAViewLandsAfterTheOpsOfItsRequest(t *testing.T) {
+	f := newFixture(t)
+	folds := []string{f.cat}
+	req := syncRequest{
+		Protocol: Protocol,
+		Ops: []queuedOp{
+			{ID: "1", Project: "new-project", Op: operations.Op{Action: "project.create", Title: "Made offline"}},
+			{ID: "2", Project: f.pid, Op: operations.Op{Action: "project.delete"}},
+		},
+		Views: map[string]data.ViewChange{"new-project": {Folds: &folds}, f.pid: {Folds: &folds}},
+	}
+	rec := f.api(http.MethodPost, "/api/sync", f.cookie, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("sync: %d %s", rec.Code, rec.Body)
+	}
+	if _, ok := f.store.View("new-project"); !ok {
+		t.Fatal("the view of a project the request created is lost")
+	}
+	if _, ok := f.store.View(f.pid); ok {
+		t.Fatal("the view of a project the request deleted came back")
+	}
+}
+
+func TestAnUnreadableViewDoesNotStopASync(t *testing.T) {
+	f := newFixture(t)
+	path := filepath.Join(f.store.Dir, f.pid+".view.json")
+	if err := os.WriteFile(path, []byte(`{not json`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	folds := []string{f.cat}
+	resp := f.syncViews(map[string]data.ViewChange{f.pid: {Folds: &folds}}, nil)
+	if got, ok := resp.Views[f.pid]; !ok || !got.IsZero() {
+		t.Fatalf("views = %+v", resp.Views)
+	}
+	if raw, _ := os.ReadFile(path); string(raw) != `{not json` {
+		t.Fatalf("file = %s", raw)
+	}
+}
+
+func TestAConflictCopyOfAViewIsNotRead(t *testing.T) {
+	f := newFixture(t)
+	copyPath := filepath.Join(f.store.Dir, f.pid+".view.sync-conflict-20261031-120000-ABCDEFG.json")
+	if err := os.WriteFile(copyPath, []byte(`{"folds":["`+f.cat+`"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resp := f.syncViews(nil, nil)
+	if len(resp.Views) != 0 || len(resp.Projects) != 1 {
+		t.Fatalf("views = %+v, projects = %d", resp.Views, len(resp.Projects))
 	}
 }
 

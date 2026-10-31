@@ -1,6 +1,8 @@
 package io.github.ilyasturki.ordo.compose.data
 
 import io.github.ilyasturki.ordo.compose.model.Filter
+import io.github.ilyasturki.ordo.compose.model.View
+import io.github.ilyasturki.ordo.compose.model.ViewEdit
 import io.github.ilyasturki.ordo.compose.model.json
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
@@ -39,13 +41,21 @@ data class Queued(
 @Serializable
 data class Prefs(
     val current: String = "",
+    // Where older builds kept each project's filter: boot moves them to the views.
     val filters: Map<String, Filter> = emptyMap(),
     // When each project was last the page shown or edited here, in epoch milliseconds.
     val opened: Map<String, Long> = emptyMap(),
 )
 
+@Serializable
+data class Views(
+    val held: Map<String, View> = emptyMap(),
+    // Changes the server hasn't had yet.
+    val unsent: Map<String, ViewEdit> = emptyMap(),
+)
+
 // The phone's copy, as files: one per project (its meta line, then the core's JSON), the queue,
-// the session and the prefs. Each write lands whole or not at all.
+// the session, the prefs and the views. Each write lands whole or not at all.
 class Store(private val dir: File, imageCache: File = File(dir, "image-cache")) {
     private val projects = File(dir, "projects")
     val images = Images(File(dir, "uploads"), imageCache)
@@ -63,6 +73,10 @@ class Store(private val dir: File, imageCache: File = File(dir, "image-cache")) 
     fun prefs(): Prefs = read("prefs.json")?.let { runCatching { json.decodeFromString(Prefs.serializer(), it) }.getOrNull() } ?: Prefs()
 
     fun savePrefs(p: Prefs) = write(File(dir, "prefs.json"), json.encodeToString(Prefs.serializer(), p))
+
+    fun views(): Views = read("views.json")?.let { runCatching { json.decodeFromString(Views.serializer(), it) }.getOrNull() } ?: Views()
+
+    fun saveViews(v: Views) = write(File(dir, "views.json"), json.encodeToString(Views.serializer(), v))
 
     fun queue(): List<Queued> =
         read("queue.json")?.let { json.decodeFromString(ListSerializer(Queued.serializer()), it) } ?: emptyList()
@@ -89,6 +103,7 @@ class Store(private val dir: File, imageCache: File = File(dir, "image-cache")) 
         projects.listFiles().orEmpty().forEach(File::delete)
         File(dir, "queue.json").delete()
         File(dir, "prefs.json").delete()
+        File(dir, "views.json").delete()
         images.wipe()
     }
 

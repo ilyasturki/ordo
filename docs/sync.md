@@ -34,7 +34,8 @@ One round trip sends the queue and brings back every project that changed.
     { "id": "q1", "project": "<pid>", "action": "status.set", "ids": ["<task>"], "value": "completed" },
     { "id": "q2", "project": "<pid>", "action": "task.add", "new": "<task id the client minted>", "cat": "<category>", "title": "Retry uploads" }
   ],
-  "have": { "<pid>": "<stamp>" }
+  "have": { "<pid>": "<stamp>" },
+  "views": { "<pid>": { "folds": ["<category or task>"] } }
 }
 ```
 
@@ -47,7 +48,8 @@ One round trip sends the queue and brings back every project that changed.
   ],
   "projects": [
     { "id": "<pid>", "name": "Ferry", "stamp": "<stamp>", "data": { "...": "the project, as in file-format.md" } }
-  ]
+  ],
+  "views": { "<pid>": { "folds": ["<category or task>"], "filter": { "statuses": ["todo"] } } }
 }
 ```
 
@@ -55,6 +57,7 @@ One round trip sends the queue and brings back every project that changed.
 - `results` has one entry per op, in the same order. `status` is `applied`, `unchanged` (the file already held the edit), `conflict` (a title or details edit typed over text the file no longer holds; `theirs` has the file's text), `gone` (none of its rows, or its category or project, is left; a delete of what is already gone is `unchanged`) or `refused` (`msg` says why). Every status but `applied` leaves the file as it was, and the client drops the op from its queue whatever its status.
 - `projects` lists every project. `stamp` changes whenever the file's bytes do. `data` is left out when the stamp matches the one the client sent in `have`. A project that is missing from the list was deleted. A project whose file doesn't load has `error` and no `data`, and the client keeps its copy.
 - After a sync, the client takes `data` as its new copy of each project, then applies the ops it queued since it sent the request.
+- `views` carries folds and filter, see [Views](#views).
 
 A client and a server with different `protocol` numbers refuse to sync: the server answers 409.
 
@@ -101,14 +104,26 @@ Undoing an edit queues more ops: `operations.Undo` lists the ones that put back 
 
 A project op's `project` is the project it creates, renames or deletes. `project.create` takes the ID the client minted, like `new`, so the ops queued after it can name the project. The server runs each project op on its own, between the runs of edits around it; a create or a rename holds the lock that guards project names (see [Locks](file-format.md#locks)). A create whose ID is already on disk, a rename to the name the project already has and a delete of a project already gone are `unchanged`; a rename of a project that is gone is `gone`.
 
+## Views
+
+Folds and filter travel beside the queue rather than in it: they change no project, so they restamp nothing, answer no result and have no undo.
+
+`views` in the request holds, per project, the fields the client changed since its last answer, `folds` and `filter` as in [file-format.md](file-format.md#views). A field left out keeps what the file holds; `[]` or `{}` clears it. The client sends the whole field, so the last writer of a field wins, in the order changes reach the server: a change made offline wins over one made since on another device, once it gets through. The server merges each one onto `<id>.view.json` after the ops of the same request, so a project the request creates has its view, and skips a project that isn't on disk. Sending a change a second time changes nothing.
+
+`views` in the answer holds the view of every project that has a view file, whether or not it changed: a few short lists per project, cheap enough to need no stamp. A project with no entry has no file, which is not the same as an empty view: a client holding folds or a filter for it sends them, so what a phone kept before these files reaches the others, while a file already there wins over it.
+
+The file's `none` is the bucket for no priority and no tag, on the wire too; a client that holds it as an empty string translates on both ways.
+
+The client keeps its view and the changes not sent yet across restarts, sends them with the next round, and after an answer takes the server's view with the changes made since the request on top. An answer without `views` comes from a server that doesn't know them: the client drops what it sent and keeps its own view for itself, and its next answer from a newer server decides as above. A server ignores the field from a client that doesn't know it, and such a client ignores it in the answer.
+
 ## Images
 
 The client names an image the way the store does: `<hash>.<ext>`, the first 32 hex digits of the sha256 of its bytes and the extension of its type (see [Images](file-format.md#images)). `PUT /api/attachments/<name>` with the bytes as the body stores it, and is refused when the bytes don't hash to the name. Once it is stored, a `task.attach` op adds `![<name>](attachments/<hash>.<ext>)` to the task. `GET /api/attachments/<name>` serves a stored image.
 
 ## Live changes
 
-`GET /api/events` is a stream of server-sent events that stays open: each time a project file changes, from a sync, the TUI or Syncthing, it sends `event: change` with the project's ID as `data`. The app syncs when one arrives instead of waiting for its next poll. The stream sends a comment every 25 seconds so proxies keep it open.
+`GET /api/events` is a stream of server-sent events that stays open: each time a project file or its view file changes, from a sync, the TUI or Syncthing, it sends `event: change` with the project's ID as `data`. A conflict copy of either sends nothing. The app syncs when one arrives instead of waiting for its next poll. The stream sends a comment every 25 seconds so proxies keep it open.
 
 ## Protocol
 
-`protocol` goes up when an older client or server would misread the other: an op whose fields change meaning, or an answer shaped differently. A new action doesn't need it: a server that doesn't know an action refuses it with a message to update.
+`protocol` goes up when an older client or server would misread the other: an op whose fields change meaning, or an answer shaped differently. A new action doesn't need it: a server that doesn't know an action refuses it with a message to update. Neither does a new field both sides can go without, like `views`: each skips a field it doesn't know.

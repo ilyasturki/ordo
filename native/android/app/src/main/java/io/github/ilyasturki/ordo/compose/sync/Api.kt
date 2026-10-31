@@ -1,10 +1,13 @@
 package io.github.ilyasturki.ordo.compose.sync
 
+import io.github.ilyasturki.ordo.compose.model.View
+import io.github.ilyasturki.ordo.compose.model.ViewEdit
 import io.github.ilyasturki.ordo.compose.model.json
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -51,7 +54,13 @@ data class ProjectState(
 )
 
 @Serializable
-data class SyncAnswer(val protocol: Int, val results: List<SyncResult> = emptyList(), val projects: List<ProjectState> = emptyList())
+data class SyncAnswer(
+    val protocol: Int,
+    val results: List<SyncResult> = emptyList(),
+    val projects: List<ProjectState> = emptyList(),
+    // Null from a server that doesn't sync views; empty when none of its projects has one.
+    val views: Map<String, View>? = null,
+)
 
 @Serializable
 data class Hello(@SerialName("has_passphrase") val hasPassphrase: Boolean = false)
@@ -130,12 +139,13 @@ class Api(val server: String, private val token: String, private val http: OkHtt
     suspend fun pair(code: String, name: String): String =
         post("/api/pair", buildJsonObject { put("token", code); put("name", name) }, TokenAnswer.serializer()).token
 
-    suspend fun sync(ops: List<JsonObject>, have: Map<String, String>): SyncAnswer = post(
+    suspend fun sync(ops: List<JsonObject>, have: Map<String, String>, views: Map<String, ViewEdit> = emptyMap()): SyncAnswer = post(
         "/api/sync",
         buildJsonObject {
             put("protocol", PROTOCOL)
             put("ops", kotlinx.serialization.json.JsonArray(ops))
             put("have", JsonObject(have.mapValues { JsonPrimitive(it.value) }))
+            if (views.isNotEmpty()) put("views", json.encodeToJsonElement(MapSerializer(String.serializer(), ViewEdit.serializer()), views))
         },
         SyncAnswer.serializer(),
     )
@@ -178,7 +188,7 @@ class Api(val server: String, private val token: String, private val http: OkHtt
         }
     }
 
-    // Calls changed with a project's ID each time ordo serve sees its file change, until cancelled.
+    // Calls changed with a project's ID each time ordo serve sees its file or view file change, until cancelled.
     fun listen(changed: (String) -> Unit, closed: () -> Unit): EventSource =
         EventSources.createFactory(events).newEventSource(
             request("/api/events").header("Accept", "text/event-stream").build(),

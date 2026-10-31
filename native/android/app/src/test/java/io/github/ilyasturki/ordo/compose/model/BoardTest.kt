@@ -237,4 +237,27 @@ class BoardTest {
         val f = Filter(categories = setOf("feat", "gone"))
         assertEquals(setOf("feat"), f.pruned(project).categories)
     }
+
+    @Test
+    fun theFilterHoldsOneBucketValueOnDiskAndReadsBoth() {
+        val filter = Filter(priorities = setOf("", "high"), tags = setOf(""))
+        val raw = json.encodeToString(Filter.serializer(), filter)
+        assertTrue(raw, raw.contains("\"none\"") && !raw.contains("\"\""))
+        assertEquals(filter, json.decodeFromString(Filter.serializer(), raw))
+        assertEquals(filter, json.decodeFromString(Filter.serializer(), """{"priorities":["","high"],"tags":[""]}"""))
+    }
+
+    @Test
+    fun aViewEditKeepsWhatItLeavesOut() {
+        val view = View(setOf("c1"), Filter(statuses = setOf("todo")))
+        assertEquals(View(emptySet(), view.filter), ViewEdit(folds = emptySet()).onto(view))
+        assertEquals(View(view.folds), ViewEdit(filter = Filter()).onto(view))
+        assertEquals(ViewEdit(setOf("c2"), Filter()), ViewEdit(setOf("c1"), Filter()).then(ViewEdit(folds = setOf("c2"))))
+    }
+
+    @Test
+    fun aViewEditSaysWhatItClears() {
+        assertEquals("""{"folds":[]}""", json.encodeToString(ViewEdit.serializer(), ViewEdit(folds = emptySet())))
+        assertEquals("""{"filter":{}}""", json.encodeToString(ViewEdit.serializer(), ViewEdit(filter = Filter())))
+    }
 }

@@ -19,6 +19,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The app's top bar has two lines: the name of the category taking most of the screen with the search, filter and settings buttons, then the project tabs on their own line, at a larger size. Settings is a gear instead of an account icon
 - The app's `+` opens the add sheet on the category the top bar names, not on the last one used, and the sheet can still change it. A category the filter hides falls back to the first one it shows
 - Folds, the filter and which directory opens which project now travel with `projects/`: `<id>.view.json` for each project and `.directories.json` for the links, with directories under your home written from `~`. The first run moves them out of `state.json` and leaves what another device already wrote alone. A change arriving applies in an open TUI within a second, with the cursor on its row. Conflict copies of these files are ignored, as Syncthing reports them. See [`docs/file-format.md`](docs/file-format.md)
+- The app shows the same filter as the TUI: a change on either side reaches the other through `ordo serve` with no project edit, last writer wins, and one made offline goes out when back. The phone's own filters move over once, unless a file on the server already has one. The current project stays per device. Older apps and servers keep working without it. See [`docs/sync.md`](docs/sync.md#views)
 
 ### Removed
 

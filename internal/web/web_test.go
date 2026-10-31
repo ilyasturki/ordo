@@ -348,6 +348,41 @@ func TestTheAPIStaysUnderItsPrefix(t *testing.T) {
 	}
 }
 
+func TestEventsFireOnAViewFileAndNotOnItsConflictCopy(t *testing.T) {
+	f := newFixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go f.srv.Watch(ctx)
+	ch, done := f.srv.hub.subscribe()
+	defer done()
+	time.Sleep(100 * time.Millisecond)
+
+	copyName := f.pid + ".view.sync-conflict-20261031-120000-ABCDEFG.json"
+	for _, name := range []string{copyName, ".directories.json", ".directories.sync-conflict-20261031-120000-ABCDEFG.json"} {
+		if err := os.WriteFile(filepath.Join(f.store.Dir, name), []byte(`{}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	select {
+	case got := <-ch:
+		t.Fatalf("event for %q: a copy or the links file isn't a project's view", got)
+	case <-time.After(400 * time.Millisecond):
+	}
+
+	folds := []string{f.cat}
+	if err := f.store.MergeView(f.pid, data.ViewChange{Folds: &folds}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case got := <-ch:
+		if got != f.pid {
+			t.Fatalf("event for %q, want %q", got, f.pid)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("no event for a view file")
+	}
+}
+
 func TestEventsNameTheProjectThatChanged(t *testing.T) {
 	f := newFixture(t)
 	srv := httptest.NewServer(f.h)

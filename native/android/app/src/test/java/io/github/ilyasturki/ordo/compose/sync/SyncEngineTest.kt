@@ -1,7 +1,10 @@
 package io.github.ilyasturki.ordo.compose.sync
 
+import io.github.ilyasturki.ordo.compose.data.Prefs
 import io.github.ilyasturki.ordo.compose.data.Store
+import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
+import io.github.ilyasturki.ordo.compose.model.View
 import io.github.ilyasturki.ordo.compose.model.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -408,5 +411,192 @@ class SyncEngineTest {
         assertEquals("Paste the whole pairing link, https://…/pair/…", e.pair("ABCD"))
         assertTrue(e.pair("${server.url}/pair/NOTACODE")!!.isNotEmpty())
         assertNull(e.state.value.session)
+    }
+
+    private fun SyncEngine.view(pid: String = PID) = state.value.views[pid] ?: View()
+
+    // Boot's own round and the test's may run either way round: what a round finds to send goes out with the next.
+    private suspend fun settle(e: SyncEngine) {
+        repeat(3) { assertEquals(Round.OK, e.sync()) }
+    }
+
+    private fun anotherPhone(): SyncEngine {
+        val core = PipeCore().also(cores::add)
+        return SyncEngine(Store(Files.createTempDirectory("ordo-phone-2").toFile()), { core }, scope, "other phone", quiet)
+    }
+
+    @Test
+    fun aFilterAndAFoldReachTheFileAndAnotherPhone() = test {
+        val e = paired(engine())
+        val before = e.state.value.project(PID)!!.stamp
+        e.setFilter(PID, Filter(statuses = setOf("todo"), priorities = setOf(""), tags = setOf("", "green")))
+        e.setFolded(PID, DOCUMENTATION, true)
+        e.setFolded(PID, EXPORT, true)
+        assertEquals(1, e.state.value.viewsWaiting)
+        assertEquals(Round.OK, e.sync())
+        assertEquals(0, e.state.value.viewsWaiting)
+
+        val file = server.view(PID)!!
+        val onDisk = kotlinx.serialization.json.Json.parseToJsonElement(file).toString()
+        assertTrue(onDisk, onDisk.contains("\"priorities\":[\"none\"]"))
+        assertTrue(onDisk, onDisk.contains("\"tags\":[\"green\",\"none\"]"))
+        assertTrue(onDisk, onDisk.contains(DOCUMENTATION) && onDisk.contains(EXPORT))
+        assertEquals("a view change restamps nothing", before, e.state.value.project(PID)!!.stamp)
+
+        val other = anotherPhone()
+        other.boot()
+        assertNull(other.pair(server.pairLink()))
+        assertEquals(setOf(DOCUMENTATION, EXPORT), other.view().folds)
+        assertEquals(setOf(""), other.view().filter.priorities)
+        assertEquals(setOf("", "green"), other.view().filter.tags)
+        assertEquals(setOf("todo"), other.view().filter.statuses)
+    }
+
+    @Test
+    fun aViewWrittenBesideTheProjectReachesThePhone() = test {
+        val e = paired(engine())
+        server.writeView(PID, """{"folds":["$DOCUMENTATION"],"filter":{"priorities":["none","high"],"tags":["none"]}}""")
+        assertEquals(Round.OK, e.sync())
+        assertEquals(setOf(DOCUMENTATION), e.view().folds)
+        assertEquals(setOf("", "high"), e.view().filter.priorities)
+        assertEquals(setOf(""), e.view().filter.tags)
+        assertEquals(0, e.state.value.viewsWaiting)
+
+        server.writeView(PID, "{}")
+        assertEquals(Round.OK, e.sync())
+        assertTrue(e.view().empty)
+    }
+
+    @Test
+    fun aFoldKeepsAFilterSetElsewhere() = test {
+        val e = paired(engine())
+        assertEquals(Round.OK, e.sync())
+        server.writeView(PID, """{"filter":{"statuses":["todo"]}}""")
+        e.setFolded(PID, DOCUMENTATION, true)
+        assertEquals(Round.OK, e.sync())
+        assertEquals(setOf("todo"), e.view().filter.statuses)
+        assertEquals(setOf(DOCUMENTATION), e.view().folds)
+        val file = server.view(PID)!!
+        assertTrue(file, file.contains("todo") && file.contains(DOCUMENTATION))
+    }
+
+    @Test
+    fun aViewChangeMadeOfflineSurvivesARestartAndGoesOutWhenBack() = test {
+        val e = paired(engine())
+        server.stop()
+        e.setFolded(PID, DOCUMENTATION, true)
+        assertEquals(Round.RETRY, e.sync())
+        assertEquals(1, e.state.value.viewsWaiting)
+        assertEquals(setOf(DOCUMENTATION), e.view().folds)
+        assertTrue(e.state.value.waitingWords, e.state.value.waitingWords.contains("fold"))
+
+        val again = engine()
+        again.boot()
+        assertEquals(setOf(DOCUMENTATION), again.view().folds)
+        assertEquals(1, again.state.value.viewsWaiting)
+
+        server.start()
+        assertEquals(Round.OK, again.sync())
+        assertEquals(0, again.state.value.viewsWaiting)
+        assertTrue(server.view(PID)!!.contains(DOCUMENTATION))
+    }
+
+    @Test
+    fun aViewChangeMadeDuringARoundStaysOnTopOfTheAnswer() = test {
+        val gate = Gate()
+        val e = paired(engine(Api.client.newBuilder().addInterceptor(gate).build()))
+        e.setFolded(PID, DOCUMENTATION, true)
+        gate.armed = true
+        val round = async(Dispatchers.IO) { e.sync() }
+        assertTrue(gate.entered.await(20, TimeUnit.SECONDS))
+        e.setFilter(PID, Filter(statuses = setOf("todo")))
+        gate.release.countDown()
+        assertEquals(Round.OK, round.await())
+
+        assertEquals(setOf("todo"), e.view().filter.statuses)
+        assertEquals(setOf(DOCUMENTATION), e.view().folds)
+        assertEquals("the filter still waits", 1, e.state.value.viewsWaiting)
+        assertEquals(Round.OK, e.sync())
+        assertEquals(0, e.state.value.viewsWaiting)
+        assertTrue(server.view(PID)!!.contains("todo"))
+    }
+
+    @Test
+    fun theFiltersOfPrefsMoveOnceAndReachTheServer() = test {
+        paired(engine()).also { it.sync() }
+        Store(dir).savePrefs(Prefs(current = PID, filters = mapOf(PID to Filter(priorities = setOf("")))))
+
+        val e = engine()
+        e.boot()
+        assertEquals(setOf(""), e.view().filter.priorities)
+        assertEquals(PID, e.state.value.prefs.current)
+        assertTrue("moved", Store(dir).prefs().filters.isEmpty())
+        assertEquals(PID, Store(dir).prefs().current)
+
+        settle(e)
+        assertEquals("the server had none: this phone's goes up", 0, e.state.value.viewsWaiting)
+        assertTrue(server.view(PID)!!.contains("none"))
+    }
+
+    @Test
+    fun aViewFileAlreadyThereWinsOverTheFiltersOfPrefs() = test {
+        paired(engine()).also { it.sync() }
+        Store(dir).savePrefs(Prefs(current = PID, filters = mapOf(PID to Filter(statuses = setOf("todo")))))
+        server.writeView(PID, """{"filter":{"statuses":["completed"]}}""")
+
+        val e = engine()
+        e.boot()
+        assertEquals(Round.OK, e.sync())
+        assertEquals(setOf("completed"), e.view().filter.statuses)
+        assertEquals(0, e.state.value.viewsWaiting)
+        assertTrue(server.view(PID)!!.contains("completed"))
+    }
+
+    @Test
+    fun anOldServerLeavesTheViewOnThePhoneAndStopsSending() = test {
+        val strip = Interceptor { chain ->
+            val res = chain.proceed(chain.request())
+            if (chain.request().url.encodedPath != "/api/sync") return@Interceptor res
+            val body = kotlinx.serialization.json.Json.parseToJsonElement(res.body.string()) as kotlinx.serialization.json.JsonObject
+            res.newBuilder().body(kotlinx.serialization.json.JsonObject(body - "views").toString().toResponseBody("application/json".toMediaType())).build()
+        }
+        val http = Api.client.newBuilder().addInterceptor(strip).build()
+        val e = paired(engine(http))
+        e.setFilter(PID, Filter(statuses = setOf("todo")))
+        assertEquals(Round.OK, e.sync())
+        assertEquals("no round waits for what it can't store", 0, e.state.value.viewsWaiting)
+        assertEquals(setOf("todo"), e.view().filter.statuses)
+
+        val updated = engine()
+        updated.boot()
+        assertEquals(setOf("todo"), updated.view().filter.statuses)
+        settle(updated)
+        assertEquals(0, updated.state.value.viewsWaiting)
+        assertTrue("a newer server has no view: this phone's goes up", server.view(PID)!!.contains("todo"))
+    }
+
+    @Test
+    fun aChangeToTheViewFileWakesAnOpenApp() = test {
+        val e = paired(engine(delays = quiet.copy(sync = 50)))
+        e.foreground(true)
+        withTimeout(10_000) { e.state.first { it.lastSync > 0L } }
+        Thread.sleep(500)
+        server.writeView(PID, """{"folds":["$DOCUMENTATION"]}""")
+        withTimeout(10_000) { e.state.first { it.views[PID]?.folds == setOf(DOCUMENTATION) } }
+        e.foreground(false)
+    }
+
+    @Test
+    fun signingOutAndDeletingDropTheViews() = test {
+        val e = paired(engine())
+        val pid = e.createProject("Doomed")!!
+        e.setFolded(pid, "c1", true)
+        e.edit(pid, Ops.projectDelete())
+        assertNull(e.state.value.views[pid])
+        e.setFolded(PID, DOCUMENTATION, true)
+        e.signOut()
+        assertTrue(e.state.value.views.isEmpty())
+        assertEquals(0, e.state.value.viewsWaiting)
+        assertTrue(Store(dir).views().held.isEmpty())
     }
 }

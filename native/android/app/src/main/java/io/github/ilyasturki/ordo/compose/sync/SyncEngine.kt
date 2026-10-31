@@ -9,10 +9,13 @@ import io.github.ilyasturki.ordo.compose.data.Queued
 import io.github.ilyasturki.ordo.compose.data.Session
 import io.github.ilyasturki.ordo.compose.data.Store
 import io.github.ilyasturki.ordo.compose.data.StoredProject
+import io.github.ilyasturki.ordo.compose.data.Views
 import io.github.ilyasturki.ordo.compose.model.Answer
 import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.model.Project
+import io.github.ilyasturki.ordo.compose.model.View
+import io.github.ilyasturki.ordo.compose.model.ViewEdit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -58,9 +61,12 @@ data class SyncState(
     val session: Session? = null,
     val projects: List<Entry> = emptyList(),
     val prefs: Prefs = Prefs(),
+    val views: Map<String, View> = emptyMap(),
     val pending: Int = 0,
     // Images on the phone the server hasn't stored yet, each named by an edit that waits behind it.
     val uploads: Int = 0,
+    // Projects whose folds or filter the server hasn't had yet.
+    val viewsWaiting: Int = 0,
     val syncing: Boolean = false,
     val lastSync: Long = 0,
     val trouble: Trouble? = null,
@@ -68,7 +74,7 @@ data class SyncState(
     val error: String = "",
 ) {
     val signedIn: Boolean get() = session != null && !session.expired
-    val waiting: Boolean get() = pending > 0 || uploads > 0
+    val waiting: Boolean get() = pending > 0 || uploads > 0 || viewsWaiting > 0
 
     // What hasn't reached the server, in words: "2 edits and 1 photo".
     val waitingWords: String
@@ -82,6 +88,11 @@ data class SyncState(
                 0 -> null
                 1 -> "1 photo"
                 else -> "$uploads photos"
+            },
+            when (viewsWaiting) {
+                0 -> null
+                1 -> "1 fold or filter"
+                else -> "$viewsWaiting folds or filters"
             },
         ).joinToString(" and ")
 
@@ -132,6 +143,7 @@ class SyncEngine(
     private val booted = CompletableDeferred<Unit>()
     private var queue: List<Queued> = emptyList()
     private var unsent: List<String> = emptyList()
+    private var viewEdits: Map<String, ViewEdit> = emptyMap()
     private var seq = 0L
     private val opened = HashSet<String>()
     private var timer: Job? = null
@@ -168,19 +180,33 @@ class SyncEngine(
         order = rankProjects(entries, prefs.opened).map(Entry::id)
         images.sweep()
         unsent = images.waiting()
+        val views = withOldFilters(store.views(), prefs)
+        viewEdits = views.unsent
         publish {
             copy(
                 booted = true,
                 session = session,
                 projects = arranged(entries),
-                prefs = prefs,
+                prefs = prefs.copy(filters = emptyMap()),
+                views = views.held,
                 pending = queue.size,
                 uploads = unsent.size,
+                viewsWaiting = viewEdits.size,
                 trouble = if (session?.expired == true) Trouble.Expired else null,
             )
         }
         booted.complete(Unit)
         if (session?.expired == false) scope.launch { sync() }
+    }
+
+    // Moves the filters of prefs.json, once: the views are saved first, so a crash repeats the move.
+    private fun withOldFilters(views: Views, prefs: Prefs): Views {
+        if (prefs.filters.isEmpty()) return views
+        val moved = prefs.filters.filterValues { it.active }.mapValues { View(filter = it.value) }
+        val next = views.copy(held = moved + views.held)
+        store.saveViews(next)
+        store.savePrefs(prefs.copy(filters = emptyMap()))
+        return next
     }
 
     suspend fun awaitBoot() = booted.await()
@@ -264,9 +290,12 @@ class SyncEngine(
         if (ops.any { it.action == "project.delete" }) {
             core.close(pid)
             opened -= pid
-            publish { copy(projects = projects.filter { it.id != pid }, pending = queue.size, prefs = prefs.forgetting(pid)) }
+            viewEdits = viewEdits - pid
+            val views = _state.value.views - pid
+            publish { copy(projects = projects.filter { it.id != pid }, pending = queue.size, prefs = prefs.forgetting(pid), views = views, viewsWaiting = viewEdits.size) }
             store.saveQueue(queue)
             store.savePrefs(_state.value.prefs)
+            store.saveViews(Views(views, viewEdits))
             store.deleteProject(pid)
         } else {
             val raw = core.project(pid).ifEmpty { error("The project is not open") }
@@ -320,14 +349,16 @@ class SyncEngine(
         try {
             if (!upload(s)) return Round.STOP
             val sent = queue
+            val sentViews = viewEdits
             val last = sent.lastOrNull()?.seq ?: seq
             val busy = sent.mapTo(HashSet()) { it.project }
             val have = _state.value.projects
                 .filter { it.id !in busy && it.stamp != "" && it.error == null }
                 .associate { it.id to it.stamp }
-            val answer = withContext(io) { api(s).sync(sent.map { it.op.withIds(it.qid, it.project) }, have) }
+            val answer = withContext(io) { api(s).sync(sent.map { it.op.withIds(it.qid, it.project) }, have, sentViews) }
             if (session != s) return Round.STOP
             adopt(answer.projects, last)
+            adoptViews(answer.views, sentViews)
             report(sent, answer.results)
             backoff = 0
             failures = 0
@@ -344,7 +375,7 @@ class SyncEngine(
         }
     }
 
-    private val waiting: Boolean get() = queue.isNotEmpty() || unsent.isNotEmpty()
+    private val waiting: Boolean get() = queue.isNotEmpty() || unsent.isNotEmpty() || viewEdits.isNotEmpty()
 
     // Sends the images ahead of the ops naming them, those kept meanwhile too; false when the session changed under it.
     private suspend fun upload(s: Session): Boolean {
@@ -442,6 +473,33 @@ class SyncEngine(
         if (gone.isNotEmpty()) store.savePrefs(_state.value.prefs)
         for (e in saves) store.saveProject(StoredProject(e.id, e.name, e.stamp, e.error), e.raw)
         for (id in gone) store.deleteProject(id)
+    }
+
+    // Takes the server's view of each project, with the changes made since the request on top. A
+    // project with no view file gets the one held here, unless it just went out: a server that
+    // can't write the file would otherwise have it sent again every round.
+    private fun adoptViews(theirs: Map<String, View>?, sent: Map<String, ViewEdit>) {
+        val heldBefore = _state.value.views
+        val editsBefore = viewEdits
+        var edits = viewEdits.filter { (pid, edit) -> sent[pid] != edit }
+        var held = heldBefore
+        if (theirs != null) {
+            val ids = _state.value.projects.map { it.id }
+            held = held.filterKeys { it in ids }
+            for (id in ids) {
+                val view = theirs[id]
+                val mine = held[id]
+                if (view != null) {
+                    held = held + (id to (edits[id]?.onto(view) ?: view))
+                } else if (mine != null && !mine.empty && id !in edits && id !in sent) {
+                    edits = edits + (id to ViewEdit(mine.folds, mine.filter))
+                }
+            }
+        }
+        viewEdits = edits
+        if (held == heldBefore && edits == editsBefore) return
+        publish { copy(views = held, viewsWaiting = edits.size) }
+        store.saveViews(Views(held, edits))
     }
 
     private fun report(sent: List<Queued>, results: List<SyncResult>) {
@@ -610,7 +668,8 @@ class SyncEngine(
         queue = emptyList()
         unsent = emptyList()
         order = emptyList()
-        publish { copy(projects = emptyList(), pending = 0, uploads = 0, prefs = Prefs()) }
+        viewEdits = emptyMap()
+        publish { copy(projects = emptyList(), pending = 0, uploads = 0, prefs = Prefs(), views = emptyMap(), viewsWaiting = 0) }
     }
 
     suspend fun setCurrent(pid: String) = withContext(lane) {
@@ -646,9 +705,21 @@ class SyncEngine(
     }
 
     suspend fun setFilter(pid: String, filter: Filter) = withContext(lane) {
-        val prefs = _state.value.prefs.let { it.copy(filters = it.filters + (pid to filter)) }
-        publish { copy(prefs = prefs) }
-        store.savePrefs(prefs)
+        changeView(pid, ViewEdit(filter = filter))
+    }
+
+    suspend fun setFolded(pid: String, id: String, folded: Boolean) = withContext(lane) {
+        val folds = _state.value.views[pid]?.folds.orEmpty()
+        if ((id in folds) != folded) changeView(pid, ViewEdit(folds = if (folded) folds + id else folds - id))
+    }
+
+    private fun changeView(pid: String, edit: ViewEdit) {
+        viewEdits = viewEdits + (pid to (viewEdits[pid]?.then(edit) ?: edit))
+        val views = _state.value.views + (pid to edit.onto(_state.value.views[pid] ?: View()))
+        publish { copy(views = views, viewsWaiting = viewEdits.size) }
+        store.saveViews(Views(views, viewEdits))
+        schedule(delays.sync)
+        if (!foreground) background()
     }
 }
 

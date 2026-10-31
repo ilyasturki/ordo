@@ -131,6 +131,13 @@ class Server : AutoCloseable {
     // The project file as ordo serve holds it.
     fun project(pid: String): String = ordo("export", "-p", pid, "--format", "json")
 
+    private fun viewFile(pid: String) = File(dir, "data/projects/$pid.view.json")
+
+    // No ordo command sets a view: these stand for the TUI, or Syncthing bringing one in.
+    fun view(pid: String): String? = viewFile(pid).takeIf(File::exists)?.readText()
+
+    fun writeView(pid: String, raw: String) = viewFile(pid).writeText(raw)
+
     override fun close() {
         stop()
         dir.deleteRecursively()

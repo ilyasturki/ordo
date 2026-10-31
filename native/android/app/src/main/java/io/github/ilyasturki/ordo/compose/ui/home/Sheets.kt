@@ -448,7 +448,7 @@ fun SyncSheet(state: SyncState, onRetry: () -> Unit, onSignIn: () -> Unit, onDis
             Text(body, style = MaterialTheme.typography.bodyMedium)
             val waiting = when {
                 !state.waiting -> "No edit is waiting."
-                state.pending + state.uploads == 1 -> "${state.waitingWords} waits safely on this phone."
+                state.pending + state.uploads + state.viewsWaiting == 1 -> "${state.waitingWords} waits safely on this phone."
                 else -> "${state.waitingWords} wait safely on this phone."
             }
             Text(waiting, style = MaterialTheme.typography.bodyMedium)
