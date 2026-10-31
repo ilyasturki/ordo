@@ -23,6 +23,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
@@ -149,6 +150,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Add a separator").performClick()
         compose.onNodeWithText("Add").performClick()
         compose.waitUntilAtLeastOneExists(hasContentDescription("Separator"), 20_000)
+        compose.onNodeWithTag("list").performScrollToNode(hasContentDescription("Separator"))
         compose.onNodeWithContentDescription("Separator").performClick()
         waitAcrossPages(hasText("Separator label"))
     }
