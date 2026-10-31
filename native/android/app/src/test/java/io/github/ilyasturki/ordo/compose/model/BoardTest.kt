@@ -29,6 +29,50 @@ class BoardTest {
         ),
     )
 
+    private val lines = listOf(
+        Header(project.categories[0], ""),
+        Block("feat", Row(task("a")), emptyList()),
+        Header(project.categories[1], "Feature"),
+        Block("ui", Row(task("d")), emptyList()),
+        Header(project.categories[2], ""),
+        Block("fix", Row(task("e")), emptyList()),
+    )
+
+    @Test
+    fun theFocusIsTheCategoryWithTheMostPixelsAcrossItsRows() {
+        assertEquals("fix", Board.focused(lines, listOf(Seen(1, 0, 100), Seen(4, 100, 60), Seen(5, 160, 60)), 0, 400))
+        assertEquals("feat", Board.focused(lines, listOf(Seen(1, 0, 100), Seen(4, 100, 40), Seen(5, 140, 50)), 0, 400))
+    }
+
+    @Test
+    fun onlyTheVisiblePartOfARowCounts() {
+        val seen = listOf(Seen(1, -300, 400), Seen(5, 100, 200))
+        assertEquals("fix", Board.focused(lines, seen, 0, 300))
+        assertEquals("fix", Board.focused(lines, listOf(Seen(1, -90, 100), Seen(5, 200, 200)), 0, 250))
+    }
+
+    @Test
+    fun aSubCategoryIsItsOwnFocus() {
+        assertEquals("ui", Board.focused(lines, listOf(Seen(1, 0, 50), Seen(2, 50, 40), Seen(3, 90, 60)), 0, 300))
+    }
+
+    @Test
+    fun aTieGoesToTheUpperCategoryAndNothingOnScreenIsNoFocus() {
+        assertEquals("feat", Board.focused(lines, listOf(Seen(1, 0, 50), Seen(5, 50, 50)), 0, 300))
+        assertEquals(null, Board.focused(lines, emptyList(), 0, 300))
+        assertEquals(null, Board.focused(lines, listOf(Seen(99, 0, 50)), 0, 300))
+    }
+
+    @Test
+    fun theTargetIsTheFocusUnlessTheFilterHidesIt() {
+        assertEquals("fix", Board.target(project, Filter.NONE, "fix")?.id)
+        assertEquals("feat", Board.target(project, Filter.NONE, null)?.id)
+        assertEquals("feat", Board.target(project, Filter.NONE, "gone")?.id)
+        assertEquals("fix", Board.target(project, Filter(categories = setOf("fix")), "feat")?.id)
+        assertEquals("ui", Board.target(project, Filter(categories = setOf("feat")), "ui")?.id)
+        assertEquals(null, Board.target(Project(id = "p", name = "P"), Filter.NONE, null))
+    }
+
     private fun shape(lines: List<Line>): List<String> = lines.map {
         when (it) {
             is Header -> "# ${it.category.name}" + if (it.parentName != "") " < ${it.parentName}" else ""

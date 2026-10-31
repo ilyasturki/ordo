@@ -25,7 +25,9 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -40,6 +42,7 @@ import io.github.ilyasturki.ordo.compose.model.Hidden
 import io.github.ilyasturki.ordo.compose.model.Line
 import io.github.ilyasturki.ordo.compose.model.NoTasks
 import io.github.ilyasturki.ordo.compose.model.Ops
+import io.github.ilyasturki.ordo.compose.model.Seen
 import io.github.ilyasturki.ordo.compose.model.Status
 import io.github.ilyasturki.ordo.compose.sync.Entry
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
@@ -63,6 +66,7 @@ fun ProjectList(
     onHeader: (Category) -> Unit,
     onCategories: () -> Unit,
     onNewCategory: () -> Unit,
+    onFocus: (String?) -> Unit,
     query: String = "",
 ) {
     val engine = LocalEngine.current
@@ -84,6 +88,14 @@ fun ProjectList(
         if (to.index == 0) return@rememberReorderableLazyListState
         dragOrder = (dragOrder ?: lines).toMutableList().apply { add(to.index, removeAt(from.index)) }
         feedback.slot()
+    }
+    val onScreen by rememberUpdatedState(shown)
+    val report by rememberUpdatedState(onFocus)
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            Board.focused(onScreen, info.visibleItemsInfo.map { Seen(it.index, it.offset, it.size) }, info.viewportStartOffset, info.viewportEndOffset)
+        }.collect { report(it) }
     }
 
     if (entry.project.categories.isEmpty()) {

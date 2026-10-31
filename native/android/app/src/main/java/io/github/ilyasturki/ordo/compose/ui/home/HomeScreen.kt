@@ -6,13 +6,11 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -35,6 +33,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,10 +55,12 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.ilyasturki.ordo.compose.model.Board
 import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.sync.Entry
@@ -79,7 +80,7 @@ import kotlin.math.abs
 import kotlin.math.max
 
 private sealed interface HomeSheet {
-    data class Add(val pid: String) : HomeSheet
+    data class Add(val pid: String, val cat: String) : HomeSheet
     data class Filters(val pid: String) : HomeSheet
     data class ProjectMenu(val pid: String) : HomeSheet
     data class OfCategory(val pid: String, val sheet: CategorySheet) : HomeSheet
@@ -111,12 +112,13 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     }
     BackHandler(searching, closeSearch)
     val uis = remember { mutableStateMapOf<String, ListUi>() }
-    val lastCat = remember { mutableStateMapOf<String, String>() }
+    val focus = remember { mutableStateMapOf<String, String?>() }
 
     val pager = rememberPagerState(initialPage = projects.indexOfFirst { it.id == state.prefs.current }.coerceAtLeast(0)) { projects.size }
     val current = projects.getOrNull(pager.currentPage.coerceAtMost(projects.lastIndex))
     val latest by rememberUpdatedState(projects)
     fun filterOf(e: Entry): Filter = (state.prefs.filters[e.id] ?: Filter.NONE).pruned(e.project)
+    fun targetOf(e: Entry) = Board.target(e.project, filterOf(e), focus[e.id])
 
     LaunchedEffect(projects.map { it.id }, state.prefs.current) {
         val i = projects.indexOfFirst { it.id == state.prefs.current }
@@ -138,10 +140,38 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             Column(Modifier.statusBarsPadding()) {
                 if (searching && current != null) {
                     ProjectSearchBar(current.name, query, { query = it }, closeSearch)
-                } else Row(verticalAlignment = Alignment.CenterVertically) {
+                } else {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                current?.let { targetOf(it) }?.name.orEmpty(),
+                                modifier = Modifier.padding(start = 4.dp).testTag("focus"),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        actions = {
+                            if (state.trouble != null) {
+                                IconButton(onClick = { sheet = HomeSheet.Sync }) {
+                                    Icon(Icons.CloudOff, "Not synced", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                            if (current != null) {
+                                val active = filterOf(current).active
+                                IconButton(onClick = { searching = true }) {
+                                    Icon(Icons.Search, "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                IconButton(onClick = { sheet = HomeSheet.Filters(current.id) }) {
+                                    Icon(Icons.Filter, if (active) "Filter, on" else "Filter", tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            IconButton(onClick = { open(SettingsKey) }) {
+                                Icon(Icons.Settings, "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
+                    )
                     PrimaryScrollableTabRow(
                         selectedTabIndex = pager.currentPage.coerceIn(0, projects.lastIndex.coerceAtLeast(0)),
-                        modifier = Modifier.weight(1f),
                         containerColor = Color.Transparent,
                         edgePadding = 4.dp,
                         divider = {},
@@ -166,30 +196,13 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                         }
                         NewProjectTab { sheet = HomeSheet.NewProject }
                     }
-                    if (state.trouble != null) {
-                        IconButton(onClick = { sheet = HomeSheet.Sync }) {
-                            Icon(Icons.CloudOff, "Not synced", tint = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                    if (current != null) {
-                        val active = filterOf(current).active
-                        IconButton(onClick = { searching = true }) {
-                            Icon(Icons.Search, "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        IconButton(onClick = { sheet = HomeSheet.Filters(current.id) }) {
-                            Icon(Icons.Filter, if (active) "Filter, on" else "Filter", tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    IconButton(onClick = { open(SettingsKey) }) {
-                        Icon(Icons.Account, "Account and settings", Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                 }
                 HorizontalDivider()
             }
         },
         floatingActionButton = {
             if (!searching && current != null && current.project.categories.isNotEmpty()) {
-                FloatingActionButton(onClick = { sheet = HomeSheet.Add(current.id) }) { Icon(Icons.Add, "Add a task") }
+                FloatingActionButton(onClick = { sheet = HomeSheet.Add(current.id, targetOf(current)?.id.orEmpty()) }) { Icon(Icons.Add, "Add a task") }
             }
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -235,6 +248,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                     onHeader = { sheet = HomeSheet.OfCategory(entry.id, CategorySheet.Menu(it.id)) },
                     onCategories = { open(CategoriesKey(entry.id)) },
                     onNewCategory = { sheet = HomeSheet.OfCategory(entry.id, CategorySheet.New("")) },
+                    onFocus = { focus[entry.id] = it },
                     query = query,
                 )
             }
@@ -246,7 +260,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     when (val s = sheet) {
         null -> {}
         is HomeSheet.Add -> entry(s.pid)?.let { e ->
-            AddSheet(e, filterOf(e), lastCat[e.id].orEmpty(), onDismiss = { sheet = null }) { cat -> lastCat[e.id] = cat }
+            AddSheet(e, filterOf(e), s.cat, onDismiss = { sheet = null })
         }
         is HomeSheet.Filters -> entry(s.pid)?.let { e ->
             FilterSheet(e.project, filterOf(e), onChange = { f ->
@@ -342,7 +356,7 @@ private fun ProjectTab(name: String, selected: Boolean, onClick: () -> Unit, onL
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(name, style = MaterialTheme.typography.titleSmall, color = color, maxLines = 1)
+        Text(name, style = MaterialTheme.typography.titleMedium, color = color, maxLines = 1)
     }
 }
 

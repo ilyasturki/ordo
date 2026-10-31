@@ -32,9 +32,30 @@ data class NoTasks(override val cat: String) : Line {
     override val key get() = "n:$cat"
 }
 
+// A row of the list on screen: its index in the lines, where it starts and how tall it is, in pixels.
+data class Seen(val index: Int, val offset: Int, val size: Int)
+
 // The list the TUI draws (internal/app/sync.go rebuildPositions): every category header, rows in
 // file order with the finished ones in place, and a line counting what the filter hides.
 object Board {
+    // The category with the most pixels between start and end, the upper one on a tie.
+    fun focused(lines: List<Line>, seen: List<Seen>, start: Int, end: Int): String? {
+        val pixels = LinkedHashMap<String, Int>()
+        for (s in seen) {
+            val cat = lines.getOrNull(s.index)?.cat ?: continue
+            val shown = minOf(s.offset + s.size, end) - maxOf(s.offset, start)
+            if (shown > 0) pixels[cat] = (pixels[cat] ?: 0) + shown
+        }
+        return pixels.maxByOrNull { it.value }?.key
+    }
+
+    // The category the top bar names and the + adds to: the focus, unless the filter hides it.
+    fun target(project: Project, filter: Filter, focus: String?): Category? =
+        project.categories.firstOrNull { it.id == focus && filter.categoryVisible(it) }
+            ?: project.categories.firstOrNull(filter::categoryVisible)
+            ?: project.categories.firstOrNull()
+
+
     fun lines(project: Project, filter: Filter, peek: String? = null, held: Set<String> = emptySet()): List<Line> {
         val names = project.categories.associate { it.id to it.name }
         val out = ArrayList<Line>()

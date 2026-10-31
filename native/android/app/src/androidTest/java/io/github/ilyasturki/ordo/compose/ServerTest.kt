@@ -158,7 +158,7 @@ class ServerTest {
     }
 
     private fun openDevices() {
-        tapDescription("Account and settings")
+        tapDescription("Settings")
         tapText("Devices")
         waitForText("$name · this device")
     }

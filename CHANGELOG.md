@@ -16,6 +16,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The app's project tabs follow the same order, by the later of the last time you had a project open or edited it on the phone and its last edit anywhere. The order is set when the app starts and each time it comes back to the front, and stays put in between: opening, editing or syncing a project never moves a tab under your finger, and a project that appears meanwhile goes last
 - The Android app draws a separator like the terminal does, a thick rule with a short lead before a bold label, in full contrast
 - The Android app's add sheet and task page say "Priority" and "Colour" beside their icons until a value is set, the colour control takes a palette icon instead of a label shape, and the priority menu shows each level's arrows
+- The app's top bar has two lines: the name of the category taking most of the screen with the search, filter and settings buttons, then the project tabs on their own line, at a larger size. Settings is a gear instead of an account icon
+- The app's `+` opens the add sheet on the category the top bar names, not on the last one used, and the sheet can still change it. A category the filter hides falls back to the first one it shows
 
 ### Removed
 

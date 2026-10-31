@@ -9,9 +9,11 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasParent
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
@@ -45,6 +47,9 @@ import org.junit.runner.RunWith
 class AppTest : AppFixture() {
     private fun statusOf(title: String, status: String): SemanticsMatcher =
         hasContentDescription("$status, change status") and hasParent(hasText(title, substring = true))
+
+    // The top bar can name the same category, without the header's click.
+    private fun header(name: String) = compose.onNode(hasText(name) and hasClickAction())
 
     private fun openTask(title: String) {
         scrollTo(title)
@@ -124,7 +129,7 @@ class AppTest : AppFixture() {
     @Test
     fun aSeparatorLandsFirstInItsCategoryWithNoLabelNeeded() {
         scrollTo("Research")
-        compose.onNodeWithText("Research").performClick()
+        header("Research").performClick()
         compose.onNodeWithText("Add a separator").performClick()
         compose.onNodeWithText("Add").performClick()
         compose.waitUntil(20_000) { engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }.tasks.first().separator }
@@ -173,7 +178,7 @@ class AppTest : AppFixture() {
     fun theFilterRefusesASeparator() {
         runBlocking { engine.setFilter(PID, Filter(statuses = setOf("todo"))) }
         scrollTo("Research")
-        compose.onNodeWithText("Research").performClick()
+        header("Research").performClick()
         compose.onNodeWithText("Add a separator").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Clear the filter to add a separator"), 20_000)
     }
@@ -195,7 +200,7 @@ class AppTest : AppFixture() {
 
     @Test
     fun theAddSheetPutsTheTaskFirstInItsCategory() {
-        scrollTo("Tap a row to focus it")
+        compose.waitUntilAtLeastOneExists(hasTestTag("list"), 20_000)
         compose.onNodeWithContentDescription("Add a task").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Water the plants")
         compose.onNode(hasSetTextAction()).performImeAction()
@@ -364,7 +369,7 @@ class AppTest : AppFixture() {
     @Test
     fun deletingACategoryAsksFirst() {
         scrollTo("Research")
-        compose.onNodeWithText("Research").performClick()
+        header("Research").performClick()
         compose.onNodeWithText("Delete category").performClick()
         compose.onNodeWithText("Delete category “Research”?").assertIsDisplayed()
         compose.onNodeWithText("Its 2 tasks go too.").assertIsDisplayed()
@@ -378,7 +383,7 @@ class AppTest : AppFixture() {
     fun undoBringsADeletedCategoryBackWhereItWas() {
         val before = engine.state.value.project(PID)!!.project.categories.map { it.name }
         scrollTo("Documentation")
-        compose.onNodeWithText("Documentation").performClick()
+        header("Documentation").performClick()
         compose.onNodeWithText("Delete category").performClick()
         compose.onNodeWithText("Delete category “Documentation”?").assertIsDisplayed()
         compose.onNodeWithText("Its sub-category and 5 tasks go too.").assertIsDisplayed()

@@ -6,6 +6,7 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.TouchInjectionScope
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -33,9 +34,12 @@ private const val DOCUMENTATION = "cccccccc-0000-4000-8000-000000000019"
 class CategoriesTest : AppFixture() {
     private fun order() = engine.state.value.project(PID)!!.project.categories.map { it.name }
 
+    // The top bar can name the same category, without the row's click.
+    private fun research() = compose.onNode(hasText("Research") and hasClickAction())
+
     private fun openPage() {
         scrollTo("Research")
-        compose.onNodeWithText("Research").performTouchInput { longClick() }
+        research().performTouchInput { longClick() }
         compose.waitUntil(20_000) { pageHasFocus() }
         compose.waitUntilAtLeastOneExists(hasTestTag("categories"), 20_000)
     }
@@ -74,7 +78,7 @@ class CategoriesTest : AppFixture() {
         compose.waitUntilAtLeastOneExists(hasText("Undo"), 20_000)
         closePage(until = hasContentDescription("Add a task"))
         compose.onNodeWithTag("list").performScrollToIndex(0)
-        compose.onNodeWithText("Research").assertIsDisplayed()
+        research().assertIsDisplayed()
     }
 
     @Test
@@ -131,14 +135,14 @@ class CategoriesTest : AppFixture() {
     @Test
     fun aTapOpensWhatTheHeadersMenuOffers() {
         openPage()
-        compose.onNodeWithText("Research").performClick()
+        research().performClick()
         compose.waitUntilAtLeastOneExists(hasText("Rename"), 20_000)
         compose.onNodeWithText("New sub-category").assertIsDisplayed()
         compose.onNodeWithText("Add a separator").assertIsDisplayed()
         compose.onNodeWithText("Delete category").performClick()
         compose.onNodeWithText("Delete category “Research”?").assertIsDisplayed()
         compose.onNodeWithText("Cancel").performClick()
-        compose.onNodeWithText("Research").assertIsDisplayed()
+        research().assertIsDisplayed()
     }
 
     @Test
