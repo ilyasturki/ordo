@@ -151,8 +151,7 @@ fun CategoriesScreen(pid: String, back: () -> Unit) {
     }
 }
 
-// Each top-level category is one list item with its sub-categories, as a task is with its subtasks:
-// the block follows the finger whole, and a sub-category reorders inside its block.
+// A top-level category is one list item with its sub-categories, so the block follows the finger whole.
 @Composable
 private fun CategoryTree(entry: Entry, pad: PaddingValues, onMenu: (String) -> Unit) {
     val engine = LocalEngine.current
@@ -236,7 +235,7 @@ private fun CategoryTree(entry: Entry, pad: PaddingValues, onMenu: (String) -> U
     }
 }
 
-// The column only scrolls with its block: a drag stays within the screen.
+// ReorderableColumn doesn't autoscroll: a sub-category's drag stays on the screen.
 @Composable
 private fun SubCategories(
     subs: List<Category>,
