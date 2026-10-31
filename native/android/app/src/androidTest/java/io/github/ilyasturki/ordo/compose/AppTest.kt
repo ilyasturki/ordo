@@ -9,6 +9,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasParent
@@ -51,10 +52,15 @@ class AppTest : AppFixture() {
     // The top bar can name the same category, without the header's click.
     private fun header(name: String) = compose.onNode(hasText(name) and hasClickAction())
 
+    // No activity is on screen for a moment as one replaces another, and the rule then throws.
+    private fun waitAcrossPages(matcher: SemanticsMatcher) = compose.waitUntil(20_000) {
+        runCatching { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false)
+    }
+
     private fun openTask(title: String) {
         scrollTo(title)
         compose.onNodeWithText(title).performClick()
-        compose.waitUntilAtLeastOneExists(hasContentDescription("More"), 20_000)
+        waitAcrossPages(hasContentDescription("More"))
     }
 
     private fun keyboardIsUp(): Boolean {
@@ -139,12 +145,12 @@ class AppTest : AppFixture() {
     @Test
     fun anUnlabelledSeparatorOpensLikeALabelledOne() {
         scrollTo("Research")
-        compose.onNodeWithText("Research").performClick()
+        header("Research").performClick()
         compose.onNodeWithText("Add a separator").performClick()
         compose.onNodeWithText("Add").performClick()
         compose.waitUntilAtLeastOneExists(hasContentDescription("Separator"), 20_000)
         compose.onNodeWithContentDescription("Separator").performClick()
-        compose.waitUntilAtLeastOneExists(hasText("Separator label"), 20_000)
+        waitAcrossPages(hasText("Separator label"))
     }
 
     @Test
@@ -224,7 +230,7 @@ class AppTest : AppFixture() {
 
     // A sheet whose height follows the keyboard moves its own anchor on every keyboard frame, and slides up only once the keyboard has stopped.
     private fun assertTheSheetKeepsItsSizeOnTheKeyboard() {
-        val pane = SemanticsMatcher.keyIsDefined(SemanticsProperties.PaneTitle)
+        val pane = SemanticsMatcher.keyIsDefined(SemanticsProperties.PaneTitle) and hasAnyDescendant(hasSetTextAction())
         // Under instrumentation the sheet's window takes focus too late for the focus request to raise the keyboard.
         compose.onNode(hasSetTextAction()).performClick()
         compose.waitUntil(30_000) { keyboardTop() != null }
@@ -317,7 +323,7 @@ class AppTest : AppFixture() {
         openTask("Tap a row to focus it")
         compose.onNodeWithText("Tap a row to focus it").performTextReplacement("Tap a row to edit it")
         compose.onNodeWithContentDescription("Back").performClick()
-        compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 20_000)
+        waitAcrossPages(hasContentDescription("Add a task"))
         compose.waitUntil(20_000) { task("Tap a row to edit it") != null }
         assertNull(task("Tap a row to focus it"))
     }
@@ -327,7 +333,7 @@ class AppTest : AppFixture() {
         openTask("Tap a row to focus it")
         compose.onNodeWithContentDescription("More").performClick()
         compose.onNodeWithText("Delete").performClick()
-        compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 10_000)
+        waitAcrossPages(hasContentDescription("Add a task"))
         compose.waitUntilAtLeastOneExists(hasText("Undo"), 20_000)
         compose.onNodeWithText("Undo").performClick()
         compose.waitUntil(20_000) { task("Tap a row to focus it") != null }
@@ -343,7 +349,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Recurring tasks").assertDoesNotExist()
         compose.onNodeWithContentDescription("Add a task").assertDoesNotExist()
         compose.onNodeWithText("Pairing link login").performClick()
-        compose.waitUntilAtLeastOneExists(hasContentDescription("More"), 20_000)
+        waitAcrossPages(hasContentDescription("More"))
         closePage(hasContentDescription("Close search"))
         compose.onNodeWithText("Pairing link login").assertIsDisplayed()
         compose.onNodeWithText("Recurring tasks").assertDoesNotExist()
