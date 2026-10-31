@@ -64,7 +64,7 @@ fun SettingsScreen(open: (NavKey) -> Unit, back: () -> Unit) {
             Item(Icons.Devices, "Devices", "Pair a new device, sign out") { open(DevicesKey) }
             Label("About")
             Item(Icons.Notes, "Font licence", "Google Sans Flex, SIL Open Font License 1.1") { open(LicenceKey) }
-            Item(Icons.Label, "Version", version)
+            Item(Icons.Info, "Version", version)
         }
     }
 }
