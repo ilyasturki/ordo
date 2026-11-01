@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-11-01
+
 ### Added
 
 - A long press on a project tab or a category header in the app opens that project's categories on a page of their own, as a tree. Drag a row to reorder it among its siblings, its sub-categories with it, and every move offers Undo; a tap opens the menu the header's tap does, and the `+` adds a category. On another project's tab the app goes to that project first. Tapping the current tab still opens the project's menu. The move reaches `ordo serve` as a new `category.place` op in [`docs/sync.md`](docs/sync.md)
@@ -542,7 +544,8 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
 
-[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/ilyasturki/ordo/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/ilyasturki/ordo/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/ilyasturki/ordo/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/ilyasturki/ordo/compare/v0.12.0...v0.12.1
