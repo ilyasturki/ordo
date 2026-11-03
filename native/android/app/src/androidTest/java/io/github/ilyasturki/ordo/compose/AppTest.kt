@@ -166,7 +166,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Add a note").performClick()
         compose.onNodeWithText("Add").assertIsNotEnabled()
         compose.onNode(hasSetTextAction()).performTextInput("Ask Sam first")
-        compose.onNodeWithText("Add").performClick()
+        compose.onNode(hasSetTextAction()).performImeAction()
         compose.waitUntil(20_000) { engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }.tasks.first().note }
         scrollTo("Ask Sam first")
         compose.onNodeWithText("Ask Sam first").performClick()
