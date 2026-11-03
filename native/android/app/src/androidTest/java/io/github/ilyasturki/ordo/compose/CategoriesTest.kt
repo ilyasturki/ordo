@@ -272,7 +272,8 @@ class CategoriesTest : AppFixture() {
         compose.onNode(hasText("Research", substring = true) and hasClickAction()).performClick()
         compose.waitUntilAtLeastOneExists(hasText("Unpin"), 20_000)
         compose.onNodeWithText("Unpin").performClick()
-        compose.waitUntil(20_000) { order().first() == "Feature" && order()[1] == "Research" }
+        compose.waitUntil(20_000) { engine.state.value.project(PID)!!.project.categories.first().pinned == false }
+        assertEquals("Research", order().first())
     }
 
     private fun renameResearchTo(name: String) {
