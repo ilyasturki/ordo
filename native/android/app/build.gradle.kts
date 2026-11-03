@@ -15,7 +15,7 @@ val copyChangelog = tasks.register<Copy>("copyChangelog") {
     into(changelogAssets)
 }
 tasks.configureEach {
-    if (name.startsWith("merge") && name.endsWith("Assets")) dependsOn(copyChangelog)
+    if (name != copyChangelog.name && (name.endsWith("Assets") || name.contains("lint", ignoreCase = true))) dependsOn(copyChangelog)
 }
 
 android {
