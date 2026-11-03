@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -366,8 +367,8 @@ func TestMergeOfferNamesTheSubCategories(t *testing.T) {
 	selectRow(t, m, selection.FocusCategory, "v1")
 	m.startEditing()
 	typeTitle(m, "v0.2.0")
-	require.Equal(t, "v2", m.ui.Edit.mergeInto)
-	view := m.confirmMergeView()
+	require.Equal(t, "v2", m.ui.Edit.clash)
+	view := strings.Join(m.mergeLines(), "\n")
 	assert.NotContains(t, view, "is empty")
 	assert.Contains(t, view, "1 sub-category joins")
 }

@@ -514,9 +514,10 @@ type EditState struct {
 	wrap      editWrapCache
 	// err is shown under the edited row until the text changes.
 	err string
-	// mergeInto is the ID of the category whose name the edit collides with
-	// while the merge offer is open.
-	mergeInto string
+	// clash is the ID of the category whose name the edit collides with while
+	// the chooser of what to do about it is open.
+	clash     string
+	clashPick int
 }
 
 type editWrapCache struct {
@@ -542,7 +543,7 @@ func (e *EditState) reset() {
 	e.itemType = selection.FocusProject
 	e.wrap = editWrapCache{}
 	e.err = ""
-	e.mergeInto = ""
+	e.clash, e.clashPick = "", 0
 }
 
 func newEditState(value string, isAdding bool, newID string, kind selection.FocusKind) EditState {

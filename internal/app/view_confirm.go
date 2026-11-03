@@ -101,10 +101,11 @@ func (m model) confirmDeleteVisualRangeView() string {
 	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
 }
 
-func (m model) confirmMergeView() string {
+// mergeLines tell what merging the edited category into the one whose name it took does.
+func (m model) mergeLines() []string {
 	srcIdx, dst, ok := m.mergeOffer()
 	if !ok {
-		return ""
+		return nil
 	}
 	target := truncateText(m.project.Categories[dst].Name, 30)
 	src := m.project.Categories[srcIdx]
@@ -114,35 +115,23 @@ func (m model) confirmMergeView() string {
 		moved = "Its separators move"
 	}
 	subs := domain.ChildCount(m.project.Categories, srcIdx)
-	var lines []string
 	switch {
 	case m.ui.Edit.isAdding:
-		lines = []string{
-			fmt.Sprintf("Merge into %q?", target),
-			fmt.Sprintf("The new category is dropped and the cursor moves to %q.", target),
-		}
+		return []string{fmt.Sprintf("The new category is dropped and the cursor moves to %q.", target)}
 	case len(src.Tasks) == 0 && subs == 0:
-		lines = []string{
-			fmt.Sprintf("Merge %q into %q?", srcName, target),
-			fmt.Sprintf("%q is empty, so it is deleted.", srcName),
-		}
-	default:
-		lines = []string{fmt.Sprintf("Merge %q into %q?", srcName, target)}
-		its := "Its"
-		if len(src.Tasks) > 0 {
-			lines = append(lines, fmt.Sprintf("%s to the end of %q under a %q separator,", moved, target, srcName))
-			its = "its"
-		}
-		if subs > 0 {
-			lines = append(lines, fmt.Sprintf("%s %d sub-categor%s %s %q's, same names merging,",
-				its, subs, plural(subs, "y", "ies"), plural(subs, "joins", "join"), target))
-		}
-		lines = append(lines, "then the category is deleted. u undoes it.")
+		return []string{fmt.Sprintf("%q is empty, so it is deleted.", srcName)}
 	}
-	lines = append(lines, "", ui.RenderHints([]ui.Hint{
-		{Key: "y/enter", Label: "merge"}, {Key: "n/esc", Label: "keep editing"},
-	}))
-	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
+	var lines []string
+	its := "Its"
+	if len(src.Tasks) > 0 {
+		lines = append(lines, fmt.Sprintf("%s to the end of %q under a %q separator,", moved, target, srcName))
+		its = "its"
+	}
+	if subs > 0 {
+		lines = append(lines, fmt.Sprintf("%s %d sub-categor%s %s %q's, same names merging,",
+			its, subs, plural(subs, "y", "ies"), plural(subs, "joins", "join"), target))
+	}
+	return append(lines, "then the category is deleted. u undoes it.")
 }
 
 func (m model) confirmDeleteProjectView() string {

@@ -67,7 +67,7 @@ func TestAddCategory_PasteIgnoredUnderMergeOfferAndClearsError(t *testing.T) {
 	m.startAddingCategory()
 	typeText(m, "cat b")
 	pressKey(m, tea.KeyEnter)
-	require.NotEmpty(t, m.ui.Edit.mergeInto)
+	require.NotEmpty(t, m.ui.Edit.clash)
 
 	m.handlePaste("x")
 	assert.Equal(t, "cat b", m.ui.Edit.input.Value(), "a paste cannot edit the name under the offer")
@@ -88,13 +88,13 @@ func TestAddCategory_DuplicateKeepsTheEditorAndOffersMerge(t *testing.T) {
 	require.True(t, m.ui.Modes.IsEdit(), "the editor stays open")
 	assert.Equal(t, " cat b", m.ui.Edit.input.Value(), "the typed name survives")
 	assert.Contains(t, m.ui.Edit.err, `"Cat B" already exists`)
-	assert.Equal(t, "c2", m.ui.Edit.mergeInto)
-	assert.Contains(t, m.View().Content, "Merge into")
+	assert.Equal(t, "c2", m.ui.Edit.clash)
+	assert.Contains(t, m.View().Content, "merge into “Cat B”")
 
 	// Declining the merge returns to the editor with the error still shown.
 	pressKey(m, tea.KeyEscape)
 	require.True(t, m.ui.Modes.IsEdit())
-	assert.Empty(t, m.ui.Edit.mergeInto)
+	assert.Empty(t, m.ui.Edit.clash)
 	assert.NotEmpty(t, m.ui.Edit.err)
 
 	// Editing the text clears the error, and a free name goes through.
@@ -111,7 +111,7 @@ func TestAddCategory_MergeDropsTheNewRowAndJumpsToTheExisting(t *testing.T) {
 	m.startAddingCategory()
 	typeText(m, "CAT B")
 	pressKey(m, tea.KeyEnter)
-	pressKey(m, 'y')
+	pressKey(m, 'm')
 
 	assert.True(t, m.ui.Modes.IsNormal())
 	assert.Equal(t, []string{"Cat A", "Cat B"}, categoryNamesOf(m))
@@ -128,7 +128,9 @@ func TestRenameCategory_MergeMovesTasksUnderTheOldNameInOneUndo(t *testing.T) {
 	m.startEditing()
 	m.ui.Edit.input.SetValue("cat b")
 	pressKey(m, tea.KeyEnter)
-	require.Equal(t, "c2", m.ui.Edit.mergeInto)
+	require.Equal(t, "c2", m.ui.Edit.clash)
+	pressKey(m, tea.KeyDown)
+	pressKey(m, tea.KeyDown)
 	pressKey(m, tea.KeyEnter)
 
 	require.True(t, m.ui.Modes.IsNormal())

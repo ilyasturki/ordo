@@ -12,6 +12,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 // editOrFocusDescription is the shift+enter handler. From a task with a
@@ -225,13 +226,8 @@ func (m *model) removeNewCategory() {
 
 func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 	defer m.ensureVisible()
-	if m.ui.Edit.mergeInto != "" {
-		switch msg.String() {
-		case "y", "enter":
-			m.mergeEditedCategory()
-		case "n", "esc":
-			m.ui.Edit.mergeInto = ""
-		}
+	if m.ui.Edit.clash != "" {
+		m.handleClashKey(msg.String())
 		return nil
 	}
 	switch msg.String() {
@@ -340,7 +336,7 @@ func (m *model) finishEditing() {
 
 // An edit the editor already refused (a taken name, a merge offer) is left behind, so a second ctrl+c quits.
 func (m *model) commitEditToQuit() bool {
-	if m.ui.Edit.err != "" || m.ui.Edit.mergeInto != "" {
+	if m.ui.Edit.err != "" || m.ui.Edit.clash != "" {
 		return true
 	}
 	m.finishEditing()
@@ -363,8 +359,8 @@ func (m *model) finishSeparatorEditing(position selection.Position, label string
 }
 
 // finishCategoryEditing applies the name and reports whether the editor can
-// close. A name another category holds keeps the editor open with an error and
-// offers to merge into that category instead.
+// close. A name a sibling holds keeps the editor open with an error and opens
+// the chooser of what to do about it.
 func (m *model) finishCategoryEditing(position selection.Position, name string) bool {
 	currentName := m.project.Categories[position.CategoryIndex].Name
 	if !m.ui.Edit.isAdding && currentName == name {
@@ -374,13 +370,13 @@ func (m *model) finishCategoryEditing(position selection.Position, name string) 
 	if i := domain.CategoryNameConflict(m.project.Categories, edited.ParentID, name, position.CategoryIndex); i >= 0 {
 		target := m.project.Categories[i]
 		m.ui.Edit.err = fmt.Sprintf("A category named %q already exists", target.Name)
-		m.ui.Edit.mergeInto = target.ID
+		m.ui.Edit.clash, m.ui.Edit.clashPick = target.ID, 0
 		return false
 	}
 	if !m.ui.Edit.isAdding {
 		m.recordHistory()
 	}
-	if err := m.project.RenameCategory(position.CategoryIndex, name); err != nil {
+	if _, err := operations.RenameCategory(&m.project, edited.ID, name); err != nil {
 		if m.ui.Edit.isAdding {
 			m.removeNewCategory()
 		}
@@ -441,7 +437,7 @@ func (m model) mergeOffer() (src, dst int, ok bool) {
 	if !ok || pos.Kind != selection.FocusCategory {
 		return 0, 0, false
 	}
-	dst, err := m.project.FindCategoryByID(m.ui.Edit.mergeInto)
+	dst, err := m.project.FindCategoryByID(m.ui.Edit.clash)
 	if err != nil {
 		return 0, 0, false
 	}
@@ -484,7 +480,7 @@ func (m model) forwardToInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	if m.ui.Modes.IsEdit() {
-		if m.ui.Edit.mergeInto != "" {
+		if m.ui.Edit.clash != "" {
 			return m, nil
 		}
 		before := m.ui.Edit.input.Value()
@@ -582,7 +578,7 @@ func (m *model) handlePaste(text string) tea.Cmd {
 }
 
 func (m *model) pasteIntoEditor(text string) {
-	if m.ui.Edit.mergeInto != "" {
+	if m.ui.Edit.clash != "" {
 		return
 	}
 	if m.ui.Edit.itemType == selection.FocusTask {
