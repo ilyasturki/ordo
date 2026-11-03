@@ -176,6 +176,34 @@ func (m *model) startAddingCategory() {
 	m.ensureVisible()
 }
 
+// startAddingSubCategory opens the editor on a new last sub-category of the cursor's top-level category.
+func (m *model) startAddingSubCategory() {
+	position, ok := m.selectedPosition()
+	if !ok {
+		return
+	}
+	cats := m.project.Categories
+	ci := position.CategoryIndex
+	if position.Kind == selection.FocusProject || ci < 0 || ci >= len(cats) {
+		m.ui.Screen.StatusMsg = "Put the cursor on a category to add a sub-category"
+		return
+	}
+	parent := cats[domain.BlockStart(cats, ci)]
+	newCat, err := domain.NewCategory("")
+	if err != nil {
+		return
+	}
+	newCat.ParentID = parent.ID
+	m.recordHistory()
+	m.project.InsertCategory(domain.BlockEnd(cats, domain.BlockStart(cats, ci)), newCat)
+	m.revealChildrenOf(parent.ID)
+	m.rebuildPositions()
+	m.selectItem(selection.FocusCategory, newCat.ID)
+	m.ui.Modes.ToEdit()
+	m.ui.Edit = newEditState("", true, newCat.ID, selection.FocusCategory)
+	m.ensureVisible()
+}
+
 func (m *model) removeNewCategory() {
 	if m.ui.Edit.newItemID == "" {
 		return

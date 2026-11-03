@@ -83,8 +83,10 @@ var normalBindings = []keyBinding{
 
 	{keys: []string{"a"}, desc: "add task", section: sectionTasks,
 		action: void((*model).startAddingTask)},
-	{keys: []string{"A"}, desc: "add category", section: sectionTasks,
+	{keys: []string{"A"}, display: "A / gA", desc: "add category / sub-category", section: sectionTasks,
 		action: void((*model).startAddingCategory)},
+	{keys: []string{"A"}, prefix: 'g', section: sectionTasks,
+		action: void((*model).startAddingSubCategory)},
 	{keys: []string{"-"}, desc: "add separator", section: sectionTasks,
 		action: void((*model).startAddingSeparator)},
 	{keys: []string{"enter"}, desc: "edit", section: sectionTasks,

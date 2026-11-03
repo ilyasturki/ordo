@@ -15,7 +15,7 @@ import (
 var normalShortcuts = []ui.Hint{
 	{Key: "?", Label: "help"},
 	{Key: "a", Label: "add"},
-	{Key: "A", Label: "category"},
+	{Key: "A/gA", Label: "category/sub"},
 	{Key: "m", Label: "move"},
 	{Key: "f", Label: "filter"},
 	{Key: "/", Label: "search"},
