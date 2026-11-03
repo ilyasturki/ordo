@@ -70,14 +70,34 @@ func countRealTasks(positions []selection.Position) int {
 	return n
 }
 
-// rowCountLabel phrases a mixed task/separator batch for a status message. It
-// counts real tasks, only falling back to a separator count when the batch was
-// dividers alone, so a separator caught in a range never inflates "N task(s)".
-func rowCountLabel(realTasks, separators int) string {
-	if realTasks > 0 || separators == 0 {
+// rowCountLabel phrases a mixed task/separator/note batch for a status message.
+// It counts real tasks, only falling back to the other rows when the batch held
+// none, so a separator caught in a range never inflates "N task(s)".
+func rowCountLabel(realTasks, separators, notes int) string {
+	switch {
+	case realTasks > 0 || separators+notes == 0:
 		return fmt.Sprintf("%d task(s)", realTasks)
+	case notes == 0:
+		return fmt.Sprintf("%d separator(s)", separators)
+	case separators == 0:
+		return fmt.Sprintf("%d note(s)", notes)
 	}
-	return fmt.Sprintf("%d separator(s)", separators)
+	return fmt.Sprintf("%d row(s)", separators+notes)
+}
+
+func rowsLabel(rows []domain.Task) string {
+	tasks, seps, notes := 0, 0, 0
+	for _, t := range rows {
+		switch {
+		case t.IsSeparator():
+			seps++
+		case t.IsNote():
+			notes++
+		default:
+			tasks++
+		}
+	}
+	return rowCountLabel(tasks, seps, notes)
 }
 
 // inVisualDomain reports whether row p belongs to the visual selection's
@@ -546,18 +566,8 @@ func (m *model) confirmDeleteVisualRange() {
 	m.ui.Modes.ToNormal()
 
 	m.recordHistory()
-	// Track real tasks and separators separately so the message reflects tasks,
-	// while `removed` still gates whether the edit is worth keeping in history.
-	deletedTasks, deletedSeps, removed := 0, 0, 0
 	rows, _ := operations.DeleteTasks(&m.project, taskIDs, false)
-	for _, t := range rows {
-		removed++
-		if t.IsSeparator() {
-			deletedSeps++
-		} else {
-			deletedTasks++
-		}
-	}
+	removed := len(rows)
 	deletedCats := 0
 	if len(catIDs) > 0 {
 		idSet := make(map[string]struct{}, len(catIDs))
@@ -586,7 +596,7 @@ func (m *model) confirmDeleteVisualRange() {
 	if len(catIDs) > 0 {
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Deleted %d categor%s", deletedCats, plural(deletedCats, "y", "ies"))
 	} else {
-		m.ui.Screen.StatusMsg = "Deleted " + rowCountLabel(deletedTasks, deletedSeps)
+		m.ui.Screen.StatusMsg = "Deleted " + rowsLabel(rows)
 	}
 }
 
@@ -678,14 +688,7 @@ func (m *model) visualCut() tea.Cmd {
 		n := len(m.ui.Clipboard.Categories)
 		what = fmt.Sprintf("%d categor%s", n, plural(n, "y", "ies"))
 	} else {
-		rows := m.ui.Clipboard.Tasks
-		tasks := 0
-		for _, t := range rows {
-			if t.IsTask() {
-				tasks++
-			}
-		}
-		what = rowCountLabel(tasks, len(rows)-tasks)
+		what = rowsLabel(m.ui.Clipboard.Tasks)
 	}
 	status := "Cut: " + what + ", p moves them here, esc cancels"
 	m.ui.Screen.StatusMsg = status

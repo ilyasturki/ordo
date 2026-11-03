@@ -174,7 +174,7 @@ func TestExpandRow_OnlyTasks(t *testing.T) {
 	am := press(t, *m, "z", "e")
 
 	assert.Empty(t, am.ui.Screen.ExpandedTaskID)
-	assert.Equal(t, "Only a task expands", am.ui.Screen.StatusMsg)
+	assert.Equal(t, "Only a task or a note expands", am.ui.Screen.StatusMsg)
 }
 
 func TestExpandRow_SearchEscReturnsToTheExpandedDescription(t *testing.T) {

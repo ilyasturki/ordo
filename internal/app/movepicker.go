@@ -75,7 +75,7 @@ func (m *model) openMovePicker(ids []string) {
 	}
 	title := "Move to"
 	if rows := m.movedRows(ids); len(rows) > 1 {
-		title = "Move " + rowCountLabel(countTasks(rows), len(rows)-countTasks(rows)) + " to"
+		title = "Move " + rowsLabel(rows) + " to"
 	}
 	m.ui.MovePicker = MovePickerState{
 		all:      targets,

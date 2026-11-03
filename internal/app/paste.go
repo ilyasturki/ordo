@@ -163,12 +163,11 @@ func pastedRowsStatus(rows []domain.Task, moved bool) string {
 		}
 		return "Pasted!"
 	}
-	tasks := countTasks(rows)
 	verb := "Pasted "
 	if moved {
 		verb = "Moved "
 	}
-	return verb + rowCountLabel(tasks, len(rows)-tasks)
+	return verb + rowsLabel(rows)
 }
 
 func (m *model) categoryDestination() (index int, parentID string, ok bool) {

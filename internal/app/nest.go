@@ -25,6 +25,9 @@ func (m *model) nestSelected(in bool) {
 		m.nestTasks([]string{m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID}, in)
 	case selection.FocusSeparator:
 		m.ui.Screen.StatusMsg = "A separator doesn't nest"
+		if m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].IsNote() {
+			m.ui.Screen.StatusMsg = "A note doesn't nest"
+		}
 	}
 }
 

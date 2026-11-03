@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -475,6 +476,81 @@ func (m model) renderEditSeparatorLine(indent int) string {
 		return prefixLine(styledText, m.ui.Screen.Width, overhead, styledPrefix)
 	}
 	return renderEditRows(m.editRows(overhead), overhead, styledPrefix, ui.HeaderStyle, cursorStyle)
+}
+
+// noteTextWidth is shared by the renderer and the layout so both count the same rows.
+func noteTextWidth(width, indent int, cut bool) int {
+	overhead := prefixWidth + indent
+	if cut {
+		overhead += ansi.StringWidth(ui.CutMark)
+	}
+	return safeWidth(width, overhead)
+}
+
+// noteRows is the most rows a note may wrap to: a title's cap, or all of them once `ze` expands it.
+func noteRows(limits rowLimits, note domain.Task) int {
+	if limits.expands(note.ID) {
+		return utf8.RuneCountInString(note.Title) + 1
+	}
+	return ui.MaxLineRows
+}
+
+// renderNoteLine draws a note: its text at the status column, in the terminal's
+// own colour and weight, wrapped and clamped like a title, with no rule or bracket.
+func (m model) renderNoteLine(note domain.Task, indent int, selected, focused, visualMode, isCursor, cut bool) string {
+	width := m.ui.Screen.Width
+	prefix := "  " + strings.Repeat(" ", indent)
+	style := lipgloss.NewStyle()
+	if selected {
+		prefix = "> " + strings.Repeat(" ", indent)
+		switch {
+		case visualMode && isCursor:
+			style = ui.GetVisualCursorStyle(focused)
+		case visualMode:
+			style = ui.GetVisualSelectedStyle(focused)
+		default:
+			style = ui.GetSelectedStyle(focused)
+		}
+	}
+	cutBadge := ""
+	if cut {
+		style = ui.ApplyCut(style)
+		cutBadge = ui.CutBadgeStyle.Render(ui.CutMark)
+		if selected {
+			cutBadge = style.Render(ui.CutMark)
+		}
+	}
+	query, match := m.searchQuery(), m.searchMatchStyle(isCursor)
+	if width <= 0 {
+		return style.Render(prefix) + ui.HighlightMatches(note.Title, query, style, match) + cutBadge
+	}
+	lines := ui.WrapClamped(note.Title, noteTextWidth(width, indent, cut), noteRows(m.rowLimits(), note), ui.FirstMatchIndex(note.Title, query))
+	continuation := strings.Repeat(" ", prefixWidth+indent)
+	out := make([]string, len(lines))
+	for i, line := range lines {
+		lead := continuation
+		if i == 0 {
+			lead = prefix
+		}
+		out[i] = style.Render(lead) + ui.HighlightMatches(line, query, style, match)
+		if selected && visualMode {
+			out[i] = ui.PadToStyle(out[i], width, style)
+		}
+	}
+	out[len(out)-1] += cutBadge
+	return strings.Join(out, "\n")
+}
+
+// renderEditNoteLine draws the inline editor for a note's text.
+func (m model) renderEditNoteLine(indent int) string {
+	prefix := "> " + strings.Repeat(" ", indent)
+	overhead := prefixWidth + indent
+	cursorStyle := ui.GetCursorStyle(m.ui.Screen.WindowFocused)
+	if m.ui.Edit.input.Value() == "" {
+		placeholder := ui.MutedStyle.Render("Enter note text...")
+		return prefixLine(cursorStyle.Render(" ")+placeholder, m.ui.Screen.Width, overhead, prefix)
+	}
+	return renderEditRows(m.editRows(overhead), overhead, prefix, lipgloss.NewStyle(), cursorStyle)
 }
 
 func (m model) statusText() string {

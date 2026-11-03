@@ -168,8 +168,32 @@ func (m model) infoValue(s string) string {
 	return truncateText(s, max(m.dialogWidth()-len("Category: ")-3, 1))
 }
 
+func (m model) noteInfoLines(catIdx, taskIdx int) []string {
+	note := m.project.Categories[catIdx].Tasks[taskIdx]
+	lines := []string{ui.DialogTitleStyle.Render("Note Info"), ""}
+	const textLabel = "Text:     "
+	indent := strings.Repeat(" ", len(textLabel))
+	for i, line := range strings.Split(ansi.Wrap(note.Title, m.dialogWidth()-len(textLabel), ""), "\n") {
+		if i == 0 {
+			line = textLabel + line
+		} else {
+			line = indent + line
+		}
+		lines = append(lines, line)
+	}
+	return append(lines,
+		fmt.Sprintf("Category: %s", m.infoValue(m.project.CategoryPath(catIdx))),
+		"",
+		fmt.Sprintf("Created:  %s", FormatDateWithRelative(note.CreatedAt)),
+		fmt.Sprintf("Updated:  %s", FormatDateWithRelative(note.UpdatedAt)),
+	)
+}
+
 func (m model) separatorInfoLines(catIdx, taskIdx int) []string {
 	sep := m.project.Categories[catIdx].Tasks[taskIdx]
+	if sep.IsNote() {
+		return m.noteInfoLines(catIdx, taskIdx)
+	}
 
 	label := sep.Title
 	if label == "" {

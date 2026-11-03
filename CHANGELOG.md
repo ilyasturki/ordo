@@ -8,6 +8,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - Pinned categories: `gp` pins or unpins the category under the cursor, and the app's category menu has Pin and Unpin. A pinned category comes first among its siblings, in the list, the pickers, the filter and `ordo categories`, marked with a faint `↑` in the TUI and a pin in the app. A pinned category takes its sub-categories along, and a pinned sub-category goes first under its parent. Moves, adds and pastes keep pinned ones first: `J` and `K` stop at the end of the pinned run. Older builds keep the order but drop the pin. See [`docs/file-format.md`](docs/file-format.md#pins)
 - `gA` adds a sub-category: on a category or any row in it, a new last sub-category of it; on a sub-category, a new last sibling. The parent unfolds and the name editor opens, as with `A`
+- Notes: `_` adds a line of free text below the focused row, with no status or priority, and opens it for typing. It wraps like a title, moves, cuts, copies and deletes like a separator, and hides under a filter. It copies as `> text`, and a pasted or imported `> ` line comes back as a note. A project holding a note is saved as schema 4, which older builds refuse to open: update ordo on every machine, `ordo serve` and the phone before adding the first one. See [`docs/file-format.md`](docs/file-format.md)
 
 ### Changed
 

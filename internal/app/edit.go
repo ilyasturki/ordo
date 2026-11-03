@@ -153,6 +153,44 @@ func (m *model) startAddingSeparator() {
 	m.ensureVisible()
 }
 
+// startAddingNote inserts an empty note below the selection's block and opens
+// its editor; the note is dropped unless it gets text. Blocked while a filter
+// is active, which hides notes.
+func (m *model) startAddingNote() {
+	position, ok := m.selectedPosition()
+	if !ok {
+		return
+	}
+	catIndex := position.CategoryIndex
+	if catIndex < 0 || catIndex >= len(m.project.Categories) {
+		return
+	}
+	if m.ui.Filter.HasActiveFilter() {
+		m.ui.Screen.StatusMsg = "Clear the filter to add a note"
+		return
+	}
+	note, err := domain.NewNote("")
+	if err != nil {
+		return
+	}
+
+	cat := &m.project.Categories[catIndex]
+	taskIndex := 0
+	switch position.Kind {
+	case selection.FocusTask, selection.FocusSeparator, selection.FocusDescription:
+		taskIndex = domain.BlockEnd(cat.Tasks, domain.BlockStart(cat.Tasks, position.TaskIndex))
+	}
+	m.recordHistory()
+	cat.InsertTask(taskIndex, note)
+	m.revealChildrenOf(cat.ID)
+
+	m.rebuildPositions()
+	m.selectItem(selection.FocusSeparator, note.ID)
+	m.ui.Modes.ToEdit()
+	m.ui.Edit = newEditState("", true, note.ID, selection.FocusSeparator)
+	m.ensureVisible()
+}
+
 func (m *model) startAddingCategory() {
 	position, ok := m.selectedPosition()
 	if !ok {
@@ -291,8 +329,8 @@ func (m *model) finishEditing() {
 	}
 	trimmed := strings.TrimSpace(m.ui.Edit.input.Value())
 	// A separator label may legitimately be cleared back to bare, so it bypasses
-	// the empty-title guard that cancels task/category edits.
-	if position.Kind == selection.FocusSeparator {
+	// the empty-title guard that cancels task/category edits; a note doesn't.
+	if position.Kind == selection.FocusSeparator && (trimmed != "" || m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex].IsSeparator()) {
 		m.finishSeparatorEditing(position, trimmed)
 		m.ui.Modes.ToNormal()
 		m.ui.Edit.reset()
@@ -349,6 +387,11 @@ func (m *model) commitEditToQuit() bool {
 
 func (m *model) finishSeparatorEditing(position selection.Position, label string) {
 	sep := &m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
+	if m.ui.Edit.isAdding {
+		sep.Title = label
+		m.storeTaskUpdate()
+		return
+	}
 	if sep.Title == label {
 		return
 	}
@@ -460,7 +503,7 @@ func (m *model) renameProject(name string) error {
 func (m *model) cancelEditing() {
 	if m.ui.Edit.isAdding {
 		switch m.ui.Edit.itemType {
-		case selection.FocusTask:
+		case selection.FocusTask, selection.FocusSeparator:
 			m.removeNewTask()
 		case selection.FocusCategory:
 			m.removeNewCategory()

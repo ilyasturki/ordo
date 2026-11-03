@@ -76,19 +76,21 @@ func (m model) confirmDeleteVisualRangeView() string {
 		for _, id := range m.ui.ConfirmDelete.TaskIDs {
 			drop[id] = true
 		}
-		tasks, subtasks, separators := 0, 0, 0
+		tasks, subtasks, separators, notes := 0, 0, 0, 0
 		for _, id := range m.ui.ConfirmDelete.TaskIDs {
 			t := m.taskByID(id)
 			switch {
 			case t != nil && t.IsSeparator():
 				separators++
+			case t != nil && t.IsNote():
+				notes++
 			case t != nil && drop[t.ParentID]:
 				subtasks++
 			default:
 				tasks++
 			}
 		}
-		message = "Delete " + rowCountLabel(tasks, separators) + "?"
+		message = "Delete " + rowCountLabel(tasks, separators, notes) + "?"
 		if subtasks > 0 {
 			message = fmt.Sprintf("Delete %d task(s) and %d subtask(s)?", tasks, subtasks)
 		}

@@ -881,10 +881,16 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 
 	case LayoutSeparator:
 		indent := m.rowIndent(item.CategoryIndex, item.TaskIndex)
+		sep := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
+		if sep.IsNote() {
+			if m.editorOpen() && isCursor {
+				return m.renderEditNoteLine(indent)
+			}
+			return m.renderNoteLine(sep, indent, isSelected, focused, visualMode, isCursor, m.isTaskCut(sep.ID))
+		}
 		if m.editorOpen() && isCursor {
 			return m.renderEditSeparatorLine(indent)
 		}
-		sep := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
 		return m.renderSeparatorLine(sep.Title, indent, isSelected, focused, visualMode, isCursor, m.isTaskCut(sep.ID), m.ui.Screen.Width, m.searchQuery(), m.searchMatchStyle(isCursor))
 
 	case LayoutDescription:

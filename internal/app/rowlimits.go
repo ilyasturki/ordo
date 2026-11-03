@@ -55,17 +55,17 @@ func (l rowLimits) descriptionRows(catIdx, taskIdx int, taskID string) int {
 	return components.DescriptionPreviewLines
 }
 
-// cursorTaskID is "" unless the cursor is on a task's title or description row.
+// cursorTaskID is "" unless the cursor is on a task's title or description row, or on a note.
 func (m *model) cursorTaskID() string {
 	pos, ok := m.selectedPosition()
-	if !ok || (pos.Kind != selection.FocusTask && pos.Kind != selection.FocusDescription) {
+	if !ok || (pos.Kind != selection.FocusTask && pos.Kind != selection.FocusDescription && pos.Kind != selection.FocusSeparator) {
 		return ""
 	}
 	if pos.CategoryIndex < 0 || pos.CategoryIndex >= len(m.project.Categories) {
 		return ""
 	}
 	tasks := m.project.Categories[pos.CategoryIndex].Tasks
-	if pos.TaskIndex < 0 || pos.TaskIndex >= len(tasks) {
+	if pos.TaskIndex < 0 || pos.TaskIndex >= len(tasks) || tasks[pos.TaskIndex].IsSeparator() {
 		return ""
 	}
 	return tasks[pos.TaskIndex].ID
@@ -75,7 +75,7 @@ func (m *model) cursorTaskID() string {
 func (m *model) toggleExpandRow() {
 	id := m.cursorTaskID()
 	if id == "" {
-		m.ui.Screen.StatusMsg = "Only a task expands"
+		m.ui.Screen.StatusMsg = "Only a task or a note expands"
 		return
 	}
 	if m.ui.Screen.ExpandedTaskID == id {

@@ -163,7 +163,7 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 			}
 
 		case selection.FocusSeparator:
-			item.Kind, item.Height = LayoutSeparator, b.rowHeight(posIndex, 1)
+			item.Kind, item.Height = LayoutSeparator, b.rowHeight(posIndex, b.countNoteLines(project.Categories[pos.CategoryIndex], pos.TaskIndex))
 			add(item)
 
 		case selection.FocusHidden:
@@ -205,6 +205,16 @@ func (b *LayoutBuilder) countTaskLines(cat domain.Category, taskIdx int) int {
 		WithFilteredOut(b.filter != nil && b.filter.FilteredOut(task, cat.ID, cat.ParentID)).
 		WithRowLimits(b.limits.titleRows(task.ID), components.DescriptionPreviewLines).
 		TitleRows(task)
+}
+
+// countNoteLines is 1 for a separator, which never wraps.
+func (b *LayoutBuilder) countNoteLines(cat domain.Category, taskIdx int) int {
+	note := cat.Tasks[taskIdx]
+	if !note.IsNote() || b.width <= 0 {
+		return 1
+	}
+	cut := b.taskCut != nil && b.taskCut(note)
+	return ui.CountClamped(note.Title, noteTextWidth(b.width, taskIndent(cat, taskIdx), cut), noteRows(b.limits, note))
 }
 
 func (b *LayoutBuilder) countCategoryLines(project *domain.Project, catIdx int) int {
@@ -276,7 +286,9 @@ func (m *model) editOverhead(pos selection.Position) int {
 	case selection.FocusProject:
 		return projectPrefixWidth
 	case selection.FocusSeparator:
-		return separatorPrefixWidth + indent
+		if m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].IsSeparator() {
+			return separatorPrefixWidth + indent
+		}
 	}
 	return prefixWidth + indent
 }

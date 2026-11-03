@@ -260,7 +260,7 @@ func (m *model) cutSelectedTask() tea.Cmd {
 	}
 	position, ok := m.selectedPosition()
 	if !ok || position.Kind != selection.FocusTask && position.Kind != selection.FocusSeparator {
-		m.ui.Screen.StatusMsg = "Can only cut tasks and separators"
+		m.ui.Screen.StatusMsg = "Can only cut tasks, separators and notes"
 		return nil
 	}
 
@@ -271,7 +271,10 @@ func (m *model) cutSelectedTask() tea.Cmd {
 	m.ui.TagCopiedLast = false
 
 	what := truncateText(task.Title, 30)
-	if task.IsSeparator() {
+	switch {
+	case task.IsNote():
+		what = fmt.Sprintf("note %q", what)
+	case task.IsSeparator():
 		what = "separator"
 		if label := strings.TrimSpace(task.Title); label != "" {
 			what = fmt.Sprintf("separator %q", truncateText(label, 30))
