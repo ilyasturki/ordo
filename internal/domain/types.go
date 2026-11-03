@@ -129,6 +129,11 @@ func (t Task) IsSeparator() bool {
 	return t.Kind == KindSeparator
 }
 
+// IsTask reports whether this row is an ordinary task: any kind marks a line row with no status.
+func (t Task) IsTask() bool {
+	return t.Kind == ""
+}
+
 var EstimatePresets = []int{0, 15, 30, 60, 120, 240, 480, 960, 1440, 2400}
 
 func NowTimestamp() string {
@@ -434,7 +439,7 @@ func NextTagColor(color string) string {
 func FreeTagColor(tasks []Task) string {
 	open := make(map[string]int)
 	for _, t := range tasks {
-		if !t.IsSeparator() && t.TagColor != "" &&
+		if t.IsTask() && t.TagColor != "" &&
 			(t.Status == StatusTodo || t.Status == StatusInProgress) {
 			open[CanonicalTagColor(t.TagColor)]++
 		}
@@ -494,7 +499,7 @@ func (s StatusCounts) Total() int {
 func (c *Category) TaskCount() int {
 	n := 0
 	for _, task := range c.Tasks {
-		if !task.IsSeparator() {
+		if task.IsTask() {
 			n++
 		}
 	}
@@ -508,7 +513,7 @@ func (c *Category) StatusCounts() StatusCounts {
 func statusCounts(tasks iter.Seq[Task]) StatusCounts {
 	var counts StatusCounts
 	for task := range tasks {
-		if task.IsSeparator() {
+		if !task.IsTask() {
 			continue
 		}
 		switch task.Status {
@@ -547,7 +552,7 @@ func aggregateStatus(tasks iter.Seq[Task]) string {
 	hasFinished := false
 	hasTask := false
 	for t := range tasks {
-		if t.IsSeparator() {
+		if !t.IsTask() {
 			continue
 		}
 		hasTask = true
@@ -761,7 +766,7 @@ func (p *Project) FindTask(selector string) (catIdx, taskIdx int, err error) {
 	lower := strings.ToLower(selector)
 	for c := range p.Categories {
 		for t, task := range p.Categories[c].Tasks {
-			if task.IsSeparator() {
+			if !task.IsTask() {
 				continue
 			}
 			if task.ID == selector ||

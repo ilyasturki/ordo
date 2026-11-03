@@ -47,7 +47,7 @@ func newTasksCmd() *cobra.Command {
 				for ci := lo; ci < hi; ci++ {
 					cat := project.Categories[ci]
 					for _, task := range cat.Tasks {
-						if task.IsSeparator() {
+						if !task.IsTask() {
 							continue
 						}
 						if status != "" && task.Status != status {

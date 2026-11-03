@@ -681,7 +681,7 @@ func (m *model) visualCut() tea.Cmd {
 		rows := m.ui.Clipboard.Tasks
 		tasks := 0
 		for _, t := range rows {
-			if !t.IsSeparator() {
+			if t.IsTask() {
 				tasks++
 			}
 		}

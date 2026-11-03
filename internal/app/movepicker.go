@@ -158,7 +158,7 @@ func (m *model) movedRows(ids []string) []domain.Task {
 func countTasks(rows []domain.Task) int {
 	n := 0
 	for _, t := range rows {
-		if !t.IsSeparator() {
+		if t.IsTask() {
 			n++
 		}
 	}

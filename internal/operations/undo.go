@@ -100,7 +100,7 @@ func undoValues(before, after domain.Project, op Op) []Op {
 		old, ok := rowOf(&before, id)
 		now, _ := rowOf(&after, id)
 		value := valueOf(op.Action, old)
-		if !ok || done[id] || old.IsSeparator() || value == valueOf(op.Action, now) {
+		if !ok || done[id] || !old.IsTask() || value == valueOf(op.Action, now) {
 			continue
 		}
 		done[id] = true

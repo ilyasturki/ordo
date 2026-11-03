@@ -109,7 +109,7 @@ func (m *model) restoreSelection(kind selection.FocusKind, catID, taskID string)
 
 // taskRowVisible is the filter's verdict alone; shownRows adds nesting and folds on top.
 func taskRowVisible(filter *FilterState, task domain.Task, categoryID, parentCategoryID string) bool {
-	if task.IsSeparator() {
+	if !task.IsTask() {
 		return filter == nil || !filter.HasActiveFilter() || filter.peeks(categoryID)
 	}
 	return filter == nil || filter.holds(task.ID) || filter.peeks(categoryID) || filter.TaskVisible(task, categoryID, parentCategoryID)
@@ -141,7 +141,7 @@ func hiddenByFilter(cat domain.Category, filter *FilterState) int {
 	unpeeked.endPeek()
 	n := 0
 	for i, shown := range shownRows(cat, &unpeeked, nil) {
-		if !shown && !cat.Tasks[i].IsSeparator() {
+		if !shown && cat.Tasks[i].IsTask() {
 			n++
 		}
 	}
@@ -180,7 +180,7 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 			if !shown[tIndex] {
 				continue
 			}
-			if task.IsSeparator() {
+			if !task.IsTask() {
 				positions = append(positions, selection.Position{
 					Kind:          selection.FocusSeparator,
 					CategoryIndex: cIndex,

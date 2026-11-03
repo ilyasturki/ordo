@@ -67,7 +67,7 @@ func (m *model) startTagEdit() {
 	}
 	var batch []string
 	for _, t := range cat.Tasks {
-		if !t.IsSeparator() && t.TagColor == task.TagColor {
+		if t.IsTask() && t.TagColor == task.TagColor {
 			batch = append(batch, t.ID)
 		}
 	}

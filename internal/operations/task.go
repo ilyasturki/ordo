@@ -127,7 +127,7 @@ func createTask(p *domain.Project, categoryID string, f TaskFields, afterTaskID 
 		if err != nil {
 			return domain.Task{}, err
 		}
-		if cat.Tasks[parent].IsSeparator() {
+		if !cat.Tasks[parent].IsTask() {
 			return domain.Task{}, domain.ErrSeparatorNest
 		}
 		if cat.Tasks[parent].ParentID != "" {
@@ -211,7 +211,7 @@ func findRealTask(p *domain.Project, categoryID, taskID string) (*domain.Task, e
 	if err != nil {
 		return nil, err
 	}
-	if task.IsSeparator() {
+	if !task.IsTask() {
 		return nil, ErrSeparatorFieldNotAllowed
 	}
 	return task, nil

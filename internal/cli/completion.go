@@ -74,7 +74,7 @@ func completeTaskIDs(topLevel bool) ([]string, cobra.ShellCompDirective) {
 	var completions []string
 	for _, cat := range project.Categories {
 		for _, task := range cat.Tasks {
-			if task.IsSeparator() || (topLevel && task.ParentID != "") {
+			if !task.IsTask() || (topLevel && task.ParentID != "") {
 				continue
 			}
 			completions = append(completions, task.ID)

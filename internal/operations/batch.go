@@ -10,7 +10,7 @@ func realTasks(p *domain.Project, ids []string) []*domain.Task {
 	var out []*domain.Task
 	for _, id := range ids {
 		ci, ti, err := LocateTask(p, id)
-		if err != nil || p.Categories[ci].Tasks[ti].IsSeparator() {
+		if err != nil || !p.Categories[ci].Tasks[ti].IsTask() {
 			continue
 		}
 		out = append(out, &p.Categories[ci].Tasks[ti])

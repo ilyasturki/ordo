@@ -200,7 +200,7 @@ const pickerRowPrefixWidth = 2
 func projectStats(p domain.Project) (open, inProgress int) {
 	for _, c := range p.Categories {
 		for _, t := range c.Tasks {
-			if t.IsSeparator() {
+			if !t.IsTask() {
 				continue
 			}
 			switch t.Status {

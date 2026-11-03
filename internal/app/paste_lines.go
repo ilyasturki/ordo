@@ -305,12 +305,12 @@ func (m *model) pasteLinesInEdit(text string) bool {
 	editedID := edited.ID
 	last := editedID
 	at := domain.BlockEnd(cat.Tasks, idx)
-	if fold && !edited.IsSeparator() {
+	if fold && edited.IsTask() {
 		linkSubtasks(newRows, rest, editedID)
 	} else {
 		linkSubtasks(newRows, rest, "")
 	}
-	if edited.ParentID != "" || edited.IsSeparator() {
+	if edited.ParentID != "" || !edited.IsTask() {
 		at = operations.SettleTasks(cat.Tasks, newRows, at, edited.ParentID)
 	}
 	tookSubtasks := slices.ContainsFunc(newRows, func(t domain.Task) bool { return t.ParentID == editedID })

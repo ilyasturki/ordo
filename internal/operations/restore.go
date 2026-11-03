@@ -41,7 +41,7 @@ func restoreRows(p *domain.Project, op Op) (Outcome, error) {
 	tasks := p.Categories[ci].Tasks
 	index := len(tasks)
 	pi := slices.IndexFunc(tasks, func(t domain.Task) bool { return t.ID == parent })
-	if parent == "" || pi < 0 || tasks[pi].ParentID != "" || tasks[pi].IsSeparator() {
+	if parent == "" || pi < 0 || tasks[pi].ParentID != "" || !tasks[pi].IsTask() {
 		parent, pi = "", -1
 	} else {
 		index = domain.BlockEnd(tasks, pi)
@@ -78,7 +78,7 @@ func checkRows(rows []domain.Task) error {
 			return errBadRows
 		}
 		seen[t.ID] = true
-		if i > 0 && (t.ParentID != rows[0].ID || t.IsSeparator() || rows[0].IsSeparator()) {
+		if i > 0 && (t.ParentID != rows[0].ID || !t.IsTask() || !rows[0].IsTask()) {
 			return errBadRows
 		}
 		if err := checkRow(t); err != nil {
@@ -174,14 +174,14 @@ func checkCategories(cats []domain.Category) error {
 
 func checkRow(t domain.Task) error {
 	switch {
-	case t.Kind != "" && !t.IsSeparator():
+	case !t.IsTask() && !t.IsSeparator():
 		return ErrInvalidKind
 	case t.EstimateMinutes < 0:
 		return ErrNegativeEstimate
-	case !t.IsSeparator() && strings.TrimSpace(t.Title) == "":
+	case t.IsTask() && strings.TrimSpace(t.Title) == "":
 		return ErrTitleRequired
 	}
-	if t.Status != "" || !t.IsSeparator() {
+	if t.Status != "" || t.IsTask() {
 		if err := domain.ValidateStatus(t.Status); err != nil {
 			return err
 		}

@@ -35,7 +35,7 @@ func (c *Category) nests() bool             { return true }
 
 func (t *Task) links() (string, string) { return t.ID, t.ParentID }
 func (t *Task) setParent(id string)     { t.ParentID = id }
-func (t *Task) nests() bool             { return !t.IsSeparator() }
+func (t *Task) nests() bool             { return t.IsTask() }
 
 // BlockEnd is one past items[i]'s last child, or i+1 for a child or an item with none.
 func BlockEnd[T any, P outline[T]](items []T, i int) int {
