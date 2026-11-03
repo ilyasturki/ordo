@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +39,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -60,10 +62,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.ilyasturki.ordo.compose.model.Category
@@ -81,6 +87,7 @@ import io.github.ilyasturki.ordo.compose.sync.SyncState
 import io.github.ilyasturki.ordo.compose.sync.Trouble
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
+import io.github.ilyasturki.ordo.compose.ui.marks
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
 import kotlinx.coroutines.launch
 
@@ -254,7 +261,7 @@ fun <T> Picker(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> Unit, onAdded: (String) -> Unit) {
     val engine = LocalEngine.current
@@ -270,7 +277,6 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
     var tag by remember { mutableStateOf("") }
     var estimate by remember { mutableIntStateOf(0) }
     var after by remember { mutableStateOf("") }
-    var menu by remember { mutableStateOf("") }
     val pid = entry.id
     val hidden = categories.firstOrNull { it.id == cat }?.let { !filter.taskVisible(Task(id = "", priority = priority, tagColor = tag), it) } == true
 
@@ -334,55 +340,109 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )
             }
-            Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.Center) {
-                    Box {
-                        InputChip(
-                            selected = false,
-                            onClick = { menu = "cat" },
-                            label = { Text(categories.firstOrNull { it.id == cat }?.name ?: "Category", maxLines = 1) },
-                            trailingIcon = { Icon(Icons.ExpandMore, null, Modifier.size(18.dp)) },
-                        )
-                        Picker(menu == "cat", { menu = "" }, categories, { c ->
-                            categories.firstOrNull { it.id == c.parentId }?.let { "${it.name} › ${c.name}" } ?: c.name
-                        }, { c ->
-                            if (c.id != cat) after = ""
-                            cat = c.id
-                        })
-                    }
-                    if (details == null) {
-                        IconButton(onClick = { details = "" }) { Icon(Icons.Notes, "Add a description", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    }
-                    Box {
-                        if (priority == "") {
-                            WordChip(Icons.Flag, "Priority") { menu = "priority" }
-                        } else {
-                            InputChip(selected = true, onClick = { menu = "priority" }, label = { Text(Priority.label(priority)) }, leadingIcon = { Icon(Icons.priority(priority), null, Modifier.size(18.dp)) })
-                        }
-                        Picker(menu == "priority", { menu = "" }, Priority.all, Priority::label, { priority = it }, leading = { Icon(Icons.priority(it), null) })
-                    }
-                    Box {
-                        if (tag == "") {
-                            WordChip(Icons.Palette, "Colour") { menu = "tag" }
-                        } else {
-                            InputChip(selected = true, onClick = { menu = "tag" }, label = { Text(Tags.label(tag)) }, leadingIcon = { TagDot(tag) })
-                        }
-                        Picker(menu == "tag", { menu = "" }, listOf("") + Tags.all, Tags::label, { tag = it }, leading = { if (it != "") TagDot(it) })
-                    }
-                    Box {
-                        if (estimate == 0) {
-                            IconButton(onClick = { menu = "estimate" }) { Icon(Icons.Schedule, "Estimate", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        } else {
-                            InputChip(selected = true, onClick = { menu = "estimate" }, label = { Text(Estimates.format(estimate)) }, leadingIcon = { Icon(Icons.Schedule, null, Modifier.size(18.dp)) })
-                        }
-                        Picker(menu == "estimate", { menu = "" }, listOf(0) + Estimates.presets, { if (it == 0) "None" else Estimates.format(it) }, { estimate = it })
-                    }
-                }
-                TextButton(onClick = save, enabled = title.isNotBlank() && !hidden) { Text("Save") }
-            }
+            AddBar(
+                categories, cat, details != null, priority, tag, estimate,
+                canSave = title.isNotBlank() && !hidden,
+                onCategory = { c ->
+                    if (c != cat) after = ""
+                    cat = c
+                },
+                onDescription = { details = "" },
+                onPriority = { priority = it },
+                onTag = { tag = it },
+                onEstimate = { estimate = it },
+                onSave = save,
+            )
         }
     }
     LaunchedEffect(Unit) { focus.requestFocus() }
+}
+
+// One line at 360dp whatever is set: an unset field is its icon, a set one its value in a compact chip.
+@Composable
+fun AddBar(
+    categories: List<Category>,
+    cat: String,
+    describing: Boolean,
+    priority: String,
+    tag: String,
+    estimate: Int,
+    canSave: Boolean,
+    onCategory: (String) -> Unit,
+    onDescription: () -> Unit,
+    onPriority: (String) -> Unit,
+    onTag: (String) -> Unit,
+    onEstimate: (Int) -> Unit,
+    onSave: () -> Unit,
+) {
+    var menu by remember { mutableStateOf("") }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f, fill = false).padding(end = 4.dp)) {
+                InputChip(
+                    selected = false,
+                    onClick = { menu = "cat" },
+                    label = { Text(categories.firstOrNull { it.id == cat }?.name ?: "Category", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    trailingIcon = { Icon(Icons.ExpandMore, null, Modifier.size(18.dp)) },
+                )
+                Picker(menu == "cat", { menu = "" }, categories, { c ->
+                    categories.firstOrNull { it.id == c.parentId }?.let { "${it.name} › ${c.name}" } ?: c.name
+                }, { onCategory(it.id) })
+            }
+            if (!describing) BarIcon(Icons.Notes, "Description", onDescription)
+            Box {
+                if (priority == "") {
+                    BarIcon(Icons.Flag, "Priority") { menu = "priority" }
+                } else {
+                    val up = priority == "critical" || priority == "high"
+                    ValueChip("Priority", Priority.label(priority), { menu = "priority" }) {
+                        Icon(Icons.priority(priority), null, Modifier.size(18.dp), tint = if (up) MaterialTheme.marks.up else MaterialTheme.marks.down)
+                    }
+                }
+                Picker(menu == "priority", { menu = "" }, Priority.all, Priority::label, onPriority, leading = { Icon(Icons.priority(it), null) })
+            }
+            Box {
+                if (tag == "") {
+                    BarIcon(Icons.Palette, "Colour") { menu = "tag" }
+                } else {
+                    ValueChip("Colour", Tags.label(tag), { menu = "tag" }) { TagDot(tag, Modifier.size(12.dp)) }
+                }
+                Picker(menu == "tag", { menu = "" }, listOf("") + Tags.all, Tags::label, onTag, leading = { if (it != "") TagDot(it) })
+            }
+            Box {
+                if (estimate == 0) {
+                    BarIcon(Icons.Schedule, "Estimate") { menu = "estimate" }
+                } else {
+                    ValueChip("Estimate", Estimates.format(estimate), { menu = "estimate" }) {
+                        Text(Estimates.format(estimate), style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+                Picker(menu == "estimate", { menu = "" }, listOf(0) + Estimates.presets, { if (it == 0) "None" else Estimates.format(it) }, onEstimate)
+            }
+        }
+        TextButton(onClick = onSave, enabled = canSave) { Text("Save") }
+    }
+}
+
+@Composable
+private fun BarIcon(icon: ImageVector, name: String, onClick: () -> Unit) {
+    IconButton(onClick = onClick) { Icon(icon, name, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+}
+
+@Composable
+private fun ValueChip(name: String, value: String, onClick: () -> Unit, content: @Composable () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.semantics {
+            contentDescription = name
+            stateDescription = value
+        },
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        Box(Modifier.defaultMinSize(minWidth = 40.dp, minHeight = 32.dp).padding(horizontal = 8.dp), contentAlignment = Alignment.Center) { content() }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

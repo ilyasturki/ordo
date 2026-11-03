@@ -15,6 +15,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasParent
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
@@ -193,18 +194,39 @@ class AppTest : AppFixture() {
     }
 
     @Test
-    fun theAddSheetNamesPriorityAndColourUntilTheyAreSet() {
+    fun theAddSheetShowsEachValueInPlaceOfItsIcon() {
         compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 20_000)
         compose.onNodeWithContentDescription("Add a task").performClick()
-        compose.onNodeWithText("Priority").performClick()
+        compose.onNodeWithContentDescription("Priority").performClick()
         menuItem("Medium").assertExists()
         menuItem("None").assertDoesNotExist()
         menuItem("High").performClick()
-        compose.onNodeWithText("Priority").assertDoesNotExist()
-        compose.onNodeWithText("Colour").performClick()
+        compose.onNode(hasContentDescription("Priority") and hasStateDescription("High")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Colour").performClick()
         compose.onNodeWithText("Green").performClick()
-        compose.onNodeWithText("Colour").assertDoesNotExist()
-        compose.onNodeWithText("Green").assertExists()
+        compose.onNode(hasContentDescription("Colour") and hasStateDescription("Green")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Estimate").performClick()
+        compose.onNodeWithText("2h").performClick()
+        compose.onNode(hasContentDescription("Estimate") and hasText("2h")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Description").performClick()
+        compose.onNodeWithText("Add a description").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Description").assertDoesNotExist()
+    }
+
+    @Test
+    fun saveAddsTheTaskAndChainsTheNextAfterIt() {
+        compose.waitUntilAtLeastOneExists(hasTestTag("list"), 20_000)
+        compose.onNodeWithContentDescription("Add a task").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("Water the plants")
+        compose.onNodeWithText("Save").performClick()
+        compose.waitUntil(20_000) { task("Water the plants") != null }
+        compose.onNodeWithText("New task").assertIsDisplayed()
+        compose.onNode(hasSetTextAction()).performTextInput("Feed the cat")
+        compose.onNodeWithText("Save").performClick()
+        compose.waitUntil(20_000) { task("Feed the cat") != null }
+        val titles = engine.state.value.project(PID)!!.project.categories.first { c -> c.tasks.any { it.title == "Feed the cat" } }.tasks.map { it.title }
+        assertEquals(titles.indexOf("Water the plants") + 1, titles.indexOf("Feed the cat"))
+        compose.onNodeWithText("New task").assertIsDisplayed()
     }
 
     @Test
@@ -241,7 +263,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Clear the filter to add a task here").assertExists()
         compose.onNode(hasSetTextAction()).performTextInput("Water the plants")
         compose.onNodeWithText("Save").assertIsNotEnabled()
-        compose.onNodeWithText("Priority").performClick()
+        compose.onNodeWithContentDescription("Priority").performClick()
         menuItem("High").performClick()
         compose.onNodeWithText("Clear the filter to add a task here").assertDoesNotExist()
         compose.onNodeWithText("Save").performClick()
