@@ -1,8 +1,9 @@
-Output "/tmp/ordo-vt/vhs-out/97_notes.gif"
+Output "/tmp/ordo-vt/vhs-out/101_notes_light.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
 Set FontSize 16
+Set Theme "Builtin Light"
 Env ORDO_DATA_PATH "/tmp/ordo-vt/data"
 Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
 
@@ -12,7 +13,7 @@ Enter
 Sleep 800ms
 Show
 
-# Descriptions and a labelled separator on screen, to tell a note apart from both.
+# The note of 100_notes on a light theme, beside a description and a labelled separator.
 Type "zd"
 Sleep 300ms
 Type "j"
@@ -23,29 +24,16 @@ Enter
 Type "Next up"
 Enter
 Sleep 300ms
-
-# _ adds a note below the cursor and opens its editor at once.
 Type "_"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/97_note_editor.png"
-
-# A long note wraps like a title.
+Screenshot "/tmp/ordo-vt/vhs-out/101_note_editor_light.png"
 Type "Ask Sam before merging the dashboard: the reports page still reads the old totals, and the export needs the same fix before Friday's release."
 Enter
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/97_note.png"
-
-# It moves like a separator, and never nests.
-Type "J"
-Sleep 300ms
-Type ">"
+Screenshot "/tmp/ordo-vt/vhs-out/101_note_light.png"
+Type "j"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/97_note_moved.png"
-
-# It deletes at once, like a separator.
-Type "d"
-Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/97_note_deleted.png"
+Screenshot "/tmp/ordo-vt/vhs-out/101_note_unselected_light.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
