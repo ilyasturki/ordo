@@ -116,64 +116,50 @@ func (m *model) startAddingTask() {
 
 // startAddingSeparator inserts a bare (unlabeled) separator directly below the
 // selection and lands on it. Unlike a task it opens no editor — Enter later
-// edits its label. Blocked while a filter is active, since the new separator
-// would be hidden (separators never survive a filter) and thus unreachable.
+// edits its label.
 func (m *model) startAddingSeparator() {
-	position, ok := m.selectedPosition()
+	sep, ok := m.insertLineRow(domain.KindSeparator)
 	if !ok {
 		return
 	}
-	catIndex := position.CategoryIndex
-	if catIndex < 0 || catIndex >= len(m.project.Categories) {
-		return
-	}
-	if m.ui.Filter.HasActiveFilter() {
-		m.ui.Screen.StatusMsg = "Clear the filter to add a separator"
-		return
-	}
-	sep, err := domain.NewSeparator()
-	if err != nil {
-		return
-	}
-
-	// A separator never nests, so below a subtask it goes after the parent's block.
-	cat := &m.project.Categories[catIndex]
-	taskIndex := 0
-	switch position.Kind {
-	case selection.FocusTask, selection.FocusSeparator, selection.FocusDescription:
-		taskIndex = domain.BlockEnd(cat.Tasks, domain.BlockStart(cat.Tasks, position.TaskIndex))
-	}
-	m.recordHistory()
-	cat.InsertTask(taskIndex, sep)
-	m.revealChildrenOf(cat.ID)
 	m.storeTaskUpdate()
-
 	m.rebuildPositions()
 	m.selectItem(selection.FocusSeparator, sep.ID)
 	m.ensureVisible()
 }
 
-// startAddingNote inserts an empty note below the selection's block and opens
-// its editor; the note is dropped unless it gets text. Blocked while a filter
-// is active, which hides notes.
+// startAddingNote opens the editor on a new empty note; the note is dropped unless it gets text.
 func (m *model) startAddingNote() {
-	position, ok := m.selectedPosition()
+	note, ok := m.insertLineRow(domain.KindNote)
 	if !ok {
 		return
 	}
+	m.rebuildPositions()
+	m.selectItem(selection.FocusSeparator, note.ID)
+	m.ui.Modes.ToEdit()
+	m.ui.Edit = newEditState("", true, note.ID, selection.FocusSeparator)
+	m.ensureVisible()
+}
+
+// insertLineRow puts an empty row of kind after the selection's top-level block.
+// A filter hides every such row, so it refuses one rather than add it out of reach.
+func (m *model) insertLineRow(kind string) (domain.Task, bool) {
+	position, ok := m.selectedPosition()
+	if !ok {
+		return domain.Task{}, false
+	}
 	catIndex := position.CategoryIndex
 	if catIndex < 0 || catIndex >= len(m.project.Categories) {
-		return
+		return domain.Task{}, false
 	}
 	if m.ui.Filter.HasActiveFilter() {
-		m.ui.Screen.StatusMsg = "Clear the filter to add a note"
-		return
+		m.ui.Screen.StatusMsg = "Clear the filter to add a " + kind
+		return domain.Task{}, false
 	}
-	note, err := domain.NewNote("")
+	row, err := domain.NewLine(kind, "")
 	if err != nil {
-		return
+		return domain.Task{}, false
 	}
-
 	cat := &m.project.Categories[catIndex]
 	taskIndex := 0
 	switch position.Kind {
@@ -181,14 +167,9 @@ func (m *model) startAddingNote() {
 		taskIndex = domain.BlockEnd(cat.Tasks, domain.BlockStart(cat.Tasks, position.TaskIndex))
 	}
 	m.recordHistory()
-	cat.InsertTask(taskIndex, note)
+	cat.InsertTask(taskIndex, row)
 	m.revealChildrenOf(cat.ID)
-
-	m.rebuildPositions()
-	m.selectItem(selection.FocusSeparator, note.ID)
-	m.ui.Modes.ToEdit()
-	m.ui.Edit = newEditState("", true, note.ID, selection.FocusSeparator)
-	m.ensureVisible()
+	return row, true
 }
 
 func (m *model) startAddingCategory() {

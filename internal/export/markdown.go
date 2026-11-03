@@ -99,7 +99,6 @@ func unescapeSlashes(s string) string {
 	return strings.TrimSpace(strings.ReplaceAll(s, `\/`, "/"))
 }
 
-// LineMarkdown is the markdown line of a separator or a note.
 func LineMarkdown(task domain.Task) string {
 	if task.IsNote() {
 		return "> " + task.Title
@@ -299,12 +298,11 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 		parentTask := ""
 		for _, td := range cd.tasks {
 			if td.kind != "" {
-				sep, err := domain.NewSeparator()
+				line, err := domain.NewLine(td.kind, td.title)
 				if err != nil {
 					return domain.Project{}, err
 				}
-				sep.Kind, sep.Title = td.kind, td.title
-				cat.Tasks = append(cat.Tasks, sep)
+				cat.Tasks = append(cat.Tasks, line)
 				parentTask = ""
 				continue
 			}

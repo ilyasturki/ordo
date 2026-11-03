@@ -244,7 +244,7 @@ func TestSchemaFollowsNotes(t *testing.T) {
 		return loaded.Schema
 	}
 
-	note, err := domain.NewNote("ask before merging")
+	note, err := domain.NewLine(domain.KindNote, "ask before merging")
 	require.NoError(t, err)
 	cat := &project.Categories[0]
 	cat.InsertTask(0, note)

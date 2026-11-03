@@ -35,14 +35,10 @@ func NestRefusal(err error, nested bool, kind, child, children string) error {
 	return err
 }
 
-// lineNestRefusal names the first separator or note among rows as what doesn't nest.
 func lineNestRefusal(rows []domain.Task) error {
 	for _, t := range rows {
-		if t.IsNote() {
-			return refuse("A note doesn't nest")
-		}
 		if !t.IsTask() {
-			break
+			return refuse("A %s doesn't nest", t.Kind)
 		}
 	}
 	return refuse("A separator doesn't nest")

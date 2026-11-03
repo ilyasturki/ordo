@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewNoteIsALineRow(t *testing.T) {
-	note, err := NewNote("ask Sam first")
+func TestNewLineMakesANote(t *testing.T) {
+	note, err := NewLine(KindNote, "ask Sam first")
 	require.NoError(t, err)
 	assert.True(t, note.IsNote())
 	assert.False(t, note.IsTask())

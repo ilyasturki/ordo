@@ -199,7 +199,7 @@ func TestDeleteAsksForACategoryOfSeparators(t *testing.T) {
 		t.Fatal(err)
 	}
 	sep.Title = "later"
-	note, err := domain.NewNote("ask first")
+	note, err := domain.NewLine(domain.KindNote, "ask first")
 	if err != nil {
 		t.Fatal(err)
 	}

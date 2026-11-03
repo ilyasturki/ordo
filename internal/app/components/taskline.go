@@ -36,6 +36,14 @@ type TaskLineRenderer struct {
 // Uncapped as a row limit lets a field take every row it wraps to.
 const Uncapped = 0
 
+// MaxRows is the maxRows ui.WrapClamped takes for text under limit.
+func MaxRows(limit int, text string) int {
+	if limit == Uncapped {
+		return utf8.RuneCountInString(text) + 1 // every row holds a rune at least
+	}
+	return limit
+}
+
 func NewTaskLineRenderer(width int, statusDisplay, priorityColor string, focused bool) *TaskLineRenderer {
 	return &TaskLineRenderer{
 		width:           width,
@@ -469,10 +477,7 @@ func (r *TaskLineRenderer) TitleRows(task domain.Task) int {
 }
 
 func (r *TaskLineRenderer) maxTitleRows(title string) int {
-	if r.titleRows == Uncapped {
-		return utf8.RuneCountInString(title) + 1 // every row holds a rune at least
-	}
-	return r.titleRows
+	return MaxRows(r.titleRows, title)
 }
 
 // wrapContentWithSuffix lays the title out behind prefixPart, continuation rows

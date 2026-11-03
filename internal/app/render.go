@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"strings"
-	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -487,12 +486,8 @@ func noteTextWidth(width, indent int, cut bool) int {
 	return safeWidth(width, overhead)
 }
 
-// noteRows is the most rows a note may wrap to: a title's cap, or all of them once `ze` expands it.
 func noteRows(limits rowLimits, note domain.Task) int {
-	if limits.expands(note.ID) {
-		return utf8.RuneCountInString(note.Title) + 1
-	}
-	return ui.MaxLineRows
+	return components.MaxRows(limits.titleRows(note.ID), note.Title)
 }
 
 // renderNoteLine draws a note: its text at the status column, in the terminal's
@@ -543,7 +538,6 @@ func (m model) renderNoteLine(note domain.Task, indent int, selected, focused, v
 	return strings.Join(out, "\n")
 }
 
-// renderEditNoteLine draws the inline editor for a note's text.
 func (m model) renderEditNoteLine(indent int) string {
 	prefix := "> " + strings.Repeat(" ", indent)
 	overhead := prefixWidth + indent

@@ -147,12 +147,10 @@ func createTask(p *domain.Project, categoryID string, f TaskFields, afterTaskID 
 	}
 
 	if f.isLineKind() {
-		line, err := domain.NewSeparator()
+		line, err := domain.NewLine(f.Kind, strings.TrimSpace(f.Title))
 		if err != nil {
 			return domain.Task{}, err
 		}
-		line.Kind = f.Kind
-		line.Title = strings.TrimSpace(f.Title)
 		if f.ID != "" {
 			line.ID = f.ID
 		}

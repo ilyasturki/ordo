@@ -179,9 +179,7 @@ func dedentLines(lines []string) string {
 
 func newTaskForRow(row pastedRow) (domain.Task, error) {
 	if row.line() {
-		sep, err := domain.NewSeparator()
-		sep.Kind, sep.Title = row.kind, row.title
-		return sep, err
+		return domain.NewLine(row.kind, row.title)
 	}
 	task, err := domain.NewTask(row.title)
 	if err != nil {

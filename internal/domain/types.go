@@ -253,21 +253,10 @@ func NewTask(title string) (Task, error) {
 // NewSeparator creates a bare (unlabeled) separator row. The label lives in
 // Title and is set later via editing; an empty label renders as a plain rule.
 func NewSeparator() (Task, error) {
-	id, err := NewID()
-	if err != nil {
-		return Task{}, err
-	}
-	now := NowTimestamp()
-	return Task{
-		ID:        id,
-		Kind:      KindSeparator,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}, nil
+	return NewLine(KindSeparator, "")
 }
 
-// NewNote creates a note row holding text.
-func NewNote(text string) (Task, error) {
+func NewLine(kind, title string) (Task, error) {
 	id, err := NewID()
 	if err != nil {
 		return Task{}, err
@@ -275,8 +264,8 @@ func NewNote(text string) (Task, error) {
 	now := NowTimestamp()
 	return Task{
 		ID:        id,
-		Title:     text,
-		Kind:      KindNote,
+		Title:     title,
+		Kind:      kind,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}, nil
