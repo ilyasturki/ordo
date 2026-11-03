@@ -29,10 +29,9 @@ func newTasksCmd() *cobra.Command {
 					return err
 				}
 			}
-			if priority != "" {
-				if _, err := parsePriority(priority); err != nil {
-					return err
-				}
+			wanted, err := parsePriority(priority)
+			if err != nil {
+				return err
 			}
 
 			return viewProject(projectSelector(nil), func(project domain.Project) error {
@@ -54,7 +53,7 @@ func newTasksCmd() *cobra.Command {
 						if status != "" && task.Status != status {
 							continue
 						}
-						if wanted, _ := parsePriority(priority); priority != "" && task.Priority != wanted {
+						if priority != "" && task.Priority != wanted {
 							continue
 						}
 						tasks = append(tasks, TaskListItem{
