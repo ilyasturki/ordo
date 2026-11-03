@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,6 +34,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +44,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import io.github.ilyasturki.ordo.compose.model.Estimates
 import io.github.ilyasturki.ordo.compose.model.Header
 import io.github.ilyasturki.ordo.compose.model.Hidden
@@ -65,7 +72,9 @@ fun CategoryHeader(header: Header, onLongClick: () -> Unit, onFold: (() -> Unit)
                     withStyle(SpanStyle(color = muted)) { append(header.parentName + "  ›  ") }
                 }
                 append(header.category.name)
+                if (header.category.pinned) pinMark()
             },
+            inlineContent = pinContent(muted),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f).padding(vertical = 8.dp),
@@ -81,6 +90,20 @@ fun CategoryHeader(header: Header, onLongClick: () -> Unit, onFold: (() -> Unit)
         }
     }
 }
+
+fun AnnotatedString.Builder.pinMark() {
+    append(" ")
+    appendInlineContent(PIN, "pinned")
+}
+
+private const val PIN = "pin"
+
+@Composable
+fun pinContent(tint: Color): Map<String, InlineTextContent> = mapOf(
+    PIN to InlineTextContent(Placeholder(1.em, 1.em, PlaceholderVerticalAlign.TextCenter)) {
+        Icon(Icons.Pin, "Pinned", tint = tint, modifier = Modifier.fillMaxSize())
+    },
+)
 
 @Composable
 private fun FoldedMarks(header: Header) {

@@ -139,6 +139,30 @@ class SyncEngineTest {
     }
 
     @Test
+    fun aPinReachesTheServerFirstAmongItsSiblings() = test {
+        val e = paired(engine())
+        val a = e.edit(PID, Ops.categoryPin(DOCUMENTATION, true))
+        assertTrue(a.applied)
+        assertEquals("Pinned “Documentation”", a.msg)
+        assertEquals(DOCUMENTATION, e.state.value.project(PID)!!.project.categories.first().id)
+        assertEquals(Round.OK, e.sync())
+        val first = Project.parse(server.project(PID)).categories.first()
+        assertEquals(DOCUMENTATION, first.id)
+        assertTrue(first.pinned)
+    }
+
+    @Test
+    fun aTakenCategoryNameAnswersTheNamesThatFreeIt() = test {
+        val e = paired(engine())
+        val a = e.edit(PID, Ops.categoryAdd("feature"), quiet = true)
+        assertEquals("refused", a.status)
+        assertEquals(FEATURE, a.clash!!.taken)
+        assertEquals("feature (2)", a.clash!!.mine)
+        assertEquals("Feature (2)", a.clash!!.other)
+        assertEquals(0, e.state.value.pending)
+    }
+
+    @Test
     fun anEditMadeDuringARoundLandsOnTheServerCopy() = test {
         val gate = Gate()
         val e = paired(engine(Api.client.newBuilder().addInterceptor(gate).build()))

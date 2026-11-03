@@ -1,5 +1,6 @@
 package io.github.ilyasturki.ordo.compose.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -16,11 +17,20 @@ data class Answer(
     val row: String = "",
     val saved: Boolean = false,
     val theirs: String? = null,
+    val clash: Clash? = null,
     val queue: JsonObject? = null,
     val undo: List<JsonObject> = emptyList(),
 ) {
     val applied: Boolean get() = status == "applied"
 }
+
+// A category name a sibling holds: taken is that sibling, mine and other the names that free it.
+@Serializable
+data class Clash(
+    val taken: String,
+    @SerialName("this") val mine: String,
+    val other: String,
+)
 
 // The ops of docs/sync.md the app makes.
 object Ops {
@@ -62,6 +72,7 @@ object Ops {
         op("category.add", "title" to title, "parent" to parent)
     fun categoryRename(cat: String, title: String) = op("category.rename", "cat" to cat, "title" to title)
     fun categoryPlace(cat: String, before: String) = op("category.place", "cat" to cat, "before" to before)
+    fun categoryPin(cat: String, pinned: Boolean) = op("category.pin", "cat" to cat, "value" to pinned.toString())
     fun categoryDelete(cat: String) = op("category.delete", "cat" to cat)
     fun projectCreate(title: String) = op("project.create", "title" to title)
     fun projectRename(title: String) = op("project.rename", "title" to title)

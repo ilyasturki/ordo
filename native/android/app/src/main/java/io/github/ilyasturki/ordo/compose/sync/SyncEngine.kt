@@ -230,6 +230,7 @@ class SyncEngine(
             when {
                 a.status == "conflict" && a.theirs != null ->
                     snack(a.msg, "Keep mine") { edit(pid, op.with("base", a.theirs)) }
+                a.clash != null -> {}
                 a.status != "unchanged" && a.msg != "" -> snack(a.msg)
             }
             return@withContext a

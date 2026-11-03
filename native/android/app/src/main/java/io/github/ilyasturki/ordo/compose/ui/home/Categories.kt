@@ -40,11 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.ilyasturki.ordo.compose.model.Category
+import io.github.ilyasturki.ordo.compose.model.Clash
 import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.sync.Entry
@@ -53,8 +55,10 @@ import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.LocalSnackbar
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
 import sh.calvin.reorderable.ReorderableColumn
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -74,11 +78,25 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
     val feedback = rememberFeedback()
     val pid = entry.id
     val dismiss = { onSheet(null) }
+    var clash by remember { mutableStateOf<Pair<Clash, CompletableDeferred<ClashPick?>>?>(null) }
+    // A taken name asks what frees it, and the sheet stays open until a pick lands or is cancelled.
+    suspend fun named(name: String, edit: (String) -> JsonObject): Boolean {
+        val a = engine.edit(pid, edit(name), quiet = true)
+        val taken = a.clash ?: return a.applied
+        val pick = CompletableDeferred<ClashPick?>()
+        clash = taken to pick
+        return when (pick.await()) {
+            ClashPick.MINE -> engine.edit(pid, edit(taken.mine), quiet = true).applied
+            ClashPick.OTHER -> engine.edit(pid, Ops.categoryRename(taken.taken, taken.other), quiet = true).applied &&
+                engine.edit(pid, edit(name), quiet = true).applied
+            null -> false
+        }
+    }
     when (sheet) {
         is CategorySheet.Menu -> {
             val cat = entry.project.category(sheet.cat) ?: return
             NameSheet(cat.name, "Category name", "Rename", onDismiss = dismiss, onDone = { name ->
-                name == cat.name || engine.edit(pid, Ops.categoryRename(cat.id, name), quiet = true).applied
+                name == cat.name || named(name) { Ops.categoryRename(cat.id, it) }
             }) {
                 SheetAction(Icons.NewFolder, "New sub-category") { onSheet(CategorySheet.New(cat.parentId.ifEmpty { cat.id })) }
                 SheetAction(Icons.Separator, "Add a separator") {
@@ -90,11 +108,16 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
                         onSheet(CategorySheet.NewSeparator(cat.id))
                     }
                 }
+                SheetAction(Icons.Pin, if (cat.pinned) "Unpin" else "Pin") {
+                    onSheet(null)
+                    feedback.commit()
+                    scope.launch { engine.edit(pid, Ops.categoryPin(cat.id, !cat.pinned)) }
+                }
                 SheetAction(Icons.Delete, "Delete category", danger = true) { onSheet(CategorySheet.Delete(cat.id)) }
             }
         }
         is CategorySheet.New -> NameSheet("", if (sheet.parent == "") "New category" else "New sub-category", "Add", onDismiss = dismiss, onDone = { name ->
-            engine.edit(pid, Ops.categoryAdd(name, sheet.parent), quiet = true).applied.also {
+            named(name) { Ops.categoryAdd(it, sheet.parent) }.also {
                 if (it) feedback.commit()
                 if (it && sheet.parent != "") scope.launch { engine.setFolded(pid, sheet.parent, false) }
             }
@@ -109,6 +132,12 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
             ConfirmDialog("Delete category “${cat.name}”?", deletedWith(entry.project, cat), "Delete", dismiss) {
                 scope.launch { engine.edit(pid, Ops.categoryDelete(cat.id)) }
             }
+        }
+    }
+    clash?.let { (taken, pick) ->
+        ClashDialog(entry.project.category(taken.taken)?.name.orEmpty(), taken) {
+            clash = null
+            pick.complete(it)
         }
     }
 }
@@ -220,6 +249,7 @@ private fun CategoryTree(entry: Entry, pad: PaddingValues, onMenu: (String) -> U
                     Column(Modifier.fillMaxWidth()) {
                         CategoryLine(
                             top.name,
+                            top.pinned,
                             child = false,
                             rowDrag = Modifier.longPressDraggableHandle(onDragStarted = { lift() }, onDragStopped = stopped),
                             handleDrag = Modifier.draggableHandle(onDragStarted = { lift() }, onDragStopped = stopped),
@@ -267,6 +297,7 @@ private fun SubCategories(
                 Lifted(dragging) {
                     CategoryLine(
                         sub.name,
+                        sub.pinned,
                         child = true,
                         rowDrag = Modifier.longPressDraggableHandle(onDragStarted = { lift() }, onDragStopped = { letGo() }),
                         handleDrag = Modifier.draggableHandle(onDragStarted = { lift() }, onDragStopped = { letGo() }),
@@ -290,7 +321,7 @@ private fun Lifted(dragging: Boolean, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun CategoryLine(name: String, child: Boolean, rowDrag: Modifier, handleDrag: Modifier, onClick: () -> Unit) {
+private fun CategoryLine(name: String, pinned: Boolean, child: Boolean, rowDrag: Modifier, handleDrag: Modifier, onClick: () -> Unit) {
     Row(
         rowDrag
             .fillMaxWidth()
@@ -300,7 +331,11 @@ private fun CategoryLine(name: String, child: Boolean, rowDrag: Modifier, handle
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            name,
+            buildAnnotatedString {
+                append(name)
+                if (pinned) pinMark()
+            },
+            inlineContent = pinContent(MaterialTheme.colorScheme.onSurfaceVariant),
             style = if (child) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f).padding(vertical = 12.dp),
         )

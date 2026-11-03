@@ -67,6 +67,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.ilyasturki.ordo.compose.model.Category
+import io.github.ilyasturki.ordo.compose.model.Clash
 import io.github.ilyasturki.ordo.compose.model.Estimates
 import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
@@ -185,6 +186,25 @@ fun ConfirmDialog(title: String, text: String, action: String, onDismiss: () -> 
             }) { Text(action, color = MaterialTheme.colorScheme.error) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+enum class ClashPick { MINE, OTHER }
+
+// The TUI's chooser for a taken category name (internal/app/category_clash.go), merge aside.
+@Composable
+fun ClashDialog(takenName: String, clash: Clash, onPick: (ClashPick?) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onPick(null) },
+        title = { Text("“$takenName” is taken") },
+        text = { Text("Another category here has that name.") },
+        confirmButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                TextButton(onClick = { onPick(ClashPick.MINE) }) { Text("Name it “${clash.mine}”") }
+                TextButton(onClick = { onPick(ClashPick.OTHER) }) { Text("Rename the other to “${clash.other}”") }
+                TextButton(onClick = { onPick(null) }) { Text("Cancel") }
+            }
+        },
     )
 }
 

@@ -33,6 +33,7 @@ data class Category(
     val name: String = "",
     @SerialName("parent_id") val parentId: String = "",
     @SerialName("estimate_minutes") val estimateMinutes: Int = 0,
+    val pinned: Boolean = false,
     val tasks: List<Task> = emptyList(),
 )
 

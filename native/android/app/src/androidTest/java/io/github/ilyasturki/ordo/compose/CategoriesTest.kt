@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.height
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -182,6 +183,58 @@ class CategoriesTest : AppFixture() {
         compose.waitUntil(20_000) { order().last() == "Backlog" }
         compose.waitUntilAtLeastOneExists(hasText("Backlog"), 20_000)
         compose.onNodeWithText("Backlog").assertIsDisplayed()
+    }
+
+    @Test
+    fun aPinPutsTheCategoryFirstAndMarksIt() {
+        scrollTo("Research")
+        research().performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Pin"), 20_000)
+        compose.onNodeWithText("Pin").performClick()
+        compose.waitUntil(20_000) { order().first() == "Research" }
+        assertEquals(true, engine.state.value.project(PID)!!.project.categories.first().pinned)
+        compose.onNodeWithTag("list").performScrollToIndex(0)
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Pinned"), 20_000)
+        compose.onNode(hasText("Research", substring = true) and hasClickAction()).performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Unpin"), 20_000)
+        compose.onNodeWithText("Unpin").performClick()
+        compose.waitUntil(20_000) { order().first() == "Feature" && order()[1] == "Research" }
+    }
+
+    private fun renameResearchTo(name: String) {
+        scrollTo("Research")
+        research().performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Rename"), 20_000)
+        compose.onNode(hasSetTextAction()).performTextReplacement(name)
+        compose.onNodeWithText("Rename").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("“Feature” is taken"), 20_000)
+    }
+
+    @Test
+    fun aTakenNameOffersAFreeOne() {
+        renameResearchTo("Feature")
+        compose.onNodeWithText("Name it “Feature (2)”").performClick()
+        compose.waitUntil(20_000) { order().last() == "Feature (2)" }
+        compose.waitUntilDoesNotExist(hasText("Rename"), 20_000)
+        assertEquals("Feature", order().first())
+    }
+
+    @Test
+    fun aTakenNameCanRenameTheOther() {
+        renameResearchTo("feature")
+        compose.onNodeWithText("Rename the other to “Feature (2)”").performClick()
+        compose.waitUntil(20_000) { order().first() == "Feature (2)" && order().last() == "feature" }
+        compose.waitUntilDoesNotExist(hasText("Rename"), 20_000)
+    }
+
+    @Test
+    fun cancellingATakenNameKeepsTheSheet() {
+        renameResearchTo("Feature")
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitUntilDoesNotExist(hasText("“Feature” is taken"), 20_000)
+        compose.onNodeWithText("Rename").assertIsDisplayed()
+        assertEquals("Research", order().last())
+        assertEquals(0, engine.state.value.pending)
     }
 
     @Test
