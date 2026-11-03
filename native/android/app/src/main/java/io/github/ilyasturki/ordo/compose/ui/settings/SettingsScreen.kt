@@ -17,11 +17,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -42,9 +44,12 @@ fun SettingsScreen(open: (NavKey) -> Unit, back: () -> Unit) {
     val context = LocalContext.current
     val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
 
+    val bar = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(bar.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                scrollBehavior = bar,
                 title = { Text("Settings") },
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.Back, "Back") } },
             )
@@ -94,9 +99,12 @@ internal fun Item(icon: ImageVector, title: String, detail: String, danger: Bool
 fun LicenceScreen(back: () -> Unit) {
     val context = LocalContext.current
     val text = remember { context.assets.open("google-sans-flex-OFL.txt").bufferedReader().use { it.readText() } }
+    val bar = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(bar.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                scrollBehavior = bar,
                 title = { Text("Google Sans Flex") },
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.Back, "Back") } },
             )

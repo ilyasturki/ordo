@@ -5,7 +5,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.DragInteraction
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -13,15 +12,12 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,13 +28,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.ilyasturki.ordo.compose.model.Block
 import io.github.ilyasturki.ordo.compose.model.Board
@@ -81,6 +75,7 @@ fun ProjectList(
     onCategories: () -> Unit,
     onNewCategory: () -> Unit,
     onFocus: (String?) -> Unit,
+    onScrolled: (Boolean) -> Unit = {},
     query: String = "",
     jump: String? = null,
     onJumped: () -> Unit = {},
@@ -147,6 +142,8 @@ fun ProjectList(
     }
     val dropped by rememberUpdatedState(drop)
     val report by rememberUpdatedState(onFocus)
+    val scrolledReport by rememberUpdatedState(onScrolled)
+    LaunchedEffect(listState) { snapshotFlow { listState.canScrollBackward }.collect { scrolledReport(it) } }
     // A category gone to stays the focus until the user scrolls, short or last as it may be.
     var held by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(listState) {
@@ -170,25 +167,12 @@ fun ProjectList(
     }
 
     if (entry.project.categories.isEmpty()) {
-        Column(
-            Modifier.fillMaxSize().padding(32.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text("No categories yet", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            FilledTonalButton(onClick = onNewCategory, modifier = Modifier.padding(top = 16.dp)) { Text("New category") }
-        }
+        EmptyState("No categories yet", action = "New category", onAction = onNewCategory)
         return
     }
 
     if (searching && shown.isEmpty()) {
-        Text(
-            "Nothing matches",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxSize().padding(top = 64.dp),
-        )
+        EmptyState("Nothing matches")
         return
     }
 

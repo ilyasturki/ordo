@@ -1,9 +1,10 @@
 package io.github.ilyasturki.ordo.compose.ui.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +19,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -32,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,7 +55,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -114,6 +116,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     val focus = remember { mutableStateMapOf<String, String?>() }
     val jumps = LocalJump.current
     val landing = remember { mutableStateMapOf<String, String>() }
+    val scrolled = remember { mutableStateMapOf<String, Boolean>() }
 
     val pager = rememberPagerState(initialPage = projects.indexOfFirst { it.id == state.prefs.current }.coerceAtLeast(0)) { projects.size }
     val current = projects.getOrNull(pager.currentPage.coerceAtMost(projects.lastIndex))
@@ -136,13 +139,21 @@ fun HomeScreen(open: (NavKey) -> Unit) {
         }
     }
 
+    // M3's on-scroll container colour, read from the page in sight: a bar's own scroll behaviour would carry one page's scroll to the next.
+    val scrolledUnder = current != null && !searching && scrolled[current.id] == true
+    val barColor by animateColorAsState(
+        if (scrolledUnder) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.surface,
+        MaterialTheme.motionScheme.defaultEffectsSpec(),
+        label = "bar",
+    )
     SnackScaffold(
         topBar = {
-            Column(Modifier.statusBarsPadding()) {
+            Column(Modifier.background(barColor).statusBarsPadding()) {
                 if (searching && current != null) {
                     ProjectSearchBar(current.name, query, { query = it }, closeSearch)
                 } else {
                     TopAppBar(
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                         title = {
                             Text(
                                 current?.let { targetOf(it) }?.name.orEmpty(),
@@ -170,9 +181,14 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                                     }
                                 }
                             }
-                            IconButton(onClick = { open(SettingsKey) }) {
-                                Icon(Icons.Settings, "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            HomeMenu(
+                                current,
+                                onRename = { sheet = HomeSheet.ProjectMenu(it) },
+                                onNewCategory = { sheet = HomeSheet.OfCategory(it, CategorySheet.New("")) },
+                                onCategories = { open(CategoriesKey(it)) },
+                                onDelete = { confirm = Confirm.DeleteProject(it) },
+                                onSettings = { open(SettingsKey) },
+                            )
                         },
                     )
                     PrimaryScrollableTabRow(
@@ -202,7 +218,6 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                         NewProjectTab { sheet = HomeSheet.NewProject }
                     }
                 }
-                HorizontalDivider()
             }
         },
         floatingActionButton = {
@@ -212,27 +227,11 @@ fun HomeScreen(open: (NavKey) -> Unit) {
         },
     ) { pad ->
         if (projects.isEmpty()) {
-            Column(
-                Modifier.fillMaxSize().padding(pad).padding(32.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                val waiting = state.lastSync == 0L
-                Text(
-                    when {
-                        waiting && state.error != "" -> "Can't load your projects yet: ${state.error}"
-                        waiting -> "Loading your projects…"
-                        else -> "No projects yet"
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-                if (waiting && state.error != "") {
-                    FilledTonalButton(onClick = { scope.launch { engine.sync() } }, modifier = Modifier.padding(top = 16.dp)) { Text("Retry") }
-                } else if (!waiting) {
-                    FilledTonalButton(onClick = { sheet = HomeSheet.NewProject }, modifier = Modifier.padding(top = 16.dp)) { Text("New project") }
-                }
+            val waiting = state.lastSync == 0L
+            when {
+                waiting && state.error != "" -> EmptyState("Can't load your projects yet: ${state.error}", Modifier.padding(pad), action = "Retry") { scope.launch { engine.sync() } }
+                waiting -> EmptyState("Loading your projects…", Modifier.padding(pad))
+                else -> EmptyState("No projects yet", Modifier.padding(pad), action = "New project") { sheet = HomeSheet.NewProject }
             }
         } else {
             HorizontalPager(
@@ -254,6 +253,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                     onCategories = { open(CategoriesKey(entry.id)) },
                     onNewCategory = { sheet = HomeSheet.OfCategory(entry.id, CategorySheet.New("")) },
                     onFocus = { focus[entry.id] = it },
+                    onScrolled = { scrolled[entry.id] = it },
                     jump = landing[entry.id],
                     onJumped = { landing.remove(entry.id) },
                     query = query,
@@ -369,6 +369,44 @@ private fun ProjectSearchBar(project: String, query: String, onQuery: (String) -
         keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
     )
     LaunchedEffect(Unit) { focus.requestFocus() }
+}
+
+// The project's actions behind a visible ⋮; a tap on the open tab and a long press stay their shortcuts.
+@Composable
+private fun HomeMenu(
+    current: Entry?,
+    onRename: (String) -> Unit,
+    onNewCategory: (String) -> Unit,
+    onCategories: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onSettings: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    @Composable
+    fun Item(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, danger: Boolean = false, onClick: () -> Unit) {
+        val color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+        DropdownMenuItem(
+            text = { Text(label, color = color) },
+            leadingIcon = { Icon(icon, null, tint = if (danger) color else MaterialTheme.colorScheme.onSurfaceVariant) },
+            onClick = {
+                open = false
+                onClick()
+            },
+        )
+    }
+    Box {
+        IconButton(onClick = { open = true }) { Icon(Icons.More, "More options", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            if (current != null) {
+                Item("Rename project", Icons.Edit) { onRename(current.id) }
+                Item("New category", Icons.NewFolder) { onNewCategory(current.id) }
+                Item("Categories", Icons.Categories) { onCategories(current.id) }
+                Item("Delete project", Icons.Delete, danger = true) { onDelete(current.id) }
+                HorizontalDivider()
+            }
+            Item("Settings", Icons.Settings, onClick = onSettings)
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

@@ -17,7 +17,8 @@ import org.junit.runner.RunWith
 class SettingsTest : AppFixture() {
     private fun openSettings() {
         compose.waitUntilAtLeastOneExists(hasTestTag("list"), 20_000)
-        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Settings").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Devices"), 20_000)
     }
 

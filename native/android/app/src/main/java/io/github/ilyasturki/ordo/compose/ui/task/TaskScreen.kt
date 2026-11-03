@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -31,12 +32,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,7 +48,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -81,7 +84,8 @@ import io.github.ilyasturki.ordo.compose.ui.ViewerKey
 import io.github.ilyasturki.ordo.compose.ui.home.Picker
 import io.github.ilyasturki.ordo.compose.ui.home.StatusIcon
 import io.github.ilyasturki.ordo.compose.ui.home.TagDot
-import io.github.ilyasturki.ordo.compose.ui.home.WordChip
+import io.github.ilyasturki.ordo.compose.ui.home.MarkChip
+import io.github.ilyasturki.ordo.compose.ui.home.PriorityChip
 import io.github.ilyasturki.ordo.compose.ui.home.plainFieldColors
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
 import kotlinx.coroutines.Dispatchers
@@ -245,9 +249,12 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
     val children = if (task.parentId == "" && !task.line) cat.tasks.filter { it.parentId == task.id } else emptyList()
     val done = task.finished
 
+    val bar = TopAppBarDefaults.pinnedScrollBehavior()
     SnackScaffold(
+        modifier = Modifier.nestedScroll(bar.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                scrollBehavior = bar,
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.Back, "Back") } },
                 title = {
                     Box {
@@ -261,6 +268,14 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                     }
                 },
                 actions = {
+                    if (!task.line) {
+                        ImageButton(
+                            menu == "image",
+                            { menu = if (it) "image" else "" },
+                            onPick = { pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                            onCamera = ::openCamera,
+                        )
+                    }
                     Box {
                         IconButton(onClick = { menu = "more" }) { Icon(Icons.More, "More") }
                         DropdownMenu(expanded = menu == "more", onDismissRequest = { menu = "" }) {
@@ -308,7 +323,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable { open(TaskKey(pid, parent.id)) }
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
             TextField(
@@ -346,16 +361,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                 if (refs.isNotEmpty()) {
                     Thumbnails(refs, onOpen = { open(ViewerKey(pid, tid, it)) }, onRemove = ::removeImage)
                 }
-                Properties(
-                    task,
-                    menu,
-                    { menu = it },
-                    ::edit,
-                    onPick = {
-                        pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    },
-                    onCamera = ::openCamera,
-                )
+                Properties(task, menu, { menu = it }, ::edit)
                 if (task.parentId == "") {
                     Subtasks(pid, cat.id, task, children, open)
                 }
@@ -373,59 +379,61 @@ private fun Properties(
     menu: String,
     setMenu: (String) -> Unit,
     edit: (kotlinx.serialization.json.JsonObject, Boolean) -> Unit,
-    onPick: () -> Unit,
-    onCamera: () -> Unit,
 ) {
     val id = task.id
     val statusSet = task.status == Status.IN_PROGRESS || task.status == Status.CANCELLED
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     @Composable
-    fun Field(key: String, set: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector, add: String, label: String, leading: @Composable () -> Unit, word: Boolean = false, picker: @Composable () -> Unit) {
+    fun Field(key: String, chip: @Composable (() -> Unit) -> Unit) {
         Box {
-            when {
-                set -> InputChip(selected = true, onClick = { setMenu(key) }, label = { Text(label) }, leadingIcon = leading)
-                word -> WordChip(icon, add) { setMenu(key) }
-                else -> IconButton(onClick = { setMenu(key) }) { Icon(icon, add, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            chip { setMenu(key) }
+            when (key) {
+                "status" -> Picker(menu == key, { setMenu("") }, Status.all, Status::label, { edit(Ops.status(id, it), false) }, leading = { Icon(Icons.status(it), null) })
+                "priority" -> Picker(menu == key, { setMenu("") }, Priority.all, Priority::label, { edit(Ops.priority(id, it), true) }, leading = { Icon(Icons.priority(it), null) })
+                "tag" -> Picker(menu == key, { setMenu("") }, Tags.all + "", Tags::label, { edit(Ops.tag(id, it), true) }, leading = { if (it != "") TagDot(it) })
+                else -> Picker(menu == key, { setMenu("") }, Estimates.presets + 0, { if (it == 0) "None" else Estimates.format(it) }, { edit(Ops.estimate(id, it), true) })
             }
-            picker()
         }
     }
     FlowRow(
-        Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.Center,
+        Modifier.padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        Field("status", statusSet, Icons.status(task.status), "Status: ${Status.label(task.status)}", Status.label(task.status), { Icon(Icons.status(task.status), null, Modifier.size(18.dp)) }) {
-            Picker(menu == "status", { setMenu("") }, Status.all, Status::label, { edit(Ops.status(id, it), false) }, leading = { Icon(Icons.status(it), null) })
+        if (statusSet) Field("status") { MarkChip(Status.label(task.status), icon = Icons.status(task.status), onClick = it) }
+        Field("priority") { PriorityChip(task.priority, task.finished, onClick = it) }
+        // Named until it is set: a palette alone doesn't say it colours the task.
+        Field("tag") {
+            if (task.tagColor == "") MarkChip("Colour", icon = Icons.Palette, onClick = it) else MarkChip(Tags.label(task.tagColor), tag = task.tagColor, onClick = it)
         }
-        Field("priority", true, Icons.Flag, "Priority", Priority.label(task.priority), { Icon(Icons.priority(task.priority), null, Modifier.size(18.dp)) }) {
-            Picker(menu == "priority", { setMenu("") }, Priority.all, Priority::label, { edit(Ops.priority(id, it), true) }, leading = { Icon(Icons.priority(it), null) })
-        }
-        Field("tag", task.tagColor != "", Icons.Palette, "Colour", Tags.label(task.tagColor), { TagDot(task.tagColor) }, word = true) {
-            Picker(menu == "tag", { setMenu("") }, Tags.all + "", Tags::label, { edit(Ops.tag(id, it), true) }, leading = { if (it != "") TagDot(it) })
-        }
-        Field("estimate", task.estimateMinutes > 0, Icons.Schedule, "Add an estimate", Estimates.format(task.estimateMinutes), { Icon(Icons.Schedule, null, Modifier.size(18.dp)) }) {
-            Picker(menu == "estimate", { setMenu("") }, Estimates.presets + 0, { if (it == 0) "None" else Estimates.format(it) }, { edit(Ops.estimate(id, it), true) })
-        }
-        Box {
-            IconButton(onClick = { setMenu("image") }) { Icon(Icons.AddPhoto, "Add an image", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-            DropdownMenu(expanded = menu == "image", onDismissRequest = { setMenu("") }) {
-                DropdownMenuItem(
-                    text = { Text("Choose a photo") },
-                    leadingIcon = { Icon(Icons.Image, null) },
-                    onClick = {
-                        setMenu("")
-                        onPick()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text("Take a photo") },
-                    leadingIcon = { Icon(Icons.Camera, null) },
-                    onClick = {
-                        setMenu("")
-                        onCamera()
-                    },
-                )
-            }
+        if (task.estimateMinutes > 0) Field("estimate") { MarkChip(Estimates.format(task.estimateMinutes), icon = Icons.Schedule, onClick = it) }
+        if (!statusSet) Field("status") { IconButton(onClick = it) { Icon(Icons.status(task.status), "Status: ${Status.label(task.status)}", tint = muted) } }
+        if (task.estimateMinutes == 0) Field("estimate") { IconButton(onClick = it) { Icon(Icons.Schedule, "Add an estimate", tint = muted) } }
+    }
+}
+
+@Composable
+private fun ImageButton(open: Boolean, setOpen: (Boolean) -> Unit, onPick: () -> Unit, onCamera: () -> Unit) {
+    Box {
+        IconButton(onClick = { setOpen(true) }) { Icon(Icons.AddPhoto, "Add an image") }
+        DropdownMenu(expanded = open, onDismissRequest = { setOpen(false) }) {
+            DropdownMenuItem(
+                text = { Text("Choose a photo") },
+                leadingIcon = { Icon(Icons.Image, null) },
+                onClick = {
+                    setOpen(false)
+                    onPick()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Take a photo") },
+                leadingIcon = { Icon(Icons.Camera, null) },
+                onClick = {
+                    setOpen(false)
+                    onCamera()
+                },
+            )
         }
     }
 }
@@ -442,8 +450,8 @@ private fun Subtasks(pid: String, cat: String, task: Task, children: List<Task>,
                 Modifier
                     .fillMaxWidth()
                     .clickable { open(TaskKey(pid, c.id)) }
-                    .padding(start = 8.dp, end = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(start = 4.dp, end = 16.dp),
+                verticalAlignment = Alignment.Top,
             ) {
                 StatusIcon(c.status, { scope.launch { engine.edit(pid, Ops.cycle(c.id), quiet = Status.next(c.status) != Status.COMPLETED) } })
                 Text(
@@ -451,20 +459,29 @@ private fun Subtasks(pid: String, cat: String, task: Task, children: List<Task>,
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (c.finished) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                     textDecoration = if (c.finished) TextDecoration.LineThrough else null,
+                    modifier = Modifier.padding(vertical = 12.dp),
                 )
             }
         }
-        Row(Modifier.padding(start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(start = 4.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                 Icon(Icons.Subtask, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TextField(
+            val style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface)
+            // A TextField's own 16dp inset would put this text past the subtasks' titles.
+            BasicTextField(
                 text,
                 { text = it.replace("\n", " ") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Add a subtask") },
+                modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+                textStyle = style,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                decorationBox = { field ->
+                    Box {
+                        if (text.isEmpty()) Text("Add a subtask", style = style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        field()
+                    }
+                },
                 singleLine = true,
-                colors = plainFieldColors(),
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
                     val t = text.replace(space, " ").trim()

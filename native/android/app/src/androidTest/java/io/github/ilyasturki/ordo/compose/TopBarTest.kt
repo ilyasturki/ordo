@@ -80,7 +80,7 @@ class TopBarTest : AppFixture() {
     fun theProjectsHaveTheirOwnLineUnderTheActions() {
         ready()
         assertLabel("Feature")
-        val settings = compose.onNodeWithContentDescription("Settings").getUnclippedBoundsInRoot()
+        val settings = compose.onNodeWithContentDescription("More options").getUnclippedBoundsInRoot()
         val tab = compose.onNodeWithText("Ordo", useUnmergedTree = true).getUnclippedBoundsInRoot()
         val newProject = compose.onNodeWithContentDescription("New project").getUnclippedBoundsInRoot()
         val label = compose.onNodeWithTag("focus").getUnclippedBoundsInRoot()

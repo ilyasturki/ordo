@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,9 +39,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -181,9 +182,12 @@ fun CategoriesScreen(pid: String, back: () -> Unit) {
         }
     }
 
+    val bar = TopAppBarDefaults.pinnedScrollBehavior()
     SnackScaffold(
+        modifier = Modifier.nestedScroll(bar.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                scrollBehavior = bar,
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.Back, "Back") } },
                 title = { Text("${entry.name} categories", maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
@@ -193,13 +197,7 @@ fun CategoriesScreen(pid: String, back: () -> Unit) {
         },
     ) { pad ->
         if (entry.project.categories.isEmpty()) {
-            Text(
-                "No categories yet",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(pad).padding(top = 64.dp),
-            )
+            EmptyState("No categories yet", Modifier.padding(pad))
         } else {
             CategoryTree(entry, pad, onGo = go, onMenu = { sheet = CategorySheet.Menu(it) })
         }

@@ -33,6 +33,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -101,9 +103,12 @@ fun DevicesScreen(back: () -> Unit) {
     }
     LaunchedEffect(Unit) { load() }
 
+    val bar = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(bar.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                scrollBehavior = bar,
                 title = { Text("Devices") },
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.Back, "Back") } },
             )

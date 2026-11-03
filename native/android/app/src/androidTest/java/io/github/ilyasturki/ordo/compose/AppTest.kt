@@ -23,6 +23,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -403,6 +404,21 @@ class AppTest : AppFixture() {
         openTask("Recurring tasks")
         compose.waitUntilAtLeastOneExists(hasContentDescription("offline"), 20_000)
         compose.onNodeWithContentDescription("Remove offline").assertIsDisplayed()
+    }
+
+    @Test
+    fun aSubtaskAddedOnTheTaskPageStartsWhereTheFieldsTextDoes() {
+        openTask("Tap a row to focus it")
+        val image = compose.onNodeWithContentDescription("Add an image").getUnclippedBoundsInRoot()
+        val more = compose.onNodeWithContentDescription("More").getUnclippedBoundsInRoot()
+        assertEquals("the image button sits in the top bar", more.top.value, image.top.value, 1f)
+        val field = compose.onNodeWithText("Add a subtask", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        compose.onAllNodes(hasSetTextAction()).onLast().performTextInput("Check the edge")
+        compose.onAllNodes(hasSetTextAction()).onLast().performImeAction()
+        compose.waitUntil(20_000) { task("Check the edge")?.parentId == task("Tap a row to focus it")?.id }
+        compose.waitUntil(20_000) { compose.onAllNodes(hasText("Check the edge") and hasSetTextAction().not(), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        val title = compose.onNode(hasText("Check the edge") and hasSetTextAction().not(), useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(field.left.value, title.left.value, 1f)
     }
 
     @Test

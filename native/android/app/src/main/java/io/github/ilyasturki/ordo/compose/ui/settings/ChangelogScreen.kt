@@ -13,9 +13,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
@@ -31,9 +33,12 @@ import io.github.ilyasturki.ordo.compose.ui.Icons
 fun ChangelogScreen(back: () -> Unit) {
     val context = LocalContext.current
     val lines = remember { parseChangelog(context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }) }
+    val bar = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(bar.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                scrollBehavior = bar,
                 title = { Text("Changelog") },
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.Back, "Back") } },
             )

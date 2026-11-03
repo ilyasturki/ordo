@@ -26,6 +26,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The app's Settings: the Version row opens the changelog, offline, and the Server and Sync rows, which did nothing, are gone; the server shows under Devices as "Signed in to …"
 - `just run` runs from source on a fresh copy of your data and config, so a dev build never writes the real files; `just run-real` keeps the old behaviour
 - A new app icon: three white bars climbing to the right on indigo, larger on the home screen, whole as a themed icon, and on orange for the Ordo Dev build. The README carries it too
+- The app looks more finished: a task's values are the same outlined chips in the list, the add sheet and the task page, legible in dark mode; the task page's image button sits in its top bar, and its subtasks line up with the field that adds them; sheet actions are full-width rows; every empty screen shows its line in the middle; the top bar tints as the list scrolls under it instead of a fixed line; and a ⋮ on Home holds the project's rename, categories, new category, delete and Settings, the tab gestures staying as shortcuts
 
 ### Fixed
 

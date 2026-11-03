@@ -1,7 +1,6 @@
 package io.github.ilyasturki.ordo.compose.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.Icon
@@ -35,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -52,7 +49,6 @@ import androidx.compose.ui.unit.em
 import io.github.ilyasturki.ordo.compose.model.Estimates
 import io.github.ilyasturki.ordo.compose.model.Header
 import io.github.ilyasturki.ordo.compose.model.Hidden
-import io.github.ilyasturki.ordo.compose.model.Priority
 import io.github.ilyasturki.ordo.compose.model.Row
 import io.github.ilyasturki.ordo.compose.model.Status
 import io.github.ilyasturki.ordo.compose.ui.Icons
@@ -114,9 +110,9 @@ private fun FoldedMarks(header: Header) {
     val est = Estimates.format(header.category.estimateMinutes)
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         if (header.status != "") {
-            Chip(Icons.status(header.status), if (header.total > 0) "${header.done}/${header.total}" else "")
+            MarkChip(if (header.total > 0) "${header.done}/${header.total}" else "", icon = Icons.status(header.status))
         }
-        if (est != "") Chip(Icons.Schedule, est)
+        if (est != "") MarkChip(est, icon = Icons.Schedule)
     }
 }
 
@@ -199,21 +195,10 @@ fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, m
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    if (pri != null) {
-                        val up = pri == "critical" || pri == "high"
-                        Chip(
-                            Icons.priority(pri),
-                            Priority.label(pri),
-                            when {
-                                done -> colors.onSurfaceVariant
-                                up -> MaterialTheme.marks.up
-                                else -> MaterialTheme.marks.down
-                            },
-                        )
-                    }
-                    if (est != "") Chip(Icons.Schedule, est)
-                    if (row.childTotal > 0) Chip(Icons.Subtask, "${row.childDone}/${row.childTotal}")
-                    if (row.images > 0) Chip(Icons.Image, row.images.toString())
+                    if (pri != null) PriorityChip(pri, done)
+                    if (est != "") MarkChip(est, icon = Icons.Schedule)
+                    if (row.childTotal > 0) MarkChip("${row.childDone}/${row.childTotal}", icon = Icons.Subtask)
+                    if (row.images > 0) MarkChip(row.images.toString(), icon = Icons.Image)
                 }
             }
         }
@@ -231,23 +216,6 @@ fun TagDot(color: String, modifier: Modifier = Modifier) {
             .size(10.dp)
             .background(MaterialTheme.marks.tag(color).takeIf { it != Color.Unspecified } ?: MaterialTheme.colorScheme.outline, CircleShape),
     )
-}
-
-@Composable
-private fun Chip(icon: ImageVector, label: String, tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
-    Row(
-        Modifier
-            .height(24.dp)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
-            .padding(horizontal = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, null, Modifier.size(14.dp), tint = tint)
-        if (label != "") {
-            Spacer(Modifier.width(4.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, color = tint)
-        }
-    }
 }
 
 @Composable

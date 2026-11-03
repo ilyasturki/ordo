@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,7 +29,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,7 +36,8 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -51,7 +50,6 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -62,7 +60,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -70,12 +67,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.ilyasturki.ordo.compose.model.Category
@@ -175,13 +170,18 @@ fun NameSheet(
 }
 
 @Composable
-fun SheetAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, danger: Boolean = false, onClick: () -> Unit) {
-    val color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-        Icon(icon, null, tint = if (danger) color else MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.width(16.dp))
-        Text(label, color = color, modifier = Modifier.weight(1f))
-    }
+fun SheetAction(icon: ImageVector, label: String, danger: Boolean = false, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    ListItem(
+        headlineContent = { Text(label) },
+        modifier = Modifier.clickable(onClick = onClick, role = Role.Button),
+        leadingContent = { Icon(icon, null) },
+        colors = ListItemDefaults.colors(
+            containerColor = Color.Transparent,
+            headlineColor = if (danger) colors.error else colors.onSurface,
+            leadingIconColor = if (danger) colors.error else colors.onSurfaceVariant,
+        ),
+    )
 }
 
 @Composable
@@ -236,11 +236,6 @@ fun deletedWith(project: Project, cat: Category): String {
         1 -> "Its sub-category and $taskWord go too."
         else -> "Its $subs sub-categories and $taskWord go too."
     }
-}
-
-@Composable
-fun WordChip(icon: ImageVector, word: String, onClick: () -> Unit) {
-    AssistChip(onClick, label = { Text(word) }, leadingIcon = { Icon(icon, null, Modifier.size(18.dp)) })
 }
 
 // Picks one value from a short list, anchored to what opened it.
@@ -385,12 +380,7 @@ fun AddBar(
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f, fill = false).padding(end = 4.dp)) {
-                InputChip(
-                    selected = false,
-                    onClick = { menu = "cat" },
-                    label = { Text(categories.firstOrNull { it.id == cat }?.name ?: "Category", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    trailingIcon = { Icon(Icons.ExpandMore, null, Modifier.size(18.dp)) },
-                )
+                MarkChip(categories.firstOrNull { it.id == cat }?.name ?: "Category", Modifier.padding(start = 8.dp), trailing = Icons.ExpandMore) { menu = "cat" }
                 Picker(menu == "cat", { menu = "" }, categories, { c ->
                     categories.firstOrNull { it.id == c.parentId }?.let { "${it.name} › ${c.name}" } ?: c.name
                 }, { onCategory(it.id) })
@@ -400,10 +390,7 @@ fun AddBar(
                 if (priority == "") {
                     BarIcon(Icons.Flag, "Priority") { menu = "priority" }
                 } else {
-                    val up = priority == "critical" || priority == "high"
-                    ValueChip("Priority", Priority.label(priority), { menu = "priority" }) {
-                        Icon(Icons.priority(priority), null, Modifier.size(18.dp), tint = if (up) MaterialTheme.marks.up else MaterialTheme.marks.down)
-                    }
+                    PriorityChip(priority, onClick = { menu = "priority" }, modifier = Modifier.padding(horizontal = 4.dp))
                 }
                 Picker(menu == "priority", { menu = "" }, Priority.all, Priority::label, onPriority, leading = { Icon(Icons.priority(it), null) })
             }
@@ -411,7 +398,7 @@ fun AddBar(
                 if (tag == "") {
                     BarIcon(Icons.Palette, "Colour") { menu = "tag" }
                 } else {
-                    ValueChip("Colour", Tags.label(tag), { menu = "tag" }) { TagDot(tag, Modifier.size(12.dp)) }
+                    MarkChip(Tags.label(tag), Modifier.padding(horizontal = 4.dp), tag = tag, name = "Colour") { menu = "tag" }
                 }
                 Picker(menu == "tag", { menu = "" }, listOf("") + Tags.all, Tags::label, onTag, leading = { if (it != "") TagDot(it) })
             }
@@ -419,9 +406,7 @@ fun AddBar(
                 if (estimate == 0) {
                     BarIcon(Icons.Schedule, "Estimate") { menu = "estimate" }
                 } else {
-                    ValueChip("Estimate", Estimates.format(estimate), { menu = "estimate" }) {
-                        Text(Estimates.format(estimate), style = MaterialTheme.typography.labelLarge)
-                    }
+                    MarkChip(Estimates.format(estimate), Modifier.padding(horizontal = 4.dp), icon = Icons.Schedule, name = "Estimate") { menu = "estimate" }
                 }
                 Picker(menu == "estimate", { menu = "" }, listOf(0) + Estimates.presets, { if (it == 0) "None" else Estimates.format(it) }, onEstimate)
             }
@@ -433,27 +418,6 @@ fun AddBar(
 @Composable
 private fun BarIcon(icon: ImageVector, name: String, onClick: () -> Unit) {
     IconButton(onClick = onClick) { Icon(icon, name, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-}
-
-@Composable
-private fun ValueChip(name: String, value: String, onClick: () -> Unit, content: @Composable () -> Unit) {
-    // 4dp each side whatever the value's width; hit testing still widens the 32dp target to 48dp.
-    Box(
-        Modifier
-            .padding(horizontal = 4.dp)
-            .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .clickable(onClick = onClick, role = Role.Button)
-            .semantics {
-                contentDescription = name
-                stateDescription = value
-            }
-            .defaultMinSize(minWidth = 40.dp, minHeight = 32.dp)
-            .padding(horizontal = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSecondaryContainer) { content() }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

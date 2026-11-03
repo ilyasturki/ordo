@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 // Scaffold's own slot floats the snackbar above the +: here it sits on the bottom edge and the + rises above it while it shows.
 @Composable
 fun SnackScaffold(
+    modifier: Modifier = Modifier,
     topBar: @Composable () -> Unit,
     floatingActionButton: @Composable () -> Unit,
     content: @Composable (PaddingValues) -> Unit,
@@ -33,7 +34,7 @@ fun SnackScaffold(
     // M3's Snackbar pads itself by 12dp: the + keeps its own 16dp over the card, not over that margin.
     val margin = with(LocalDensity.current) { 12.dp.roundToPx() }
     val lift by animateIntAsState((snack - margin).coerceAtLeast(0), MaterialTheme.motionScheme.defaultSpatialSpec(), label = "lift")
-    Box(Modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize()) {
         Scaffold(
             topBar = topBar,
             floatingActionButton = { Box(Modifier.offset { IntOffset(0, -lift) }) { floatingActionButton() } },

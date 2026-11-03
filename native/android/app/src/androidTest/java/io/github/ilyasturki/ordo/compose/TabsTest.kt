@@ -3,8 +3,11 @@ package io.github.ilyasturki.ordo.compose
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -56,6 +59,22 @@ class TabsTest : AppFixture(NAMES) {
         closePage(until = hasTestTag("indicator"))
         settled()
         assertUnder("Zed")
+    }
+
+    @Test
+    fun theMenuHoldsWhatTheTabsGesturesDo() {
+        settled()
+        tap("Zed")
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Categories").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("categories"), 20_000)
+        compose.onNodeWithText("Zed categories").assertExists()
+        closePage(until = hasTestTag("indicator"))
+        settled()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Rename project").performClick()
+        compose.waitUntilAtLeastOneExists(hasSetTextAction() and hasText("Zed"), 20_000)
+        compose.onNodeWithText("Delete project").assertExists()
     }
 
     @Test
