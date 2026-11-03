@@ -24,6 +24,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Fixed
 
 - `alt+d` on a word's last letter in a title, a name, the search or a filter deletes that letter alone, no longer the next word with it
+- A row dragged in the app lands where you let it go instead of snapping back: past the line counting what the filter hides, while the previous drop is still saving, back to where it started, or into a category the filter hides, where it stays in sight. A row dropped under a folded category lands first in it and unfolds it, and the confirming buzz comes only once the move is saved. The list scrolls when a row is held just above the navigation bar, follows the row under your finger even when a task is held by one of its subtasks, and no longer scrolls back when you lift the top row of a scrolled list. On the categories page, a category dragged back where it was stays there
 
 ## [0.14.1] - 2026-11-01
 
