@@ -55,6 +55,8 @@ type Answer struct {
 	Row    string             `json:"row,omitempty"`
 	Saved  bool               `json:"saved,omitempty"`
 	Theirs *string            `json:"theirs,omitempty"`
+	// Clash is set when an add or rename asked for a name a sibling holds.
+	Clash *operations.Clash `json:"clash,omitempty"`
 	// Queue is the op that carries the edit to the server, set when it applied.
 	Queue *operations.Op `json:"queue,omitempty"`
 	// Undo are the ops that take the edit back, performed like any edit, set when it applied.
@@ -80,6 +82,9 @@ func (s *Session) Perform(pid string, rawOp []byte) Answer {
 	before := operations.Clone(s.held(pid))
 	out, wire, err := s.perform(pid, op)
 	a := answer(out, err)
+	if errors.Is(err, domain.ErrDuplicateCategoryName) {
+		a.Clash = operations.CategoryClash(&before, op)
+	}
 	if err == nil {
 		a.Queue = &wire
 		a.Undo = operations.Undo(before, s.held(pid), wire)

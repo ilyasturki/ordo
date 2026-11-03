@@ -2,11 +2,9 @@ package app
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
-	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/operations"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
@@ -27,14 +25,16 @@ type clashOption struct {
 
 // clashNames are the names the chooser offers: this one's with a free " (n)", and the other's.
 func (m model) clashNames() (this, other string, ok bool) {
-	src, dst, ok := m.mergeOffer()
+	src, _, ok := m.mergeOffer()
 	if !ok {
 		return "", "", false
 	}
-	cats := slices.Delete(slices.Clone(m.project.Categories), src, src+1)
-	parent := m.project.Categories[src].ParentID
-	typed := strings.TrimSpace(m.ui.Edit.input.Value())
-	return domain.UniqueCategoryName(cats, parent, typed), domain.UniqueCategoryName(cats, parent, m.project.Categories[dst].Name), true
+	p := m.project
+	clash := operations.CategoryClash(&p, operations.Op{Action: "category.rename", Cat: p.Categories[src].ID, Title: m.ui.Edit.input.Value()})
+	if clash == nil {
+		return "", "", false
+	}
+	return clash.This, clash.Other, true
 }
 
 func (m model) clashOptions() []clashOption {
@@ -99,7 +99,6 @@ func (m *model) resolveClash(choice clashChoice) {
 	}
 	var err error
 	if choice == clashRenameOther {
-		m.project.Categories[src].Name = ""
 		if _, err = operations.RenameCategory(&m.project, taken.ID, other); err == nil {
 			_, err = operations.RenameCategory(&m.project, edited.ID, typed)
 		}
@@ -108,9 +107,6 @@ func (m *model) resolveClash(choice clashChoice) {
 		_, err = operations.RenameCategory(&m.project, edited.ID, this)
 	}
 	if err != nil {
-		if i, ferr := m.project.FindCategoryByID(edited.ID); ferr == nil {
-			m.project.Categories[i].Name = edited.Name
-		}
 		if !m.ui.Edit.isAdding {
 			m.discardLastHistory()
 		}

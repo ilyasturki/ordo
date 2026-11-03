@@ -48,6 +48,47 @@ func RenameCategory(p *domain.Project, categoryID, name string) (domain.Category
 	return p.Categories[idx], nil
 }
 
+// Clash is a category.add or category.rename refused for a name a sibling holds, with the names
+// that would free it: This for the edited category, Other for the sibling, Taken.
+type Clash struct {
+	Taken string `json:"taken"`
+	This  string `json:"this"`
+	Other string `json:"other"`
+}
+
+// CategoryClash is op's clash on p, nil when op names a free name or is no add or rename.
+func CategoryClash(p *domain.Project, op Op) *Clash {
+	name := strings.TrimSpace(op.Title)
+	parent, except := "", -1
+	switch op.Action {
+	case "category.add":
+		if pi, err := p.FindCategoryByID(op.Parent); err == nil && p.Categories[pi].ParentID == "" {
+			parent = op.Parent
+		}
+	case "category.rename":
+		ci, err := p.FindCategoryByID(op.Cat)
+		if err != nil {
+			return nil
+		}
+		parent, except = p.Categories[ci].ParentID, ci
+	default:
+		return nil
+	}
+	ti := domain.CategoryNameConflict(p.Categories, parent, name, except)
+	if ti < 0 {
+		return nil
+	}
+	others := p.Categories
+	if except >= 0 {
+		others = slices.Delete(slices.Clone(others), except, except+1)
+	}
+	return &Clash{
+		Taken: p.Categories[ti].ID,
+		This:  domain.UniqueCategoryName(others, parent, name),
+		Other: domain.UniqueCategoryName(p.Categories, parent, p.Categories[ti].Name),
+	}
+}
+
 // MoveCategory moves by delta steps of ShiftCategories; a step it refuses returns ErrNoChange.
 func MoveCategory(p *domain.Project, categoryID string, delta int) (domain.Category, error) {
 	idx, err := p.FindCategoryByID(categoryID)

@@ -66,7 +66,7 @@ func TestClashChooserOnARename(t *testing.T) {
 		m.undo()
 		assert.Equal(t, []string{"Cat A", "Cat B"}, categoryNamesOf(m))
 	})
-	t.Run("the other, from the name it would free", func(t *testing.T) {
+	t.Run("the other, past the name this one still holds", func(t *testing.T) {
 		p := sampleProject()
 		p.Categories[0].Name = "Cat B (2)"
 		m := newTestModel(t, p)
@@ -75,7 +75,7 @@ func TestClashChooserOnARename(t *testing.T) {
 		m.ui.Edit.input.SetValue("Cat B")
 		pressKey(m, tea.KeyEnter)
 		pressKey(m, 'o')
-		assert.Equal(t, []string{"Cat B", "Cat B (2)"}, categoryNamesOf(m))
+		assert.Equal(t, []string{"Cat B", "Cat B (3)"}, categoryNamesOf(m))
 		assert.Equal(t, "c2", m.project.Categories[1].ID)
 		m.undo()
 		assert.Equal(t, []string{"Cat B (2)", "Cat B"}, categoryNamesOf(m))
