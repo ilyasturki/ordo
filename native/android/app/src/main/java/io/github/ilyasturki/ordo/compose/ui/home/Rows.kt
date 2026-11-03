@@ -27,6 +27,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -164,18 +168,22 @@ fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, m
                 .weight(1f)
                 .padding(top = 12.dp, bottom = 12.dp, end = 4.dp),
         ) {
+            var wrapped by remember(t.title) { mutableStateOf(false) }
             Text(
                 t.title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (done) colors.onSurfaceVariant else colors.onSurface,
                 textDecoration = if (done) TextDecoration.LineThrough else null,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { wrapped = it.lineCount > 1 },
             )
             if (row.preview != "") {
                 Text(
                     row.preview,
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = if (wrapped) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
