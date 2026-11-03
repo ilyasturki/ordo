@@ -93,7 +93,7 @@ object Priority {
     val all = listOf("critical", "high", "", "low", "trivial")
 
     fun label(priority: String): String =
-        if (priority == "" || priority == "medium") "Medium" else priority.replaceFirstChar { it.uppercase() }
+        if (priority == "") "Medium" else priority.replaceFirstChar { it.uppercase() }
 
     internal object Legacy : JsonTransformingSerializer<String>(String.serializer()) {
         override fun transformDeserialize(element: JsonElement) =

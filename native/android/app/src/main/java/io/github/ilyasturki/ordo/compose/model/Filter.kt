@@ -16,7 +16,7 @@ internal object Buckets : JsonTransformingSerializer<Set<String>>(SetSerializer(
         element.jsonArray.map { if (it.jsonPrimitive.content == from) JsonPrimitive(to) else it },
     )
 
-    override fun transformDeserialize(element: JsonElement) = JsonArray(swap(swap(element, "none", ""), "medium", "").distinct())
+    override fun transformDeserialize(element: JsonElement) = swap(swap(element, "none", ""), "medium", "")
 
     override fun transformSerialize(element: JsonElement) = swap(element, "", "none")
 }
