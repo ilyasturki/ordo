@@ -533,11 +533,13 @@ func (m model) renderNoteLine(note domain.Task, indent int, selected, focused, v
 			lead = prefix
 		}
 		out[i] = style.Render(lead) + ui.HighlightMatches(line, query, style, match)
-		if selected && visualMode {
+	}
+	out[len(out)-1] += cutBadge
+	if selected && visualMode {
+		for i := range out {
 			out[i] = ui.PadToStyle(out[i], width, style)
 		}
 	}
-	out[len(out)-1] += cutBadge
 	return strings.Join(out, "\n")
 }
 

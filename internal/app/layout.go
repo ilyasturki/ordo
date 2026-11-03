@@ -15,7 +15,7 @@ const (
 	LayoutProject LayoutItemKind = iota
 	LayoutCategory
 	LayoutTask
-	LayoutSeparator     // In-category divider row (domain.KindSeparator)
+	LayoutSeparator     // In-category separator or note row
 	LayoutDescription   // Inline description block for the task above it (own focusable row)
 	LayoutEmptyCategory // "(no tasks)" placeholder
 	LayoutHidden        // "(N hidden by the filter)" row (own focusable row)

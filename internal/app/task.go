@@ -26,8 +26,8 @@ func (m *model) deleteSelected() {
 		m.clearDescription(pos)
 		return
 	}
-	// Separators delete instantly (no confirm dialog): they hold no data worth a
-	// second thought, and undo covers an accidental removal.
+	// Separators and notes delete instantly (no confirm dialog): undo covers an
+	// accidental removal.
 	if pos.Kind == selection.FocusSeparator {
 		m.deleteTask(pos, false)
 		return
