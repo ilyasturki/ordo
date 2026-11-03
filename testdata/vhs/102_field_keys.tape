@@ -62,6 +62,10 @@ Type "/kill"
 Sleep 900ms
 Screenshot "/tmp/ordo-vt/vhs-out/102_help_field_keys.png"
 Sleep 900ms
+Escape
+Sleep 300ms
+Escape
+Sleep 400ms
 
 Hide
 Type "q"
