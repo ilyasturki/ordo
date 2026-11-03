@@ -86,6 +86,9 @@ func DialogKey(base lipgloss.Style, focused bool) lipgloss.Style {
 // CutMark is the badge appended to rows whose item is pending a cut/paste.
 const CutMark = " ✂"
 
+// PinMark follows a pinned category's name.
+const PinMark = " ↑"
+
 // ApplyCut decorates a style so cut rows read as "ghosted/in flight": faint
 // plus italic so the differentiation survives even when the row is also
 // selected (which inverts colors) or completed (which is already faint).

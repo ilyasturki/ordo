@@ -244,6 +244,7 @@ func (m *model) pasteCategories() {
 		m.recordHistory()
 		index = settleCategories(m.project.Categories, cats, index, parentID)
 		m.project.Categories = slices.Insert(m.project.Categories, index, cats...)
+		domain.SettlePinned(m.project.Categories)
 		m.project.UpdatedAt = domain.NowTimestamp()
 	}
 
@@ -297,6 +298,7 @@ func (m *model) moveCategories(ids []string, index int, parentID string) []domai
 	}
 	index = max(0, min(index, len(kept)))
 	m.project.Categories = slices.Insert(kept, index, moved...)
+	domain.SettlePinned(m.project.Categories)
 	m.project.UpdatedAt = domain.NowTimestamp()
 	return moved
 }

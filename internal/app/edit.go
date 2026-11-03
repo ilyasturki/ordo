@@ -168,6 +168,7 @@ func (m *model) startAddingCategory() {
 	}
 	m.recordHistory()
 	m.project.InsertCategory(insertIndex, newCat)
+	domain.SettlePinned(m.project.Categories)
 	m.rebuildPositions()
 	m.selectItem(selection.FocusCategory, newCat.ID)
 	m.ui.Modes.ToEdit()

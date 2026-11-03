@@ -41,6 +41,7 @@ type categoryHeader struct {
 	indent   int
 	folded   bool
 	cut      bool
+	pinned   bool
 }
 
 func headerOf(p *domain.Project, ci int, fold *FoldState, cut, showCounts bool) categoryHeader {
@@ -51,6 +52,7 @@ func headerOf(p *domain.Project, ci int, fold *FoldState, cut, showCounts bool) 
 		status:   cat.AggregateStatus(),
 		folded:   fold != nil && fold.IsFolded(cat.ID),
 		cut:      cut,
+		pinned:   cat.Pinned,
 	}
 	if cat.ParentID != "" {
 		h.indent = nestIndent

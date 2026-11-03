@@ -182,7 +182,21 @@ func renderCategoryLine(h categoryHeader, selected bool, width int, focused bool
 		}
 	}
 
-	suffix := cutBadge + statusBadge + progressBadge + estimateBadge
+	pinBadge := ""
+	if h.pinned {
+		switch {
+		case selected && visualMode && isCursor:
+			pinBadge = ui.GetVisualCursorStyle(focused).Render(ui.PinMark)
+		case selected && visualMode:
+			pinBadge = ui.GetVisualSelectedStyle(focused).Render(ui.PinMark)
+		case selected:
+			pinBadge = ui.GetSelectedStyle(focused).Render(ui.PinMark)
+		default:
+			pinBadge = ui.MutedStyle.Render(ui.PinMark)
+		}
+	}
+
+	suffix := pinBadge + cutBadge + statusBadge + progressBadge + estimateBadge
 
 	if width <= 0 {
 		return style.Render(prefix+foldIndicator) + ui.HighlightMatches(name, searchQuery, style, searchMatch) + suffix
@@ -225,6 +239,9 @@ func categoryNameWidth(width int, h categoryHeader) int {
 	}
 	if h.cut {
 		badges += ansi.StringWidth(ui.CutMark)
+	}
+	if h.pinned {
+		badges += ansi.StringWidth(ui.PinMark)
 	}
 	return safeWidth(width, prefixWidth+h.indent+categoryFoldWidth+badges)
 }

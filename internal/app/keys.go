@@ -141,6 +141,8 @@ var normalBindings = []keyBinding{
 		action: func(m *model) tea.Cmd { m.bumpSelected(domain.MinorPart, 1); return nil }},
 	{keys: []string{"M"}, prefix: 'g', section: sectionOrganise,
 		action: func(m *model) tea.Cmd { m.bumpSelected(domain.MajorPart, 1); return nil }},
+	{keys: []string{"p"}, prefix: 'g', display: "gp", desc: "pin / unpin category", section: sectionOrganise,
+		action: void((*model).togglePin)},
 	{keys: []string{"S"}, desc: "reverse category order", section: sectionOrganise,
 		action: void((*model).reverseCategories)},
 	{keys: []string{"v"}, desc: "select several rows", section: sectionOrganise,
