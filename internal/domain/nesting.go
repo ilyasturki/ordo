@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"cmp"
 	"errors"
 	"iter"
 	"slices"
@@ -302,9 +303,38 @@ func normalizeOutline[T any, P outline[T]](items []T) []T {
 
 func NormalizeNesting(p *Project) {
 	p.Categories = normalizeOutline(p.Categories)
+	SettlePinned(p.Categories)
 	for i := range p.Categories {
 		p.Categories[i].Tasks = normalizeOutline(p.Categories[i].Tasks)
 	}
+}
+
+// SettlePinned puts pinned categories first among their siblings, each block kept whole, the
+// order otherwise kept: a category pinned last ends the pinned run, one unpinned starts the rest.
+func SettlePinned(cats []Category) {
+	unpinned := func(a, b []Category) int { return cmp.Compare(pinRank(a[0]), pinRank(b[0])) }
+	var blocks [][]Category
+	for i := 0; i < len(cats); {
+		end := BlockEnd(cats, i)
+		block := slices.Clone(cats[i:end])
+		subs := make([][]Category, len(block)-1)
+		for j := range subs {
+			subs[j] = block[j+1 : j+2]
+		}
+		slices.SortStableFunc(subs, unpinned)
+		block = append(block[:1:1], slices.Concat(subs...)...)
+		blocks = append(blocks, block)
+		i = end
+	}
+	slices.SortStableFunc(blocks, unpinned)
+	copy(cats, slices.Concat(blocks...))
+}
+
+func pinRank(c Category) int {
+	if c.Pinned {
+		return 0
+	}
+	return 1
 }
 
 // RequiredSchema is the lowest version holding the file, so older binaries keep opening what they can.
@@ -367,6 +397,7 @@ func (p *Project) IndentCategories(lo, hi int) error {
 		p.Categories[i].UpdatedAt = now
 	}
 	p.UpdatedAt = now
+	SettlePinned(p.Categories)
 	return nil
 }
 
@@ -388,7 +419,9 @@ func (p *Project) OutdentCategories(lo, hi int) (int, error) {
 		p.Categories[i].UpdatedAt = now
 	}
 	p.UpdatedAt = now
-	return at, nil
+	first := p.Categories[at].ID
+	SettlePinned(p.Categories)
+	return p.FindCategoryByID(first)
 }
 
 // CategoryNameConflict is the one name rule, unique among siblings: a clash's index, or -1.

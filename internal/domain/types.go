@@ -105,6 +105,7 @@ type Category struct {
 	CreatedAt       string `json:"created_at"`
 	UpdatedAt       string `json:"updated_at,omitempty"`
 	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
+	Pinned          bool   `json:"pinned,omitempty"`
 	Tasks           []Task `json:"tasks"`
 }
 
@@ -683,6 +684,7 @@ func (p *Project) MergeCategory(src, dst int) error {
 		sub.ParentID = dstID
 		p.InsertCategory(BlockEnd(p.Categories, parent), sub)
 	}
+	SettlePinned(p.Categories)
 	return nil
 }
 
@@ -789,7 +791,7 @@ func (p *Project) FindTask(selector string) (catIdx, taskIdx int, err error) {
 	return -1, -1, ErrTaskNotFound
 }
 
-// ReverseCategories reverses the top-level blocks, children kept in order; it is its own inverse.
+// ReverseCategories reverses the top-level blocks within the pinned and the unpinned run, children kept in order; it is its own inverse.
 func (p *Project) ReverseCategories() {
 	var blocks [][]Category
 	for i := 0; i < len(p.Categories); {
@@ -802,6 +804,7 @@ func (p *Project) ReverseCategories() {
 	}
 	slices.Reverse(blocks)
 	p.Categories = slices.Concat(blocks...)
+	SettlePinned(p.Categories)
 	p.UpdatedAt = NowTimestamp()
 }
 

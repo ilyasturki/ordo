@@ -78,6 +78,7 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | Optional. |
 | `estimate_minutes` | integer | Optional. Set on the category itself, not summed from its tasks. |
+| `pinned` | boolean | Optional. A pinned category comes before its unpinned siblings, see [Pins](#pins). |
 | `tasks` | array | In display order, separators included. |
 
 ### Task
@@ -141,6 +142,16 @@ A category can hold sub-categories, and a task can hold subtasks, one level deep
 ```
 
 Ordo repairs a file that breaks these rules when it loads it. A child whose parent is missing, is itself a child or is a separator becomes top-level where it stands, and so does a separator with a `parent_id`. Every other child joins its parent's children, which follow the parent in the order they had in the file. The repair reaches the file on the next save.
+
+## Pins
+
+Pinned categories come first among their siblings: the top-level categories, or the sub-categories of one parent. `categories` holds them in that order, so a reader shows every list as the array has it, with no sorting of its own.
+
+- A pinned top-level category carries its sub-categories with it. A pinned sub-category goes first under its parent and never leaves it.
+- Pinning a category moves it to the end of its siblings' pinned run; unpinning moves it to the start of the unpinned ones. A writer that adds, moves or nests a category keeps the order: an unpinned category never lands among the pinned ones.
+- Ordo repairs a file that breaks the order when it loads it, moving each pinned category, with its sub-categories, ahead of its unpinned siblings and keeping the order within each run. The repair reaches the file on the next save.
+
+Pins need no schema bump: an older ordo that saves the file drops `pinned` but keeps the order, so only the pin itself is lost.
 
 ## Views
 
