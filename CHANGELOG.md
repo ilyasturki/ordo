@@ -16,6 +16,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The app's list shows a task title on two lines at most, ending in an ellipsis, and a description preview on one line under a title that wraps. The task page still shows the whole title
 - The app's snackbar sits on the bottom edge and the `+` (or "Mark done") rises above it while it shows. A status tap in the list or on a subtask no longer snacks unless it lands on done, which still offers Undo, and every snack lasts 4 seconds
 - A tap on a category in the app's categories page goes to it: the page closes, the category unfolds, the list scrolls to it and it stays the top bar's category and the `+`'s target until you scroll. Rename, delete, sub-category and separator move behind the row's ⋮. A category the filter hides says so instead
+- No priority and medium are one level, Medium, between High and Low in the TUI filter, the info view, the app's pickers and filter, and the CLI, where `--priority medium` and `none` both match it. A medium task carries no `priority` in its file, so the first save rewrites every medium task of an older file, and the markdown export drops the `(medium)` suffix
 
 ## [0.14.1] - 2026-11-01
 

@@ -159,6 +159,20 @@ func TestAViewKeepsWhatAFilterRowOffers(t *testing.T) {
 	}
 }
 
+func TestAViewFoldsTheMediumBucketIntoNone(t *testing.T) {
+	store, _ := viewStore(t)
+	writeFile(t, store.viewPath("p1"), `{"filter":{"priorities":["medium","none","high"]}}`)
+	got, _ := store.View("p1")
+	if want := []string{"high", "none"}; !reflect.DeepEqual(got.Filter.Priorities, want) {
+		t.Fatalf("priorities = %v", got.Filter.Priorities)
+	}
+	writeFile(t, store.viewPath("p2"), `{"filter":{"priorities":["medium"]}}`)
+	got, _ = store.View("p2")
+	if want := []string{"none"}; !reflect.DeepEqual(got.Filter.Priorities, want) {
+		t.Fatalf("a ticked medium alone = %v", got.Filter.Priorities)
+	}
+}
+
 func TestAViewIDNeverLeavesTheDirectory(t *testing.T) {
 	store, dir := viewStore(t)
 	folds := []string{"c1"}

@@ -362,3 +362,40 @@ func TestLoadReadsADiamondTagAsItsDot(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, domain.TagMagenta, project.Categories[0].Tasks[0].TagColor)
 }
+
+func TestLoadReadsLegacyMediumAsMissingAndSavesNone(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewStore(tmpDir)
+	require.NoError(t, store.Ensure())
+
+	raw := `{"id":"prio-1","name":"P","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z","categories":[
+	  {"id":"c1","name":"C","created_at":"2024-01-01T00:00:00Z","tasks":[
+	    {"id":"a","title":"A","status":"todo","priority":"medium","created_at":"x","updated_at":"x"},
+	    {"id":"b","title":"B","status":"todo","created_at":"x","updated_at":"x"},
+	    {"id":"c","title":"C","status":"todo","priority":"high","created_at":"x","updated_at":"x"}
+	  ]}]}`
+	path := filepath.Join(tmpDir, "prio-1.json")
+	require.NoError(t, os.WriteFile(path, []byte(raw), 0o644))
+
+	project, err := store.LoadProjectByID("prio-1")
+	require.NoError(t, err)
+	tasks := project.Categories[0].Tasks
+	assert.Equal(t, []string{domain.PriorityMedium, domain.PriorityMedium, domain.PriorityHigh}, []string{tasks[0].Priority, tasks[1].Priority, tasks[2].Priority})
+
+	require.NoError(t, store.SaveProjectLocked(project))
+	saved, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.NotContains(t, string(saved), `"medium"`)
+	assert.Contains(t, string(saved), `"high"`)
+}
+
+func TestTheDefaultProjectWritesNoMedium(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewStore(tmpDir)
+	require.NoError(t, store.Ensure())
+	project, err := store.InitDefault()
+	require.NoError(t, err)
+	saved, err := os.ReadFile(filepath.Join(tmpDir, project.ID+".json"))
+	require.NoError(t, err)
+	assert.NotContains(t, string(saved), `"medium"`)
+}

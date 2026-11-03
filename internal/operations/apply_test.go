@@ -288,3 +288,33 @@ func TestOpsCarryingADiamondStoreItsDot(t *testing.T) {
 		t.Fatalf("a diamond on its own dot changed something: %v", err)
 	}
 }
+
+// The APK already on the phone, and its queue, still hand out medium.
+func TestOpsCarryingLegacyMediumStoreTheMissingField(t *testing.T) {
+	p := board(t)
+	if _, err := operations.Apply(p, operations.Op{Action: "priority.set", IDs: []string{"a"}, Value: domain.LegacyPriorityMedium}); !errors.Is(err, operations.ErrNoChange) {
+		t.Fatalf("medium on a task with no priority changed something: %v", err)
+	}
+	if _, err := operations.Apply(p, operations.Op{Action: "priority.set", IDs: []string{"b"}, Value: domain.PriorityHigh}); err != nil {
+		t.Fatal(err)
+	}
+	out, err := operations.Apply(p, operations.Op{Action: "priority.set", IDs: []string{"b"}, Value: domain.LegacyPriorityMedium})
+	if err != nil || out.Msg != "Priority medium" {
+		t.Fatalf("set medium = %+v, %v", out, err)
+	}
+	for _, op := range []operations.Op{
+		{Action: "task.restore", Cat: "c1", Rows: []domain.Task{{ID: "r1", Title: "back", Status: domain.StatusTodo, Priority: domain.LegacyPriorityMedium}}},
+		{Action: "category.restore", Cats: []domain.Category{{ID: "k1", Name: "Back", Tasks: []domain.Task{{ID: "r2", Title: "back", Status: domain.StatusTodo, Priority: domain.LegacyPriorityMedium}}}}},
+	} {
+		if _, err := operations.Apply(p, op); err != nil {
+			t.Fatalf("%s: %v", op.Action, err)
+		}
+	}
+	for _, c := range p.Categories {
+		for _, task := range c.Tasks {
+			if task.Priority != domain.PriorityMedium {
+				t.Fatalf("%s priority = %q", task.ID, task.Priority)
+			}
+		}
+	}
+}

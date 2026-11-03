@@ -19,9 +19,7 @@ var filterStatuses = []string{
 	domain.StatusCancelled,
 }
 
-// filterPriorities lists the priority filter rows: every level highest-first,
-// followed by a trailing "" "none" bucket matching tasks with no priority.
-var filterPriorities = append(append([]string{}, domain.PriorityOrder...), "")
+var filterPriorities = domain.PriorityOrder
 
 // filterTagColors lists the tag filter rows: the palette followed by a trailing
 // "" "untagged" bucket, which matches tasks that carry no tag color.
@@ -271,7 +269,11 @@ func savedValues(set map[string]bool) []string {
 func filterStateFrom(saved data.Filter) FilterState {
 	f := NewFilterState()
 	restoreValues(f.statuses, saved.Statuses, filterStatuses)
-	restoreValues(f.priorities, saved.Priorities, filterPriorities)
+	priorities := make([]string, len(saved.Priorities))
+	for i, v := range saved.Priorities {
+		priorities[i] = domain.CanonicalPriority(v)
+	}
+	restoreValues(f.priorities, priorities, filterPriorities)
 	tags := make([]string, len(saved.Tags))
 	for i, v := range saved.Tags {
 		tags[i] = domain.CanonicalTagColor(v)

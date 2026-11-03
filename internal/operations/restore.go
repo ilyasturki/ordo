@@ -27,6 +27,7 @@ func restoreRows(p *domain.Project, op Op) (Outcome, error) {
 	}
 	for i := range rows {
 		rows[i].TagColor = domain.CanonicalTagColor(rows[i].TagColor)
+		rows[i].Priority = domain.CanonicalPriority(rows[i].Priority)
 	}
 	cat, parent, before := op.Cat, op.Parent, op.Before
 	if head := op.Rows[0].ID; rows[0].ID != head {

@@ -285,8 +285,6 @@ func formatPriorityLabel(priority string) string {
 		return "Low"
 	case domain.PriorityTrivial:
 		return "Trivial"
-	case "":
-		return "None"
 	default:
 		return priority
 	}

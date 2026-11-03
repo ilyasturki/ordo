@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"slices"
 	"testing"
@@ -133,6 +134,13 @@ func TestOpenReadsLikeTheStore(t *testing.T) {
 	json.Unmarshal(s.Project(pid), &p)
 	if p.Categories[0].Tasks[0].TagColor != domain.TagBlue {
 		t.Fatalf("tag = %q", p.Categories[0].Tasks[0].TagColor)
+	}
+	pid, err = s.Open([]byte(`{"id": "p3", "name": "z", "categories": [{"id": "c1", "name": "C", "tasks": [{"id": "t1", "title": "a", "status": "todo", "priority": "medium"}]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(s.Project(pid), []byte(`"medium"`)) {
+		t.Fatalf("project = %s", s.Project(pid))
 	}
 }
 

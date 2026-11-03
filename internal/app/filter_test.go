@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -679,6 +680,26 @@ func TestRestoredFilterReadsADiamondAsItsDot(t *testing.T) {
 
 	assert.Equal(t, 1, f.TagCount())
 	assert.True(t, f.IsTagEnabled(domain.TagCyan))
+}
+
+func TestPriorityFilterOffersMediumInItsPlace(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	view := m.filterPriorityView()
+	var at []int
+	for _, label := range []string{"Critical", "High", "Medium", "Low", "Trivial"} {
+		at = append(at, strings.Index(view, label))
+	}
+	assert.True(t, slices.IsSorted(at) && at[0] >= 0, "labels in order: %v", at)
+	assert.NotContains(t, view, "None")
+	assert.Equal(t, "Medium", formatPriorityLabel(domain.PriorityMedium))
+}
+
+func TestRestoredFilterFoldsMediumIntoTheMissingPriority(t *testing.T) {
+	f := filterStateFrom(data.Filter{Priorities: []string{domain.LegacyPriorityMedium, data.FilterNone, domain.PriorityLow}})
+
+	assert.Equal(t, 2, f.PriorityCount())
+	assert.True(t, f.IsPriorityEnabled(domain.PriorityMedium))
+	assert.Equal(t, []string{domain.PriorityLow, data.FilterNone}, f.saved().Priorities)
 }
 
 func TestFilterSavesOnEveryChange(t *testing.T) {

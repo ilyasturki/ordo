@@ -75,7 +75,7 @@ An op names its rows by ID and says where they end up, never how far they moved,
 | `task.attach` | `ids`, `lines` | Appends the image lines the details don't hold yet. |
 | `task.delete` | `ids`, `keep` | Deletes the rows with their subtasks, or frees the subtasks with `keep`. |
 | `status.set` | `ids`, `value` | `todo`, `in_progress`, `completed` or `cancelled`. |
-| `priority.set` | `ids`, `value` | A priority, or empty to clear it. |
+| `priority.set` | `ids`, `value` | A priority, or empty for medium. `medium` from an older client lands as empty. |
 | `tag.set` | `ids`, `value` | A tag mark, or empty to clear it. A `-diamond` name from an older client lands as its colour's dot. |
 | `estimate.set` | `ids`, `value` | Minutes, `0` to clear. |
 | `task.place` | `ids`, `cat`, `parent`, `before` | Moves the rows' blocks above `before` in `cat`, under `parent` when set, or last without `before`. |
@@ -113,7 +113,7 @@ Folds and filter travel beside the queue rather than in it: they change no proje
 
 `views` in the answer holds the view of every project that has a view file, whether or not it changed: a few short lists per project, cheap enough to need no stamp. A project with no entry has no file, which is not the same as an empty view: a client holding folds or a filter for it sends them, so what a phone kept before these files reaches the others, while a file already there wins over it.
 
-The file's `none` is the bucket for no priority and no tag, on the wire too; a client that holds it as an empty string translates on both ways.
+The file's `none` is the bucket for medium, the missing priority, and for no tag, on the wire too; a client that holds it as an empty string translates on both ways.
 
 The client keeps its view and the changes not sent yet across restarts, sends them with the next round, and after an answer takes the server's view with the changes made since the request on top. An answer without `views` comes from a server that doesn't know them: the client drops what it sent and keeps its own view for itself, and its next answer from a newer server decides as above. A server ignores the field from a client that doesn't know it, and such a client ignores it in the answer.
 

@@ -201,3 +201,70 @@ func TestTaskEdit_RejectsControlCharsInDescription(t *testing.T) {
 		t.Fatal("expected edit to reject an escape sequence in the description")
 	}
 }
+
+func TestTaskPriority_MediumAndNoneAreOneLevel(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := runCLI(t, dir, "init"); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	for _, args := range [][]string{
+		{"task", "add", "Plain", "--category", "Feature"},
+		{"task", "add", "Named", "--category", "Feature", "--priority", "medium"},
+		{"task", "add", "Urgent", "--category", "Feature", "--priority", "high"},
+		{"task", "add", "Lowered", "--category", "Feature", "--priority", "low"},
+		{"task", "priority", "Urgent", "none"},
+		{"task", "edit", "Lowered", "--priority", "medium"},
+	} {
+		if out, err := runCLI(t, dir, append(args, "--project", "Default")...); err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+	}
+	tasks := firstCategoryTasks(t, loadDefault(t, dir), "Feature")
+	for _, title := range []string{"Plain", "Named", "Urgent", "Lowered"} {
+		if got, _ := findTask(tasks, title); got.Priority != domain.PriorityMedium {
+			t.Errorf("%s priority = %q, want medium (missing)", title, got.Priority)
+		}
+	}
+
+	for _, name := range []string{"medium", "none"} {
+		out, err := runCLI(t, dir, "tasks", "--priority", name, "--project", "Default", "--json")
+		if err != nil {
+			t.Fatalf("tasks --priority %s: %v", name, err)
+		}
+		var list struct {
+			Tasks []TaskListItem `json:"tasks"`
+		}
+		if err := json.Unmarshal([]byte(out), &list); err != nil {
+			t.Fatalf("decode: %v\n%s", err, out)
+		}
+		titles := map[string]bool{}
+		for _, task := range list.Tasks {
+			if task.Priority != "medium" {
+				t.Errorf("--priority %s listed %q at %q", name, task.Title, task.Priority)
+			}
+			titles[task.Title] = true
+		}
+		for _, title := range []string{"Plain", "Named", "Urgent", "Lowered"} {
+			if !titles[title] {
+				t.Errorf("--priority %s misses %q", name, title)
+			}
+		}
+	}
+
+	out, err := runCLI(t, dir, "tasks", "--project", "Default")
+	if err != nil {
+		t.Fatalf("tasks: %v", err)
+	}
+	if line := lineContaining(out, "Plain"); !strings.Contains(line, "medium") {
+		t.Errorf("table row = %q, want medium", line)
+	}
+}
+
+func lineContaining(out, s string) string {
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, s) {
+			return line
+		}
+	}
+	return ""
+}

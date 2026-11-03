@@ -30,7 +30,7 @@ func newTasksCmd() *cobra.Command {
 				}
 			}
 			if priority != "" {
-				if err := domain.ValidatePriority(priority); err != nil {
+				if _, err := parsePriority(priority); err != nil {
 					return err
 				}
 			}
@@ -54,7 +54,7 @@ func newTasksCmd() *cobra.Command {
 						if status != "" && task.Status != status {
 							continue
 						}
-						if priority != "" && task.Priority != priority {
+						if wanted, _ := parsePriority(priority); priority != "" && task.Priority != wanted {
 							continue
 						}
 						tasks = append(tasks, TaskListItem{
@@ -62,7 +62,7 @@ func newTasksCmd() *cobra.Command {
 							ParentID:        task.ParentID,
 							Title:           task.Title,
 							Status:          task.Status,
-							Priority:        task.Priority,
+							Priority:        priorityName(task.Priority),
 							Category:        cliPath(project, ci),
 							EstimateMinutes: task.EstimateMinutes,
 							TagColor:        task.TagColor,
@@ -160,6 +160,11 @@ func newTaskAddCmd() *cobra.Command {
 				return err
 			}
 
+			level, err := parsePriority(priority)
+			if err != nil {
+				return err
+			}
+
 			var created domain.Task
 			err = withProject(projectSelector(nil), func(_ *data.Store, project *domain.Project) error {
 				catID, parentID, err := taskDestination(*project, categoryName, parent)
@@ -168,7 +173,7 @@ func newTaskAddCmd() *cobra.Command {
 				}
 				created, err = operations.CreateTask(project, catID, operations.TaskFields{
 					Title:       args[0],
-					Priority:    priority,
+					Priority:    level,
 					Estimate:    minutes,
 					Description: description,
 					ParentID:    parentID,
@@ -257,7 +262,11 @@ func newTaskEditCmd() *cobra.Command {
 					u.Title = &title
 				}
 				if priority != "" {
-					u.Priority = &priority
+					level, err := parsePriority(priority)
+					if err != nil {
+						return err
+					}
+					u.Priority = &level
 				}
 				if estimate != "" {
 					minutes, err := operations.ParseEstimate(estimate)
@@ -420,14 +429,13 @@ func newTaskPriorityCmd() *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			selector := args[0]
-			priority := args[1]
-
-			if err := domain.ValidatePriority(priority); err != nil {
+			priority, err := parsePriority(args[1])
+			if err != nil {
 				return err
 			}
 
 			var title string
-			err := withProject(projectSelector(nil), func(_ *data.Store, project *domain.Project) error {
+			err = withProject(projectSelector(nil), func(_ *data.Store, project *domain.Project) error {
 				ref, err := resolveTask(*project, selector)
 				if err != nil {
 					return fmt.Errorf("task %q not found", selector)
@@ -442,11 +450,22 @@ func newTaskPriorityCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			writeSuccess(cmd.OutOrStdout(), fmt.Sprintf("Updated task %s priority to %s", title, priority))
+			writeSuccess(cmd.OutOrStdout(), fmt.Sprintf("Updated task %s priority to %s", title, priorityName(priority)))
 			return nil
 		},
 	}
 	return cmd
+}
+
+// parsePriority reads a priority flag or argument; "none" names medium, as older builds called it.
+func parsePriority(name string) (string, error) {
+	if name == "none" {
+		return domain.PriorityMedium, nil
+	}
+	if err := domain.ValidatePriority(name); err != nil {
+		return "", err
+	}
+	return domain.CanonicalPriority(name), nil
 }
 
 func newTaskMoveCmd() *cobra.Command {

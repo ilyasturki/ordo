@@ -53,6 +53,7 @@ func SetPriorities(p *domain.Project, ids []string, priority string) (int, error
 	if err := domain.ValidatePriority(priority); err != nil {
 		return 0, err
 	}
+	priority = domain.CanonicalPriority(priority)
 	changed := 0
 	for _, t := range realTasks(p, ids) {
 		if t.Priority == priority {

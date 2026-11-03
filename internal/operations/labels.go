@@ -14,7 +14,6 @@ var StatusLabels = map[string]string{
 }
 
 var PriorityLabels = map[string]string{
-	"":                      "None",
 	domain.PriorityCritical: "Critical",
 	domain.PriorityHigh:     "High",
 	domain.PriorityMedium:   "Medium",

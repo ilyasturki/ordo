@@ -370,10 +370,7 @@ func setPriority(p *domain.Project, op Op) (Outcome, error) {
 	if err != nil {
 		return Outcome{}, err
 	}
-	what := "Priority " + strings.ToLower(PriorityLabels[op.Value])
-	if op.Value == "" {
-		what = "Priority cleared"
-	}
+	what := "Priority " + strings.ToLower(PriorityLabels[domain.CanonicalPriority(op.Value)])
 	return Outcome{Msg: onMany(what, n)}, nil
 }
 

@@ -91,7 +91,7 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | `status` | string | `todo`, `in_progress`, `completed` or `cancelled`. Empty on a separator. |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | Restamped whenever the task changes. |
-| `priority` | string | Optional. `critical`, `high`, `medium`, `low` or `trivial`. |
+| `priority` | string | Optional. `critical`, `high`, `low` or `trivial`; missing means medium. Older builds also wrote `medium`, and kept a missing one apart as no priority: a reader takes `medium` as missing, and ordo drops it on its next save. |
 | `completion_date` | timestamp | Optional. Set when the status becomes `completed`, cleared when it leaves it. |
 | `estimate_minutes` | integer | Optional. |
 | `description` | string | Optional. The one field that may hold newlines and tabs. |
@@ -174,7 +174,7 @@ Pins need no schema bump: an older ordo that saves the file drops `pinned` but k
 | `folds` | array | Optional. IDs of the folded categories and of the folded tasks that have subtasks. |
 | `filter` | object | Optional. A list holds the values to keep, any of which matches, and a task must match every list that isn't empty. |
 | `filter.statuses` | array | Optional. Task statuses. |
-| `filter.priorities` | array | Optional. Priorities, with `none` for a task without one. |
+| `filter.priorities` | array | Optional. Priorities, with `none` for medium, the task without one. Older builds also wrote `medium`, which a reader folds into `none`. |
 | `filter.categories` | array | Optional. Category IDs. A sub-category shows when its parent is listed. |
 | `filter.tags` | array | Optional. Tag marks, with `none` for a task without one. |
 

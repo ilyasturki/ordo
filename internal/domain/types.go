@@ -19,7 +19,7 @@ const (
 
 	PriorityCritical = "critical"
 	PriorityHigh     = "high"
-	PriorityMedium   = "medium"
+	PriorityMedium   = ""
 	PriorityLow      = "low"
 	PriorityTrivial  = "trivial"
 
@@ -45,12 +45,10 @@ const (
 // the picker and filter build their rows by adding the "no tag" sentinel.
 var TagColorCycle = []string{TagGreen, TagBlue, TagMagenta, TagCyan}
 
-// PriorityOrder lists the priority levels highest-first and is the single source
-// of truth the priority lists derive from: ValidatePriority checks membership
-// against it, and the filter/completion rows build from it (the filter appends
-// the "" no-priority sentinel). The empty "" level is not part of the order. The
-// Increase/Decrease/Cycle transition methods keep their own switches because
-// they also fold in the "" level with level-specific behavior.
+// LegacyPriorityMedium is how builds before 0.14.2 wrote medium, apart from a missing priority.
+const LegacyPriorityMedium = "medium"
+
+// PriorityOrder lists the levels highest-first; medium is the missing field.
 var PriorityOrder = []string{PriorityCritical, PriorityHigh, PriorityMedium, PriorityLow, PriorityTrivial}
 
 var DefaultCategories = []string{"Feature", "Fix", "Ergonomy", "Documentation", "Research"}
@@ -265,7 +263,7 @@ func ValidateStatus(status string) error {
 }
 
 func ValidatePriority(priority string) error {
-	if priority == "" || slices.Contains(PriorityOrder, priority) {
+	if slices.Contains(PriorityOrder, CanonicalPriority(priority)) {
 		return nil
 	}
 	return errors.New("invalid priority")
@@ -289,7 +287,7 @@ func (t *Task) SetPriority(priority string) error {
 	if err := ValidatePriority(priority); err != nil {
 		return err
 	}
-	t.Priority = priority
+	t.Priority = CanonicalPriority(priority)
 	t.UpdatedAt = NowTimestamp()
 	return nil
 }
@@ -301,7 +299,7 @@ func (t *Task) IncreasePriority() bool {
 		newPriority = PriorityLow
 	case PriorityLow:
 		newPriority = PriorityMedium
-	case PriorityMedium, "":
+	case PriorityMedium, LegacyPriorityMedium:
 		newPriority = PriorityHigh
 	case PriorityHigh:
 		newPriority = PriorityCritical
@@ -322,7 +320,7 @@ func (t *Task) DecreasePriority() bool {
 		newPriority = PriorityHigh
 	case PriorityHigh:
 		newPriority = PriorityMedium
-	case PriorityMedium, "":
+	case PriorityMedium, LegacyPriorityMedium:
 		newPriority = PriorityLow
 	case PriorityLow:
 		newPriority = PriorityTrivial
@@ -382,29 +380,6 @@ func (t *Task) CycleStatus() bool {
 	return true
 }
 
-func (t *Task) CyclePriority() bool {
-	var next string
-	switch t.Priority {
-	case "":
-		next = PriorityCritical
-	case PriorityCritical:
-		next = PriorityHigh
-	case PriorityHigh:
-		next = PriorityMedium
-	case PriorityMedium:
-		next = PriorityLow
-	case PriorityLow:
-		next = PriorityTrivial
-	case PriorityTrivial:
-		next = ""
-	default:
-		next = ""
-	}
-	t.Priority = next
-	t.UpdatedAt = NowTimestamp()
-	return true
-}
-
 func CanonicalTagColor(color string) string {
 	if hue, ok := strings.CutSuffix(color, TagDiamondSuffix); ok && slices.Contains(TagColorCycle, hue) {
 		return hue
@@ -412,11 +387,19 @@ func CanonicalTagColor(color string) string {
 	return color
 }
 
+func CanonicalPriority(priority string) string {
+	if priority == LegacyPriorityMedium {
+		return PriorityMedium
+	}
+	return priority
+}
+
 func NormalizeTags(p *Project) {
 	for i := range p.Categories {
 		for j := range p.Categories[i].Tasks {
 			t := &p.Categories[i].Tasks[j]
 			t.TagColor = CanonicalTagColor(t.TagColor)
+			t.Priority = CanonicalPriority(t.Priority)
 		}
 	}
 }

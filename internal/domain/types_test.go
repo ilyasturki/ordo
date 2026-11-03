@@ -43,8 +43,8 @@ func TestTask_IncreasePriority(t *testing.T) {
 		assert.Equal(t, PriorityCritical, task.Priority)
 	})
 
-	t.Run("empty priority increases as medium", func(t *testing.T) {
-		task := Task{Priority: ""}
+	t.Run("legacy medium increases to high", func(t *testing.T) {
+		task := Task{Priority: LegacyPriorityMedium}
 		changed := task.IncreasePriority()
 		assert.True(t, changed)
 		assert.Equal(t, PriorityHigh, task.Priority)
@@ -87,8 +87,8 @@ func TestTask_DecreasePriority(t *testing.T) {
 		assert.Equal(t, PriorityTrivial, task.Priority)
 	})
 
-	t.Run("empty priority decreases as medium", func(t *testing.T) {
-		task := Task{Priority: ""}
+	t.Run("legacy medium decreases to low", func(t *testing.T) {
+		task := Task{Priority: LegacyPriorityMedium}
 		changed := task.DecreasePriority()
 		assert.True(t, changed)
 		assert.Equal(t, PriorityLow, task.Priority)
@@ -442,29 +442,18 @@ func TestTask_SetPriority(t *testing.T) {
 		assert.Equal(t, PriorityTrivial, task.Priority)
 	})
 
+	t.Run("stores the legacy medium as missing", func(t *testing.T) {
+		task := Task{Priority: PriorityHigh}
+		require.NoError(t, task.SetPriority(LegacyPriorityMedium))
+		assert.Equal(t, PriorityMedium, task.Priority)
+		assert.Equal(t, "", task.Priority)
+	})
+
 	t.Run("returns error for invalid priority", func(t *testing.T) {
 		task := Task{Priority: ""}
 		err := task.SetPriority("invalid")
 		assert.Error(t, err)
 	})
-}
-
-func TestTask_CyclePriority(t *testing.T) {
-	// none → critical → high → medium → low → trivial → none
-	want := []string{
-		PriorityCritical,
-		PriorityHigh,
-		PriorityMedium,
-		PriorityLow,
-		PriorityTrivial,
-		"",
-	}
-	task := Task{Priority: ""}
-	for i, expected := range want {
-		changed := task.CyclePriority()
-		assert.True(t, changed, "step %d should report a change", i)
-		assert.Equal(t, expected, task.Priority, "step %d", i)
-	}
 }
 
 func TestTask_CycleTag(t *testing.T) {
@@ -544,6 +533,24 @@ func TestNormalizeTags(t *testing.T) {
 	NormalizeTags(&p)
 	got := []string{p.Categories[0].Tasks[0].TagColor, p.Categories[0].Tasks[1].TagColor, p.Categories[0].Tasks[2].TagColor}
 	assert.Equal(t, []string{TagCyan, TagBlue, ""}, got)
+}
+
+func TestNormalizeTags_ReadsLegacyMediumAsMissing(t *testing.T) {
+	p := Project{Categories: []Category{{Tasks: []Task{
+		{ID: "a", Priority: LegacyPriorityMedium}, {ID: "b", Priority: PriorityHigh}, {ID: "c"},
+	}}}}
+	NormalizeTags(&p)
+	got := []string{p.Categories[0].Tasks[0].Priority, p.Categories[0].Tasks[1].Priority, p.Categories[0].Tasks[2].Priority}
+	assert.Equal(t, []string{"", PriorityHigh, ""}, got)
+}
+
+func TestValidatePriority(t *testing.T) {
+	for _, p := range PriorityOrder {
+		assert.NoError(t, ValidatePriority(p))
+	}
+	assert.NoError(t, ValidatePriority(LegacyPriorityMedium), "files and queued ops from older builds still carry medium")
+	assert.Error(t, ValidatePriority("none"))
+	assert.Error(t, ValidatePriority("urgent"))
 }
 
 func TestFreeTagColor_CountsADiamondAsItsDot(t *testing.T) {

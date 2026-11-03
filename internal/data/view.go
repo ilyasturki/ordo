@@ -17,7 +17,7 @@ import (
 
 const directoriesFile = ".directories.json"
 
-// FilterNone is the filter value for the no-priority and the untagged bucket.
+// FilterNone is the filter value for the medium priority, which older builds called none, and the untagged bucket.
 const FilterNone = "none"
 
 // View is what every device shows of one project, kept in projects/<id>.view.json.
@@ -64,9 +64,13 @@ func (f Filter) cleaned() Filter {
 	for i, t := range f.Tags {
 		tags[i] = domain.CanonicalTagColor(t)
 	}
+	priorities := make([]string, len(f.Priorities))
+	for i, p := range f.Priorities {
+		priorities[i] = domain.CanonicalPriority(p)
+	}
 	return Filter{
 		Statuses:   keep(f.Statuses, domain.StatusTodo, domain.StatusInProgress, domain.StatusCompleted, domain.StatusCancelled),
-		Priorities: keep(f.Priorities, append([]string{FilterNone}, domain.PriorityOrder...)...),
+		Priorities: keep(priorities, append([]string{FilterNone}, domain.PriorityOrder...)...),
 		Categories: cleanIDs(f.Categories),
 		Tags:       keep(tags, append([]string{FilterNone}, domain.TagColorCycle...)...),
 	}

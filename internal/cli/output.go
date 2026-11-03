@@ -172,6 +172,13 @@ type TaskListItem struct {
 	TagColor        string `json:"tag_color,omitempty"`
 }
 
+func priorityName(priority string) string {
+	if priority == domain.PriorityMedium {
+		return domain.LegacyPriorityMedium
+	}
+	return priority
+}
+
 func listTitle(t TaskListItem) string {
 	if t.ParentID != "" {
 		return "↳ " + t.Title
@@ -200,19 +207,13 @@ func writeTaskList(w io.Writer, tasks []TaskListItem) error {
 	if isLong() {
 		fmt.Fprintln(tw, "ID\tCATEGORY\tSTATUS\tPRIORITY\tESTIMATE\tTITLE")
 		for _, t := range tasks {
-			priority := t.Priority
-			if priority == "" {
-				priority = "-"
-			}
+			priority := priorityName(t.Priority)
 			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", t.ID, t.Category, t.Status, priority, formatEstimateCell(t.EstimateMinutes), listTitle(t))
 		}
 	} else {
 		fmt.Fprintln(tw, "CATEGORY\tSTATUS\tPRIORITY\tTITLE")
 		for _, t := range tasks {
-			priority := t.Priority
-			if priority == "" {
-				priority = "-"
-			}
+			priority := priorityName(t.Priority)
 			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", t.Category, t.Status, priority, listTitle(t))
 		}
 	}
@@ -265,7 +266,7 @@ func writeTaskDetail(w io.Writer, project domain.Project, catIdx, taskIdx int, s
 		ParentID:        task.ParentID,
 		Title:           task.Title,
 		Status:          task.Status,
-		Priority:        task.Priority,
+		Priority:        priorityName(task.Priority),
 		Category:        cliPath(project, catIdx),
 		EstimateMinutes: task.EstimateMinutes,
 		TagColor:        task.TagColor,
@@ -291,9 +292,7 @@ func writeTaskDetail(w io.Writer, project domain.Project, catIdx, taskIdx int, s
 		fmt.Fprintf(w, "Subtasks: %d of %d done\n", done, total)
 	}
 	fmt.Fprintf(w, "Status:   %s\n", detail.Status)
-	if detail.Priority != "" {
-		fmt.Fprintf(w, "Priority: %s\n", detail.Priority)
-	}
+	fmt.Fprintf(w, "Priority: %s\n", detail.Priority)
 	if detail.TagColor != "" {
 		fmt.Fprintf(w, "Tag:      %s\n", detail.TagColor)
 	}

@@ -118,8 +118,8 @@ func writeCategory(sb *strings.Builder, heading string, cat domain.Category, opt
 		}
 		marker := statusToMarker(task.Status)
 		line := fmt.Sprintf("%s- [%s] %s", indent, marker, opts.text(task.Title))
-		if task.Priority != "" {
-			line += fmt.Sprintf(" (%s)", task.Priority)
+		if priority := domain.CanonicalPriority(task.Priority); priority != domain.PriorityMedium {
+			line += fmt.Sprintf(" (%s)", priority)
 		}
 		sb.WriteString(line)
 		sb.WriteByte('\n')

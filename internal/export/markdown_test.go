@@ -50,8 +50,8 @@ func TestExportMarkdown(t *testing.T) {
 					Tasks: []domain.Task{
 						{Title: "High priority", Status: domain.StatusTodo, Priority: domain.PriorityHigh},
 						{Title: "Medium priority", Status: domain.StatusTodo, Priority: domain.PriorityMedium},
+						{Title: "Legacy medium", Status: domain.StatusTodo, Priority: domain.LegacyPriorityMedium},
 						{Title: "Low priority", Status: domain.StatusTodo, Priority: domain.PriorityLow},
-						{Title: "No priority", Status: domain.StatusTodo},
 					},
 				},
 			},
@@ -63,9 +63,10 @@ func TestExportMarkdown(t *testing.T) {
 
 		output := buf.String()
 		assert.Contains(t, output, "- [ ] High priority (high)")
-		assert.Contains(t, output, "- [ ] Medium priority (medium)")
+		assert.Contains(t, output, "- [ ] Medium priority\n")
+		assert.Contains(t, output, "- [ ] Legacy medium\n")
 		assert.Contains(t, output, "- [ ] Low priority (low)")
-		assert.Contains(t, output, "- [ ] No priority\n")
+		assert.NotContains(t, output, "(medium)")
 	})
 
 	t.Run("exports multiple categories", func(t *testing.T) {
