@@ -1,4 +1,4 @@
-Output "/tmp/ordo-vt/vhs-out/102_filter_toggle.gif"
+Output "/tmp/ordo-vt/vhs-out/103_filter_toggle.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
@@ -19,7 +19,7 @@ Enter
 Sleep 200ms
 Type " "
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/102_status_marks.png"
+Screenshot "/tmp/ordo-vt/vhs-out/103_status_marks.png"
 Sleep 300ms
 
 # The priority options with their glyphs.
@@ -27,23 +27,23 @@ Escape
 Type "j"
 Enter
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/102_priority_marks.png"
+Screenshot "/tmp/ordo-vt/vhs-out/103_priority_marks.png"
 Sleep 300ms
 Type "q"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/102_filtered.png"
+Screenshot "/tmp/ordo-vt/vhs-out/103_filtered.png"
 Sleep 300ms
 
 # F turns the filter off: every task, no badge, no hidden rows.
 Type "F"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/102_off.png"
+Screenshot "/tmp/ordo-vt/vhs-out/103_off.png"
 Sleep 300ms
 
 # The dialog says it is off.
 Type "f"
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/102_off_dialog.png"
+Screenshot "/tmp/ordo-vt/vhs-out/103_off_dialog.png"
 Sleep 300ms
 Type "q"
 Sleep 300ms
@@ -51,7 +51,7 @@ Sleep 300ms
 # F again brings the same filter back.
 Type "F"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/102_on_again.png"
+Screenshot "/tmp/ordo-vt/vhs-out/103_on_again.png"
 Sleep 300ms
 
 Hide
