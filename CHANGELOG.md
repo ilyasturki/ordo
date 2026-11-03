@@ -21,6 +21,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - A tap on a category in the app's categories page goes to it: the page closes, the category unfolds, the list scrolls to it and it stays the top bar's category and the `+`'s target until you scroll. Rename, delete, sub-category and separator move behind the row's ⋮. A category the filter hides says so instead
 - No priority and medium are one level, Medium, between High and Low in the TUI filter, the info view, the app's pickers and filter, and the CLI, where `--priority medium` and `none` both match it. A medium task carries no `priority` in its file, so the first save rewrites every medium task of an older file, and the markdown export drops the `(medium)` suffix
 - The app's add sheet fits on one line under the title: the category, then icons for the description, priority, colour and estimate, then Save. A set value shows in place of its icon, as the priority's arrows, the colour's dot or the estimate, and a long category name shortens instead of pushing Save onto a second line
+- The TUI's filter dialog shows each status and priority with the mark its rows draw, `/`, `x`, `▲`, `▼`…, in a column, following the status display and priority colour options. The app's filter sheet shows the status and priority icons on its chips, and a selected chip keeps its icon or tag dot, its fill saying it is on
 
 ### Fixed
 

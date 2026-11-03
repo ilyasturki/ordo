@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/lipgloss/v2"
+
+	"github.com/ilyasturki/ordo/internal/config"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
@@ -81,10 +84,11 @@ func (m model) filterHubView() string {
 func (m model) filterStatusView() string {
 	lines := []string{ui.DialogTitleStyle.Render("Filter · Status"), ""}
 	for i, status := range filterStatuses {
+		selected := i == m.ui.Filter.Selected()
 		lines = append(lines, renderCheckboxLine(
-			formatStatusLabel(status),
+			m.filterStatusLabel(status, selected),
 			m.ui.Filter.IsStatusEnabled(status),
-			i == m.ui.Filter.Selected(),
+			selected,
 		))
 	}
 	lines = append(lines, "", ui.RenderHints(filterSubHints))
@@ -94,10 +98,11 @@ func (m model) filterStatusView() string {
 func (m model) filterPriorityView() string {
 	lines := []string{ui.DialogTitleStyle.Render("Filter · Priority"), ""}
 	for i, p := range filterPriorities {
+		selected := i == m.ui.Filter.Selected()
 		lines = append(lines, renderCheckboxLine(
-			formatPriorityLabel(p),
+			m.filterPriorityLabel(p, selected),
 			m.ui.Filter.IsPriorityEnabled(p),
-			i == m.ui.Filter.Selected(),
+			selected,
 		))
 	}
 	lines = append(lines, "", ui.RenderHints(filterSubHints))
@@ -136,6 +141,29 @@ func (m model) filterTagView() string {
 	}
 	lines = append(lines, "", ui.RenderHints(filterSubHints))
 	return m.dialogStyle().Render(strings.Join(lines, "\n"))
+}
+
+// filterStatusLabel leads with the mark a row draws for status; a selected row keeps it unstyled, as the list does.
+func (m model) filterStatusLabel(status string, selected bool) string {
+	label := formatStatusLabel(status)
+	style := ui.StatusStyle(status)
+	if selected {
+		style = lipgloss.NewStyle()
+	}
+	if m.deps.CfgManager.Get().StatusDisplay != config.StatusDisplayIcons {
+		return style.Render(label)
+	}
+	return style.Render(statusIcon(status)) + " " + label
+}
+
+func (m model) filterPriorityLabel(priority string, selected bool) string {
+	icon := ui.PriorityIcon(priority)
+	if icon == "" {
+		icon = " "
+	} else if !selected {
+		icon = ui.PriorityIconStyle(priority, m.deps.CfgManager.Get().PriorityColor).Render(icon)
+	}
+	return icon + " " + formatPriorityLabel(priority)
 }
 
 // formatTagFilterLabel renders a tag filter row: a colored dot plus the color
