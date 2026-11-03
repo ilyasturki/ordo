@@ -68,12 +68,14 @@ func (f Filter) cleaned() Filter {
 	for i, p := range f.Priorities {
 		priorities[i] = domain.CanonicalPriority(p)
 	}
-	return Filter{
+	out := Filter{
 		Statuses:   keep(f.Statuses, domain.StatusTodo, domain.StatusInProgress, domain.StatusCompleted, domain.StatusCancelled),
 		Priorities: keep(priorities, append([]string{FilterNone}, domain.PriorityOrder...)...),
 		Categories: cleanIDs(f.Categories),
 		Tags:       keep(tags, append([]string{FilterNone}, domain.TagColorCycle...)...),
 	}
+	out.Off = f.Off && !out.IsZero()
+	return out
 }
 
 func (s *Store) viewPath(id string) string {

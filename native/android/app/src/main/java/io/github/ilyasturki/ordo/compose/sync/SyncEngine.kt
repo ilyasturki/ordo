@@ -202,7 +202,7 @@ class SyncEngine(
     // Moves the filters of prefs.json, once: the views are saved first, so a crash repeats the move.
     private fun withOldFilters(views: Views, prefs: Prefs): Views {
         if (prefs.filters.isEmpty()) return views
-        val moved = prefs.filters.filterValues { it.active }.mapValues { View(filter = it.value) }
+        val moved = prefs.filters.filterValues { it.hasValues }.mapValues { View(filter = it.value) }
         val next = views.copy(held = moved + views.held)
         store.saveViews(next)
         store.savePrefs(prefs.copy(filters = emptyMap()))

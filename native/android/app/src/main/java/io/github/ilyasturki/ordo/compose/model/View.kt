@@ -8,7 +8,7 @@ data class View(
     val folds: Set<String> = emptySet(),
     val filter: Filter = Filter.NONE,
 ) {
-    val empty: Boolean get() = folds.isEmpty() && !filter.active
+    val empty: Boolean get() = folds.isEmpty() && !filter.hasValues
 }
 
 // A change to a view: a field left out keeps what the view holds.

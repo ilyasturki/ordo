@@ -18,6 +18,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
@@ -53,6 +54,7 @@ import io.github.ilyasturki.ordo.compose.core.GoCore
 import io.github.ilyasturki.ordo.compose.data.Session
 import io.github.ilyasturki.ordo.compose.data.Store
 import io.github.ilyasturki.ordo.compose.model.Description
+import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Task
 import io.github.ilyasturki.ordo.compose.sync.Api
 import io.github.ilyasturki.ordo.compose.sync.Delays
@@ -468,6 +470,33 @@ class ServerTest {
         compose.waitUntil(WAIT) { compose.onAllNodes(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).fetchSemanticsNodes().isEmpty() }
         val stored = images("Material 3 motion specs").single().file!!
         assertArrayEquals(bytes, engine.images.file(stored)!!.readBytes())
+    }
+
+    @Test
+    fun aFilterTurnedOffElsewhereShowsOffAndTheSwitchTurnsItBackOnThere() {
+        val high = Filter(priorities = setOf("high"))
+        val other = SyncEngine(Store(File(dir, "other")), ::GoCore, scope, "other ${System.nanoTime()}", delays)
+        runBlocking {
+            other.boot()
+            assertNull(other.login(server, passphrase))
+            other.setFilter(PID, high.copy(off = true))
+            other.sync()
+        }
+        try {
+            signedIn()
+            tapDescription("Filter, off")
+            compose.onNodeWithContentDescription("Filter on").assertIsOff().performClick()
+            compose.waitUntil(WAIT) { engine.state.value.views[PID]?.filter == high }
+            synced()
+            runBlocking { other.sync() }
+            assertEquals(high, other.state.value.views[PID]?.filter)
+        } finally {
+            runBlocking {
+                other.setFilter(PID, Filter.NONE)
+                other.sync()
+                other.signOut()
+            }
+        }
     }
 
     private fun idOf(e: SyncEngine, title: String): String =

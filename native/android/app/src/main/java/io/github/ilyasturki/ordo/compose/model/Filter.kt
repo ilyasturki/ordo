@@ -25,16 +25,19 @@ internal object Buckets : JsonTransformingSerializer<Set<String>>(SetSerializer(
 // selected category also shows its sub-categories.
 @Serializable
 data class Filter(
+    val off: Boolean = false,
     val statuses: Set<String> = emptySet(),
     @Serializable(with = Buckets::class) val priorities: Set<String> = emptySet(),
     val categories: Set<String> = emptySet(),
     @Serializable(with = Buckets::class) val tags: Set<String> = emptySet(),
 ) {
-    val active: Boolean
+    val hasValues: Boolean
         get() = statuses.isNotEmpty() || priorities.isNotEmpty() || categories.isNotEmpty() || tags.isNotEmpty()
 
+    val active: Boolean get() = hasValues && !off
+
     fun categoryVisible(cat: Category): Boolean =
-        categories.isEmpty() || cat.id in categories || (cat.parentId != "" && cat.parentId in categories)
+        off || categories.isEmpty() || cat.id in categories || (cat.parentId != "" && cat.parentId in categories)
 
     fun taskVisible(task: Task, cat: Category): Boolean {
         if (!active) return true

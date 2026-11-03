@@ -173,6 +173,48 @@ func TestAViewFoldsTheMediumBucketIntoNone(t *testing.T) {
 	}
 }
 
+func TestAViewKeepsAFilterTurnedOff(t *testing.T) {
+	store, _ := viewStore(t)
+	filter := Filter{Off: true, Statuses: []string{"todo"}}
+	if err := store.MergeView("p1", ViewChange{Filter: &filter}); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(store.viewPath("p1"))
+	if want := `"filter": {` + "\n" + `    "off": true,`; !strings.Contains(string(raw), want) {
+		t.Fatalf("file = %s", raw)
+	}
+	got, _ := store.View("p1")
+	if !got.Filter.Off || !slices.Equal(got.Filter.Statuses, []string{"todo"}) {
+		t.Fatalf("filter = %+v", got.Filter)
+	}
+	on := Filter{Statuses: []string{"todo"}}
+	if err := store.MergeView("p1", ViewChange{Filter: &on}); err != nil {
+		t.Fatal(err)
+	}
+	if raw, _ = os.ReadFile(store.viewPath("p1")); strings.Contains(string(raw), "off") {
+		t.Fatalf("turned back on, file = %s", raw)
+	}
+}
+
+func TestAViewWithoutOffReadsAsOn(t *testing.T) {
+	store, _ := viewStore(t)
+	writeFile(t, store.viewPath("p1"), `{"filter":{"statuses":["todo"]}}`)
+	got, _ := store.View("p1")
+	if got.Filter.Off || !slices.Equal(got.Filter.Statuses, []string{"todo"}) {
+		t.Fatalf("filter = %+v", got.Filter)
+	}
+}
+
+func TestAFilterOffWithNoValuesIsNoFilter(t *testing.T) {
+	store, _ := viewStore(t)
+	if err := store.MergeView("p1", ViewChange{Filter: &Filter{Off: true}}); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := store.View("p1"); ok || !got.IsZero() {
+		t.Fatalf("view = %+v, %v", got, ok)
+	}
+}
+
 func TestAViewIDNeverLeavesTheDirectory(t *testing.T) {
 	store, dir := viewStore(t)
 	folds := []string{"c1"}

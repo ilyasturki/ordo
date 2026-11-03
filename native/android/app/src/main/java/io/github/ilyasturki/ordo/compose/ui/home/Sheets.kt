@@ -48,6 +48,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Switch
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -462,16 +463,22 @@ fun FilterSheet(project: Project, filter: Filter, onChange: (Filter) -> Unit, on
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Filter", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                TextButton(onClick = { onChange(Filter.NONE) }, enabled = filter.active) { Text("Clear") }
+                Switch(
+                    checked = filter.active,
+                    onCheckedChange = { onChange(filter.copy(off = !it)) },
+                    enabled = filter.hasValues,
+                    modifier = Modifier.semantics { contentDescription = "Filter on" },
+                )
+                TextButton(onClick = { onChange(Filter.NONE) }, enabled = filter.hasValues) { Text("Clear") }
             }
             Section("Status") {
                 for (s in Status.all) {
-                    Toggle(Status.label(s), s in filter.statuses) { onChange(filter.copy(statuses = filter.statuses.flip(s))) }
+                    Toggle(Status.label(s), s in filter.statuses) { onChange(filter.copy(off = false, statuses = filter.statuses.flip(s))) }
                 }
             }
             Section("Priority") {
                 for (p in Priority.all) {
-                    Toggle(Priority.label(p), p in filter.priorities) { onChange(filter.copy(priorities = filter.priorities.flip(p))) }
+                    Toggle(Priority.label(p), p in filter.priorities) { onChange(filter.copy(off = false, priorities = filter.priorities.flip(p))) }
                 }
             }
             if (project.categories.isNotEmpty()) {
@@ -479,7 +486,7 @@ fun FilterSheet(project: Project, filter: Filter, onChange: (Filter) -> Unit, on
                     for (c in project.categories) {
                         val parent = project.categories.firstOrNull { it.id == c.parentId }
                         Toggle(parent?.let { "${it.name} › ${c.name}" } ?: c.name, c.id in filter.categories) {
-                            onChange(filter.copy(categories = filter.categories.flip(c.id)))
+                            onChange(filter.copy(off = false, categories = filter.categories.flip(c.id)))
                         }
                     }
                 }
@@ -487,7 +494,7 @@ fun FilterSheet(project: Project, filter: Filter, onChange: (Filter) -> Unit, on
             Section("Tag") {
                 for (t in Tags.all + "") {
                     Toggle(if (t == "") "Untagged" else Tags.label(t), t in filter.tags, leading = if (t == "") null else ({ TagDot(t) })) {
-                        onChange(filter.copy(tags = filter.tags.flip(t)))
+                        onChange(filter.copy(off = false, tags = filter.tags.flip(t)))
                     }
                 }
             }

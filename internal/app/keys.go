@@ -153,6 +153,8 @@ var normalBindings = []keyBinding{
 		action: void((*model).enterVisualMode)},
 	{keys: []string{"f"}, desc: "filter tasks", section: sectionOrganise,
 		action: func(m *model) tea.Cmd { m.ui.Modes.ToFilter(); return nil }},
+	{keys: []string{"F"}, desc: "turn the filter off / on, keeping it", section: sectionOrganise,
+		action: void((*model).toggleFilterOff)},
 
 	{keys: []string{"y"}, display: "y / Y", desc: "copy / copy as markdown", section: sectionClipboard,
 		action: func(m *model) tea.Cmd { return m.copySelected() }},

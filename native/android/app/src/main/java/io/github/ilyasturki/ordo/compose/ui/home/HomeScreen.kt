@@ -158,12 +158,16 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                                 }
                             }
                             if (current != null) {
-                                val active = filterOf(current).active
+                                val filter = filterOf(current)
                                 IconButton(onClick = { searching = true }) {
                                     Icon(Icons.Search, "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 IconButton(onClick = { sheet = HomeSheet.Filters(current.id) }) {
-                                    Icon(Icons.Filter, if (active) "Filter, on" else "Filter", tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                                    when {
+                                        filter.active -> Icon(Icons.Filter, "Filter, on", tint = MaterialTheme.colorScheme.primary)
+                                        filter.hasValues -> Icon(Icons.FilterOff, "Filter, off", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        else -> Icon(Icons.Filter, "Filter", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
                                 }
                             }
                             IconButton(onClick = { open(SettingsKey) }) {

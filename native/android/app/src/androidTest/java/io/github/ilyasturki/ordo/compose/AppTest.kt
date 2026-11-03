@@ -8,6 +8,8 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
@@ -267,6 +269,41 @@ class AppTest : AppFixture() {
         header("Research").performClick()
         compose.onNodeWithText("Add a separator").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Clear the filter to add a separator"), 20_000)
+    }
+
+    @Test
+    fun theFilterSwitchTurnsItOffAndBackOnKeepingItsValues() {
+        val high = Filter(priorities = setOf("high"))
+        runBlocking { engine.setFilter(PID, high) }
+        scrollTo("hidden by the filter")
+        compose.onNodeWithContentDescription("Filter, on").performClick()
+        compose.onNodeWithContentDescription("Filter on").assertIsOn().performClick()
+        compose.waitUntil(20_000) { engine.state.value.views[PID]?.filter == high.copy(off = true) }
+        compose.onNodeWithContentDescription("Filter on").assertIsOff()
+        compose.onNodeWithContentDescription("Filter, off").assertExists()
+        compose.waitUntil(20_000) { compose.onAllNodes(hasText("hidden by the filter", substring = true)).fetchSemanticsNodes().isEmpty() }
+
+        compose.onNodeWithContentDescription("Filter on").performClick()
+        compose.waitUntil(20_000) { engine.state.value.views[PID]?.filter == high }
+        compose.onNodeWithContentDescription("Filter, on").assertExists()
+    }
+
+    @Test
+    fun aChangeInTheFilterSheetTurnsTheFilterOn() {
+        runBlocking { engine.setFilter(PID, Filter(off = true, priorities = setOf("high"))) }
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Filter, off"), 20_000)
+        compose.onNodeWithContentDescription("Filter, off").performClick()
+        compose.onNodeWithContentDescription("Filter on").assertIsOff()
+        compose.onNode(hasText("Low") and hasAnyAncestor(hasContentDescription("Filter on").let { hasAnyDescendant(it) })).performClick()
+        compose.waitUntil(20_000) { engine.state.value.views[PID]?.filter == Filter(priorities = setOf("high", "low")) }
+        compose.onNodeWithContentDescription("Filter on").assertIsOn()
+    }
+
+    @Test
+    fun theFilterSwitchWaitsForAValue() {
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Filter"), 20_000)
+        compose.onNodeWithContentDescription("Filter").performClick()
+        compose.onNodeWithContentDescription("Filter on").assertIsNotEnabled()
     }
 
     @Test

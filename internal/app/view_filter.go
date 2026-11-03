@@ -39,7 +39,11 @@ func (m model) filterHubView() string {
 		{"Tag", m.ui.Filter.TagCount()},
 	}
 
-	lines := []string{ui.DialogTitleStyle.Render("Filter Tasks"), ""}
+	title := ui.DialogTitleStyle.Render("Filter Tasks")
+	if m.ui.Filter.IsOff() && m.ui.Filter.HasValues() {
+		title += ui.MutedStyle.Render(" · off, a change turns it on")
+	}
+	lines := []string{title, ""}
 	selected := m.ui.Filter.HubSelected()
 	for i, row := range rows {
 		marker := "  "
@@ -63,7 +67,7 @@ func (m model) filterHubView() string {
 	switch {
 	case selected == FilterHubClearAll:
 		clearLine = ui.SelectedStyle.Render("> " + clearAllLabel)
-	case !m.ui.Filter.HasActiveFilter():
+	case !m.ui.Filter.HasValues():
 		clearLine = "  " + ui.MutedStyle.Render(clearAllLabel)
 	default:
 		clearLine = "  " + clearAllLabel

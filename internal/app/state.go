@@ -54,6 +54,8 @@ type FilterState struct {
 	priorities       map[string]bool
 	categories       map[string]bool
 	tags             map[string]bool
+	// off keeps the values but shows every task.
+	off bool
 	// held stays shown until the cursor leaves it: tasks an edit took out of the filter.
 	held map[string]bool
 	// peek is the category whose hidden rows show until the cursor leaves it.
@@ -154,6 +156,7 @@ func (f *FilterState) MoveDown(catCount int) {
 func (f *FilterState) ToggleSelected(categories []domain.Category) {
 	f.releaseHeld()
 	f.endPeek()
+	f.off = false
 	switch f.view {
 	case FilterViewStatus:
 		if f.statusSelected >= 0 && f.statusSelected < len(filterStatuses) {
@@ -192,12 +195,27 @@ func (f *FilterState) PriorityCount() int { return len(f.priorities) }
 func (f *FilterState) CategoryCount() int { return len(f.categories) }
 func (f *FilterState) TagCount() int      { return len(f.tags) }
 
-func (f *FilterState) HasActiveFilter() bool {
+func (f *FilterState) HasValues() bool {
 	return len(f.statuses) > 0 || len(f.priorities) > 0 || len(f.categories) > 0 || len(f.tags) > 0
 }
 
+func (f *FilterState) HasActiveFilter() bool { return f.HasValues() && !f.off }
+
+func (f *FilterState) IsOff() bool { return f.off }
+
+// toggleOff reports whether there was a filter to turn off or on.
+func (f *FilterState) toggleOff() bool {
+	if !f.HasValues() {
+		return false
+	}
+	f.releaseHeld()
+	f.endPeek()
+	f.off = !f.off
+	return true
+}
+
 func (f *FilterState) CategoryVisible(categoryID, parentCategoryID string) bool {
-	return len(f.categories) == 0 || f.categories[categoryID] ||
+	return f.off || len(f.categories) == 0 || f.categories[categoryID] ||
 		(parentCategoryID != "" && f.categories[parentCategoryID])
 }
 
@@ -245,6 +263,7 @@ func (f *FilterState) FilteredOut(task domain.Task, categoryID, parentCategoryID
 
 func (f *FilterState) saved() data.Filter {
 	return data.Filter{
+		Off:        f.off,
 		Statuses:   savedValues(f.statuses),
 		Priorities: savedValues(f.priorities),
 		Categories: savedValues(f.categories),
@@ -266,6 +285,7 @@ func savedValues(set map[string]bool) []string {
 // filterStateFrom drops a value no filter row offers, since nothing could untick it.
 func filterStateFrom(saved data.Filter) FilterState {
 	f := NewFilterState()
+	f.off = saved.Off
 	restoreValues(f.statuses, saved.Statuses, filterStatuses)
 	priorities := make([]string, len(saved.Priorities))
 	for i, v := range saved.Priorities {
@@ -305,7 +325,7 @@ func (f *FilterState) pruneCategories(categories []domain.Category) {
 }
 
 func (f *FilterState) sameValues(o FilterState) bool {
-	return maps.Equal(f.statuses, o.statuses) && maps.Equal(f.priorities, o.priorities) &&
+	return f.off == o.off && maps.Equal(f.statuses, o.statuses) && maps.Equal(f.priorities, o.priorities) &&
 		maps.Equal(f.categories, o.categories) && maps.Equal(f.tags, o.tags)
 }
 
@@ -314,11 +334,13 @@ func (f *FilterState) takeValues(o FilterState) {
 	f.releaseHeld()
 	f.endPeek()
 	f.statuses, f.priorities, f.categories, f.tags = o.statuses, o.priorities, o.categories, o.tags
+	f.off = o.off
 }
 
 func (f *FilterState) ClearAll() {
 	f.releaseHeld()
 	f.endPeek()
+	f.off = false
 	f.statuses = make(map[string]bool)
 	f.priorities = make(map[string]bool)
 	f.categories = make(map[string]bool)

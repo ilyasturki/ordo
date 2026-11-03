@@ -615,6 +615,24 @@ class SyncEngineTest {
     }
 
     @Test
+    fun aFilterTurnedOffTravelsBothWaysWithItsValues() = test {
+        val e = paired(engine())
+        server.writeView(PID, """{"filter":{"off":true,"statuses":["todo"]}}""")
+        assertEquals(Round.OK, e.sync())
+        assertEquals(Filter(off = true, statuses = setOf("todo")), e.view().filter)
+
+        e.setFilter(PID, e.view().filter.copy(off = false))
+        assertEquals(Round.OK, e.sync())
+        val back = server.view(PID)!!
+        assertTrue(back, back.contains("todo") && !back.contains("off"))
+
+        e.setFilter(PID, e.view().filter.copy(off = true))
+        assertEquals(Round.OK, e.sync())
+        val off = kotlinx.serialization.json.Json.parseToJsonElement(server.view(PID)!!).toString()
+        assertTrue(off, off.contains("\"off\":true") && off.contains("todo"))
+    }
+
+    @Test
     fun aFoldKeepsAFilterSetElsewhere() = test {
         val e = paired(engine())
         assertEquals(Round.OK, e.sync())

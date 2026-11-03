@@ -264,6 +264,27 @@ class BoardTest {
     }
 
     @Test
+    fun aFilterTurnedOffShowsEveryRowAndKeepsItsValues() {
+        val on = Filter(priorities = setOf("high"), categories = setOf("fix"))
+        val off = on.copy(off = true)
+        assertFalse(off.active)
+        assertTrue(off.hasValues)
+        assertTrue(off.categoryVisible(project.categories[0]))
+        assertEquals(shape(Board.lines(project, Filter.NONE)), shape(Board.lines(project, off)))
+        assertFalse(View(filter = off).empty)
+        assertEquals(on, off.copy(off = false))
+    }
+
+    @Test
+    fun aFilterSaysOffOnlyWhileOff() {
+        val on = Filter(statuses = setOf("todo"))
+        assertEquals("""{"statuses":["todo"]}""", json.encodeToString(Filter.serializer(), on))
+        assertEquals("""{"off":true,"statuses":["todo"]}""", json.encodeToString(Filter.serializer(), on.copy(off = true)))
+        assertEquals(on, json.decodeFromString(Filter.serializer(), """{"statuses":["todo"]}"""))
+        assertEquals(on.copy(off = true), json.decodeFromString(Filter.serializer(), """{"off":true,"statuses":["todo"]}"""))
+    }
+
+    @Test
     fun aViewEditSaysWhatItClears() {
         assertEquals("""{"folds":[]}""", json.encodeToString(ViewEdit.serializer(), ViewEdit(folds = emptySet())))
         assertEquals("""{"filter":{}}""", json.encodeToString(ViewEdit.serializer(), ViewEdit(filter = Filter())))

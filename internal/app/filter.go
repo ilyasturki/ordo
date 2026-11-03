@@ -19,6 +19,20 @@ func (m *model) saveFilter() {
 	_ = m.deps.StateManager.SetFilter(m.project.ID, m.ui.Filter.saved())
 }
 
+func (m *model) toggleFilterOff() {
+	if !m.ui.Filter.toggleOff() {
+		m.ui.Screen.StatusMsg = "No filter to turn off: f sets one"
+		return
+	}
+	m.saveFilter()
+	m.rebuildPositions()
+	m.ensureVisible()
+	m.ui.Screen.StatusMsg = "Filter on"
+	if m.ui.Filter.IsOff() {
+		m.ui.Screen.StatusMsg = "Filter off, F turns it back on"
+	}
+}
+
 func (m *model) onHiddenRow() bool {
 	pos, ok := m.selectedPosition()
 	return ok && pos.Kind == selection.FocusHidden

@@ -91,15 +91,16 @@ func (m model) renderShortcutBar() string {
 }
 
 func (m model) normalHints() []ui.Hint {
-	if !m.ui.Filter.HasActiveFilter() {
+	if !m.ui.Filter.HasValues() {
 		return normalShortcuts
 	}
 	hints := slices.Clone(normalShortcuts)
-	for i, h := range hints {
-		if h.Key == "f" {
-			hints[i] = ui.Hint{Key: "f", Label: "filtered", Active: true}
-		}
+	f := slices.IndexFunc(hints, func(h ui.Hint) bool { return h.Key == "f" })
+	if m.ui.Filter.IsOff() {
+		return slices.Insert(hints, f+1, ui.Hint{Key: "F", Label: "filter on"})
 	}
+	hints[f] = ui.Hint{Key: "f", Label: "filtered", Active: true}
+	hints = slices.Insert(hints, f+1, ui.Hint{Key: "F", Label: "off"})
 	hide, peeking := m.peekEscHint()
 	pos, ok := m.selectedPosition()
 	switch {

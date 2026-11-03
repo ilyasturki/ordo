@@ -564,7 +564,7 @@ func (m *model) openFilterHubSelection() {
 	case FilterHubTag:
 		m.ui.Filter.SetView(FilterViewTag)
 	case FilterHubClearAll:
-		if m.ui.Filter.HasActiveFilter() {
+		if m.ui.Filter.HasValues() {
 			m.ui.Filter.ClearAll()
 			m.saveFilter()
 			m.rebuildPositions()

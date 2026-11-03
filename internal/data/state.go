@@ -29,7 +29,9 @@ func (c Cursor) IsZero() bool {
 
 // Filter is the task filter of one project. A list holds the values to
 // keep, any of which matches; a task must match every non-empty list.
+// Off keeps the lists but shows every task.
 type Filter struct {
+	Off        bool     `json:"off,omitempty"`
 	Statuses   []string `json:"statuses,omitempty"`
 	Priorities []string `json:"priorities,omitempty"`
 	Categories []string `json:"categories,omitempty"`

@@ -191,6 +191,20 @@ func TestAViewChangeKeepsWhatItLeavesOut(t *testing.T) {
 	}
 }
 
+func TestAFilterTurnedOffReachesTheFileAndTheAnswer(t *testing.T) {
+	f := newFixture(t)
+	filter := data.Filter{Off: true, Statuses: []string{domain.StatusTodo}}
+
+	resp := f.syncViews(map[string]data.ViewChange{f.pid: {Filter: &filter}}, nil)
+
+	if got := resp.Views[f.pid].Filter; !got.Off || !slices.Equal(got.Statuses, filter.Statuses) {
+		t.Fatalf("answer = %+v", got)
+	}
+	if view, _ := f.store.View(f.pid); !view.Filter.Off {
+		t.Fatalf("file = %+v", view)
+	}
+}
+
 func TestAnOldClientLeavesTheViewAlone(t *testing.T) {
 	f := newFixture(t)
 	folds := []string{f.cat}
