@@ -95,6 +95,7 @@ import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.marks
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
+import io.github.ilyasturki.ordo.compose.ui.marks
 import kotlinx.coroutines.launch
 
 private val space = Regex("\\s+")
@@ -473,12 +474,12 @@ fun FilterSheet(project: Project, filter: Filter, onChange: (Filter) -> Unit, on
             }
             Section("Status") {
                 for (s in Status.all) {
-                    Toggle(Status.label(s), s in filter.statuses) { onChange(filter.copy(off = false, statuses = filter.statuses.flip(s))) }
+                    Toggle(Status.label(s), s in filter.statuses, leading = { Icon(Icons.status(s), null, Modifier.size(18.dp)) }) { onChange(filter.copy(off = false, statuses = filter.statuses.flip(s))) }
                 }
             }
             Section("Priority") {
                 for (p in Priority.all) {
-                    Toggle(Priority.label(p), p in filter.priorities) { onChange(filter.copy(off = false, priorities = filter.priorities.flip(p))) }
+                    Toggle(Priority.label(p), p in filter.priorities, leading = { PriorityMark(p) }) { onChange(filter.copy(off = false, priorities = filter.priorities.flip(p))) }
                 }
             }
             if (project.categories.isNotEmpty()) {
@@ -517,8 +518,18 @@ private fun Toggle(label: String, on: Boolean, leading: (@Composable () -> Unit)
         selected = on,
         onClick = onClick,
         label = { Text(label) },
-        leadingIcon = if (on) ({ Icon(Icons.Check, null, Modifier.size(18.dp)) }) else leading,
+        leadingIcon = leading ?: if (on) ({ Icon(Icons.Check, null, Modifier.size(18.dp)) }) else null,
     )
+}
+
+@Composable
+private fun PriorityMark(priority: String) {
+    val tint = when (priority) {
+        "critical", "high" -> MaterialTheme.marks.up
+        "low", "trivial" -> MaterialTheme.marks.down
+        else -> LocalContentColor.current
+    }
+    Icon(Icons.priority(priority), null, Modifier.size(18.dp), tint = tint)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
