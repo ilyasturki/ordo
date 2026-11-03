@@ -39,6 +39,9 @@ data object DevicesKey : NavKey
 data object LicenceKey : NavKey
 
 @Serializable
+data object ChangelogKey : NavKey
+
+@Serializable
 data object SignInKey : NavKey
 
 // A category the categories page sends the list to; the list clears it once there.

@@ -27,12 +27,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.ilyasturki.ordo.compose.ui.ChangelogKey
 import io.github.ilyasturki.ordo.compose.ui.DevicesKey
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LicenceKey
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.NavKey
-import io.github.ilyasturki.ordo.compose.ui.home.ago
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,19 +52,10 @@ fun SettingsScreen(open: (NavKey) -> Unit, back: () -> Unit) {
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
             Label("Account")
-            Item(Icons.Dns, "Server", state.session?.server.orEmpty())
-            Item(
-                Icons.Sync,
-                "Sync",
-                buildString {
-                    append(if (state.lastSync == 0L) "Not synced since the app started" else "Synced ${ago(state.lastSync)}")
-                    if (state.waiting) append(" · ${state.waitingWords} waiting")
-                },
-            )
-            Item(Icons.Devices, "Devices", "Pair a new device, sign out") { open(DevicesKey) }
+            Item(Icons.Devices, "Devices", state.session?.let { "Signed in to ${it.server}" } ?: "Pair a new device, sign out") { open(DevicesKey) }
             Label("About")
             Item(Icons.Notes, "Font licence", "Google Sans Flex, SIL Open Font License 1.1") { open(LicenceKey) }
-            Item(Icons.Info, "Version", version)
+            Item(Icons.Info, "Version", "$version · What's new") { open(ChangelogKey) }
         }
     }
 }

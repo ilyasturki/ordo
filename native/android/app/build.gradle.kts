@@ -9,6 +9,15 @@ val repo: File = rootProject.projectDir.resolve("../..").canonicalFile
 // Set by the release job, so a local assembleRelease leaves the APK unsigned: an APK signed by another key can't update an installed one.
 val keystore: String? = System.getenv("ORDO_KEYSTORE")?.takeIf(String::isNotEmpty)
 
+val changelogAssets = layout.buildDirectory.dir("generated/changelog")
+val copyChangelog = tasks.register<Copy>("copyChangelog") {
+    from(repo.resolve("CHANGELOG.md"))
+    into(changelogAssets)
+}
+tasks.configureEach {
+    if (name.startsWith("merge") && name.endsWith("Assets")) dependsOn(copyChangelog)
+}
+
 android {
     namespace = "io.github.ilyasturki.ordo.compose"
     compileSdk = 37
@@ -62,6 +71,7 @@ android {
         }
     }
 
+    sourceSets.getByName("main").assets.directories.add(changelogAssets.get().asFile.path)
     sourceSets.getByName("androidTest").assets.directories.add(repo.resolve("testdata/native").path)
     // The phone build is a .dev build too: its label and adb sign-in, which a release never has.
     sourceSets.getByName("phone") {
