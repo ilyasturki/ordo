@@ -25,9 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.TabIndicatorScope
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
@@ -67,10 +65,10 @@ import io.github.ilyasturki.ordo.compose.sync.Entry
 import io.github.ilyasturki.ordo.compose.ui.CategoriesKey
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
-import io.github.ilyasturki.ordo.compose.ui.LocalSnackbar
 import io.github.ilyasturki.ordo.compose.ui.NavKey
 import io.github.ilyasturki.ordo.compose.ui.SettingsKey
 import io.github.ilyasturki.ordo.compose.ui.SignInKey
+import io.github.ilyasturki.ordo.compose.ui.SnackScaffold
 import io.github.ilyasturki.ordo.compose.ui.TaskKey
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -100,7 +98,6 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     val projects = state.projects
     val scope = rememberCoroutineScope()
     val feedback = rememberFeedback()
-    val snackbar = LocalSnackbar.current
     var sheet by remember { mutableStateOf<HomeSheet?>(null) }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     // Saved: a task opened from the results comes back to them.
@@ -135,7 +132,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
         }
     }
 
-    Scaffold(
+    SnackScaffold(
         topBar = {
             Column(Modifier.statusBarsPadding()) {
                 if (searching && current != null) {
@@ -205,7 +202,6 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                 FloatingActionButton(onClick = { sheet = HomeSheet.Add(current.id, targetOf(current)?.id.orEmpty()) }) { Icon(Icons.Add, "Add a task") }
             }
         },
-        snackbarHost = { SnackbarHost(snackbar) },
     ) { pad ->
         if (projects.isEmpty()) {
             Column(

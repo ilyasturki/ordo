@@ -14,6 +14,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Naming a category like one of its siblings opens a chooser instead of the merge offer: `t` names this one with the next free number, as in "Fix (2)", `o` gives that number to the other one, `m` merges as before, and `esc` goes back to the name. In the app, the add and rename sheets offer the first two, or Cancel
 - `J` and `K` move a sub-category past its parent's edge: `K` on the first one makes it the last sub-category of the category above, `J` on the last one the first of the category below, unfolding it. The first and last top-level categories still stop it, and so does a sub-category of the same name there
 - The app's list shows a task title on two lines at most, ending in an ellipsis, and a description preview on one line under a title that wraps. The task page still shows the whole title
+- The app's snackbar sits on the bottom edge and the `+` (or "Mark done") rises above it while it shows. A status tap in the list or on a subtask no longer snacks unless it lands on done, which still offers Undo, and every snack lasts 4 seconds
 
 ## [0.14.1] - 2026-11-01
 

@@ -73,6 +73,14 @@ object Status {
         CANCELLED -> "Cancelled"
         else -> status
     }
+
+    // What status.cycle steps to.
+    fun next(status: String): String = when (status) {
+        TODO -> IN_PROGRESS
+        IN_PROGRESS -> COMPLETED
+        COMPLETED -> CANCELLED
+        else -> TODO
+    }
 }
 
 object Priority {

@@ -177,8 +177,10 @@ fun ProjectList(
                                 val cycle = { id: String, status: String ->
                                     if (tapping()) {
                                         if (filter.active) onUi(ui.copy(held = ui.held + id))
+                                        // The step shows in place; done keeps its Undo, since the row may leave the view.
+                                        val done = Status.next(status) == Status.COMPLETED
                                         scope.launch {
-                                            if (engine.edit(pid, Ops.cycle(id)).applied && next(status) == Status.COMPLETED) feedback.commit()
+                                            if (engine.edit(pid, Ops.cycle(id), quiet = !done).applied && done) feedback.commit()
                                         }
                                     }
                                 }
@@ -200,13 +202,6 @@ fun ProjectList(
             }
         }
     }
-}
-
-private fun next(status: String): String = when (status) {
-    Status.TODO -> Status.IN_PROGRESS
-    Status.IN_PROGRESS -> Status.COMPLETED
-    Status.COMPLETED -> Status.CANCELLED
-    else -> Status.TODO
 }
 
 private fun headerAbove(order: List<Line>, block: Block): Header? {

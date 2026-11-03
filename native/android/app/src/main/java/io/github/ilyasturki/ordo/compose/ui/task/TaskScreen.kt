@@ -33,8 +33,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -77,6 +75,7 @@ import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.LocalSnackbar
 import io.github.ilyasturki.ordo.compose.ui.NavKey
+import io.github.ilyasturki.ordo.compose.ui.SnackScaffold
 import io.github.ilyasturki.ordo.compose.ui.TaskKey
 import io.github.ilyasturki.ordo.compose.ui.ViewerKey
 import io.github.ilyasturki.ordo.compose.ui.home.Picker
@@ -246,7 +245,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
     val children = if (task.parentId == "" && !task.separator) cat.tasks.filter { it.parentId == task.id } else emptyList()
     val done = task.finished
 
-    Scaffold(
+    SnackScaffold(
         topBar = {
             TopAppBar(
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.Back, "Back") } },
@@ -294,7 +293,6 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                 )
             }
         },
-        snackbarHost = { SnackbarHost(LocalSnackbar.current) },
     ) { pad ->
         Column(
             Modifier
@@ -447,7 +445,7 @@ private fun Subtasks(pid: String, cat: String, task: Task, children: List<Task>,
                     .padding(start = 8.dp, end = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                StatusIcon(c.status, { scope.launch { engine.edit(pid, Ops.cycle(c.id)) } })
+                StatusIcon(c.status, { scope.launch { engine.edit(pid, Ops.cycle(c.id), quiet = Status.next(c.status) != Status.COMPLETED) } })
                 Text(
                     c.title,
                     style = MaterialTheme.typography.bodyLarge,

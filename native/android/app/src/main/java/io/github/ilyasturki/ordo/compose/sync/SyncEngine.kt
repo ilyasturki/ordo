@@ -521,6 +521,9 @@ class SyncEngine(
         _snacks.tryEmit(Snack(message, action, run))
     }
 
+    // A page's own word, in line with the engine's snacks so the two never overlap.
+    fun say(message: String) = snack(message)
+
     // The app came to the front or left it: the front polls and keeps the live stream open.
     suspend fun foreground(on: Boolean) {
         wanted = on

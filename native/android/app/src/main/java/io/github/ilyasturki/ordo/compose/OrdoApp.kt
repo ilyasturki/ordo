@@ -71,7 +71,7 @@ class OrdoApp : Application() {
                     val result = snackbar.showSnackbar(
                         snack.message,
                         actionLabel = snack.action,
-                        duration = if (snack.action == null) SnackbarDuration.Short else SnackbarDuration.Long,
+                        duration = SnackbarDuration.Short,
                     )
                     if (result == SnackbarResult.ActionPerformed) snack.run?.invoke()
                 }
