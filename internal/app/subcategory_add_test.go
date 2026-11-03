@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 func TestGAAddsASubCategoryUnderTheCursorsTopLevelCategory(t *testing.T) {
@@ -22,6 +23,17 @@ func TestGAAddsASubCategoryUnderTheCursorsTopLevelCategory(t *testing.T) {
 		{"on a sub-category", func(m *model) bool { return m.selectItem(selection.FocusCategory, "ui") }, "v2", []string{"v2", "ui<v2", "api<v2", "new<v2", "v1"}},
 		{"on a subtask in a sub-category", func(m *model) bool { return m.selectTaskByID("pick") }, "v2", []string{"v2", "ui<v2", "api<v2", "new<v2", "v1"}},
 		{"on a category with none yet", func(m *model) bool { return m.selectItem(selection.FocusCategory, "v1") }, "v1", []string{"v2", "ui<v2", "api<v2", "v1", "new<v1"}},
+		{"on a separator", func(m *model) bool {
+			m.project.Categories[3].Tasks = append(m.project.Categories[3].Tasks, domain.Task{ID: "later", Kind: domain.KindSeparator, Title: "later"})
+			m.rebuildPositions()
+			return m.selectItem(selection.FocusSeparator, "later")
+		}, "v1", []string{"v2", "ui<v2", "api<v2", "v1", "new<v1"}},
+		{"on a description in a sub-category", func(m *model) bool {
+			m.project.Categories[2].Tasks[0].Description = "details"
+			m.ui.Screen.ExpandDescriptions = true
+			m.rebuildPositions()
+			return m.ui.Selection.SelectByPredicate(func(p selection.Position) bool { return p.Kind == selection.FocusDescription })
+		}, "v2", []string{"v2", "ui<v2", "api<v2", "new<v2", "v1"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := newNestedModel(t)
