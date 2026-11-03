@@ -9,13 +9,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// lineField is a textinput with the readline keys bubbles lacks.
 type lineField struct {
 	textinput.Model
 	edits fieldEdits
 }
 
-// areaField is a textarea with the same keys, applied to the cursor's line.
 type areaField struct {
 	textarea.Model
 	edits fieldEdits
@@ -39,7 +37,6 @@ const (
 	runRubout
 )
 
-// fieldEdits is a field's undo history and what the next key may join.
 type fieldEdits struct {
 	undo []fieldSnap
 	run  fieldRun
@@ -50,7 +47,6 @@ type fieldEdits struct {
 	killing    bool
 }
 
-// fieldBuffer is what fieldEdits needs of a widget.
 type fieldBuffer interface {
 	snap() fieldSnap
 	restore(fieldSnap)
@@ -187,7 +183,6 @@ func (f *areaField) insert(s string) {
 	f.InsertString(s)
 }
 
-// apply runs the keys ordo adds to every field, reporting whether msg was one.
 func (e *fieldEdits) apply(buf fieldBuffer, msg tea.Msg) bool {
 	k, ok := msg.(tea.KeyPressMsg)
 	if !ok {
@@ -231,8 +226,6 @@ func (e *fieldEdits) apply(buf fieldBuffer, msg tea.Msg) bool {
 	return true
 }
 
-// record files what a widget key did: a typed word, or a run of rubouts,
-// undoes as one; anything else that changed the text undoes on its own.
 func (e *fieldEdits) record(msg tea.Msg, before, after fieldSnap) {
 	k, isKey := msg.(tea.KeyPressMsg)
 	if before.value == after.value {
@@ -376,8 +369,6 @@ const (
 	caseCapital
 )
 
-// caseWord changes the case from the cursor to the end of the word and
-// steps past it.
 func caseWord(r []rune, pos int, c wordCase) ([]rune, int) {
 	end := wordEnd(r, pos)
 	first := true
