@@ -8,7 +8,6 @@ import (
 	"strings"
 	"unicode"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
@@ -27,7 +26,7 @@ type taskCommand struct {
 }
 
 type TaskCommandState struct {
-	input   textinput.Model
+	input   lineField
 	command taskCommand
 	taskID  string
 }

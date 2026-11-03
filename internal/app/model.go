@@ -1,9 +1,6 @@
 package app
 
 import (
-	"charm.land/bubbles/v2/textarea"
-	"charm.land/bubbles/v2/textinput"
-
 	"github.com/ilyasturki/ordo/internal/app/components"
 	"github.com/ilyasturki/ordo/internal/app/modes"
 	"github.com/ilyasturki/ordo/internal/app/selection"
@@ -14,7 +11,7 @@ import (
 )
 
 type DescriptionEditState struct {
-	textarea      textarea.Model
+	textarea      areaField
 	categoryIndex int
 	taskIndex     int
 	original      string
@@ -104,7 +101,7 @@ type HelpState struct {
 	// its query. The filter narrows the shortcut list, matching each row against
 	// both its key and its label.
 	Filtering bool
-	Filter    textinput.Model
+	Filter    lineField
 }
 
 type UIState struct {

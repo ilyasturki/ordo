@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +16,7 @@ import (
 func helpFiltering(t *testing.T, m *model, query string) {
 	t.Helper()
 	m.ui.Modes.ToHelp()
-	ti := textinput.New()
+	ti := newTextInput()
 	ti.SetValue(query)
 	m.ui.Help = HelpState{Filtering: true, Filter: ti}
 	m.ensureHelpVisible()

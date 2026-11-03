@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -30,7 +29,7 @@ type MovePickerState struct {
 	taskIDs   []string
 	title     string
 	filtering bool
-	filter    textinput.Model
+	filter    lineField
 	query     string
 	// last outlives the picker, so a run of moves from one category keeps its target.
 	last string
@@ -239,7 +238,7 @@ func (p *MovePickerState) cancelFiltering() {
 		keep = p.targets[p.selected].categoryID
 	}
 	p.filtering = false
-	p.filter = textinput.Model{}
+	p.filter = lineField{}
 	p.query = ""
 	p.targets = p.all
 	for i, t := range p.targets {

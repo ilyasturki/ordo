@@ -69,7 +69,7 @@ func (m *model) startDescriptionInlineEdit(catIdx, taskIdx int) tea.Cmd {
 	*cursorRow = descriptionCursorDisplayRow(ta)
 
 	m.ui.DescriptionEdit = DescriptionEditState{
-		textarea:      ta,
+		textarea:      areaField{Model: ta},
 		categoryIndex: catIdx,
 		taskIndex:     taskIdx,
 		original:      task.Description,
@@ -231,7 +231,7 @@ func (m model) descriptionEditView() string {
 	state := m.ui.DescriptionEdit
 	// Refresh the cursor row so the prompt func's ">" gutter tracks the cursor.
 	if state.cursorRow != nil {
-		*state.cursorRow = descriptionCursorDisplayRow(state.textarea)
+		*state.cursorRow = descriptionCursorDisplayRow(state.textarea.Model)
 	}
 	title := "Edit Description"
 	if state.creating {

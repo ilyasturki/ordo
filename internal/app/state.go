@@ -4,8 +4,6 @@ import (
 	"maps"
 	"slices"
 
-	"charm.land/bubbles/v2/textinput"
-
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
@@ -341,12 +339,12 @@ type ProjectPickerState struct {
 	onNew        bool // the pinned "+ New Project" affordance is selected
 	scrollOffset int
 	isAdding     bool
-	input        textinput.Model
+	input        lineField
 	// filtering narrows the list to projects whose name matches query (fzf
 	// style). While filtering, allProjects holds the full ordered set that
 	// projects is derived from; query is the live filter text, filter its input.
 	filtering   bool
-	filter      textinput.Model
+	filter      lineField
 	query       string
 	allProjects []domain.Project
 	fullscreen  bool
@@ -416,7 +414,7 @@ func (p *ProjectPickerState) startAdding() {
 
 func (p *ProjectPickerState) cancelAdding() {
 	p.isAdding = false
-	p.input = textinput.Model{}
+	p.input = lineField{}
 }
 
 // startFiltering enters the type-to-filter sub-mode, snapshotting the full
@@ -441,7 +439,7 @@ func (p *ProjectPickerState) cancelFiltering(visible int) {
 		keep = p.projects[p.selected].ID
 	}
 	p.filtering = false
-	p.filter = textinput.Model{}
+	p.filter = lineField{}
 	p.query = ""
 	p.projects = p.allProjects
 	p.allProjects = nil
@@ -509,7 +507,7 @@ func (f *FoldState) HasFolded() bool {
 }
 
 type EditState struct {
-	input     textinput.Model
+	input     lineField
 	isAdding  bool
 	newItemID string
 	itemType  selection.FocusKind

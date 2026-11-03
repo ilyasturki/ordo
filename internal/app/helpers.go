@@ -5,7 +5,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
@@ -25,7 +24,7 @@ func (m model) dialogStyle() lipgloss.Style {
 // filterPromptRow draws a type-to-filter prompt: "/<query>" with a live cursor
 // on the left and the match count (or "no matches") right-aligned to width.
 // query is what matches was counted for, so an all-whitespace one shows nothing.
-func (m model) filterPromptRow(input textinput.Model, query string, matches, width int) string {
+func (m model) filterPromptRow(input lineField, query string, matches, width int) string {
 	status := ""
 	if query != "" {
 		text := "no matches"
@@ -37,7 +36,7 @@ func (m model) filterPromptRow(input textinput.Model, query string, matches, wid
 	return m.promptRow("/", input, status, width)
 }
 
-func (m model) promptRow(label string, input textinput.Model, status string, width int) string {
+func (m model) promptRow(label string, input lineField, status string, width int) string {
 	split := splitAtCursor(input.Value(), input.Position())
 	left := label + split.left +
 		ui.GetCursorStyle(m.ui.Screen.WindowFocused).Render(split.cursorCh) + split.right
@@ -107,14 +106,7 @@ func (m model) layoutConfig() LayoutConfig {
 	return cfg
 }
 
-// bubbles' own ctrl+v reads through atotto, whose wl-paste can't be killed; handleKeyMsg reads it through internal/clipboard.
-func newTextInput() textinput.Model {
-	ti := textinput.New()
-	ti.KeyMap.Paste.SetEnabled(false)
-	return ti
-}
-
-func sanitizeInput(input *textinput.Model) {
+func sanitizeInput(input *lineField) {
 	val := input.Value()
 	cleaned := strings.Map(func(r rune) rune {
 		if r == '\n' || r == '\r' || r == '\t' {

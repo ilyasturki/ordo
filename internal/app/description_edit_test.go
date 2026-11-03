@@ -20,7 +20,7 @@ import (
 func descriptionMarkerRow(t *testing.T, m *model) int {
 	t.Helper()
 	require.NotNil(t, m.ui.DescriptionEdit.cursorRow)
-	*m.ui.DescriptionEdit.cursorRow = descriptionCursorDisplayRow(m.ui.DescriptionEdit.textarea)
+	*m.ui.DescriptionEdit.cursorRow = descriptionCursorDisplayRow(m.ui.DescriptionEdit.textarea.Model)
 	rows := strings.Split(ansi.Strip(m.ui.DescriptionEdit.textarea.View()), "\n")
 	found := -1
 	for i, r := range rows {

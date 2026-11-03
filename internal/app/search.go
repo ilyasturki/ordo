@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -19,7 +18,7 @@ import (
 // search highlights every match and moves the cursor to one; n/N step between
 // matches. It complements (does not replace) the `f` filter, which hides rows.
 type SearchState struct {
-	input          textinput.Model
+	input          lineField
 	query          string    // committed query, "" when no search is in effect: drives the persistent highlight + n/N
 	originSelected int       // cursor index when the search began (Esc restores it)
 	originScroll   int       // scroll offset when the search began

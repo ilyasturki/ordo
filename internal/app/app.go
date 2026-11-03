@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/ilyasturki/ordo/internal/app/components"
@@ -402,7 +401,7 @@ func (m model) handleHelpFilterKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.ui.Help.Filtering = false
-		m.ui.Help.Filter = textinput.Model{}
+		m.ui.Help.Filter = lineField{}
 		m.ui.Help.Focused = 0
 		m.ui.Help.ScrollOffset = 0
 		m.ensureHelpVisible()
