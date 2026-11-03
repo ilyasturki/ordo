@@ -25,6 +25,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollToKey
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
@@ -56,6 +57,13 @@ class AppTest : AppFixture() {
     private fun header(name: String) = compose.onNode(hasText(name) and hasClickAction())
 
     private fun menuItem(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isPopup()))
+
+    // At the list's bottom edge, the + covers a header's chevron.
+    private fun headerToTop(name: String) {
+        val cat = engine.state.value.project(PID)!!.project.categories.first { it.name == name }
+        compose.waitUntilAtLeastOneExists(hasTestTag("list"), 20_000)
+        compose.onNodeWithTag("list").performScrollToKey("c:${cat.id}")
+    }
 
     // No activity is on screen for a moment as one replaces another, and the rule then throws.
     private fun waitAcrossPages(matcher: SemanticsMatcher) = compose.waitUntil(20_000) {
@@ -447,7 +455,7 @@ class AppTest : AppFixture() {
 
     @Test
     fun theChevronFoldsACategoryAndATapStillOpensItsMenu() {
-        scrollTo("Research")
+        headerToTop("Research")
         compose.onNodeWithContentDescription("Fold Research").performClick()
         compose.onNodeWithContentDescription("Unfold Research").assertExists()
         compose.waitUntil(20_000) { engine.state.value.views[PID]?.folds?.size == 1 }
