@@ -2,6 +2,7 @@ package io.github.ilyasturki.ordo.compose.ui.home
 
 import android.os.SystemClock
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -47,7 +48,9 @@ import io.github.ilyasturki.ordo.compose.model.Status
 import io.github.ilyasturki.ordo.compose.sync.Entry
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -69,6 +72,8 @@ fun ProjectList(
     onNewCategory: () -> Unit,
     onFocus: (String?) -> Unit,
     query: String = "",
+    jump: String? = null,
+    onJumped: () -> Unit = {},
 ) {
     val engine = LocalEngine.current
     val scope = rememberCoroutineScope()
@@ -96,11 +101,26 @@ fun ProjectList(
     }
     val onScreen by rememberUpdatedState(shown)
     val report by rememberUpdatedState(onFocus)
+    // A category gone to stays the focus until the user scrolls, short or last as it may be.
+    var held by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(listState) {
         snapshotFlow {
             val info = listState.layoutInfo
-            Board.focused(onScreen, info.visibleItemsInfo.map { Seen(it.index, it.offset, it.size) }, info.viewportStartOffset, info.viewportEndOffset)
+            held ?: Board.focused(onScreen, info.visibleItemsInfo.map { Seen(it.index, it.offset, it.size) }, info.viewportStartOffset, info.viewportEndOffset)
         }.collect { report(it) }
+    }
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect { if (it is DragInteraction.Start) held = null }
+    }
+    val jumped by rememberUpdatedState(onJumped)
+    LaunchedEffect(jump) {
+        val cat = jump ?: return@LaunchedEffect
+        held = cat
+        val at = withTimeoutOrNull(5_000) {
+            snapshotFlow { onScreen.indexOfFirst { it is Header && it.cat == cat && !it.folded } }.first { it >= 0 }
+        }
+        if (at != null) listState.animateScrollToItem(at)
+        jumped()
     }
 
     if (entry.project.categories.isEmpty()) {

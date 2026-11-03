@@ -65,6 +65,7 @@ import io.github.ilyasturki.ordo.compose.sync.Entry
 import io.github.ilyasturki.ordo.compose.ui.CategoriesKey
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
+import io.github.ilyasturki.ordo.compose.ui.LocalJump
 import io.github.ilyasturki.ordo.compose.ui.NavKey
 import io.github.ilyasturki.ordo.compose.ui.SettingsKey
 import io.github.ilyasturki.ordo.compose.ui.SignInKey
@@ -73,6 +74,7 @@ import io.github.ilyasturki.ordo.compose.ui.TaskKey
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
@@ -110,6 +112,8 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     BackHandler(searching, closeSearch)
     val uis = remember { mutableStateMapOf<String, ListUi>() }
     val focus = remember { mutableStateMapOf<String, String?>() }
+    val jumps = LocalJump.current
+    val landing = remember { mutableStateMapOf<String, String>() }
 
     val pager = rememberPagerState(initialPage = projects.indexOfFirst { it.id == state.prefs.current }.coerceAtLeast(0)) { projects.size }
     val current = projects.getOrNull(pager.currentPage.coerceAtMost(projects.lastIndex))
@@ -246,6 +250,8 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                     onCategories = { open(CategoriesKey(entry.id)) },
                     onNewCategory = { sheet = HomeSheet.OfCategory(entry.id, CategorySheet.New("")) },
                     onFocus = { focus[entry.id] = it },
+                    jump = landing[entry.id],
+                    onJumped = { landing.remove(entry.id) },
                     query = query,
                 )
             }
@@ -258,6 +264,19 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     suspend fun reveal(e: Entry, cat: String) {
         engine.setFolded(e.id, cat, false)
         e.project.category(cat)?.parentId?.takeIf { it != "" }?.let { engine.setFolded(e.id, it, false) }
+    }
+
+    // Held while the page is on top, and taken as the list comes back.
+    LaunchedEffect(jumps) {
+        jumps.filterNotNull().collect { j ->
+            jumps.value = null
+            val e = latest.firstOrNull { it.id == j.pid } ?: return@collect
+            closeSearch()
+            if (j.pid != engine.state.value.prefs.current) engine.setCurrent(j.pid)
+            reveal(e, j.cat)
+            focus[j.pid] = j.cat
+            landing[j.pid] = j.cat
+        }
     }
 
     when (val s = sheet) {

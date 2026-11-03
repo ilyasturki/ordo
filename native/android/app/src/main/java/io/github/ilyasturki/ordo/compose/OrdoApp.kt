@@ -15,17 +15,20 @@ import io.github.ilyasturki.ordo.compose.core.GoCore
 import io.github.ilyasturki.ordo.compose.data.Store
 import io.github.ilyasturki.ordo.compose.sync.SyncEngine
 import io.github.ilyasturki.ordo.compose.sync.SyncWorker
+import io.github.ilyasturki.ordo.compose.ui.Jump
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 
 class OrdoApp : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val snackbar = SnackbarHostState()
+    val jump = MutableStateFlow<Jump?>(null)
     lateinit var engine: SyncEngine
         private set
     private var snacks: Job? = null

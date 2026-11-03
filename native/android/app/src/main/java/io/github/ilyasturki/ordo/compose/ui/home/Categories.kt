@@ -23,8 +23,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -51,9 +49,11 @@ import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.sync.Entry
 import io.github.ilyasturki.ordo.compose.ui.Icons
+import io.github.ilyasturki.ordo.compose.ui.Jump
 import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
-import io.github.ilyasturki.ordo.compose.ui.LocalSnackbar
+import io.github.ilyasturki.ordo.compose.ui.LocalJump
+import io.github.ilyasturki.ordo.compose.ui.SnackScaffold
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -74,7 +74,6 @@ sealed interface CategorySheet {
 fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: (CategorySheet?) -> Unit) {
     val engine = LocalEngine.current
     val scope = LocalAppScope.current
-    val snackbar = LocalSnackbar.current
     val feedback = rememberFeedback()
     val pid = entry.id
     val dismiss = { onSheet(null) }
@@ -103,7 +102,7 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
                     if (filter.active) {
                         onSheet(null)
                         feedback.reject()
-                        scope.launch { snackbar.showSnackbar("Clear the filter to add a separator") }
+                        engine.say("Clear the filter to add a separator")
                     } else {
                         onSheet(CategorySheet.NewSeparator(cat.id))
                     }
@@ -153,8 +152,20 @@ fun CategoriesScreen(pid: String, back: () -> Unit) {
         return
     }
     var sheet by remember { mutableStateOf<CategorySheet?>(null) }
+    val jump = LocalJump.current
+    val feedback = rememberFeedback()
+    val filter = (state.views[pid]?.filter ?: Filter.NONE).pruned(entry.project)
+    val go = { cat: Category ->
+        if (filter.categoryVisible(cat)) {
+            jump.value = Jump(pid, cat.id)
+            back()
+        } else {
+            feedback.reject()
+            engine.say("“${cat.name}” is hidden by the filter")
+        }
+    }
 
-    Scaffold(
+    SnackScaffold(
         topBar = {
             TopAppBar(
                 navigationIcon = { IconButton(onClick = back) { Icon(Icons.Back, "Back") } },
@@ -164,7 +175,6 @@ fun CategoriesScreen(pid: String, back: () -> Unit) {
         floatingActionButton = {
             FloatingActionButton(onClick = { sheet = CategorySheet.New("") }) { Icon(Icons.Add, "New category") }
         },
-        snackbarHost = { SnackbarHost(LocalSnackbar.current) },
     ) { pad ->
         if (entry.project.categories.isEmpty()) {
             Text(
@@ -175,19 +185,18 @@ fun CategoriesScreen(pid: String, back: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(pad).padding(top = 64.dp),
             )
         } else {
-            CategoryTree(entry, pad, onMenu = { sheet = CategorySheet.Menu(it) })
+            CategoryTree(entry, pad, onGo = go, onMenu = { sheet = CategorySheet.Menu(it) })
         }
     }
 
     sheet?.let { s ->
-        val filter = (state.views[pid]?.filter ?: Filter.NONE).pruned(entry.project)
         CategorySheets(entry, filter, s) { sheet = it }
     }
 }
 
 // A top-level category is one list item with its sub-categories, so the block follows the finger whole.
 @Composable
-private fun CategoryTree(entry: Entry, pad: PaddingValues, onMenu: (String) -> Unit) {
+private fun CategoryTree(entry: Entry, pad: PaddingValues, onGo: (Category) -> Unit, onMenu: (String) -> Unit) {
     val engine = LocalEngine.current
     val appScope = LocalAppScope.current
     val scope = rememberCoroutineScope()
@@ -196,7 +205,7 @@ private fun CategoryTree(entry: Entry, pad: PaddingValues, onMenu: (String) -> U
     val tops = remember(entry.project) { entry.project.categories.filter { it.parentId == "" } }
     var dragOrder by remember { mutableStateOf<List<Category>?>(null) }
     val shown = dragOrder ?: tops
-    // A lifted row's release also reaches the row as a tap: that one opens no menu.
+    // A lifted row's release also reaches the row as a tap: that one goes nowhere.
     var lifting by remember { mutableStateOf(false) }
     var droppedAt by remember { mutableLongStateOf(0L) }
     val tapping = { !lifting && SystemClock.uptimeMillis() - droppedAt > 400 }
@@ -253,7 +262,8 @@ private fun CategoryTree(entry: Entry, pad: PaddingValues, onMenu: (String) -> U
                             child = false,
                             rowDrag = Modifier.longPressDraggableHandle(onDragStarted = { lift() }, onDragStopped = stopped),
                             handleDrag = Modifier.draggableHandle(onDragStarted = { lift() }, onDragStopped = stopped),
-                            onClick = { if (tapping()) onMenu(top.id) },
+                            onClick = { if (tapping()) onGo(top) },
+                            onMenu = { if (tapping()) onMenu(top.id) },
                         )
                         SubCategories(
                             remember(entry.project, top.id) { entry.project.categories.filter { it.parentId == top.id } },
@@ -261,6 +271,7 @@ private fun CategoryTree(entry: Entry, pad: PaddingValues, onMenu: (String) -> U
                             letGo = letGo,
                             tapping = tapping,
                             place = ::place,
+                            onGo = onGo,
                             onMenu = onMenu,
                         )
                     }
@@ -278,6 +289,7 @@ private fun SubCategories(
     letGo: () -> Unit,
     tapping: () -> Boolean,
     place: (String, String, (Boolean) -> Unit) -> Unit,
+    onGo: (Category) -> Unit,
     onMenu: (String) -> Unit,
 ) {
     if (subs.isEmpty()) return
@@ -301,7 +313,8 @@ private fun SubCategories(
                         child = true,
                         rowDrag = Modifier.longPressDraggableHandle(onDragStarted = { lift() }, onDragStopped = { letGo() }),
                         handleDrag = Modifier.draggableHandle(onDragStarted = { lift() }, onDragStopped = { letGo() }),
-                        onClick = { if (tapping()) onMenu(sub.id) },
+                        onClick = { if (tapping()) onGo(sub) },
+                        onMenu = { if (tapping()) onMenu(sub.id) },
                     )
                 }
             }
@@ -321,7 +334,7 @@ private fun Lifted(dragging: Boolean, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun CategoryLine(name: String, pinned: Boolean, child: Boolean, rowDrag: Modifier, handleDrag: Modifier, onClick: () -> Unit) {
+private fun CategoryLine(name: String, pinned: Boolean, child: Boolean, rowDrag: Modifier, handleDrag: Modifier, onClick: () -> Unit, onMenu: () -> Unit) {
     Row(
         rowDrag
             .fillMaxWidth()
@@ -339,6 +352,9 @@ private fun CategoryLine(name: String, pinned: Boolean, child: Boolean, rowDrag:
             style = if (child) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f).padding(vertical = 12.dp),
         )
+        IconButton(onClick = onMenu) {
+            Icon(Icons.More, "Edit $name", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Box(handleDrag.size(48.dp), contentAlignment = Alignment.Center) {
             Icon(Icons.DragHandle, "Move $name", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }

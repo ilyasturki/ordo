@@ -2,10 +2,12 @@ package io.github.ilyasturki.ordo.compose
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.TouchInjectionScope
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -16,15 +18,19 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.height
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -125,6 +131,7 @@ class CategoriesTest : AppFixture() {
         }
         compose.waitUntil(20_000) { order().first() == "Fix" }
         compose.onNodeWithText("Rename").assertDoesNotExist()
+        assertTrue("a release goes nowhere", pageHasFocus())
     }
 
     @Test
@@ -161,9 +168,9 @@ class CategoriesTest : AppFixture() {
     }
 
     @Test
-    fun aTapOpensWhatTheHeadersMenuOffers() {
+    fun theDotsOpenWhatTheHeadersMenuOffers() {
         openPage()
-        research().performClick()
+        compose.onNodeWithContentDescription("Edit Research").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Rename"), 20_000)
         compose.onNodeWithText("New sub-category").assertIsDisplayed()
         compose.onNodeWithText("Add a separator").assertIsDisplayed()
@@ -171,6 +178,72 @@ class CategoriesTest : AppFixture() {
         compose.onNodeWithText("Delete category “Research”?").assertIsDisplayed()
         compose.onNodeWithText("Cancel").performClick()
         research().assertIsDisplayed()
+    }
+
+    private fun category(name: String) = engine.state.value.project(PID)!!.project.categories.first { it.name == name }
+
+    private fun assertFocus(name: String) = compose.waitUntil(20_000) {
+        compose.onAllNodes(hasTestTag("focus") and hasText(name)).fetchSemanticsNodes().isNotEmpty()
+    }
+
+    // The page closes on the tap, and the list underneath takes the keys again.
+    private fun goTo(name: String) {
+        compose.onNode(hasText(name) and hasClickAction() and hasAnyAncestor(hasTestTag("categories"))).performClick()
+        compose.waitUntil(20_000) { !pageHasFocus() }
+        compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 20_000)
+    }
+
+    private fun waitShown(matcher: SemanticsMatcher) = compose.waitUntil(20_000) {
+        runCatching { compose.onNode(matcher).assertIsDisplayed() }.isSuccess
+    }
+
+    private fun addHere(title: String): String {
+        compose.onNodeWithContentDescription("Add a task").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput(title)
+        compose.onNode(hasSetTextAction()).performImeAction()
+        compose.waitUntil(20_000) { task(title) != null }
+        return engine.state.value.project(PID)!!.project.categories.first { c -> c.tasks.any { it.title == title } }.name
+    }
+
+    @Test
+    fun aTapGoesToTheCategoryAndTheFocusHoldsUntilAScroll() {
+        openPage("Feature")
+        goTo("Ergonomy")
+        waitShown(hasText("Ergonomy") and hasClickAction())
+        // Ergonomy is too short to take most of the screen: only the jump keeps it the focus.
+        Thread.sleep(1_000)
+        assertFocus("Ergonomy")
+        compose.onNodeWithTag("list").performTouchInput { swipeUp(startY = centerY, endY = centerY - 200f) }
+        compose.waitUntil(20_000) { compose.onAllNodes(hasTestTag("focus") and hasText("Ergonomy")).fetchSemanticsNodes().isEmpty() }
+    }
+
+    @Test
+    fun aTapGoesToACategoryFarDownAndThePlusAddsThere() {
+        openPage("Feature")
+        goTo("Research")
+        waitShown(hasText("Research") and hasClickAction())
+        assertFocus("Research")
+        assertEquals("Research", addHere("Water the plants"))
+    }
+
+    @Test
+    fun aTapUnfoldsTheSubCategoryItGoesToAndItsParent() {
+        val docs = category("Documentation")
+        runBlocking { engine.setFolded(PID, docs.id, true) }
+        openPage("Feature")
+        goTo("API")
+        compose.waitUntil(20_000) { engine.state.value.views[PID]?.folds.orEmpty().isEmpty() }
+        waitShown(hasText("API", substring = true) and hasClickAction() and hasAnyAncestor(hasTestTag("list")))
+        assertFocus("API")
+    }
+
+    @Test
+    fun aTapOnACategoryTheFilterHidesSaysSoAndStays() {
+        runBlocking { engine.setFilter(PID, Filter(categories = setOf(category("Feature").id))) }
+        openPage("Feature")
+        compose.onNode(hasText("Research") and hasClickAction() and hasAnyAncestor(hasTestTag("categories"))).performClick()
+        compose.waitUntilAtLeastOneExists(hasText("“Research” is hidden by the filter"), 20_000)
+        assertTrue(pageHasFocus())
     }
 
     @Test
