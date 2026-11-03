@@ -199,8 +199,12 @@ func TestDeleteAsksForACategoryOfSeparators(t *testing.T) {
 		t.Fatal(err)
 	}
 	sep.Title = "later"
+	note, err := domain.NewNote("ask first")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project := domain.Project{ID: "seps-1", Name: "Seps", Categories: []domain.Category{
-		{ID: "cat-a", Name: "A", Tasks: []domain.Task{sep}},
+		{ID: "cat-a", Name: "A", Tasks: []domain.Task{sep, note}},
 	}}
 	if _, err := data.NewStore(filepath.Join(dir, "projects")).ImportProject(project); err != nil {
 		t.Fatal(err)
@@ -214,7 +218,7 @@ func TestDeleteAsksForACategoryOfSeparators(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "0 tasks and 1 separator") {
+	if !strings.Contains(buf.String(), "0 tasks, 1 separator and 1 note") {
 		t.Fatalf("prompt = %q", buf.String())
 	}
 	p, err := data.NewStore(filepath.Join(dir, "projects")).LoadProject("Seps")

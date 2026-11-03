@@ -686,7 +686,7 @@ func (m *model) copyTextForPosition(pos selection.Position) string {
 	case selection.FocusCategory:
 		return m.project.Categories[pos.CategoryIndex].Name
 	case selection.FocusSeparator:
-		return export.SeparatorLine(m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex])
+		return export.LineMarkdown(m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex])
 	case selection.FocusTask:
 		task := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex]
 		text := task.Title

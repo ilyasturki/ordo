@@ -9,12 +9,12 @@ import (
 	"github.com/ilyasturki/ordo/internal/operations"
 )
 
-// undoBoard is c1 [a, b (b1, b2), c] and c2 [d, separator s, e], with fields set on a few rows.
+// undoBoard is c1 [a, b (b1, b2), c] and c2 [d, separator s, e, note m], with fields set on a few rows.
 func undoBoard(t *testing.T) *domain.Project {
 	t.Helper()
 	p := board(t)
 	for _, row := range []struct{ cat, id, parent, kind string }{
-		{"c1", "b2", "b", ""}, {"c2", "s", "", domain.KindSeparator}, {"c2", "e", "", ""},
+		{"c1", "b2", "b", ""}, {"c2", "s", "", domain.KindSeparator}, {"c2", "e", "", ""}, {"c2", "m", "", domain.KindNote},
 	} {
 		if _, err := operations.CreateTask(p, row.cat, operations.TaskFields{Title: row.id, ID: row.id, ParentID: row.parent, Kind: row.kind}); err != nil {
 			t.Fatal(err)
@@ -66,6 +66,9 @@ func TestUndoPutsBackWhatAnOpChanged(t *testing.T) {
 		{"separator", operations.Op{Action: "separator.add", New: "n1", Cat: "c2", Title: "later"}, 1},
 		{"title", operations.Op{Action: "task.title", IDs: ids("a"), Title: " renamed ", Base: "a"}, 1},
 		{"separator label", operations.Op{Action: "task.title", IDs: ids("s"), Title: "", Base: "s"}, 1},
+		{"note", operations.Op{Action: "note.add", New: "n1", Cat: "c2", IDs: ids("d"), Title: "ask first"}, 1},
+		{"note text", operations.Op{Action: "task.title", IDs: ids("m"), Title: "reworded", Base: "m"}, 1},
+		{"delete a note", operations.Op{Action: "task.delete", IDs: ids("m")}, 1},
 		{"description", operations.Op{Action: "task.description", IDs: ids("a"), Text: "new notes\n", Base: "notes"}, 1},
 		{"attach", operations.Op{Action: "task.attach", IDs: ids("a"), Lines: []string{"![shot](attachments/0123456789abcdef0123456789abcdef.png)"}}, 1},
 		{"status of a mixed selection", operations.Op{Action: "status.set", IDs: ids("a", "c", "s", "b1", "x"), Value: domain.StatusCancelled}, 2},

@@ -22,6 +22,8 @@ var (
 	// category (##) headers, which both require whitespace after their hashes.
 	separatorLabelRe = regexp.MustCompile(`^###\s+(.+)$`)
 	separatorBreakRe = regexp.MustCompile(`^-{3,}\s*$`)
+	// A note is a blockquote, unindented so a description's quote stays in the description.
+	noteLineRe = regexp.MustCompile(`^>\s?(.*)$`)
 )
 
 func statusToMarker(status string) string {
@@ -97,7 +99,11 @@ func unescapeSlashes(s string) string {
 	return strings.TrimSpace(strings.ReplaceAll(s, `\/`, "/"))
 }
 
-func SeparatorLine(task domain.Task) string {
+// LineMarkdown is the markdown line of a separator or a note.
+func LineMarkdown(task domain.Task) string {
+	if task.IsNote() {
+		return "> " + task.Title
+	}
 	if label := strings.TrimSpace(task.Title); label != "" {
 		return "### " + label
 	}
@@ -107,8 +113,8 @@ func SeparatorLine(task domain.Task) string {
 func writeCategory(sb *strings.Builder, heading string, cat domain.Category, opts Options) {
 	fmt.Fprintf(sb, "## %s\n\n", heading)
 	for _, task := range cat.Tasks {
-		if task.IsSeparator() {
-			sb.WriteString(SeparatorLine(task))
+		if !task.IsTask() {
+			sb.WriteString(LineMarkdown(task))
 			sb.WriteByte('\n')
 			continue
 		}
@@ -207,6 +213,14 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 			continue
 		}
 
+		if m := noteLineRe.FindStringSubmatch(line); m != nil && currentCategory != nil {
+			flushDescription()
+			if text := strings.TrimSpace(m[1]); text != "" {
+				currentCategory.tasks = append(currentCategory.tasks, taskData{kind: domain.KindNote, title: text})
+			}
+			continue
+		}
+
 		m := taskLineRe.FindStringSubmatch(line)
 		sub := false
 		if m == nil && currentCategory != nil {
@@ -284,12 +298,12 @@ func ImportMarkdown(r io.Reader, projectName string) (domain.Project, error) {
 		}
 		parentTask := ""
 		for _, td := range cd.tasks {
-			if td.kind == domain.KindSeparator {
+			if td.kind != "" {
 				sep, err := domain.NewSeparator()
 				if err != nil {
 					return domain.Project{}, err
 				}
-				sep.Title = td.title
+				sep.Kind, sep.Title = td.kind, td.title
 				cat.Tasks = append(cat.Tasks, sep)
 				parentTask = ""
 				continue
@@ -353,7 +367,7 @@ type categoryData struct {
 }
 
 func (c *categoryData) hasParent() bool {
-	return len(c.tasks) > 0 && c.tasks[len(c.tasks)-1].kind != domain.KindSeparator
+	return len(c.tasks) > 0 && c.tasks[len(c.tasks)-1].kind == ""
 }
 
 type taskData struct {

@@ -18,8 +18,9 @@ type TaskFields struct {
 	Description string
 	TagColor    string
 	// Kind selects the row to build: empty for an ordinary task,
-	// domain.KindSeparator for a divider. A separator carries only a Title (its
-	// label, which may be empty); every other field must be unset.
+	// domain.KindSeparator for a divider, domain.KindNote for a line of text.
+	// Either carries only a Title (a separator's label may be empty, a note's
+	// text may not); every other field must be unset.
 	Kind string
 	// ParentID makes the task the last subtask of that top-level task.
 	ParentID string
@@ -28,12 +29,12 @@ type TaskFields struct {
 	ID string
 }
 
-// isSeparatorKind reports whether f describes a separator row.
-func (f TaskFields) isSeparatorKind() bool { return f.Kind == domain.KindSeparator }
+// isLineKind reports whether f describes a separator or a note row.
+func (f TaskFields) isLineKind() bool { return f.Kind != "" }
 
-// validateSeparatorFields rejects the fields a separator does not have, so a
-// client can't smuggle a status or an estimate onto a divider.
-func validateSeparatorFields(f TaskFields) error {
+// validateLineFields rejects the fields a separator or a note does not have,
+// so a client can't smuggle a status or an estimate onto one.
+func validateLineFields(f TaskFields) error {
 	if f.Status != "" || f.Priority != "" || f.Estimate != 0 ||
 		f.Description != "" || f.TagColor != "" || f.ParentID != "" {
 		return ErrSeparatorFieldNotAllowed
@@ -80,20 +81,20 @@ func CreateTaskAtTop(p *domain.Project, categoryID string, f TaskFields) (domain
 
 func createTask(p *domain.Project, categoryID string, f TaskFields, afterTaskID string, top bool) (domain.Task, error) {
 	switch f.Kind {
-	case "", domain.KindSeparator:
+	case "", domain.KindSeparator, domain.KindNote:
 	default:
 		return domain.Task{}, ErrInvalidKind
 	}
 	// A separator's label is optional (an unlabeled one renders as a plain
-	// rule), so the title requirement applies only to real tasks.
-	if !f.isSeparatorKind() && strings.TrimSpace(f.Title) == "" {
+	// rule), so the title requirement applies only to tasks and notes.
+	if f.Kind != domain.KindSeparator && strings.TrimSpace(f.Title) == "" {
 		return domain.Task{}, ErrTitleRequired
 	}
 	if err := validateTaskText(f); err != nil {
 		return domain.Task{}, err
 	}
-	if f.isSeparatorKind() {
-		if err := validateSeparatorFields(f); err != nil {
+	if f.isLineKind() {
+		if err := validateLineFields(f); err != nil {
 			return domain.Task{}, err
 		}
 	}
@@ -140,22 +141,23 @@ func createTask(p *domain.Project, categoryID string, f TaskFields, afterTaskID 
 			return domain.Task{}, err
 		}
 		insertAt, parentID = domain.BlockEnd(cat.Tasks, anchor), cat.Tasks[anchor].ParentID
-		if f.isSeparatorKind() && parentID != "" {
+		if f.isLineKind() && parentID != "" {
 			insertAt, parentID = domain.BlockEnd(cat.Tasks, domain.BlockStart(cat.Tasks, anchor)), ""
 		}
 	}
 
-	if f.isSeparatorKind() {
-		sep, err := domain.NewSeparator()
+	if f.isLineKind() {
+		line, err := domain.NewSeparator()
 		if err != nil {
 			return domain.Task{}, err
 		}
-		sep.Title = strings.TrimSpace(f.Title)
+		line.Kind = f.Kind
+		line.Title = strings.TrimSpace(f.Title)
 		if f.ID != "" {
-			sep.ID = f.ID
+			line.ID = f.ID
 		}
-		cat.InsertTask(insertAt, sep)
-		return sep, nil
+		cat.InsertTask(insertAt, line)
+		return line, nil
 	}
 
 	task, err := domain.NewTask(f.Title)
@@ -254,12 +256,12 @@ func UpdateTask(p *domain.Project, categoryID, taskID string, u TaskUpdate) (dom
 	if err != nil {
 		return domain.Task{}, err
 	}
-	// A separator is a divider, not a task: the only thing it has is its label,
-	// and that label may legitimately be empty (an unlabeled separator renders
+	// A separator or a note is a line, not a task: the only thing it has is its
+	// title, which a separator may leave empty (an unlabeled separator renders
 	// as a plain rule). Both rules differ from the task path, so split here
 	// before the ordinary validation runs.
-	if task.IsSeparator() {
-		return updateSeparator(task, u)
+	if !task.IsTask() {
+		return updateLine(task, u)
 	}
 
 	// Validate everything up front: a rejected field must not leave the task
@@ -322,19 +324,21 @@ func UpdateTask(p *domain.Project, categoryID, taskID string, u TaskUpdate) (dom
 	return *task, nil
 }
 
-// updateSeparator applies the only edit a separator accepts: its label. Any
-// other field in u is rejected rather than ignored, so a client that thinks it
-// set a status finds out it didn't.
-func updateSeparator(sep *domain.Task, u TaskUpdate) (domain.Task, error) {
+// updateLine applies the only edit a separator or a note accepts: its title.
+// Any other field in u is rejected rather than ignored, so a client that
+// thinks it set a status finds out it didn't.
+func updateLine(sep *domain.Task, u TaskUpdate) (domain.Task, error) {
 	if u.Status != nil || u.Priority != nil || u.Estimate != nil || u.Description != nil {
 		return domain.Task{}, ErrSeparatorFieldNotAllowed
 	}
 	if u.Title == nil {
 		return *sep, ErrNoChange
 	}
-	// Empty is allowed here (unlike a task): it clears the label back to a
-	// plain rule.
+	// Empty clears a separator's label back to a plain rule; a note needs text.
 	label := strings.TrimSpace(*u.Title)
+	if label == "" && sep.IsNote() {
+		return domain.Task{}, ErrTitleRequired
+	}
 	if err := domain.ValidateLine(label); err != nil {
 		return domain.Task{}, err
 	}

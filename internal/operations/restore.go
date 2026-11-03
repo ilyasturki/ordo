@@ -174,11 +174,11 @@ func checkCategories(cats []domain.Category) error {
 
 func checkRow(t domain.Task) error {
 	switch {
-	case !t.IsTask() && !t.IsSeparator():
+	case !t.IsTask() && !t.IsSeparator() && !t.IsNote():
 		return ErrInvalidKind
 	case t.EstimateMinutes < 0:
 		return ErrNegativeEstimate
-	case t.IsTask() && strings.TrimSpace(t.Title) == "":
+	case !t.IsSeparator() && strings.TrimSpace(t.Title) == "":
 		return ErrTitleRequired
 	}
 	if t.Status != "" || t.IsTask() {

@@ -14,7 +14,7 @@ import (
 // is the zero Project.
 func Undo(before, after domain.Project, op Op) []Op {
 	switch op.Action {
-	case "task.add", "task.insert", "separator.add":
+	case "task.add", "task.insert", "separator.add", "note.add":
 		if op.New != "" {
 			return []Op{{Action: "task.delete", IDs: []string{op.New}}}
 		}

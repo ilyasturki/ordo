@@ -233,6 +233,32 @@ func TestSchemaFollowsNesting(t *testing.T) {
 	assert.Equal(t, 2, schemaOnDisk(), "a sub-category needs schema 2")
 }
 
+func TestSchemaFollowsNotes(t *testing.T) {
+	store := NewStore(t.TempDir())
+	project, err := store.CreateProject("Noted")
+	require.NoError(t, err)
+	schemaOnDisk := func() int {
+		t.Helper()
+		loaded, err := store.LoadProjectByID(project.ID)
+		require.NoError(t, err)
+		return loaded.Schema
+	}
+
+	note, err := domain.NewNote("ask before merging")
+	require.NoError(t, err)
+	cat := &project.Categories[0]
+	cat.InsertTask(0, note)
+	require.NoError(t, store.SaveProjectLocked(project))
+	assert.Equal(t, 4, schemaOnDisk(), "a note needs schema 4")
+	loaded, err := store.LoadProjectByID(project.ID)
+	require.NoError(t, err)
+	assert.True(t, loaded.Categories[0].Tasks[0].IsNote(), "a note reads back as a note")
+
+	cat.Tasks = cat.Tasks[1:]
+	require.NoError(t, store.SaveProjectLocked(project))
+	assert.Equal(t, 1, schemaOnDisk(), "without a note the file drops back")
+}
+
 func TestLoadRepairsNesting(t *testing.T) {
 	tmpDir := t.TempDir()
 	store := NewStore(tmpDir)

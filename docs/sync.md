@@ -70,6 +70,7 @@ An op names its rows by ID and says where they end up, never how far they moved,
 | `task.add` | `new`, `cat`, `title`, `parent` | Adds a task last in `cat`, or last under `parent` wherever it is. |
 | `task.insert` | `new`, `cat`, `ids`, `title` | Adds a task below the block of `ids[0]`, or first in `cat`. |
 | `separator.add` | `new`, `cat`, `ids`, `title` | The same, for a separator labelled `title`. |
+| `note.add` | `new`, `cat`, `ids`, `title` | The same, for a note reading `title`, which can't be empty. |
 | `task.title` | `ids`, `title`, `base` | Sets the title, if the file's title is still `base`. |
 | `task.description` | `ids`, `text`, `base` | Sets the details, if the file's details are still `base`. |
 | `task.attach` | `ids`, `lines` | Appends the image lines the details don't hold yet. |

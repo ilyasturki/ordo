@@ -44,6 +44,7 @@ func TestReplayingAnOpChangesNothingMore(t *testing.T) {
 		{Action: "task.add", New: "n2", Parent: "b", Title: "sub"},
 		{Action: "task.insert", New: "n3", Cat: "c1", IDs: []string{"a"}, Title: "below a"},
 		{Action: "separator.add", New: "n4", Cat: "c2", Title: "later"},
+		{Action: "note.add", New: "n5", Cat: "c1", IDs: []string{"b1"}, Title: "ask first"},
 		{Action: "task.title", IDs: []string{"a"}, Title: "renamed", Base: "a"},
 		{Action: "task.description", IDs: []string{"a"}, Text: "details", Base: ""},
 		{Action: "task.attach", IDs: []string{"a"}, Lines: []string{"![shot](attachments/0123456789abcdef0123456789abcdef.png)"}},
@@ -118,16 +119,20 @@ func TestPerformSendsWhereAGestureLanded(t *testing.T) {
 }
 
 func TestPerformMintsTheIDOfAnAdd(t *testing.T) {
-	p := board(t)
-	out, wire, err := operations.Perform(p, operations.Op{Action: "task.add", Cat: "c1", Title: "new"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if wire.New == "" || out.Row != wire.New {
-		t.Fatalf("row %q, wire new %q", out.Row, wire.New)
-	}
-	if _, err := operations.Apply(p, wire); !errors.Is(err, operations.ErrNoChange) {
-		t.Fatalf("replaying the add on the phone's own copy = %v", err)
+	for _, action := range []string{"task.add", "separator.add", "note.add"} {
+		t.Run(action, func(t *testing.T) {
+			p := board(t)
+			out, wire, err := operations.Perform(p, operations.Op{Action: action, Cat: "c1", Title: "new"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if wire.New == "" || out.Row != wire.New {
+				t.Fatalf("row %q, wire new %q", out.Row, wire.New)
+			}
+			if _, err := operations.Apply(p, wire); !errors.Is(err, operations.ErrNoChange) {
+				t.Fatalf("replaying the add on the phone's own copy = %v", err)
+			}
+		})
 	}
 }
 

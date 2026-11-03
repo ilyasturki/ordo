@@ -58,6 +58,7 @@ var appliers = map[string]applier{
 	"task.add":         addTask,
 	"task.insert":      insertRow(""),
 	"separator.add":    insertRow(domain.KindSeparator),
+	"note.add":         insertRow(domain.KindNote),
 	"task.title":       editTitle,
 	"task.description": editDescription,
 	"task.attach":      attachLines,
@@ -112,7 +113,7 @@ func Apply(p *domain.Project, op Op) (Outcome, error) {
 // a nest, un-nest or shift as the place its rows landed.
 func Perform(p *domain.Project, op Op) (Outcome, Op, error) {
 	switch op.Action {
-	case "task.add", "task.insert", "separator.add", "category.add":
+	case "task.add", "task.insert", "separator.add", "note.add", "category.add":
 		if op.New == "" {
 			id, err := domain.NewID()
 			if err != nil {
@@ -227,8 +228,11 @@ func insertRow(kind string) applier {
 		if err != nil {
 			return Outcome{Row: op.New}, err
 		}
-		if kind == domain.KindSeparator {
+		switch kind {
+		case domain.KindSeparator:
 			return Outcome{Msg: "Added a separator", Row: t.ID}, nil
+		case domain.KindNote:
+			return Outcome{Msg: "Added a note", Row: t.ID}, nil
 		}
 		return Outcome{Row: t.ID}, nil
 	}
@@ -309,16 +313,24 @@ func deleteRows(p *domain.Project, op Op) (Outcome, error) {
 	if err != nil {
 		return Outcome{}, err
 	}
-	tasks, seps := 0, 0
+	tasks, seps, notes := 0, 0, 0
 	for _, t := range removed {
-		if t.IsSeparator() {
+		switch {
+		case t.IsSeparator():
 			seps++
-		} else {
+		case t.IsNote():
+			notes++
+		default:
 			tasks++
 		}
 	}
-	if tasks == 0 {
+	switch {
+	case tasks == 0 && notes == 0:
 		return Outcome{Msg: plural(seps, "Separator deleted", "%d separators deleted")}, nil
+	case tasks == 0 && seps == 0:
+		return Outcome{Msg: plural(notes, "Note deleted", "%d notes deleted")}, nil
+	case tasks == 0:
+		return Outcome{Msg: fmt.Sprintf("%d rows deleted", len(removed))}, nil
 	}
 	if len(removed) == 1 {
 		return Outcome{Msg: "Deleted " + quote(removed[0].Title)}, nil

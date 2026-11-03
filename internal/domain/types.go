@@ -28,6 +28,10 @@ const (
 	// are unused. An absent/empty Kind is an ordinary task.
 	KindSeparator = "separator"
 
+	// KindNote marks a line of free text among the tasks: its Title holds the
+	// text, never empty, and like a separator it has no status and never nests.
+	KindNote = "note"
+
 	// Tag marks are stored as stable names, not ANSI numbers. Each is a hue the
 	// terminal theme tracks (red and yellow already mean priority, status and
 	// search), drawn as a dot.
@@ -64,8 +68,8 @@ var (
 // existed carry no schema field and are read as version 1. Bump it when an
 // older binary would misread a file, or would lose data by saving it without
 // a field it does not know; never reuse a number. 3 was 0.10.0's released_at,
-// which later builds read and drop, so the next new format is 4.
-const ProjectSchemaVersion = 3
+// which later builds read and drop.
+const ProjectSchemaVersion = 4
 
 // ErrSchemaTooNew is returned when a project file declares a schema version
 // newer than this binary understands. Refusing beats loading: saving through a
@@ -127,6 +131,10 @@ type Task struct {
 // should skip these entries.
 func (t Task) IsSeparator() bool {
 	return t.Kind == KindSeparator
+}
+
+func (t Task) IsNote() bool {
+	return t.Kind == KindNote
 }
 
 // IsTask reports whether this row is an ordinary task: any kind marks a line row with no status.
@@ -253,6 +261,22 @@ func NewSeparator() (Task, error) {
 	return Task{
 		ID:        id,
 		Kind:      KindSeparator,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}, nil
+}
+
+// NewNote creates a note row holding text.
+func NewNote(text string) (Task, error) {
+	id, err := NewID()
+	if err != nil {
+		return Task{}, err
+	}
+	now := NowTimestamp()
+	return Task{
+		ID:        id,
+		Title:     text,
+		Kind:      KindNote,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}, nil

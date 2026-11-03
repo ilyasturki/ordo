@@ -21,6 +21,7 @@ var Actions = []Action{
 	{"task.add", "Add task", Both},
 	{"task.insert", "Add task at the top or below a row", Both},
 	{"separator.add", "Add separator", Both},
+	{"note.add", "Add note", Both},
 	{"task.title", "Edit title", Both},
 	{"task.description", "Edit description", Both},
 	{"task.attach", "Attach image", Both},

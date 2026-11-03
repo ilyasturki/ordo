@@ -79,7 +79,7 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | `updated_at` | timestamp | Optional. |
 | `estimate_minutes` | integer | Optional. Set on the category itself, not summed from its tasks. |
 | `pinned` | boolean | Optional. A pinned category comes before its unpinned siblings, see [Pins](#pins). |
-| `tasks` | array | In display order, separators included. |
+| `tasks` | array | In display order, separators and notes included. |
 
 ### Task
 
@@ -87,15 +87,15 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | --- | --- | --- |
 | `id` | string | |
 | `parent_id` | string | Optional. Makes it a subtask of that task, see [Nesting](#nesting). |
-| `title` | string | One line. On a separator, its label, often empty. |
-| `status` | string | `todo`, `in_progress`, `completed` or `cancelled`. Empty on a separator. |
+| `title` | string | One line. On a separator, its label, often empty. On a note, its text, never empty. |
+| `status` | string | `todo`, `in_progress`, `completed` or `cancelled`. Empty on a separator or a note. |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | Restamped whenever the task changes. |
 | `priority` | string | Optional. `critical`, `high`, `low` or `trivial`; missing means medium. Older builds also wrote `medium`, and kept a missing one apart as no priority: a reader takes `medium` as missing, and ordo drops it on its next save. |
 | `completion_date` | timestamp | Optional. Set when the status becomes `completed`, cleared when it leaves it. |
 | `estimate_minutes` | integer | Optional. |
 | `description` | string | Optional. The one field that may hold newlines and tabs. |
-| `kind` | string | Optional. `separator` turns the row into a divider; missing means an ordinary task. |
+| `kind` | string | Optional. `separator` turns the row into a divider, `note` into a line of free text; missing means an ordinary task. Either kind keeps only its `title`: no status, priority, estimate, description or tag. |
 | `tag_color` | string | Optional. A mark, drawn as a dot: `green`, `blue`, `magenta` or `cyan`. Older builds also wrote these names with `-diamond` appended; a reader takes such a name as its colour's dot, and ordo writes the plain name back on its next save. |
 
 Every string is valid UTF-8 with no control characters: nothing below U+0020, no U+007F, nothing from U+0080 to U+009F. `description` is the exception for newline and tab. Ordo strips control characters from any file it loads, since a terminal would run them as commands.
@@ -123,7 +123,7 @@ A category can hold sub-categories, and a task can hold subtasks, one level deep
 
 - A child names its parent in `parent_id`. It stays in the same array as its parent, `categories` for a sub-category and its category's `tasks` for a subtask, and nothing marks the parent itself.
 - Children follow their parent directly, in display order, before the parent's next sibling. A parent category's own tasks show before its sub-categories.
-- A parent is top-level: a child has no children. A separator is never a parent or a child.
+- A parent is top-level: a child has no children. A separator or a note is never a parent or a child.
 
 ```json
 "categories": [
@@ -141,7 +141,7 @@ A category can hold sub-categories, and a task can hold subtasks, one level deep
 ]
 ```
 
-Ordo repairs a file that breaks these rules when it loads it. A child whose parent is missing, is itself a child or is a separator becomes top-level where it stands, and so does a separator with a `parent_id`. Every other child joins its parent's children, which follow the parent in the order they had in the file. The repair reaches the file on the next save.
+Ordo repairs a file that breaks these rules when it loads it. A child whose parent is missing, is itself a child or is a separator or a note becomes top-level where it stands, and so does a separator or a note with a `parent_id`. Every other child joins its parent's children, which follow the parent in the order they had in the file. The repair reaches the file on the next save.
 
 ## Pins
 
@@ -216,10 +216,10 @@ Timestamps are RFC 3339 in UTC to the second: `2026-05-23T16:37:34Z`.
 
 ## Schema
 
-`schema` is the version of this format. A reader accepts up to 3, and a writer stamps 2 or 1.
+`schema` is the version of this format. A reader accepts up to 4, and a writer stamps 4, 2 or 1.
 
 - A reader refuses a file whose `schema` is higher than the one it knows. Loading it and saving it back would drop whatever the newer version added.
-- A writer stamps, on every save, the lowest version that holds everything in the file: 2 while any category or task has a `parent_id`, else 1. A project without nesting thus stays open to a ordo that only knows version 1, and gains version 2 with its first sub-category or subtask.
+- A writer stamps, on every save, the lowest version that holds everything in the file: 4 while any row is a note, else 2 while any category or task has a `parent_id`, else 1. A project without nesting thus stays open to a ordo that only knows version 1, and gains version 2 with its first sub-category or subtask. A project gains version 4 with its first note and drops back once the last one is deleted.
 - A file without the field reads as version 1.
 
 | Version | Adds |
@@ -227,6 +227,7 @@ Timestamps are RFC 3339 in UTC to the second: `2026-05-23T16:37:34Z`.
 | 1 | The format above, without nesting. |
 | 2 | `parent_id` on categories and tasks. |
 | 3 | `released_at` on categories, written by 0.10.0 only. Later builds open such a file and drop the field on save. |
+| 4 | `kind: "note"` rows. An older ordo would read a note as a task with no status. |
 
 The number goes up when an older ordo would misread a file, or would lose data by saving it without a field it does not know (see below). A new field whose loss is harmless needs no bump.
 

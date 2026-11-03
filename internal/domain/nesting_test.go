@@ -242,11 +242,18 @@ func TestRequiredSchema(t *testing.T) {
 	p.Categories[0].Tasks[1].ParentID = ""
 	p.Categories[1].ParentID = "v"
 	assert.Equal(t, 2, RequiredSchema(p))
+
+	p.Categories[1].Tasks = []Task{{ID: "n", Kind: KindNote, Title: "N"}}
+	assert.Equal(t, 4, RequiredSchema(p), "a note needs schema 4")
+
+	p.Categories[1].Tasks[0].Kind = KindSeparator
+	assert.Equal(t, 2, RequiredSchema(p))
 }
 
-func TestCheckSchemaReadsVersionThree(t *testing.T) {
+func TestCheckSchemaReadsVersionFour(t *testing.T) {
 	assert.NoError(t, CheckSchema(Project{Schema: 3}))
-	assert.ErrorIs(t, CheckSchema(Project{Schema: 4}), ErrSchemaTooNew)
+	assert.NoError(t, CheckSchema(Project{Schema: 4}))
+	assert.ErrorIs(t, CheckSchema(Project{Schema: 5}), ErrSchemaTooNew)
 }
 
 func TestCategoryNamesAreUniqueAmongSiblings(t *testing.T) {

@@ -16,7 +16,11 @@ func task(title, status string) pastedRow {
 }
 
 func sep(label string) pastedRow {
-	return pastedRow{title: label, separator: true}
+	return pastedRow{title: label, kind: domain.KindSeparator}
+}
+
+func note(text string) pastedRow {
+	return pastedRow{title: text, kind: domain.KindNote}
 }
 
 func subtask(title, status string) pastedRow {
@@ -95,6 +99,15 @@ func TestParsePastedRows(t *testing.T) {
 			sep("note"),
 			task("a", domain.StatusTodo),
 		}},
+		{"a quote line is a note, and parents nothing", "- a\n> ask Sam\n  - b\n>\n>no space", []pastedRow{
+			task("a", domain.StatusTodo),
+			note("ask Sam"),
+			task("b", domain.StatusTodo),
+			note("no space"),
+		}},
+		{"a quote under a task stays in its description", "- a\n    > quoted", []pastedRow{
+			{title: "a", status: domain.StatusTodo, description: "> quoted"},
+		}},
 		{"an indented list item after a description ends it", "- a\n  about a\n  - b", []pastedRow{
 			{title: "a", status: domain.StatusTodo, description: "about a"},
 			subtask("b", domain.StatusTodo),
@@ -110,6 +123,7 @@ func TestParsePastedRows_TheAppsOwnCopiesComeBackWhole(t *testing.T) {
 	cat := domain.Category{Name: "Sprint", Tasks: []domain.Task{
 		{ID: "a", Title: "Write handlers", Status: domain.StatusInProgress, Description: "GET and PUT\n\n- one list item"},
 		{ID: "s", Kind: domain.KindSeparator, Title: "Later"},
+		{ID: "n", Kind: domain.KindNote, Title: "after the freeze"},
 		{ID: "b", Title: "Ship", Status: domain.StatusTodo, Description: "on friday\n---\nafter review"},
 	}}
 
@@ -118,6 +132,7 @@ func TestParsePastedRows_TheAppsOwnCopiesComeBackWhole(t *testing.T) {
 		{title: "Write handlers", status: domain.StatusInProgress, description: "GET and PUT"},
 		subtask("one list item", domain.StatusTodo),
 		sep("Later"),
+		note("after the freeze"),
 		{title: "Ship", status: domain.StatusTodo, description: "on friday\n---\nafter review"},
 	}, parsePastedRows(export.CategoryMarkdown(domain.Project{Categories: []domain.Category{cat}}, 0, export.Options{})),
 		"Y: descriptions fold back, a list inside one splits off as subtasks")

@@ -17,14 +17,16 @@ import (
 	"github.com/ilyasturki/ordo/internal/operations"
 )
 
-// An untitled separator is a bare rule; a subtask joins the nearest non-subtask row above.
+// kind is a domain row kind, empty for a task; an untitled separator is a bare rule; a subtask joins the nearest non-subtask row above.
 type pastedRow struct {
 	title       string
 	status      string
-	separator   bool
+	kind        string
 	subtask     bool
 	description string
 }
+
+func (r pastedRow) line() bool { return r.kind != "" }
 
 var (
 	bulletPattern = regexp.MustCompile(`^\s*(?:[-*+•]|\d+[.)])\s+`)
@@ -32,6 +34,7 @@ var (
 	checkboxPattern = regexp.MustCompile(`^\s*\[([ xX~-])\]\s*`)
 	headingPattern  = regexp.MustCompile(`^\s*#{1,6}\s+`)
 	rulePattern     = regexp.MustCompile(`^\s*(?:-{3,}|\*{3,}|_{3,})\s*$`)
+	notePattern     = regexp.MustCompile(`^\s*>\s?`)
 )
 
 func splitPasteLines(text string) []string {
@@ -93,14 +96,21 @@ func parsePastedRows(text string) []pastedRow {
 		parentIndent = -1
 
 		if rulePattern.MatchString(raw) {
-			rows = append(rows, pastedRow{separator: true})
+			rows = append(rows, pastedRow{kind: domain.KindSeparator})
 			topIndent = -1
 			continue
 		}
 		if m := headingPattern.FindString(raw); m != "" {
 			label := strings.Clone(strings.TrimSpace(raw[len(m):]))
-			rows = append(rows, pastedRow{title: label, separator: true})
+			rows = append(rows, pastedRow{title: label, kind: domain.KindSeparator})
 			topIndent = -1
+			continue
+		}
+		if m := notePattern.FindString(raw); m != "" {
+			if text := strings.TrimSpace(raw[len(m):]); text != "" {
+				rows = append(rows, pastedRow{title: strings.Clone(text), kind: domain.KindNote})
+				topIndent = -1
+			}
 			continue
 		}
 
@@ -110,7 +120,7 @@ func parsePastedRows(text string) []pastedRow {
 		}
 		body = strings.Clone(body)
 		if !marked && hasMarked {
-			rows = append(rows, pastedRow{title: body, separator: true})
+			rows = append(rows, pastedRow{title: body, kind: domain.KindSeparator})
 			topIndent = -1
 			continue
 		}
@@ -168,9 +178,9 @@ func dedentLines(lines []string) string {
 }
 
 func newTaskForRow(row pastedRow) (domain.Task, error) {
-	if row.separator {
+	if row.line() {
 		sep, err := domain.NewSeparator()
-		sep.Title = row.title
+		sep.Kind, sep.Title = row.kind, row.title
 		return sep, err
 	}
 	task, err := domain.NewTask(row.title)
@@ -188,7 +198,7 @@ func linkSubtasks(tasks []domain.Task, rows []pastedRow, parentID string) {
 		switch {
 		case rows[i].subtask:
 			tasks[i].ParentID = parentID
-		case rows[i].separator:
+		case rows[i].line():
 			parentID = ""
 		default:
 			parentID = tasks[i].ID
@@ -197,17 +207,19 @@ func linkSubtasks(tasks []domain.Task, rows []pastedRow, parentID string) {
 }
 
 func describeRows(rows []pastedRow, withDescriptions bool) string {
-	tasks, subtasks, seps, descs := 0, 0, 0, 0
+	tasks, subtasks, seps, notes, descs := 0, 0, 0, 0, 0
 	for _, r := range rows {
 		switch {
-		case r.separator:
+		case r.kind == domain.KindSeparator:
 			seps++
+		case r.kind == domain.KindNote:
+			notes++
 		case r.subtask:
 			subtasks++
 		default:
 			tasks++
 		}
-		if !r.separator && r.description != "" {
+		if !r.line() && r.description != "" {
 			descs++
 		}
 	}
@@ -220,6 +232,9 @@ func describeRows(rows []pastedRow, withDescriptions bool) string {
 	}
 	if seps > 0 {
 		parts = append(parts, fmt.Sprintf("%d %s", seps, plural(seps, "separator", "separators")))
+	}
+	if notes > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", notes, plural(notes, "note", "notes")))
 	}
 	if withDescriptions && descs > 0 {
 		parts = append(parts, fmt.Sprintf("%d %s", descs, plural(descs, "description", "descriptions")))
@@ -252,7 +267,7 @@ func (m *model) pasteLinesInEdit(text string) bool {
 
 	adding := m.ui.Edit.isAdding
 	typed := strings.TrimSpace(m.ui.Edit.input.Value())
-	fold := adding || !rows[0].separator
+	fold := adding || !rows[0].line()
 	rest := rows
 	if fold {
 		if typed != "" {
@@ -279,16 +294,16 @@ func (m *model) pasteLinesInEdit(text string) bool {
 
 	cat := &m.project.Categories[pos.CategoryIndex]
 	idx := pos.TaskIndex
-	if adding && rows[0].separator && cat.Tasks[idx].ParentID != "" {
-		// A separator never nests, so the new row first leaves its parent's block.
+	if adding && rows[0].line() && cat.Tasks[idx].ParentID != "" {
+		// A separator or a note never nests, so the new row first leaves its parent's block.
 		idx, _ = cat.OutdentTasks(idx, idx+1)
 	}
 	edited := &cat.Tasks[idx]
 	switch {
 	case adding:
 		edited.Title = rows[0].title
-		if rows[0].separator {
-			edited.Kind = domain.KindSeparator
+		if rows[0].line() {
+			edited.Kind = rows[0].kind
 			edited.Status = ""
 		} else {
 			_ = edited.SetStatus(rows[0].status)

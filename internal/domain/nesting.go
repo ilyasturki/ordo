@@ -345,6 +345,9 @@ func RequiredSchema(p Project) int {
 			schema = 2
 		}
 		for _, t := range c.Tasks {
+			if t.IsNote() {
+				return 4
+			}
 			if t.ParentID != "" {
 				schema = 2
 			}

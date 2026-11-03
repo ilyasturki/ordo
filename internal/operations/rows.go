@@ -92,7 +92,7 @@ func MoveRows(p *domain.Project, ids []string, categoryID string, index int, par
 		case pi < 0:
 			return nil, domain.ErrTaskNotFound
 		case !dst.Tasks[pi].IsTask():
-			return nil, refuse("A separator doesn't nest")
+			return nil, lineNestRefusal(dst.Tasks[pi : pi+1])
 		case dst.Tasks[pi].ParentID != "":
 			return nil, refuse("Already a subtask: nesting goes one level deep")
 		}
@@ -173,6 +173,9 @@ func NestTasks(p *domain.Project, ids []string, in bool, v View) (string, error)
 		err = cat.IndentTasks(lo, hi)
 	} else {
 		_, err = cat.OutdentTasks(lo, hi)
+	}
+	if errors.Is(err, domain.ErrSeparatorNest) {
+		return "", lineNestRefusal(cat.Tasks[lo:hi])
 	}
 	if err != nil {
 		return "", NestRefusal(err, nested, "task", "subtask", "subtasks")

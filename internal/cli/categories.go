@@ -152,12 +152,17 @@ func newCategoryEditCmd() *cobra.Command {
 	return cmd
 }
 
-func categoryLoad(project domain.Project, i int) (rows, tasks, subs int) {
+func categoryLoad(project domain.Project, i int) (rows, tasks, notes, subs int) {
 	block := project.Categories[i:domain.BlockEnd(project.Categories, i)]
 	for _, c := range block {
 		rows += len(c.Tasks)
+		for _, t := range c.Tasks {
+			if t.IsNote() {
+				notes++
+			}
+		}
 	}
-	return rows, project.TreeTaskCount(i), len(block) - 1
+	return rows, project.TreeTaskCount(i), notes, len(block) - 1
 }
 
 func plural(n int, singular, plural string) string {
@@ -188,15 +193,18 @@ func newCategoryDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			rows, tasks, subs := categoryLoad(project, idx)
+			rows, tasks, notes, subs := categoryLoad(project, idx)
 			if (rows > 0 || subs > 0) && !force {
 				var parts []string
 				if subs > 0 {
 					parts = append(parts, fmt.Sprintf("%d sub-categor%s", subs, plural(subs, "y", "ies")))
 				}
 				parts = append(parts, fmt.Sprintf("%d tasks", tasks))
-				if seps := rows - tasks; seps > 0 {
+				if seps := rows - tasks - notes; seps > 0 {
 					parts = append(parts, fmt.Sprintf("%d separator%s", seps, plural(seps, "", "s")))
+				}
+				if notes > 0 {
+					parts = append(parts, fmt.Sprintf("%d note%s", notes, plural(notes, "", "s")))
 				}
 				what := parts[len(parts)-1]
 				if len(parts) > 1 {
@@ -223,7 +231,7 @@ func newCategoryDeleteCmd() *cobra.Command {
 				if rerr != nil {
 					return rerr
 				}
-				lockedRows, _, lockedSubs := categoryLoad(*p, idx)
+				lockedRows, _, _, lockedSubs := categoryLoad(*p, idx)
 				if !force && (lockedRows > rows || lockedSubs > subs) {
 					return fmt.Errorf("category %q gained tasks or sub-categories since the prompt; re-run with -f to confirm", lockedCat.Name)
 				}

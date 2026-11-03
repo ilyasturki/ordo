@@ -360,7 +360,7 @@ func (m model) visualMarkdownText(selPositions []selection.Position, checkboxes 
 	var lines []string
 	for _, task := range m.visualTaskRows(selPositions) {
 		if task.IsSeparator() {
-			lines = append(lines, export.SeparatorLine(task))
+			lines = append(lines, export.LineMarkdown(task))
 			continue
 		}
 		indent := ""
