@@ -39,6 +39,11 @@ private const val EXPORT = "aaaaaaaa-0000-4000-8000-000000000005"
 private const val RECURRING = "aaaaaaaa-0000-4000-8000-000000000007"
 private const val DOCUMENTATION = "cccccccc-0000-4000-8000-000000000019"
 private const val FEATURE = "cccccccc-0000-4000-8000-000000000008"
+private const val WEB_UI = "aaaaaaaa-0000-4000-8000-000000000001"
+private const val LATER = "bbbbbbbb-0000-4000-8000-000000000006"
+private const val FIX = "cccccccc-0000-4000-8000-000000000012"
+private const val CURSOR = "aaaaaaaa-0000-4000-8000-000000000009"
+private const val WRAPPED = "aaaaaaaa-0000-4000-8000-000000000010"
 
 // Holds the next /api/sync request until released, so a test can edit while a round is out.
 class Gate : Interceptor {
@@ -425,6 +430,111 @@ class SyncEngineTest {
         assertEquals(landed, names(Project.parse(server.project(PID))))
         assertEquals(landed, names(e.state.value.project(PID)!!.project))
         assertEquals(0, e.state.value.pending)
+    }
+
+    private fun SyncEngine.rows(cat: String) = state.value.project(PID)!!.project.category(cat)!!.tasks.filter { it.parentId == "" }.map { it.id }
+
+    private fun serverRows(cat: String) = Project.parse(server.project(PID)).category(cat)!!.tasks.filter { it.parentId == "" }.map { it.id }
+
+    private val recurringFirst = listOf(RECURRING, WEB_UI, EXPORT, LATER)
+
+    @Test
+    fun aDraggedTaskReachesTheServer() = test {
+        val e = paired(engine())
+        assertTrue(e.edit(PID, Ops.place(RECURRING, FEATURE, WEB_UI), quiet = true).applied)
+        assertEquals(recurringFirst, e.rows(FEATURE))
+        assertEquals(Round.OK, e.sync())
+        assertEquals(recurringFirst, serverRows(FEATURE))
+        assertEquals(recurringFirst, e.rows(FEATURE))
+        assertEquals(0, e.state.value.pending)
+    }
+
+    @Test
+    fun aTaskDraggedDuringARoundStaysWhereItWasDropped() = test {
+        val gate = Gate()
+        val e = paired(engine(Api.client.newBuilder().addInterceptor(gate).build()))
+        server.ordo("task", "edit", EXPORT, "-p", PID, "--priority", "high")
+        gate.armed = true
+        val round = async(Dispatchers.IO) { e.sync() }
+        assertTrue(gate.entered.await(20, TimeUnit.SECONDS))
+        assertTrue(e.edit(PID, Ops.place(RECURRING, FEATURE, WEB_UI), quiet = true).applied)
+        gate.release.countDown()
+        assertEquals(Round.OK, round.await())
+        assertEquals("the round's answer doesn't put it back", recurringFirst, e.rows(FEATURE))
+        assertEquals("high", e.task(EXPORT).priority)
+        assertEquals(1, e.state.value.pending)
+        assertEquals(Round.OK, e.sync())
+        assertEquals(recurringFirst, serverRows(FEATURE))
+        assertEquals(recurringFirst, e.rows(FEATURE))
+    }
+
+    @Test
+    fun aTaskDraggedOnAFileChangedSinceLandsWithoutGoingBack() = test {
+        val e = paired(engine())
+        val snacks = Collections.synchronizedList(mutableListOf<Snack>())
+        val collecting = launch { e.snacks.collect { snacks += it } }
+        assertTrue(e.edit(PID, Ops.place(EXPORT, FIX, CURSOR), quiet = true).applied)
+        server.ordo("task", "add", "Added elsewhere", "-C", FIX, "-p", PID)
+        assertEquals(Round.OK, e.sync())
+        val fix = serverRows(FIX)
+        assertEquals("right above its before, rows added beside it", fix.indexOf(CURSOR) - 1, fix.indexOf(EXPORT))
+        assertEquals(fix, e.rows(FIX))
+        assertEquals(listOf(WEB_UI, LATER, RECURRING), e.rows(FEATURE))
+
+        assertTrue(e.edit(PID, Ops.place(RECURRING, FIX, WRAPPED), quiet = true).applied)
+        server.ordo("task", "delete", WRAPPED, "-p", PID, "-f")
+        assertEquals(Round.OK, e.sync())
+        assertEquals("its before gone: last", RECURRING, serverRows(FIX).last())
+        assertEquals(serverRows(FIX), e.rows(FIX))
+        assertEquals(listOf(WEB_UI, LATER), e.rows(FEATURE))
+        assertEquals(0, e.state.value.pending)
+        assertEquals(emptyList<String>(), snacks.map { it.message })
+        collecting.cancel()
+    }
+
+    @Test
+    fun aDropSentAgainAfterALostAnswerLandsOnce() = test {
+        val lose = object : Interceptor {
+            @Volatile
+            var armed = false
+
+            override fun intercept(chain: Interceptor.Chain): Response {
+                val answer = chain.proceed(chain.request())
+                if (!armed || chain.request().url.encodedPath != "/api/sync") return answer
+                armed = false
+                answer.close()
+                throw java.io.IOException("the answer got lost")
+            }
+        }
+        val e = paired(engine(Api.client.newBuilder().addInterceptor(lose).build()))
+        val snacks = Collections.synchronizedList(mutableListOf<Snack>())
+        val collecting = launch { e.snacks.collect { snacks += it } }
+        assertTrue(e.edit(PID, Ops.place(RECURRING, FEATURE, WEB_UI), quiet = true).applied)
+        lose.armed = true
+        assertEquals(Round.RETRY, e.sync())
+        assertEquals("the server took it", recurringFirst, serverRows(FEATURE))
+        assertEquals(1, e.state.value.pending)
+        assertEquals(Round.OK, e.sync())
+        assertEquals(recurringFirst, serverRows(FEATURE))
+        assertEquals(recurringFirst, e.rows(FEATURE))
+        assertEquals(0, e.state.value.pending)
+        assertEquals(emptyList<String>(), snacks.map { it.message })
+        collecting.cancel()
+    }
+
+    @Test
+    fun aDropIntoACategoryDeletedElsewhereSaysSoAndGoesBack() = test {
+        val e = paired(engine())
+        val snacks = Collections.synchronizedList(mutableListOf<Snack>())
+        val collecting = launch { e.snacks.collect { snacks += it } }
+        assertTrue(e.edit(PID, Ops.place(EXPORT, FIX, CURSOR), quiet = true).applied)
+        server.ordo("category", "delete", FIX, "-p", PID, "--force")
+        assertEquals(Round.OK, e.sync())
+        assertEquals(listOf(WEB_UI, EXPORT, LATER, RECURRING), e.rows(FEATURE))
+        assertNull(e.state.value.project(PID)!!.project.category(FIX))
+        assertEquals(0, e.state.value.pending)
+        withTimeout(5_000) { while (snacks.none { it.message == "That category is gone" }) kotlinx.coroutines.delay(20) }
+        collecting.cancel()
     }
 
     @Test
