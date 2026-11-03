@@ -112,7 +112,7 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
                     if (filter.active) {
                         onSheet(null)
                         feedback.reject()
-                        scope.launch { snackbar.showSnackbar("Clear the filter to add a note") }
+                        engine.say("Clear the filter to add a note")
                     } else {
                         onSheet(CategorySheet.NewNote(cat.id))
                     }
