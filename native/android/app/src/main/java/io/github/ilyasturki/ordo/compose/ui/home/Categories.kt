@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -219,12 +220,18 @@ private fun CategoryTree(entry: Entry, pad: PaddingValues, onGo: (Category) -> U
     val pid = entry.id
     val tops = remember(entry.project) { entry.project.categories.filter { it.parentId == "" } }
     var dragOrder by remember { mutableStateOf<List<Category>?>(null) }
-    val shown = dragOrder ?: tops
+    // A drop's order stays on screen until its edit lands, and the next lift builds on it.
+    var landing by remember { mutableStateOf<List<Category>?>(null) }
+    val shown = dragOrder ?: landing ?: tops
+    val onScreen by rememberUpdatedState(shown)
+    // A handle's gesture keeps the callbacks it started with: what they compare goes through state.
+    var lifted by remember { mutableStateOf(emptyList<Category>()) }
     // A lifted row's release also reaches the row as a tap: that one goes nowhere.
     var lifting by remember { mutableStateOf(false) }
     var droppedAt by remember { mutableLongStateOf(0L) }
     val tapping = { !lifting && SystemClock.uptimeMillis() - droppedAt > 400 }
     val lift = {
+        lifted = onScreen
         lifting = true
         feedback.hold()
     }
@@ -234,14 +241,21 @@ private fun CategoryTree(entry: Entry, pad: PaddingValues, onGo: (Category) -> U
     }
     // The edit lands even if the page closes on the drop; only what follows it dies with the page.
     fun place(cat: String, before: String, done: (Boolean) -> Unit) {
-        feedback.commit()
-        val landing = appScope.async { engine.edit(pid, Ops.categoryPlace(cat, before)).applied }
-        scope.launch { done(landing.await()) }
+        val answer = appScope.async { engine.edit(pid, Ops.categoryPlace(cat, before)) }
+        scope.launch {
+            val a = answer.await()
+            if (a.applied) feedback.commit() else if (a.status != "unchanged") feedback.reject()
+            done(a.applied)
+        }
     }
 
     val listState = rememberLazyListState()
     val reorder = rememberReorderableLazyListState(listState) { from, to ->
-        dragOrder = (dragOrder ?: tops).toMutableList().apply { add(to.index, removeAt(from.index)) }
+        val order = dragOrder ?: landing ?: tops
+        val f = order.indexOfFirst { it.id == from.key }
+        val t = order.indexOfFirst { it.id == to.key }
+        if (f < 0 || t < 0) return@rememberReorderableLazyListState
+        dragOrder = order.toMutableList().apply { add(t, removeAt(f)) }
         feedback.slot()
     }
     val ids = tops.map { it.id }
@@ -262,11 +276,11 @@ private fun CategoryTree(entry: Entry, pad: PaddingValues, onGo: (Category) -> U
                 val stopped = {
                     letGo()
                     val order = dragOrder
-                    if (order == null || order.map { it.id } == tops.map { it.id }) {
-                        dragOrder = null
-                    } else {
+                    dragOrder = null
+                    if (order != null && order.map { it.id } != lifted.map { it.id }) {
+                        landing = order
                         val at = order.indexOfFirst { it.id == top.id }
-                        place(top.id, order.getOrNull(at + 1)?.id.orEmpty()) { dragOrder = null }
+                        place(top.id, order.getOrNull(at + 1)?.id.orEmpty()) { if (landing === order) landing = null }
                     }
                 }
                 Lifted(dragging) {
