@@ -140,3 +140,12 @@ func TestNoteRendersWrappedWithoutABracket(t *testing.T) {
 	assert.Equal(t, "n1", m.ui.Screen.ExpandedTaskID, "ze shows a note in full")
 	assert.Greater(t, itemFor(t, m, LayoutSeparator, 2).Height, 3)
 }
+
+func TestVisualCopyWritesNoteLines(t *testing.T) {
+	m := newTestModel(t, noteProject())
+	require.True(t, m.selectRow("n1"))
+	m.enterVisualMode()
+	m.visualMoveCursor(1)
+
+	assert.Equal(t, "> ask Sam before merging\n- [ ] Beta", m.visualMarkdownText(m.visualSelectedPositions(), true))
+}

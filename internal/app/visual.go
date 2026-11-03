@@ -379,7 +379,7 @@ func (m model) visualMarkdownText(selPositions []selection.Position, checkboxes 
 	absolute := m.deps.Attachments.Absolute
 	var lines []string
 	for _, task := range m.visualTaskRows(selPositions) {
-		if task.IsSeparator() {
+		if !task.IsTask() {
 			lines = append(lines, export.LineMarkdown(task))
 			continue
 		}
