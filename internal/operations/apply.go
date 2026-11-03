@@ -76,6 +76,7 @@ var appliers = map[string]applier{
 	"category.add":     addCategory,
 	"category.rename":  renameCategory,
 	"category.place":   placeCategory,
+	"category.pin":     pinCategory,
 	"category.delete":  deleteCategory,
 	"category.restore": restoreCategories,
 }
@@ -539,6 +540,21 @@ func placeCategory(p *domain.Project, op Op) (Outcome, error) {
 		return Outcome{}, err
 	}
 	return Outcome{Msg: "Moved " + quote(cat.Name), Row: cat.ID}, nil
+}
+
+func pinCategory(p *domain.Project, op Op) (Outcome, error) {
+	pinned, err := strconv.ParseBool(op.Value)
+	if err != nil {
+		return Outcome{}, refuse("Can't pin to %q: true or false", op.Value)
+	}
+	cat, err := PinCategory(p, op.Cat, pinned)
+	if err != nil {
+		return Outcome{}, err
+	}
+	if pinned {
+		return Outcome{Msg: "Pinned " + quote(cat.Name), Row: cat.ID}, nil
+	}
+	return Outcome{Msg: "Unpinned " + quote(cat.Name), Row: cat.ID}, nil
 }
 
 func deleteCategory(p *domain.Project, op Op) (Outcome, error) {

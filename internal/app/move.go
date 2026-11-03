@@ -31,23 +31,18 @@ func (m *model) moveSelectedRow(dir int) {
 
 // shiftCategories expects categories[lo:hi] to be whole sibling blocks.
 func (m *model) shiftCategories(lo, hi, dir int) string {
-	cats := m.project.Categories
-	nested := cats[lo].ParentID != ""
-	head := lo
-	if dir > 0 {
-		head = domain.LastBlockStart(cats, lo, hi)
-	}
-	nlo, nhi, ok := domain.SiblingBlock(cats, head, dir)
-	if !ok {
-		return operations.EdgeRefusal(dir, nested).Error()
+	ids := make([]string, 0, hi-lo)
+	for _, c := range m.project.Categories[lo:hi] {
+		ids = append(ids, c.ID)
 	}
 	m.recordHistory()
-	if dir > 0 {
-		domain.SwapRanges(cats, lo, hi, nhi)
-	} else {
-		domain.SwapRanges(cats, nlo, lo, hi)
+	if err := operations.ShiftCategories(&m.project, ids, dir); err != nil {
+		m.discardLastHistory()
+		return err.Error()
 	}
-	m.project.UpdatedAt = domain.NowTimestamp()
+	if ci, err := m.project.FindCategoryByID(ids[0]); err == nil {
+		m.revealChildrenOf(m.project.Categories[ci].ParentID)
+	}
 	m.rebuildPositions()
 	m.ensureVisible()
 	m.storeTaskUpdate()

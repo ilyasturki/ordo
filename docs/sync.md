@@ -84,6 +84,7 @@ An op names its rows by ID and says where they end up, never how far they moved,
 | `category.add` | `new`, `parent`, `title` | Adds a category last among the top-level ones, or last among `parent`'s sub-categories. |
 | `category.rename` | `cat`, `title` | Renames the category. |
 | `category.place` | `cat`, `before` | Moves the category with its sub-categories above its sibling `before`, or last among its siblings without it. It stays under its parent. |
+| `category.pin` | `cat`, `value` | `true` pins the category, last among its pinned siblings; `false` unpins it, first among the unpinned ones. See [Pins](file-format.md#pins). |
 | `category.delete` | `cat` | Deletes the category with its sub-categories and all their tasks. |
 | `category.restore` | `cats`, `before` | Puts back a category a delete removed, above its sibling `before`, or last among its siblings without it. `cats` is the category followed by its sub-categories, with their tasks. |
 | `project.create` | `title` | Creates the project `project` names, with no categories. |

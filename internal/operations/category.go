@@ -48,26 +48,122 @@ func RenameCategory(p *domain.Project, categoryID, name string) (domain.Category
 	return p.Categories[idx], nil
 }
 
-// MoveCategory moves by delta sibling blocks; running off the end returns ErrNoChange.
+// MoveCategory moves by delta steps of ShiftCategories; a step it refuses returns ErrNoChange.
 func MoveCategory(p *domain.Project, categoryID string, delta int) (domain.Category, error) {
 	idx, err := p.FindCategoryByID(categoryID)
 	if err != nil {
 		return domain.Category{}, err
 	}
-	before, stamp := slices.Clone(p.Categories), p.UpdatedAt
-	at := idx
+	before, stamp := Clone(*p).Categories, p.UpdatedAt
 	for range max(delta, -delta) {
-		var ok bool
-		if at, ok = p.MoveCategoryBlock(at, sign(delta)); !ok {
+		if err := ShiftCategories(p, []string{categoryID}, sign(delta)); err != nil {
 			p.Categories, p.UpdatedAt = before, stamp
 			return p.Categories[idx], ErrNoChange
 		}
 	}
+	at, _ := p.FindCategoryByID(categoryID)
 	return p.Categories[at], nil
 }
 
+// ShiftCategories moves the run of sibling blocks ids cover one sibling block in dir. A run of
+// sub-categories at its parent's edge passes to the neighbouring parent: last under the one
+// above, first under the one below. It never takes an unpinned category into the pinned run.
+func ShiftCategories(p *domain.Project, ids []string, dir int) error {
+	cats := p.Categories
+	idxs := make([]int, 0, len(ids))
+	for _, id := range ids {
+		i, err := p.FindCategoryByID(id)
+		if err != nil {
+			return err
+		}
+		idxs = append(idxs, i)
+	}
+	lo, hi, err := domain.CoverBlocks(cats, idxs)
+	if err != nil {
+		return NestRefusal(err, false, "category", "sub-category", "sub-categories")
+	}
+	parent := cats[lo].ParentID
+	var pinned, unpinned bool
+	for _, c := range cats[lo:hi] {
+		if c.ParentID == parent {
+			pinned, unpinned = pinned || c.Pinned, unpinned || !c.Pinned
+		}
+	}
+	head := lo
+	if dir > 0 {
+		head = domain.LastBlockStart(cats, lo, hi)
+	}
+	if nlo, nhi, ok := domain.SiblingBlock(cats, head, dir); ok {
+		switch {
+		case dir > 0 && pinned && !cats[nlo].Pinned:
+			return refuse("Already at the bottom of the pinned ones")
+		case dir < 0 && unpinned && cats[nlo].Pinned:
+			return refuse("Already at the top of the unpinned ones")
+		case dir > 0:
+			domain.SwapRanges(cats, lo, hi, nhi)
+		default:
+			domain.SwapRanges(cats, nlo, lo, hi)
+		}
+		p.UpdatedAt = domain.NowTimestamp()
+		return nil
+	}
+	if parent == "" {
+		return EdgeRefusal(dir, false)
+	}
+	return shiftAcrossParents(p, lo, hi, dir)
+}
+
+// shiftAcrossParents expects cats[lo:hi] to be the sub-categories at their parent's edge in dir.
+func shiftAcrossParents(p *domain.Project, lo, hi, dir int) error {
+	cats := p.Categories
+	pi := domain.ParentIndex(cats, lo)
+	nlo, _, ok := domain.SiblingBlock(cats, pi, dir)
+	if !ok {
+		return EdgeRefusal(dir, true)
+	}
+	next := cats[nlo]
+	for i := lo; i < hi; i++ {
+		if domain.CategoryNameConflict(cats, next.ID, cats[i].Name, i) >= 0 {
+			return refuse("%q already has a %q", next.Name, cats[i].Name)
+		}
+	}
+	now := domain.NowTimestamp()
+	for i := lo; i < hi; i++ {
+		cats[i].ParentID = next.ID
+		cats[i].UpdatedAt = now
+	}
+	if dir > 0 {
+		domain.SwapRanges(cats, lo, hi, hi+1)
+	} else {
+		domain.SwapRanges(cats, pi, lo, hi)
+	}
+	domain.SettlePinned(cats)
+	p.UpdatedAt = now
+	return nil
+}
+
+// PinCategory pins or unpins the category: pinned, it ends its siblings' pinned run; unpinned, it
+// starts the rest.
+func PinCategory(p *domain.Project, categoryID string, pinned bool) (domain.Category, error) {
+	ci, err := p.FindCategoryByID(categoryID)
+	if err != nil {
+		return domain.Category{}, err
+	}
+	if p.Categories[ci].Pinned == pinned {
+		return p.Categories[ci], ErrNoChange
+	}
+	now := domain.NowTimestamp()
+	p.Categories[ci].Pinned = pinned
+	p.Categories[ci].UpdatedAt = now
+	p.UpdatedAt = now
+	domain.SettlePinned(p.Categories)
+	ci, _ = p.FindCategoryByID(categoryID)
+	return p.Categories[ci], nil
+}
+
 // PlaceCategory moves the category with its sub-categories above its sibling before; a before that
-// is empty, gone or at another level lands it last among its siblings.
+// is empty, gone or at another level lands it last among its siblings. It stays in its pinned or
+// unpinned run, at the run's edge nearest before.
 func PlaceCategory(p *domain.Project, categoryID, before string) (domain.Category, error) {
 	ci, err := p.FindCategoryByID(categoryID)
 	if err != nil {
@@ -88,6 +184,7 @@ func PlaceCategory(p *domain.Project, categoryID, before string) (domain.Categor
 		at = bi
 	}
 	p.Categories = slices.Insert(cats, at, block...)
+	domain.SettlePinned(p.Categories)
 	p.UpdatedAt = domain.NowTimestamp()
 	return block[0], nil
 }

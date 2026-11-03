@@ -129,6 +129,7 @@ func restoreCategories(p *domain.Project, op Op) (Outcome, error) {
 		}
 		p.InsertCategory(index+i, c)
 	}
+	domain.SettlePinned(p.Categories)
 	return Outcome{Msg: "Restored " + quote(cats[0].Name), Row: cats[0].ID}, nil
 }
 

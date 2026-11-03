@@ -38,6 +38,13 @@ func Undo(before, after domain.Project, op Op) []Op {
 		if ci, err := before.FindCategoryByID(op.Cat); err == nil {
 			return []Op{{Action: "category.place", Cat: op.Cat, Before: nextCategory(before.Categories, ci)}}
 		}
+	case "category.pin":
+		if ci, err := before.FindCategoryByID(op.Cat); err == nil {
+			return landing(after, []Op{
+				{Action: "category.pin", Cat: op.Cat, Value: strconv.FormatBool(before.Categories[ci].Pinned)},
+				{Action: "category.place", Cat: op.Cat, Before: nextCategory(before.Categories, ci)},
+			})
+		}
 	case "category.delete":
 		if ci, err := before.FindCategoryByID(op.Cat); err == nil {
 			end := domain.BlockEnd(before.Categories, ci)
