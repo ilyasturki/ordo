@@ -67,6 +67,7 @@ sealed interface CategorySheet {
     data class Menu(val cat: String) : CategorySheet
     data class New(val parent: String) : CategorySheet
     data class NewSeparator(val cat: String) : CategorySheet
+    data class NewNote(val cat: String) : CategorySheet
     data class Delete(val cat: String) : CategorySheet
 }
 
@@ -107,6 +108,15 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
                         onSheet(CategorySheet.NewSeparator(cat.id))
                     }
                 }
+                SheetAction(Icons.Note, "Add a note") {
+                    if (filter.active) {
+                        onSheet(null)
+                        feedback.reject()
+                        scope.launch { snackbar.showSnackbar("Clear the filter to add a note") }
+                    } else {
+                        onSheet(CategorySheet.NewNote(cat.id))
+                    }
+                }
                 SheetAction(Icons.Pin, if (cat.pinned) "Unpin" else "Pin") {
                     onSheet(null)
                     feedback.commit()
@@ -123,6 +133,11 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
         })
         is CategorySheet.NewSeparator -> NameSheet("", "Separator label", "Add", blankAllowed = true, onDismiss = dismiss, onDone = { label ->
             engine.edit(pid, Ops.separator(sheet.cat, "", label), quiet = true).applied.also {
+                if (it) scope.launch { engine.setFolded(pid, sheet.cat, false) }
+            }
+        })
+        is CategorySheet.NewNote -> NameSheet("", "Note", "Add", onDismiss = dismiss, onDone = { text ->
+            engine.edit(pid, Ops.note(sheet.cat, "", text), quiet = true).applied.also {
                 if (it) scope.launch { engine.setFolded(pid, sheet.cat, false) }
             }
         })

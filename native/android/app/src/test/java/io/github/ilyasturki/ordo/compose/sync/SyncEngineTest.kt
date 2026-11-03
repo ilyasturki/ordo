@@ -163,6 +163,19 @@ class SyncEngineTest {
     }
 
     @Test
+    fun aNoteReachesTheServerAsANote() = test {
+        val e = paired(engine())
+        val a = e.edit(PID, Ops.note(FEATURE, EXPORT, "Ask Sam first"))
+        assertTrue(a.applied)
+        assertTrue(e.task(a.row).note)
+        assertEquals(Round.OK, e.sync())
+        val note = serverTask(a.row)
+        assertTrue(note.note)
+        assertEquals("Ask Sam first", note.title)
+        assertEquals("", note.status)
+    }
+
+    @Test
     fun anEditMadeDuringARoundLandsOnTheServerCopy() = test {
         val gate = Gate()
         val e = paired(engine(Api.client.newBuilder().addInterceptor(gate).build()))

@@ -64,6 +64,8 @@ object Ops {
         op("task.insert", "cat" to cat, "ids" to (if (after == "") emptyList() else listOf(after)), "title" to title)
     fun separator(cat: String, after: String, label: String) =
         op("separator.add", "cat" to cat, "ids" to (if (after == "") emptyList() else listOf(after)), "title" to label)
+    fun note(cat: String, after: String, text: String) =
+        op("note.add", "cat" to cat, "ids" to (if (after == "") emptyList() else listOf(after)), "title" to text)
     fun delete(id: String) = op("task.delete", "ids" to listOf(id))
     fun move(id: String, cat: String) = op("task.move", "ids" to listOf(id), "cat" to cat)
     fun place(id: String, cat: String, before: String) =

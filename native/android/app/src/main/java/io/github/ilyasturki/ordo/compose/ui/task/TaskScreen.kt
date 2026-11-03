@@ -242,7 +242,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
     }
 
     val parent = if (task.parentId != "") cat.tasks.firstOrNull { it.id == task.parentId } else null
-    val children = if (task.parentId == "" && !task.separator) cat.tasks.filter { it.parentId == task.id } else emptyList()
+    val children = if (task.parentId == "" && !task.line) cat.tasks.filter { it.parentId == task.id } else emptyList()
     val done = task.finished
 
     SnackScaffold(
@@ -278,7 +278,7 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
             )
         },
         floatingActionButton = {
-            if (!task.separator && !WindowInsets.isImeVisible) {
+            if (!task.line && !WindowInsets.isImeVisible) {
                 val label = if (done) "Mark todo" else "Mark done"
                 ExtendedFloatingActionButton(
                     text = { Text(label) },
@@ -321,12 +321,12 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                         if (it.isFocused) return@onFocusChanged
                         if (title.replace(space, " ").trim() == titleBase) adoptTitle() else scope.launch { saveTitle() }
                     },
-                placeholder = { Text(if (task.separator) "Separator label" else "Title") },
+                placeholder = { Text(if (task.separator) "Separator label" else if (task.note) "Note" else "Title") },
                 textStyle = MaterialTheme.typography.headlineSmall.copy(textDecoration = if (done) TextDecoration.LineThrough else null),
                 colors = plainFieldColors(),
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
             )
-            if (!task.separator) {
+            if (!task.line) {
                 TextField(
                     details,
                     { details = it },

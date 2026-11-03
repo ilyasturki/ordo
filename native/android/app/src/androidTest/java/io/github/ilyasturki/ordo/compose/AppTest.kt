@@ -160,6 +160,31 @@ class AppTest : AppFixture() {
     }
 
     @Test
+    fun aNoteLandsFirstInItsCategoryAndOpensAsANote() {
+        scrollTo("Research")
+        header("Research").performClick()
+        compose.onNodeWithText("Add a note").performClick()
+        compose.onNodeWithText("Add").assertIsNotEnabled()
+        compose.onNode(hasSetTextAction()).performTextInput("Ask Sam first")
+        compose.onNodeWithText("Add").performClick()
+        compose.waitUntil(20_000) { engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }.tasks.first().note }
+        scrollTo("Ask Sam first")
+        compose.onNodeWithText("Ask Sam first").performClick()
+        waitAcrossPages(hasContentDescription("More"))
+        compose.onNodeWithText("Mark done").assertDoesNotExist()
+        compose.onNodeWithText("Priority").assertDoesNotExist()
+    }
+
+    @Test
+    fun theFilterRefusesANote() {
+        runBlocking { engine.setFilter(PID, Filter(statuses = setOf("todo"))) }
+        scrollTo("Research")
+        header("Research").performClick()
+        compose.onNodeWithText("Add a note").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Clear the filter to add a note"), 20_000)
+    }
+
+    @Test
     fun theAddSheetNamesPriorityAndColourUntilTheyAreSet() {
         compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 20_000)
         compose.onNodeWithContentDescription("Add a task").performClick()

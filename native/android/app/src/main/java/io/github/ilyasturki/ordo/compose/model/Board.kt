@@ -101,7 +101,7 @@ object Board {
                 }
                 i = end
             }
-            val hidden = cat.tasks.indices.count { !shown[it] && !cat.tasks[it].separator }
+            val hidden = cat.tasks.indices.count { !shown[it] && !cat.tasks[it].line }
             if (hidden > 0) out += Hidden(cat.id, hidden, peeking)
             if (out.size == first && project.categories.none { it.parentId == cat.id }) out += NoTasks(cat.id)
         }
@@ -111,7 +111,7 @@ object Board {
     // headerOf and aggregateStatus of internal: a parent speaks for its sub-categories too.
     private fun foldedHeader(project: Project, cat: Category, parentName: String): Header {
         val tree = if (cat.parentId != "") cat.tasks else project.categories.filter { it.id == cat.id || it.parentId == cat.id }.flatMap { it.tasks }
-        val tasks = tree.filter { !it.separator }
+        val tasks = tree.filter { !it.line }
         val counted = cat.parentId == ""
         return Header(
             cat,
@@ -136,7 +136,7 @@ object Board {
         task = task,
         images = Description.images(task.description),
         preview = Description.preview(task.description),
-        muted = !task.separator && (hidden || (task.id in held && !filter.taskVisible(task, cat))),
+        muted = !task.line && (hidden || (task.id in held && !filter.taskVisible(task, cat))),
     )
 
     // The TUI's search (internal/app/search.go rowMatches) as a narrower list: a row stays when it or a subtask matches, every row under a matching category.
@@ -179,7 +179,7 @@ object Board {
         val tasks = cat.tasks
         val shown = BooleanArray(tasks.size) { i ->
             val t = tasks[i]
-            if (t.separator) !filter.active else t.id in held || filter.taskVisible(t, cat)
+            if (t.line) !filter.active else t.id in held || filter.taskVisible(t, cat)
         }
         var i = 0
         while (i < tasks.size) {

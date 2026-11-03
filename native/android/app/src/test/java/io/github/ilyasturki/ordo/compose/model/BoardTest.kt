@@ -270,6 +270,26 @@ class BoardTest {
     }
 
     @Test
+    fun aNoteStandsAmongTheTasksLikeASeparator() {
+        val noted = Project(
+            id = "p",
+            categories = listOf(Category("c", "C", tasks = listOf(task("a"), task("n", kind = "note"), task("b", Status.COMPLETED)))),
+        )
+        assertEquals(listOf("# C", "a", "n", "b"), shape(Board.lines(noted, Filter.NONE)))
+        assertEquals(
+            "a filter hides a note and leaves it out of the count",
+            listOf("# C", "a", "(1 hidden)"),
+            shape(Board.lines(noted, Filter(statuses = setOf(Status.TODO)))),
+        )
+        val header = Board.lines(noted, Filter.NONE, folds = setOf("c")).first() as Header
+        assertEquals(1, header.done)
+        assertEquals(2, header.total)
+        assertEquals(Status.IN_PROGRESS, header.status)
+        assertTrue(noted.categories[0].tasks[1].line)
+        assertFalse(noted.categories[0].tasks[1].separator)
+    }
+
+    @Test
     fun aFoldedCategoryShowsItsHeaderAlone() {
         val lines = Board.lines(project, Filter.NONE, folds = setOf("fix"))
         assertEquals(

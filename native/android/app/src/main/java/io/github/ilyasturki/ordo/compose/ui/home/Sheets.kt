@@ -210,7 +210,7 @@ fun ClashDialog(takenName: String, clash: Clash, onPick: (ClashPick?) -> Unit) {
 
 fun countTasks(project: Project, cat: Category): Int {
     val ids = project.categories.filter { it.id == cat.id || it.parentId == cat.id }
-    return ids.sumOf { c -> c.tasks.count { !it.separator } }
+    return ids.sumOf { c -> c.tasks.count { !it.line } }
 }
 
 // What deleting a category takes with it, in the TUI's words (internal/app/view_confirm.go).

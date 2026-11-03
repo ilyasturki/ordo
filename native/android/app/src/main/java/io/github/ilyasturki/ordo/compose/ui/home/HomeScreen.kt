@@ -326,7 +326,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     when (val c = confirm) {
         null -> {}
         is Confirm.DeleteProject -> entry(c.pid)?.let { e ->
-            val n = e.project.categories.sumOf { cat -> cat.tasks.count { !it.separator } }
+            val n = e.project.categories.sumOf { cat -> cat.tasks.count { !it.line } }
             ConfirmDialog("Delete project “${e.name}”?", "Its ${e.project.categories.size} categories and $n tasks go too. This can't be undone.", "Delete", { confirm = null }) {
                 val wasCurrent = current?.id == e.id
                 scope.launch {

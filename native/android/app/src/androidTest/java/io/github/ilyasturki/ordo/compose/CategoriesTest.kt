@@ -174,6 +174,7 @@ class CategoriesTest : AppFixture() {
         compose.waitUntilAtLeastOneExists(hasText("Rename"), 20_000)
         compose.onNodeWithText("New sub-category").assertIsDisplayed()
         compose.onNodeWithText("Add a separator").assertIsDisplayed()
+        compose.onNodeWithText("Add a note").assertIsDisplayed()
         compose.onNodeWithText("Delete category").performClick()
         compose.onNodeWithText("Delete category “Research”?").assertIsDisplayed()
         compose.onNodeWithText("Cancel").performClick()

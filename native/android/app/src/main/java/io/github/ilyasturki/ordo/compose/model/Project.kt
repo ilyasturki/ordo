@@ -29,6 +29,8 @@ data class Task(
     @SerialName("tag_color") val tagColor: String = "",
 ) {
     val separator: Boolean get() = kind == "separator"
+    val note: Boolean get() = kind == "note"
+    val line: Boolean get() = kind != ""
     val finished: Boolean get() = status == Status.COMPLETED || status == Status.CANCELLED
 }
 

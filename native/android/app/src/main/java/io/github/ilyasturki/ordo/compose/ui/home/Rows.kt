@@ -151,6 +151,10 @@ fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, m
         SeparatorRow(t.title, child, onOpen, modifier)
         return
     }
+    if (t.note) {
+        NoteRow(t.title, onOpen, modifier)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val done = t.finished
     Row(
@@ -272,6 +276,20 @@ private fun SeparatorRow(label: String, child: Boolean, onOpen: () -> Unit, modi
         }
         SeparatorRule(Modifier.weight(1f))
     }
+}
+
+@Composable
+private fun NoteRow(text: String, onOpen: () -> Unit, modifier: Modifier) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen)
+            .defaultMinSize(minHeight = 48.dp)
+            .padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
+    )
 }
 
 @Composable
