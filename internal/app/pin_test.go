@@ -67,6 +67,46 @@ func TestAOnAPinnedCategoryAddsAfterThePinnedRun(t *testing.T) {
 	assert.False(t, m.project.Categories[2].Pinned)
 }
 
+func TestPasteKeepsPinsFirst(t *testing.T) {
+	pinnedA := func() domain.Project {
+		p := threeCategories()
+		p.Categories[0].Pinned = true
+		return p
+	}
+	t.Run("a copy pasted above a pinned one lands after the pinned run", func(t *testing.T) {
+		m := newTestModel(t, pinnedA())
+		withStubStateManager(m)
+		selectRow(t, m, selection.FocusCategory, "c")
+		m.enterVisualMode()
+		_ = m.visualCopyBullets()
+		selectRow(t, m, selection.FocusCategory, "a")
+		m.pasteInternal()
+		assert.Equal(t, []string{"A", "C (2)", "B", "C"}, categoryNamesOf(m))
+	})
+	t.Run("a cut one pasted above a pinned one lands after the pinned run", func(t *testing.T) {
+		m := newTestModel(t, pinnedA())
+		withStubStateManager(m)
+		selectRow(t, m, selection.FocusCategory, "c")
+		m.enterVisualMode()
+		m.visualCut()
+		selectRow(t, m, selection.FocusCategory, "a")
+		m.pasteInternal()
+		assert.Equal(t, []string{"a", "c", "b"}, categoryParents(m.project))
+		assert.Equal(t, "c", focusedCategory(t, m))
+	})
+	t.Run("a pinned copy pasted among unpinned ones ends the pinned run", func(t *testing.T) {
+		m := newTestModel(t, pinnedA())
+		withStubStateManager(m)
+		selectRow(t, m, selection.FocusCategory, "a")
+		m.enterVisualMode()
+		_ = m.visualCopyBullets()
+		selectRow(t, m, selection.FocusCategory, "c")
+		m.pasteInternal()
+		assert.Equal(t, []string{"A", "A (2)", "B", "C"}, categoryNamesOf(m))
+		assert.True(t, m.project.Categories[1].Pinned)
+	})
+}
+
 func TestThePinMarkFollowsTheName(t *testing.T) {
 	h := categoryHeader{name: "Release", pinned: true}
 	line := ansi.Strip(renderCategoryLine(h, false, 40, true, false, false, "", ui.MutedStyle))
