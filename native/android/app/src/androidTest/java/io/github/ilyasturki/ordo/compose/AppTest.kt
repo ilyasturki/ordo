@@ -9,6 +9,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.hasParent
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -52,6 +54,8 @@ class AppTest : AppFixture() {
 
     // The top bar can name the same category, without the header's click.
     private fun header(name: String) = compose.onNode(hasText(name) and hasClickAction())
+
+    private fun menuItem(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isPopup()))
 
     // No activity is on screen for a moment as one replaces another, and the rule then throws.
     private fun waitAcrossPages(matcher: SemanticsMatcher) = compose.waitUntil(20_000) {
@@ -160,9 +164,10 @@ class AppTest : AppFixture() {
         compose.waitUntilAtLeastOneExists(hasContentDescription("Add a task"), 20_000)
         compose.onNodeWithContentDescription("Add a task").performClick()
         compose.onNodeWithText("Priority").performClick()
-        compose.onNodeWithText("Medium").performClick()
+        menuItem("Medium").assertExists()
+        menuItem("None").assertDoesNotExist()
+        menuItem("High").performClick()
         compose.onNodeWithText("Priority").assertDoesNotExist()
-        compose.onNodeWithText("Medium").assertExists()
         compose.onNodeWithText("Colour").performClick()
         compose.onNodeWithText("Green").performClick()
         compose.onNodeWithText("Colour").assertDoesNotExist()
@@ -170,16 +175,20 @@ class AppTest : AppFixture() {
     }
 
     @Test
-    fun theTaskPageNamesPriorityAndColourUntilTheyAreSet() {
+    fun theTaskPageNamesColourUntilItIsSetAndAPriorityAsMedium() {
         openTask("Drag to reorder")
         compose.onNodeWithText("Colour").performClick()
         compose.onNodeWithText("Cyan").performClick()
         compose.waitUntil(20_000) { task("Drag to reorder")?.tagColor == "cyan" }
         compose.onNodeWithText("Colour").assertDoesNotExist()
-        compose.onNodeWithText("Priority").performClick()
-        compose.onNodeWithText("High").performClick()
-        compose.waitUntil(20_000) { task("Drag to reorder")?.priority == "high" }
         compose.onNodeWithText("Priority").assertDoesNotExist()
+        compose.onNodeWithText("Medium").performClick()
+        menuItem("None").assertDoesNotExist()
+        menuItem("High").performClick()
+        compose.waitUntil(20_000) { task("Drag to reorder")?.priority == "high" }
+        compose.onNodeWithText("High").performClick()
+        menuItem("Medium").performClick()
+        compose.waitUntil(20_000) { task("Drag to reorder")?.priority == "" }
     }
 
     @Test
@@ -193,17 +202,17 @@ class AppTest : AppFixture() {
 
     @Test
     fun theFilterRefusesATaskItWouldHide() {
-        runBlocking { engine.setFilter(PID, Filter(priorities = setOf("medium"))) }
+        runBlocking { engine.setFilter(PID, Filter(priorities = setOf("high"))) }
         scrollTo("hidden by the filter")
         compose.onNodeWithContentDescription("Add a task").performClick()
         compose.onNodeWithText("Clear the filter to add a task here").assertExists()
         compose.onNode(hasSetTextAction()).performTextInput("Water the plants")
         compose.onNodeWithText("Save").assertIsNotEnabled()
         compose.onNodeWithText("Priority").performClick()
-        compose.onNodeWithText("Medium").performClick()
+        menuItem("High").performClick()
         compose.onNodeWithText("Clear the filter to add a task here").assertDoesNotExist()
         compose.onNodeWithText("Save").performClick()
-        compose.waitUntil(20_000) { task("Water the plants")?.priority == "medium" }
+        compose.waitUntil(20_000) { task("Water the plants")?.priority == "high" }
     }
 
     @Test

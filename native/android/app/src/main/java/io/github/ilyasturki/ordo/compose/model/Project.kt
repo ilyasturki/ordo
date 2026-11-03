@@ -2,7 +2,12 @@ package io.github.ilyasturki.ordo.compose.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonTransformingSerializer
+import kotlinx.serialization.json.jsonPrimitive
 
 // Read only: the core's JSON stays the copy that is stored and synced, so a field this app
 // doesn't know survives.
@@ -17,7 +22,7 @@ data class Task(
     @SerialName("parent_id") val parentId: String = "",
     val title: String = "",
     val status: String = Status.TODO,
-    val priority: String = "",
+    @Serializable(with = Priority.Legacy::class) val priority: String = "",
     @SerialName("estimate_minutes") val estimateMinutes: Int = 0,
     val description: String = "",
     val kind: String = "",
@@ -83,11 +88,17 @@ object Status {
     }
 }
 
+// Medium is the missing field (docs/file-format.md); the cache an older build wrote can still hold "medium".
 object Priority {
-    val all = listOf("critical", "high", "medium", "low", "trivial")
+    val all = listOf("critical", "high", "", "low", "trivial")
 
     fun label(priority: String): String =
-        if (priority == "") "None" else priority.replaceFirstChar { it.uppercase() }
+        if (priority == "" || priority == "medium") "Medium" else priority.replaceFirstChar { it.uppercase() }
+
+    internal object Legacy : JsonTransformingSerializer<String>(String.serializer()) {
+        override fun transformDeserialize(element: JsonElement) =
+            if (element.jsonPrimitive.content == "medium") JsonPrimitive("") else element
+    }
 }
 
 object Tags {

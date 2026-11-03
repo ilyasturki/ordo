@@ -397,8 +397,8 @@ private fun Properties(
         Field("status", statusSet, Icons.status(task.status), "Status: ${Status.label(task.status)}", Status.label(task.status), { Icon(Icons.status(task.status), null, Modifier.size(18.dp)) }) {
             Picker(menu == "status", { setMenu("") }, Status.all, Status::label, { edit(Ops.status(id, it), false) }, leading = { Icon(Icons.status(it), null) })
         }
-        Field("priority", task.priority != "", Icons.Flag, "Priority", Priority.label(task.priority), { Icon(Icons.priority(task.priority), null, Modifier.size(18.dp)) }, word = true) {
-            Picker(menu == "priority", { setMenu("") }, Priority.all + "", Priority::label, { edit(Ops.priority(id, it), true) }, leading = { if (it != "") Icon(Icons.priority(it), null) })
+        Field("priority", true, Icons.Flag, "Priority", Priority.label(task.priority), { Icon(Icons.priority(task.priority), null, Modifier.size(18.dp)) }) {
+            Picker(menu == "priority", { setMenu("") }, Priority.all, Priority::label, { edit(Ops.priority(id, it), true) }, leading = { Icon(Icons.priority(it), null) })
         }
         Field("tag", task.tagColor != "", Icons.Palette, "Colour", Tags.label(task.tagColor), { TagDot(task.tagColor) }, word = true) {
             Picker(menu == "tag", { setMenu("") }, Tags.all + "", Tags::label, { edit(Ops.tag(id, it), true) }, leading = { if (it != "") TagDot(it) })

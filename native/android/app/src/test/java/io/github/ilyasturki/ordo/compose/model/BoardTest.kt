@@ -199,7 +199,7 @@ class BoardTest {
     }
 
     @Test
-    fun theNoPriorityAndUntaggedBucketsAreEmpty() {
+    fun theMediumAndUntaggedBucketsAreEmpty() {
         val f = Filter(priorities = setOf(""), tags = setOf(""))
         assertEquals(listOf("a", "a1", "b", "d"), Board.lines(project, f).filterIsInstance<Block>().flatMap { listOf(it.row) + it.children }.map { it.task.id })
     }
@@ -245,6 +245,14 @@ class BoardTest {
         assertTrue(raw, raw.contains("\"none\"") && !raw.contains("\"\""))
         assertEquals(filter, json.decodeFromString(Filter.serializer(), raw))
         assertEquals(filter, json.decodeFromString(Filter.serializer(), """{"priorities":["","high"],"tags":[""]}"""))
+        assertEquals(filter, json.decodeFromString(Filter.serializer(), """{"priorities":["medium","none","high"],"tags":["none"]}"""))
+    }
+
+    @Test
+    fun anOlderMediumReadsAsTheMissingPriority() {
+        val p = Project.parse("""{"id":"p","categories":[{"id":"c","tasks":[{"id":"a","priority":"medium"},{"id":"b"},{"id":"h","priority":"high"}]}]}""")
+        assertEquals(listOf("", "", "high"), p.categories[0].tasks.map { it.priority })
+        assertEquals(listOf("Critical", "High", "Medium", "Low", "Trivial"), Priority.all.map(Priority::label))
     }
 
     @Test

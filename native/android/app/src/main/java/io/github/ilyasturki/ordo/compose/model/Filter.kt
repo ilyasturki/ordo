@@ -10,18 +10,18 @@ import kotlinx.serialization.json.JsonTransformingSerializer
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 
-// "none" on disk and on the wire, "" here, where it matches a task's empty field. Older prefs.json files hold "".
+// "none" on disk and on the wire, "" here, where it matches a task's empty field. Older prefs.json files hold "", older builds also "medium".
 internal object Buckets : JsonTransformingSerializer<Set<String>>(SetSerializer(String.serializer())) {
     private fun swap(element: JsonElement, from: String, to: String) = JsonArray(
         element.jsonArray.map { if (it.jsonPrimitive.content == from) JsonPrimitive(to) else it },
     )
 
-    override fun transformDeserialize(element: JsonElement) = swap(element, "none", "")
+    override fun transformDeserialize(element: JsonElement) = JsonArray(swap(swap(element, "none", ""), "medium", "").distinct())
 
     override fun transformSerialize(element: JsonElement) = swap(element, "", "none")
 }
 
-// The TUI's filter (internal/app/state.go): "" is the no-priority and the untagged bucket, and a
+// The TUI's filter (internal/app/state.go): "" is the medium and the untagged bucket, and a
 // selected category also shows its sub-categories.
 @Serializable
 data class Filter(

@@ -187,7 +187,7 @@ fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, m
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            val pri = t.priority.takeIf { it != "" && it != "medium" }
+            val pri = t.priority.takeIf { it != "" }
             val est = Estimates.format(t.estimateMinutes)
             if (pri != null || est != "" || row.childTotal > 0 || row.images > 0) {
                 FlowRow(

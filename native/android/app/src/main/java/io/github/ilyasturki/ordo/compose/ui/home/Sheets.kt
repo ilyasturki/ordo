@@ -359,7 +359,7 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
                         } else {
                             InputChip(selected = true, onClick = { menu = "priority" }, label = { Text(Priority.label(priority)) }, leadingIcon = { Icon(Icons.priority(priority), null, Modifier.size(18.dp)) })
                         }
-                        Picker(menu == "priority", { menu = "" }, listOf("") + Priority.all, Priority::label, { priority = it }, leading = { if (it != "") Icon(Icons.priority(it), null) })
+                        Picker(menu == "priority", { menu = "" }, Priority.all, Priority::label, { priority = it }, leading = { Icon(Icons.priority(it), null) })
                     }
                     Box {
                         if (tag == "") {
@@ -400,7 +400,7 @@ fun FilterSheet(project: Project, filter: Filter, onChange: (Filter) -> Unit, on
                 }
             }
             Section("Priority") {
-                for (p in Priority.all + "") {
+                for (p in Priority.all) {
                     Toggle(Priority.label(p), p in filter.priorities) { onChange(filter.copy(priorities = filter.priorities.flip(p))) }
                 }
             }
