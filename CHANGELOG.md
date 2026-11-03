@@ -24,6 +24,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - No priority and medium are one level, Medium, between High and Low in the TUI filter, the info view, the app's pickers and filter, and the CLI, where `--priority medium` and `none` both match it. A medium task carries no `priority` in its file, so the first save rewrites every medium task of an older file, and the markdown export drops the `(medium)` suffix
 - The app's add sheet fits on one line under the title: the category, then icons for the description, priority, colour and estimate, then Save. A set value shows in place of its icon, as the priority's arrows, the colour's dot or the estimate, and a long category name shortens instead of pushing Save onto a second line
 - The TUI's filter dialog shows each status and priority with the mark its rows draw, `/`, `x`, `▲`, `▼`…, in a column, following the status display and priority colour options. The app's filter sheet shows the status and priority icons on its chips, and a selected chip keeps its icon or tag dot, its fill saying it is on
+- The app's Settings: the Version row opens the changelog, offline, and the Server and Sync rows, which did nothing, are gone; the server shows under Devices as "Signed in to …"
 - `just run` runs from source on a fresh copy of your data and config, so a dev build never writes the real files; `just run-real` keeps the old behaviour
 
 ### Fixed

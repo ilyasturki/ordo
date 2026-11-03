@@ -96,7 +96,7 @@ Ordo has an Android app, a native one in Kotlin and Jetpack Compose, synced thro
 
 It feels like Google Tasks and behaves like the TUI. Projects are tabs over a pager that follows the finger. The top bar names the category taking most of the screen, and one `+` opens a sheet to add tasks to it. Finished tasks stay in place, struck through. Tap a task's circle to step its status, open it to edit its title, description, images, status, priority, tag, estimate and subtasks, and long-press a row to drag it. A category's menu renames it, adds a sub-category, a separator or a note, pins it first, or deletes it, and a long press on a tab or a category header opens the project's categories, to drag them into order or tap one to go to it. Search and Filter sit in the top bar, with the TUI's rules, and every edit offers Undo, apart from a status step short of done. A title or description edit that crosses one made elsewhere shows the file's text and offers Keep mine.
 
-A task's thumbnails open a full-screen viewer, and new images come from the photo picker or the camera, even with no signal: a photo waits on the phone with the edits. Settings → Devices lists the paired devices, signs one out, and shows the code and link that pair a new one.
+A task's thumbnails open a full-screen viewer, and new images come from the photo picker or the camera, even with no signal: a photo waits on the phone with the edits. Settings → Version opens the changelog, and Settings → Devices names the server and lists the paired devices, signs one out, and shows the code and link that pair a new one.
 
 The TUI doesn't watch the file: once an edit from the app lands, the TUI's next edit is refused and marked, and `r` shows the change, dropping the TUI edits made since.
 
