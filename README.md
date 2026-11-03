@@ -1,4 +1,4 @@
-# Ordo
+# <img src="assets/logo.svg" width="40" height="40" alt="" align="top"> Ordo
 
 A local-only project planner for the terminal, run entirely from the keyboard. Name a category after a version (`v1.3.0`) and `ctrl+a` or `gm` bumps it in place. It is a single binary that keeps each project in a plain JSON file. The terminal app never touches the network; `ordo serve` adds an opt-in [Android app](#on-the-phone).
 

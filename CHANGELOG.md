@@ -25,6 +25,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The TUI's filter dialog shows each status and priority with the mark its rows draw, `/`, `x`, `▲`, `▼`…, in a column, following the status display and priority colour options. The app's filter sheet shows the status and priority icons on its chips, and a selected chip keeps its icon or tag dot, its fill saying it is on
 - The app's Settings: the Version row opens the changelog, offline, and the Server and Sync rows, which did nothing, are gone; the server shows under Devices as "Signed in to …"
 - `just run` runs from source on a fresh copy of your data and config, so a dev build never writes the real files; `just run-real` keeps the old behaviour
+- A new app icon: three white bars climbing to the right on indigo, larger on the home screen, whole as a themed icon, and on orange for the Ordo Dev build. The README carries it too
 
 ### Fixed
 
