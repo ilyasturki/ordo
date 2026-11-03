@@ -32,6 +32,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import androidx.core.view.ViewCompat
@@ -206,11 +207,24 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Green").performClick()
         compose.onNode(hasContentDescription("Colour") and hasStateDescription("Green")).assertIsDisplayed()
         compose.onNodeWithContentDescription("Estimate").performClick()
-        compose.onNodeWithText("2h").performClick()
-        compose.onNode(hasContentDescription("Estimate") and hasText("2h")).assertIsDisplayed()
+        compose.onNodeWithText("15m").performClick()
+        compose.onNode(hasContentDescription("Estimate") and hasText("15m")).assertIsDisplayed()
         compose.onNodeWithContentDescription("Description").performClick()
         compose.onNodeWithText("Add a description").assertIsDisplayed()
         compose.onNodeWithContentDescription("Description").assertDoesNotExist()
+    }
+
+    // The sheet rises with the keyboard for a while after the typing starts: a tap before it rests lands where Save was.
+    private fun saveOnceTheSheetRests() {
+        var last: DpRect? = null
+        compose.waitUntil(20_000) {
+            val now = compose.onNodeWithText("Save").getUnclippedBoundsInRoot()
+            (now == last).also {
+                last = now
+                if (!it) Thread.sleep(300)
+            }
+        }
+        compose.onNodeWithText("Save").performClick()
     }
 
     @Test
@@ -218,11 +232,11 @@ class AppTest : AppFixture() {
         compose.waitUntilAtLeastOneExists(hasTestTag("list"), 20_000)
         compose.onNodeWithContentDescription("Add a task").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Water the plants")
-        compose.onNodeWithText("Save").performClick()
+        saveOnceTheSheetRests()
         compose.waitUntil(20_000) { task("Water the plants") != null }
         compose.onNodeWithText("New task").assertIsDisplayed()
         compose.onNode(hasSetTextAction()).performTextInput("Feed the cat")
-        compose.onNodeWithText("Save").performClick()
+        saveOnceTheSheetRests()
         compose.waitUntil(20_000) { task("Feed the cat") != null }
         val titles = engine.state.value.project(PID)!!.project.categories.first { c -> c.tasks.any { it.title == "Feed the cat" } }.tasks.map { it.title }
         assertEquals(titles.indexOf("Water the plants") + 1, titles.indexOf("Feed the cat"))

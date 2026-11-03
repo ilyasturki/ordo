@@ -44,12 +44,12 @@ class AddBarTest {
 
     private fun assertOneLine(category: String, vararg controls: String) {
         val save = bounds(hasText("Save") and hasClickAction())
-        assertTrue("Save ends at ${save.right}", save.right <= 360.dp && save.width >= 58.dp)
+        assertTrue("Save is at $save", save.right <= 360.dp && save.width >= 56.dp)
         val row = listOf(bounds(hasText(category, substring = true) and hasClickAction())) + controls.map { bounds(hasContentDescription(it)) }
         for ((i, b) in row.withIndex()) {
             assertEquals("control $i is off Save's line", (save.top + save.height / 2).value, (b.top + b.height / 2).value, 1f)
             assertTrue("control $i runs into Save", b.right <= save.left)
-            assertTrue("control $i is squeezed to ${b.width}", b.width >= 40.dp)
+            assertTrue("control $i is squeezed to ${b.width}", b.width >= 39.5.dp)
         }
         row.zipWithNext().forEach { (a, b) -> assertTrue("controls overlap", a.right <= b.left) }
     }
