@@ -55,6 +55,14 @@ Sleep 900ms
 Screenshot "/tmp/ordo-vt/vhs-out/102_saved.png"
 Sleep 900ms
 
+# The help lists the field keys under "While editing text".
+Type "?"
+Sleep 400ms
+Type "/kill"
+Sleep 900ms
+Screenshot "/tmp/ordo-vt/vhs-out/102_help_field_keys.png"
+Sleep 900ms
+
 Hide
 Type "q"
 Sleep 500ms

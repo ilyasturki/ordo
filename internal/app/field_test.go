@@ -268,6 +268,16 @@ func TestDescriptionEditUndoesThroughTheKeyHandler(t *testing.T) {
 	assert.Equal(t, 8, m.ui.DescriptionEdit.textarea.Column())
 }
 
+func TestHelpListsTheFieldKeys(t *testing.T) {
+	var keys []string
+	for _, e := range helpModeSections[0].entries {
+		keys = append(keys, e.keys)
+	}
+	for _, want := range []string{"ctrl+_ / ctrl+/", "ctrl+y", "ctrl+t / alt+t", "alt+u / alt+l / alt+c", "alt+< / alt+>", "ctrl+w / alt+d"} {
+		assert.Contains(t, keys, want)
+	}
+}
+
 func TestHelpFilterKeepsItsPagingKeys(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Modes.ToHelp()

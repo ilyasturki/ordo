@@ -9,6 +9,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Pinned categories: `gp` pins or unpins the category under the cursor, and the app's category menu has Pin and Unpin. A pinned category comes first among its siblings, in the list, the pickers, the filter and `ordo categories`, marked with a faint `↑` in the TUI and a pin in the app. A pinned category takes its sub-categories along, and a pinned sub-category goes first under its parent. Moves, adds and pastes keep pinned ones first: `J` and `K` stop at the end of the pinned run. Older builds keep the order but drop the pin. See [`docs/file-format.md`](docs/file-format.md#pins)
 - `gA` adds a sub-category: on a category or any row in it, a new last sub-category of it; on a sub-category, a new last sibling. The parent unfolds and the name editor opens, as with `A`
 - Notes: `_` adds a line of free text below the focused row, with no status or priority, and opens it for typing. It wraps like a title, moves, cuts, copies and deletes like a separator, and hides under a filter. It copies as `> text`, and a pasted or imported `> ` line comes back as a note. The app shows notes in the list, adds one from a category's menu, and drags, edits and deletes it like a separator. A project holding a note is saved as schema 4, which older builds refuse to open: update ordo on every machine, `ordo serve` and the phone before adding the first one. See [`docs/file-format.md`](docs/file-format.md)
+- The readline keys in every text field: `ctrl+_` (or `ctrl+/`) undoes the last change, a typed word at a time, with the cursor back where it was; `ctrl+y` yanks what `ctrl+w`, `alt+backspace`, `alt+d`, `ctrl+k` or `ctrl+u` killed, in the same field or another; `ctrl+t` and `alt+t` swap characters and words; `alt+u`, `alt+l` and `alt+c` change a word's case; `alt+<` and `alt+>` go to the start and end. The help filter keeps `ctrl+d` and `ctrl+u` for paging
 
 ### Changed
 
@@ -19,6 +20,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - A tap on a category in the app's categories page goes to it: the page closes, the category unfolds, the list scrolls to it and it stays the top bar's category and the `+`'s target until you scroll. Rename, delete, sub-category and separator move behind the row's ⋮. A category the filter hides says so instead
 - No priority and medium are one level, Medium, between High and Low in the TUI filter, the info view, the app's pickers and filter, and the CLI, where `--priority medium` and `none` both match it. A medium task carries no `priority` in its file, so the first save rewrites every medium task of an older file, and the markdown export drops the `(medium)` suffix
 - The app's add sheet fits on one line under the title: the category, then icons for the description, priority, colour and estimate, then Save. A set value shows in place of its icon, as the priority's arrows, the colour's dot or the estimate, and a long category name shortens instead of pushing Save onto a second line
+
+### Fixed
+
+- `alt+d` on a word's last letter in a title, a name, the search or a filter deletes that letter alone, no longer the next word with it
 
 ## [0.14.1] - 2026-11-01
 
