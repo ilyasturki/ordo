@@ -58,6 +58,12 @@ func TestRenderChangelog(t *testing.T) {
 	}, got)
 }
 
+func TestRenderChangelogEndsWithTheFirstRelease(t *testing.T) {
+	lines := plainLines(renderChangelog(ordo.Changelog, 60))
+	assert.NotContains(t, strings.Join(lines, "\n"), "compare")
+	assert.Contains(t, lines[len(lines)-1], "Nix flake")
+}
+
 func TestRenderChangelogFitsWidth(t *testing.T) {
 	for _, l := range renderChangelog(ordo.Changelog, 40) {
 		assert.LessOrEqual(t, ansi.StringWidth(l), 40, l)

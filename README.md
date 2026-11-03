@@ -60,6 +60,8 @@ Grab `ordo-linux-x64`, `ordo-linux-arm64`, `ordo-darwin-x64` or `ordo-darwin-arm
 go build -o ordo ./cmd/ordo
 ```
 
+To try a change, `just run` runs from source on a fresh copy of your data and config in `~/.cache/ordo-run`, so a dev build never writes the real files (`just run-real` runs on them).
+
 ## Quick start
 
 ```bash
@@ -71,7 +73,7 @@ ordo project link <project> # link this directory to a project
 ordo project unlink         # remove this directory's link
 ```
 
-The first run creates a `Default` project. In the TUI, `a` adds a task, `space` cycles its status, `gi` shows its details, `u` and `ctrl+r` undo and redo, and `?` lists every key and what each mark on a row means. In the picker (`ctrl+p`), `l` links this directory to the focused project, and on the row marked `(linked)` it unlinks it.
+The first run creates a `Default` project. In the TUI, `a` adds a task, `space` cycles its status, `gi` shows its details, `u` and `ctrl+r` undo and redo, and `?` lists every key and what each mark on a row means. `gc` shows the changelog, and so does `ordo changelog` in a terminal, to pipe into a pager. In the picker (`ctrl+p`), `l` links this directory to the focused project, and on the row marked `(linked)` it unlinks it.
 
 ## Features
 

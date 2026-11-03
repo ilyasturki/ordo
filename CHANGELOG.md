@@ -12,6 +12,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The readline keys in every text field: `ctrl+_` (or `ctrl+/`) undoes the last change, a typed word at a time, with the cursor back where it was; `ctrl+y` yanks what `ctrl+w`, `alt+backspace`, `alt+d`, `ctrl+k` or `ctrl+u` killed, in the same field or another; `ctrl+t` and `alt+t` swap characters and words; `alt+u`, `alt+l` and `alt+c` change a word's case; `alt+<` and `alt+>` go to the start and end. The help filter keeps `ctrl+d` and `ctrl+u` for paging
 - `F` turns the filter off and back on and keeps what it holds: off, every task shows, with no `[filtered]` and no hidden rows, and a change in `f` turns it on again. The app's filter sheet has the same switch at its top, and its filter button shows when the filter is off. Both keep the switch in the project's view file; an older TUI, app or `ordo serve` shows such a filter on and turns it back on when it changes it. See [`docs/file-format.md`](docs/file-format.md#views)
 
+- `ordo changelog` prints the changelog, to pipe into a pager, next to `gc` in the TUI
+
 ### Changed
 
 - Naming a category like one of its siblings opens a chooser instead of the merge offer: `t` names this one with the next free number, as in "Fix (2)", `o` gives that number to the other one, `m` merges as before, and `esc` goes back to the name. In the app, the add and rename sheets offer the first two, or Cancel
@@ -22,9 +24,11 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - No priority and medium are one level, Medium, between High and Low in the TUI filter, the info view, the app's pickers and filter, and the CLI, where `--priority medium` and `none` both match it. A medium task carries no `priority` in its file, so the first save rewrites every medium task of an older file, and the markdown export drops the `(medium)` suffix
 - The app's add sheet fits on one line under the title: the category, then icons for the description, priority, colour and estimate, then Save. A set value shows in place of its icon, as the priority's arrows, the colour's dot or the estimate, and a long category name shortens instead of pushing Save onto a second line
 - The TUI's filter dialog shows each status and priority with the mark its rows draw, `/`, `x`, `▲`, `▼`…, in a column, following the status display and priority colour options. The app's filter sheet shows the status and priority icons on its chips, and a selected chip keeps its icon or tag dot, its fill saying it is on
+- `just run` runs from source on a fresh copy of your data and config, so a dev build never writes the real files; `just run-real` keeps the old behaviour
 
 ### Fixed
 
+- The `gc` changelog dialog no longer ends with the list of comparison links
 - `alt+d` on a word's last letter in a title, a name, the search or a filter deletes that letter alone, no longer the next word with it
 - A row dragged in the app lands where you let it go instead of snapping back: past the line counting what the filter hides, while the previous drop is still saving, back to where it started, or into a category the filter hides, where it stays in sight. A row dropped under a folded category lands first in it and unfolds it, and the confirming buzz comes only once the move is saved. The list scrolls when a row is held just above the navigation bar, follows the row under your finger even when a task is held by one of its subtasks, and no longer scrolls back when you lift the top row of a scrolled list. On the categories page, a category dragged back where it was stays there
 
