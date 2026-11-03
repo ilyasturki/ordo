@@ -8,8 +8,24 @@ ldflags := "-X github.com/ilyasturki/ordo/internal/version.Version=v" + version 
     " -X github.com/ilyasturki/ordo/internal/version.Commit=" + commit + \
     " -X github.com/ilyasturki/ordo/internal/version.BuildDate=" + build_date
 
-# Run from source, passing args through (e.g. `just run version`).
+# Run from source on a fresh copy of your data and config in the cache dir, so a dev build never writes the real files (e.g. `just run version`).
 run *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src=${ORDO_DATA_PATH:-$HOME/.local/share/ordo}
+    cfg=${ORDO_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/ordo}
+    work=${XDG_CACHE_HOME:-$HOME/.cache}/ordo-run
+    mkdir -p "$work/data" "$work/cfg"
+    if [ -d "$src" ]; then
+        rsync -aL --delete --delete-excluded --exclude '*.lock' --exclude '*.tmp' --exclude web.json "$src/" "$work/data/"
+    fi
+    if [ -d "$cfg" ]; then
+        rsync -aL --delete "$cfg/" "$work/cfg/"
+    fi
+    ORDO_DATA_PATH="$work/data" ORDO_CONFIG_PATH="$work/cfg" go run -ldflags "{{ldflags}}" ./cmd/ordo {{ARGS}}
+
+# Run from source on your real data and config.
+run-real *ARGS:
     go run -ldflags "{{ldflags}}" ./cmd/ordo {{ARGS}}
 
 # Build the binary.
