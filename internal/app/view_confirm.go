@@ -112,10 +112,7 @@ func (m model) mergeLines() []string {
 	target := truncateText(m.project.Categories[dst].Name, 30)
 	src := m.project.Categories[srcIdx]
 	srcName := truncateText(src.Name, 30)
-	moved := fmt.Sprintf("Its %d task(s) move", src.TaskCount())
-	if src.TaskCount() == 0 {
-		moved = "Its separators move"
-	}
+	moved := "Its " + rowsLabel(src.Tasks) + " move"
 	subs := domain.ChildCount(m.project.Categories, srcIdx)
 	switch {
 	case m.ui.Edit.isAdding:
