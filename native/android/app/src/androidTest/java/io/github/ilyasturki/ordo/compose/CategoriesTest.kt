@@ -26,6 +26,8 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.height
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.ilyasturki.ordo.compose.core.CoreApi
+import io.github.ilyasturki.ordo.compose.core.GoCore
 import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import kotlinx.coroutines.runBlocking
@@ -39,6 +41,10 @@ private const val DOCUMENTATION = "cccccccc-0000-4000-8000-000000000019"
 @OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
 class CategoriesTest : AppFixture() {
+    private lateinit var door: Door
+
+    override fun newCore(): CoreApi = Door(GoCore()).also { door = it }
+
     private fun order() = engine.state.value.project(PID)!!.project.categories.map { it.name }
 
     // The top bar can name the same category, without the row's click.
@@ -143,6 +149,40 @@ class CategoriesTest : AppFixture() {
         compose.waitUntilAtLeastOneExists(hasText("Undo"), 20_000)
         compose.onNodeWithText("Undo").performClick()
         compose.waitUntil(20_000) { order() == before }
+    }
+
+    @Test
+    fun aCategoryDraggedBackWhereItWasStays() {
+        val before = order()
+        openPage()
+        dragHandle("Fix", over = "Feature")
+        compose.waitUntil(20_000) { order().take(2) == listOf("Fix", "Feature") }
+        dragHandle("Fix", over = "Feature")
+        compose.waitUntil(20_000) { order() == before }
+        Thread.sleep(1_000)
+        assertEquals(before, order())
+    }
+
+    @Test
+    fun aCategoryLiftedWhileTheLastDropStillLandsKeepsItsPlace() {
+        openPage()
+        door.shut()
+        dragHandle("Fix", over = "Feature")
+        compose.waitUntil(20_000) { door.knocks.get() == 1 }
+        val dy = handle("Ergonomy").centerY() - handle("Research").centerY()
+        handle("Research").performTouchInput {
+            down(center)
+            repeat(12) { moveBy(Offset(0f, dy / 12), 80) }
+        }
+        compose.waitForIdle()
+        door.open()
+        compose.waitUntil(20_000) { order().take(2) == listOf("Fix", "Feature") }
+        compose.waitForIdle()
+        compose.onNodeWithTag("categories").performTouchInput {
+            advanceEventTime(300)
+            up()
+        }
+        compose.waitUntil(20_000) { order() == listOf("Fix", "Feature", "Research", "Ergonomy", "Documentation", "API") }
     }
 
     @Test

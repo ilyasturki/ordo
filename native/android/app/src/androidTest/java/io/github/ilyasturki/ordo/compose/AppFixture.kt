@@ -11,6 +11,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
+import io.github.ilyasturki.ordo.compose.core.CoreApi
 import io.github.ilyasturki.ordo.compose.core.GoCore
 import io.github.ilyasturki.ordo.compose.data.Session
 import io.github.ilyasturki.ordo.compose.data.Store
@@ -27,19 +28,29 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
+import org.junit.rules.RuleChain
+import org.junit.rules.TestRule
 import java.io.File
 
 const val PID = "0rd0-web-fixture"
 
 // The app on the seed project under each name, signed in to a server that never answers, so nothing leaves the phone.
 @OptIn(ExperimentalTestApi::class)
-abstract class AppFixture(private val names: List<String> = listOf("Ordo")) {
-    @get:Rule
+abstract class AppFixture(private val names: List<String> = listOf("Ordo"), composing: Boolean = true) {
     val compose = createEmptyComposeRule()
+
+    // Without the compose rule the app runs its effects on its own dispatchers, as on a phone.
+    @get:Rule
+    val rule: TestRule = if (composing) compose else RuleChain.emptyRuleChain()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private lateinit var scenario: ActivityScenario<MainActivity>
     protected lateinit var engine: SyncEngine
+
+    // Made on the engine's lane at boot.
+    protected open fun newCore(): CoreApi = GoCore()
+
+    protected open val delays = Delays(sync = 50, poll = 600_000, firstBackoff = 100, maxBackoff = 200, reconnect = 600_000)
 
     @Before
     fun setUp() {
@@ -52,10 +63,7 @@ abstract class AppFixture(private val names: List<String> = listOf("Ordo")) {
             val id = if (i == 0) PID else "$PID-$i"
             store.saveProject(StoredProject(id, name, "stamp"), raw.replace(PID, id))
         }
-        engine = SyncEngine(
-            store, ::GoCore, scope, "test",
-            Delays(sync = 50, poll = 600_000, firstBackoff = 100, maxBackoff = 200, reconnect = 600_000),
-        )
+        engine = SyncEngine(store, ::newCore, scope, "test", delays)
         runBlocking {
             engine.boot()
             engine.foreground(true)
