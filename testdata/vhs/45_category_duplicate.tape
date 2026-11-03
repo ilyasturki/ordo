@@ -14,7 +14,8 @@ Sleep 800ms
 Show
 
 # Add a category named like an existing one: the editor keeps the text, shows
-# the error under it, and the confirm dialog offers the merge.
+# the error under it, and the chooser offers a free name, a rename of the
+# other one, or the merge.
 Type "k"
 Type "A"
 Sleep 200ms
@@ -24,21 +25,54 @@ Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/45_add_dup_offer.png"
 Sleep 300ms
 
-# n closes the offer and leaves the editor open with the error.
-Type "n"
+# The merge choice says what it does.
+Type "jj"
+Sleep 400ms
+Screenshot "/tmp/ordo-vt/vhs-out/45_add_dup_merge_choice.png"
+Sleep 300ms
+
+# esc closes the chooser and leaves the editor open with the error.
+Escape
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/45_add_dup_editing.png"
 Sleep 300ms
 
-# Accepting drops the new row and lands on the existing Fix.
+# t names the new one "fix (2)".
 Enter
 Sleep 200ms
-Type "y"
+Type "t"
+Sleep 400ms
+Screenshot "/tmp/ordo-vt/vhs-out/45_add_named_two.png"
+Sleep 300ms
+
+# Another add of "fix", then o: the existing Fix becomes "Fix (3)".
+Type "A"
+Sleep 200ms
+Type "fix"
+Enter
+Sleep 200ms
+Type "o"
+Sleep 400ms
+Screenshot "/tmp/ordo-vt/vhs-out/45_add_renamed_other.png"
+Sleep 300ms
+Type "u"
+Type "u"
+Sleep 300ms
+
+# Accepting the merge drops the new row and lands on the existing Fix.
+Type "gg"
+Type "A"
+Sleep 200ms
+Type "fix"
+Enter
+Sleep 200ms
+Type "m"
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/45_add_merged.png"
 Sleep 300ms
 
-# Renaming Fix (four tasks) to Ergonomy offers to move its tasks.
+# Renaming Fix (four tasks) to Ergonomy, then m: the tasks land at the end of
+# Ergonomy under a "Fix" separator.
 Enter
 Sleep 200ms
 Ctrl+U
@@ -47,15 +81,7 @@ Enter
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/45_rename_offer.png"
 Sleep 300ms
-Type "n"
-Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/45_rename_editing.png"
-Sleep 300ms
-
-# The tasks land at the end of Ergonomy under a "Fix" separator.
-Enter
-Sleep 200ms
-Enter
+Type "m"
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/45_rename_merged.png"
 Sleep 300ms
