@@ -295,7 +295,8 @@ class CategoriesTest : AppFixture() {
         compose.onNode(hasSetTextAction()).performTextInput("Backlog")
         compose.onNodeWithText("Add").performClick()
         compose.waitUntil(20_000) { order().last() == "Backlog" }
-        compose.waitUntilAtLeastOneExists(hasText("Backlog"), 20_000)
+        // The closing sheet's field still reads "Backlog" until it is gone.
+        compose.waitUntilExactlyOneExists(hasText("Backlog"), 20_000)
         compose.onNodeWithText("Backlog").assertIsDisplayed()
     }
 
