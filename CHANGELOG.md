@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-11-04
+
 ### Added
 
 - Pinned categories: `gp` pins or unpins the category under the cursor, and the app's category menu has Pin and Unpin. A pinned category comes first among its siblings, in the list, the pickers, the filter and `ordo categories`, marked with a faint `↑` in the TUI and a pin in the app. A pinned category takes its sub-categories along, and a pinned sub-category goes first under its parent. Moves, adds and pastes keep pinned ones first: `J` and `K` stop at the end of the pinned run. Older builds keep the order but drop the pin. See [`docs/file-format.md`](docs/file-format.md#pins)
@@ -574,7 +576,8 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
 
-[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.14.2...HEAD
+[0.14.2]: https://github.com/ilyasturki/ordo/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/ilyasturki/ordo/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/ilyasturki/ordo/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/ilyasturki/ordo/compare/v0.12.1...v0.13.0
