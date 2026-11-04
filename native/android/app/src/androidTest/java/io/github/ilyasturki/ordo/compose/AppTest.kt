@@ -6,6 +6,7 @@ import android.view.inspector.WindowInspector
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
@@ -61,7 +62,11 @@ class AppTest : AppFixture() {
     // The top bar can name the same category, without the header's click.
     private fun header(name: String) = compose.onNode(hasText(name) and hasClickAction())
 
-    private fun menuItem(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isPopup()))
+    // Under the v2 rules the popup composes after the click that opens it returns.
+    private fun menuItem(text: String): SemanticsNodeInteraction {
+        compose.waitUntilAtLeastOneExists(isPopup(), 20_000)
+        return compose.onNode(hasText(text) and hasAnyAncestor(isPopup()))
+    }
 
     // At the list's bottom edge, the + covers a header's chevron.
     private fun headerToTop(name: String) {
@@ -317,8 +322,8 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Save").assertIsNotEnabled()
         compose.onNodeWithContentDescription("Priority").performClick()
         menuItem("High").performClick()
-        compose.onNodeWithText("Clear the filter to add a task here").assertDoesNotExist()
-        compose.onNodeWithText("Save").performClick()
+        compose.waitUntilDoesNotExist(hasText("Clear the filter to add a task here"), 20_000)
+        saveOnceTheSheetRests()
         compose.waitUntil(20_000) { task("Water the plants")?.priority == "high" }
     }
 

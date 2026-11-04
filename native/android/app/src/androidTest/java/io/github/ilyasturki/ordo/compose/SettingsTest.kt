@@ -18,6 +18,7 @@ class SettingsTest : AppFixture() {
     private fun openSettings() {
         compose.waitUntilAtLeastOneExists(hasTestTag("list"), 20_000)
         compose.onNodeWithContentDescription("More options").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Settings"), 20_000)
         compose.onNodeWithText("Settings").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Devices"), 20_000)
     }
