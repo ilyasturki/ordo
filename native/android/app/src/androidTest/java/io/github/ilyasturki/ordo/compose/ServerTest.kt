@@ -28,7 +28,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -85,6 +85,7 @@ private const val WAIT = 30_000L
 @OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
 class ServerTest {
+    // v2: effects resume on the main thread as on a phone; v1 resumed them off it, racing a new window's first composition.
     @get:Rule
     val compose = createEmptyComposeRule()
 
@@ -115,11 +116,12 @@ class ServerTest {
     @After
     fun tearDown() {
         monitors.forEach(ins::removeMonitor)
+        // The scenario first: its activity finished from outside, close() can find no state and throw.
+        if (::scenario.isInitialized) scenario.close()
         ins.runOnMainSync {
             val monitor = ActivityLifecycleMonitorRegistry.getInstance()
             for (stage in listOf(Stage.RESUMED, Stage.PAUSED, Stage.STOPPED)) monitor.getActivitiesInStage(stage).forEach { it.finish() }
         }
-        if (::scenario.isInitialized) scenario.close()
         runBlocking {
             // Devices left behind push the next test's rows off the screen.
             engine.signOut()

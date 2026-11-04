@@ -4,7 +4,7 @@ import android.view.KeyEvent
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ActivityScenario
@@ -37,6 +37,7 @@ const val PID = "0rd0-web-fixture"
 // The app on the seed project under each name, signed in to a server that never answers, so nothing leaves the phone.
 @OptIn(ExperimentalTestApi::class)
 abstract class AppFixture(private val names: List<String> = listOf("Ordo"), composing: Boolean = true) {
+    // v2: effects resume on the main thread as on a phone; v1 resumed them off it, racing a new window's first composition.
     val compose = createEmptyComposeRule()
 
     // Without the compose rule the app runs its effects on its own dispatchers, as on a phone.
