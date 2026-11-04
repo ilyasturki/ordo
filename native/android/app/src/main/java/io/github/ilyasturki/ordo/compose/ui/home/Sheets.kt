@@ -359,7 +359,7 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
     LaunchedEffect(Unit) { focus.requestFocus() }
 }
 
-// One line at 360dp whatever is set: an unset field is its icon, a set one its value in a compact chip.
+// One line at 360dp whatever is set: an unset field is its icon, a set one its value in a compact chip (the priority's arrow, the colour's dot, the estimate).
 @Composable
 fun AddBar(
     categories: List<Category>,
@@ -390,7 +390,7 @@ fun AddBar(
                 if (priority == "") {
                     BarIcon(Icons.Flag, "Priority") { menu = "priority" }
                 } else {
-                    PriorityChip(priority, onClick = { menu = "priority" }, modifier = Modifier.padding(horizontal = 4.dp))
+                    PriorityChip(priority, compact = true, onClick = { menu = "priority" }, modifier = Modifier.padding(horizontal = 4.dp))
                 }
                 Picker(menu == "priority", { menu = "" }, Priority.all, Priority::label, onPriority, leading = { Icon(Icons.priority(it), null) })
             }
@@ -398,7 +398,7 @@ fun AddBar(
                 if (tag == "") {
                     BarIcon(Icons.Palette, "Colour") { menu = "tag" }
                 } else {
-                    MarkChip(Tags.label(tag), Modifier.padding(horizontal = 4.dp), tag = tag, name = "Colour") { menu = "tag" }
+                    MarkChip("", Modifier.padding(horizontal = 4.dp), tag = tag, name = "Colour", value = Tags.label(tag)) { menu = "tag" }
                 }
                 Picker(menu == "tag", { menu = "" }, listOf("") + Tags.all, Tags::label, onTag, leading = { if (it != "") TagDot(it) })
             }
@@ -406,7 +406,7 @@ fun AddBar(
                 if (estimate == 0) {
                     BarIcon(Icons.Schedule, "Estimate") { menu = "estimate" }
                 } else {
-                    MarkChip(Estimates.format(estimate), Modifier.padding(horizontal = 4.dp), icon = Icons.Schedule, name = "Estimate") { menu = "estimate" }
+                    MarkChip(Estimates.format(estimate), Modifier.padding(horizontal = 4.dp), name = "Estimate") { menu = "estimate" }
                 }
                 Picker(menu == "estimate", { menu = "" }, listOf(0) + Estimates.presets, { if (it == 0) "None" else Estimates.format(it) }, onEstimate)
             }

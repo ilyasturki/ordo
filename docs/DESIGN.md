@@ -5,7 +5,7 @@ The Android app's settled look decisions, one line each. Later work starts from 
 - **Colour**: Material 3 dynamic colour, light and dark following the system, no toggle; red and teal (`marks.up`, `marks.down`) only for priority, the tag colours only for tags.
 - **Type**: Google Sans Flex for every role.
 - **Motion**: the platform's defaults (`MotionScheme.standard()`); only what follows the finger (the pager, a drag) and list changes (`animateItem`) move otherwise.
-- **Chips**: one outlined chip for a task's values (`MarkChip`): 1dp `outline` border, no fill, the priority tint kept; 24dp and read only in the list, 32dp where a tap opens its picker (add sheet, task page). An unset value is its bare icon, except the task page's "Colour".
+- **Chips**: one outlined chip for a task's values (`MarkChip`): 1dp `outline` border, no fill, the priority tint kept; 24dp and read only in the list, 32dp where a tap opens its picker (add sheet, task page); the add bar keeps a set value compact (the arrow, the dot, the estimate) to stay on one line. An unset value is its bare icon, except the task page's "Colour".
 - **Separators**: 3dp terminal-style bars in `onSurface`, with the label in bold.
 - **Text edge**: 16dp for every screen's text and chips; a row with a status or leading icon puts its text at 52dp, in the list and on the task page alike.
 - **Top bar**: the focused category's name as Home's title, the project tabs on their own line; no divider, the bar takes `surfaceContainer` once the page in sight scrolls under it.

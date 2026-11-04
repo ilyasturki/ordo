@@ -4,6 +4,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,6 +38,7 @@ fun MarkChip(
     tint: Color = Color.Unspecified,
     trailing: ImageVector? = null,
     name: String = "",
+    value: String = label,
     onClick: (() -> Unit)? = null,
 ) {
     val color = if (tint == Color.Unspecified) MaterialTheme.colorScheme.onSurfaceVariant else tint
@@ -46,6 +48,7 @@ fun MarkChip(
     Row(
         modifier
             .height(if (big) 32.dp else 24.dp)
+            .defaultMinSize(minWidth = if (big) 40.dp else 0.dp)
             .clip(shape)
             .border(1.dp, MaterialTheme.colorScheme.outline, shape)
             .then(
@@ -58,13 +61,13 @@ fun MarkChip(
                         .semantics {
                             if (name != "") {
                                 contentDescription = name
-                                stateDescription = label
+                                stateDescription = value
                             }
                         }
                 },
             )
             .padding(start = 6.dp, end = if (trailing != null) 4.dp else if (big) 8.dp else 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) Icon(icon, null, Modifier.size(iconSize), tint = color)
@@ -93,6 +96,7 @@ fun priorityTint(priority: String, finished: Boolean = false): Color = when {
 }
 
 @Composable
-fun PriorityChip(priority: String, finished: Boolean = false, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
-    MarkChip(Priority.label(priority), modifier, icon = Icons.priority(priority), tint = priorityTint(priority, finished), name = "Priority", onClick = onClick)
+fun PriorityChip(priority: String, finished: Boolean = false, modifier: Modifier = Modifier, compact: Boolean = false, onClick: (() -> Unit)? = null) {
+    val label = Priority.label(priority)
+    MarkChip(if (compact) "" else label, modifier, icon = Icons.priority(priority), tint = priorityTint(priority, finished), name = "Priority", value = label, onClick = onClick)
 }
