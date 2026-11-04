@@ -13,7 +13,7 @@ jobs:
     # the Go binaries and AUR packages; a release where the two disagree must
     # not ship anything.
     check-version:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         outputs:
             android-version-code: ${{ steps.android.outputs.code }}
         steps:
@@ -44,7 +44,7 @@ jobs:
 
     build:
         needs: check-version
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         steps:
             - name: Checkout code
               uses: actions/checkout@v6
@@ -85,7 +85,7 @@ jobs:
 
     github-release:
         needs: build
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         steps:
             - name: Checkout code
               uses: actions/checkout@v6
@@ -110,7 +110,7 @@ jobs:
     # The keystore can never change: Android refuses an update signed by another key.
     apk:
         needs: [check-version, github-release]
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         steps:
             - name: Check for the keystore
               id: keystore
@@ -191,7 +191,7 @@ jobs:
 
     homebrew:
         needs: github-release
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         steps:
             - name: Check for the tap token
               id: tap
@@ -280,7 +280,7 @@ jobs:
 
     aur:
         needs: github-release
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         steps:
             - name: Generate PKGBUILD
               run: |
@@ -353,7 +353,7 @@ jobs:
 
     aur-bin:
         needs: github-release
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         steps:
             - name: Download binaries
               uses: actions/download-artifact@v8
