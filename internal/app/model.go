@@ -112,6 +112,7 @@ type UIState struct {
 	Picker         ProjectPickerState
 	ConfirmDelete  ConfirmDeleteState
 	ConfirmLeave   ConfirmLeaveState
+	Conflict       ConflictState
 	Save           SaveState
 	Options        OptionsState
 	Filter         FilterState

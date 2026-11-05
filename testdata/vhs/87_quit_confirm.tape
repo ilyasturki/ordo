@@ -6,14 +6,14 @@ Set FontSize 16
 Env ORDO_DATA_PATH "/tmp/ordo-vt/data"
 Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
 
-# The CLI stands in for the phone: it completes a task while the TUI is open.
+# The file goes while the TUI is open: the one change no merge can take in.
 Hide
-Type "clear && (sleep 2 && ./ordo -p Default task status 'Add user preferences panel' completed -q >/dev/null 2>&1 &) ; ./ordo -p Default"
+Type `clear && (sleep 2 && rm -f $(ls /tmp/ordo-vt/data/projects/*.json | grep -v view) >/dev/null 2>&1 &) ; ./ordo -p Default`
 Enter
 Sleep 800ms
 Show
 
-# The title editor is open as the file changes, so no reload takes the row away.
+# The title editor is open as the file goes.
 Type "gg"
 Type "jj"
 Enter
@@ -24,7 +24,7 @@ Sleep 300ms
 Type "j"
 Sleep 300ms
 
-# q asks before dropping the refused edit.
+# q asks before dropping the edit, and says where the copy stays.
 Type "q"
 Sleep 500ms
 Screenshot "/tmp/ordo-vt/vhs-out/87_quit_asks.png"

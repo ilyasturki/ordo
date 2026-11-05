@@ -291,3 +291,66 @@ func TestDropUnsavedKeepsCheckingTheCopy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.ErrorIs(t, tui.SaveProjectLocked(mine), ErrStaleProject, "dropping the edits doesn't make the copy current")
 }
+
+func TestLoadOutsideMergesFromWhatTheCopyLastWroteWhenBuiltOnIt(t *testing.T) {
+	dir := t.TempDir()
+	tui, cli := NewStore(dir), NewStore(dir)
+	p, err := tui.CreateProject("Shared")
+	require.NoError(t, err)
+	p, err = tui.LoadProjectByID(p.ID)
+	require.NoError(t, err)
+
+	p.Name = "Mine"
+	require.NoError(t, tui.SaveProjectLocked(p))
+	_, err = cli.WithProjectLocked(p.ID, func(p *domain.Project) error { p.Name = "One"; return nil })
+	require.NoError(t, err)
+	_, err = cli.WithProjectLocked(p.ID, func(p *domain.Project) error { p.Name = "Two"; return nil })
+	require.NoError(t, err)
+
+	out, err := tui.LoadOutside(p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Mine", out.Parent.Name, "local writers chain back to the copy's write")
+	assert.Equal(t, "Two", out.Theirs.Name)
+}
+
+func TestLoadOutsideMergesFromTheOriginAfterASwap(t *testing.T) {
+	dir := t.TempDir()
+	tui := NewStore(dir)
+	p, err := tui.CreateProject("Shared")
+	require.NoError(t, err)
+	p, err = tui.LoadProjectByID(p.ID)
+	require.NoError(t, err)
+	origin := p.Name
+	path := filepath.Join(dir, p.ID+".json")
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	p.Name = "Mine"
+	require.NoError(t, tui.SaveProjectLocked(p))
+	require.NoError(t, os.WriteFile(path+".swap", raw, 0o644))
+	require.NoError(t, os.Rename(path+".swap", path))
+
+	out, err := tui.LoadOutside(p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, origin, out.Parent.Name, "the swapped-in file never saw the write")
+}
+
+func TestLoadOutsideResetsTheCopyToTheFile(t *testing.T) {
+	dir := t.TempDir()
+	tui, cli := NewStore(dir), NewStore(dir)
+	p, err := tui.CreateProject("Shared")
+	require.NoError(t, err)
+	p, err = tui.LoadProjectByID(p.ID)
+	require.NoError(t, err)
+	_, err = cli.WithProjectLocked(p.ID, func(p *domain.Project) error { p.Name = "Theirs"; return nil })
+	require.NoError(t, err)
+	require.ErrorIs(t, tui.SaveProjectLocked(p), ErrStaleProject)
+
+	_, err = tui.LoadOutside(p.ID)
+	require.NoError(t, err)
+
+	n, unsaved := tui.Unsaved(p.ID)
+	assert.Zero(t, n)
+	assert.NoError(t, unsaved)
+	assert.NoError(t, tui.SaveProjectLocked(p), "the merge saves over the version it read")
+}

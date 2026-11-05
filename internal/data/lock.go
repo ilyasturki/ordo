@@ -74,7 +74,7 @@ func (s *Store) writeSnapshot(id string, data []byte, l *lineage) error {
 		return err
 	}
 	if info != nil {
-		s.wrote(id, l, info)
+		s.wrote(id, l, info, data)
 	}
 	return nil
 }

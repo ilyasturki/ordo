@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/merge"
 )
 
 const historyLimit = 100
@@ -37,6 +38,15 @@ func (h *HistoryState) Reset() {
 	h.undo = nil
 	h.redo = nil
 	h.pendingRedo = nil
+}
+
+// rebase carries each step's difference from mine onto merged, so undo never takes back what came from the file.
+func (h *HistoryState) rebase(mine, merged domain.Project) {
+	for _, stack := range [][]historyEntry{h.undo, h.redo, h.pendingRedo} {
+		for i := range stack {
+			stack[i].project = merge.Three(mine, stack[i].project, merged).Project
+		}
+	}
 }
 
 func cloneProject(p domain.Project) domain.Project {

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -101,8 +103,14 @@ func quits(cmd tea.Cmd) bool {
 	return ok
 }
 
+// gone removes the project's file, the one change no merge can take in.
+func gone(t *testing.T, m *model, p domain.Project) {
+	t.Helper()
+	require.NoError(t, os.Remove(filepath.Join(m.deps.Store.(*data.Store).Dir, p.ID+".json")))
+}
+
 // Research scenarios a and c: the web edits first, then the TUI.
-func TestOutsideEditKeepsTheRefusalInTheHeaderUntilReload(t *testing.T) {
+func TestRefusedEditMergesWithTheOutsideEdit(t *testing.T) {
 	m, web, p := sharedModel(t)
 	picked := tasksIn(p, 2)
 	mine, theirs := picked[0], picked[1]
@@ -110,43 +118,29 @@ func TestOutsideEditKeepsTheRefusalInTheHeaderUntilReload(t *testing.T) {
 
 	m.selectItem(selection.FocusTask, mine.ID)
 	hit(m, "l")
-	assert.Equal(t, "[changed on disk: r drops 1 edit]", m.ui.Save.mark())
-	hit(m, "j")
-	assert.Empty(t, m.ui.Screen.StatusMsg, "the next key clears the status line")
-	assert.Contains(t, m.renderView(), "[changed on disk: r drops 1 edit]", "but not the header mark")
-	hit(m, "k", "h", "h")
-	assert.Contains(t, m.renderView(), "[changed on disk: r drops 3 edits]")
+	raised, _ := findTask(m.project, mine.ID)
 
-	assert.False(t, quits(hit(m, "q")), "q asks before dropping them")
-	assert.True(t, m.ui.Modes.IsConfirmLeave())
-	assert.Contains(t, m.renderView(), "Quit and drop 3 edits?")
-	hit(m, "n")
-	assert.True(t, m.ui.Modes.IsNormal())
-
+	assert.True(t, m.ui.Modes.IsNormal(), "no dialog: nothing collides")
+	assert.Empty(t, m.ui.Save.mark())
+	assert.Equal(t, "Changed on disk: merged with your edits", m.ui.Screen.StatusMsg)
 	disk := onDisk(t, web, p.ID)
 	got, _ := findTask(disk, mine.ID)
-	assert.Equal(t, mine.Priority, got.Priority, "the refused edits never reached the file")
+	assert.Equal(t, raised.Priority, got.Priority)
 	got, _ = findTask(disk, theirs.ID)
-	assert.Equal(t, "Web title", got.Title)
-
-	hit(m, "r")
-	assert.Empty(t, m.ui.Save.mark())
-	assert.Equal(t, "Reloaded from disk, dropping 3 edits", m.ui.Screen.StatusMsg)
-	got, _ = findTask(m.project, theirs.ID)
 	assert.Equal(t, "Web title", got.Title)
 	assert.True(t, quits(hit(m, "q")), "nothing left to lose")
 }
 
 func TestHeaderMarkShowsWhileScrolled(t *testing.T) {
-	m, web, p := sharedModel(t)
+	m, _, p := sharedModel(t)
 	m.ui.Screen.Height = 6
 	hit(m, "G")
-	onWeb(t, web, p.ID, func(p *domain.Project) { p.Name = "Elsewhere" })
+	gone(t, m, p)
 	hit(m, "l")
 
 	view := m.renderView()
 	require.Contains(t, view, scrollMoreAbove)
-	assert.Contains(t, view, "[changed on disk: r drops 1 edit]")
+	assert.Contains(t, view, "[deleted on disk: 1 edit not saved]")
 }
 
 // Research scenario d: the TUI's title editor is open on a task the web deletes.
@@ -168,17 +162,15 @@ func TestEditorOpenWhileTheWebDeletesItsTask(t *testing.T) {
 	})
 
 	hit(m, "!", "enter")
-	assert.Equal(t, "[changed on disk: r drops 1 edit]", m.ui.Save.mark())
-	assert.False(t, quits(hit(m, "ctrl+c")), "ctrl+c asks too")
-	assert.True(t, m.ui.Modes.IsConfirmLeave())
-	assert.True(t, quits(hit(m, "y")))
-	_, kept := findTask(onDisk(t, web, p.ID), task.ID)
-	assert.False(t, kept, "the refused edit doesn't bring the task back")
+	got, kept := findTask(onDisk(t, web, p.ID), task.ID)
+	require.True(t, kept, "an edit outlives a delete")
+	assert.Equal(t, task.Title+"!", got.Title)
+	assert.True(t, m.ui.Modes.IsNormal())
 }
 
 func TestCancellingTheLeaveConfirmReturnsToTheCoveredMode(t *testing.T) {
-	m, web, p := sharedModel(t)
-	onWeb(t, web, p.ID, func(p *domain.Project) { p.Name = "Elsewhere" })
+	m, _, p := sharedModel(t)
+	gone(t, m, p)
 	m.selectItem(selection.FocusTask, tasksIn(p, 1)[0].ID)
 	hit(m, "l", "enter")
 	require.True(t, m.ui.Modes.IsEdit())
@@ -202,24 +194,17 @@ func TestUndoAfterAnOutsideEdit(t *testing.T) {
 	onWeb(t, web, p.ID, func(p *domain.Project) { retitle(p, theirs.ID, "Web title") })
 
 	hit(m, "u")
-	assert.Equal(t, "[changed on disk: r drops 1 edit]", m.ui.Save.mark(), "the undo shows but never landed")
+	assert.Empty(t, m.ui.Save.mark())
 	disk := onDisk(t, web, p.ID)
 	got, _ := findTask(disk, mine.ID)
-	assert.Equal(t, raised.Priority, got.Priority)
+	assert.Equal(t, mine.Priority, got.Priority, "the undo lands")
+	assert.NotEqual(t, raised.Priority, got.Priority)
 	got, _ = findTask(disk, theirs.ID)
-	assert.Equal(t, "Web title", got.Title)
-	assert.False(t, quits(hit(m, "q")))
-
-	hit(m, "esc", "r")
-	assert.Empty(t, m.ui.Save.mark())
-	got, _ = findTask(m.project, mine.ID)
-	assert.Equal(t, raised.Priority, got.Priority)
-	hit(m, "u")
-	assert.Equal(t, "Nothing to undo", m.ui.Screen.StatusMsg, "replaying history now would revert the web's edit")
+	assert.Equal(t, "Web title", got.Title, "and leaves the web's edit")
 }
 
-// Research scenario g: cut, a paste the stale guard refuses, r, then p.
-func TestCutSurvivesARefusedPaste(t *testing.T) {
+// Research scenario g: cut, a paste the stale guard refuses, then r.
+func TestRefusedPasteLandsOnReload(t *testing.T) {
 	m, web, p := sharedModel(t)
 	picked := tasksIn(p, 2)
 	cut, theirs := picked[0], picked[1]
@@ -232,9 +217,6 @@ func TestCutSurvivesARefusedPaste(t *testing.T) {
 	m.pasteTasks()
 	require.NotEmpty(t, m.ui.Save.mark(), "the move was refused")
 	m.reloadProject()
-	assert.True(t, m.ui.Clipboard.IsCut, "r gives the cut back")
-	m.selectItem(selection.FocusCategory, target)
-	m.pasteTasks()
 
 	copies := 0
 	disk := onDisk(t, web, p.ID)
@@ -285,25 +267,25 @@ func TestReloadWaitsForTheQueuedSnapshot(t *testing.T) {
 }
 
 func TestQuitAnywayLeavesTheErrorForOrdoToPrint(t *testing.T) {
-	m, web, p := sharedModel(t)
+	m, _, p := sharedModel(t)
 	saver := withSaver(t, m)
-	onWeb(t, web, p.ID, func(p *domain.Project) { p.Name = "Elsewhere" })
+	gone(t, m, p)
 	m.selectItem(selection.FocusTask, tasksIn(p, 1)[0].ID)
 	hit(m, "l")
 
 	assert.False(t, quits(hit(m, "q")), "q waits for the write, then asks")
+	assert.Contains(t, m.renderView(), "A copy stays in")
 	assert.True(t, quits(hit(m, "y")))
 
 	err := saver.Close()
-	require.ErrorIs(t, err, data.ErrStaleProject)
-	assert.Equal(t, `1 edit to "Shared" not saved: project changed on disk since it was loaded`, err.Error())
+	require.ErrorIs(t, err, data.ErrProjectNotFound)
+	assert.Contains(t, err.Error(), `1 edit to "Shared" not saved`)
 }
 
 func TestSwitchingProjectsAsksBeforeDroppingEdits(t *testing.T) {
 	m, _, alpha, beta := newPickerTestModel(t, "")
-	web := data.NewStore(m.deps.Store.(*data.Store).Dir)
 	m.rebuildPositions()
-	onWeb(t, web, alpha.ID, func(p *domain.Project) { p.Name = "Elsewhere" })
+	gone(t, m, alpha)
 	m.selectItem(selection.FocusTask, tasksIn(alpha, 1)[0].ID)
 	hit(m, "l")
 
@@ -327,9 +309,8 @@ func TestSwitchingProjectsAsksBeforeDroppingEdits(t *testing.T) {
 
 func TestCreatingAProjectAsksBeforeDroppingEdits(t *testing.T) {
 	m, _, alpha, _ := newPickerTestModel(t, "")
-	web := data.NewStore(m.deps.Store.(*data.Store).Dir)
 	m.rebuildPositions()
-	onWeb(t, web, alpha.ID, func(p *domain.Project) { p.Name = "Elsewhere" })
+	gone(t, m, alpha)
 	m.selectItem(selection.FocusTask, tasksIn(alpha, 1)[0].ID)
 	hit(m, "l")
 

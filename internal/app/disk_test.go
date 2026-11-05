@@ -91,7 +91,7 @@ func TestOwnSavesNeverCountAsAnOutsideChange(t *testing.T) {
 	}
 }
 
-func TestOutsideChangeKeepsTheRefusedEditsAndTellsOnce(t *testing.T) {
+func TestOutsideChangeMergesEachVersionIntoTheRefusedEdit(t *testing.T) {
 	m, web, p := sharedModel(t)
 	picked := tasksIn(p, 2)
 	mine, theirs := picked[0], picked[1]
@@ -99,25 +99,15 @@ func TestOutsideChangeKeepsTheRefusedEditsAndTellsOnce(t *testing.T) {
 	m.selectItem(selection.FocusTask, mine.ID)
 	hit(m, "l")
 	raised, _ := findTask(m.project, mine.ID)
-	require.Equal(t, "[changed on disk: r drops 1 edit]", m.ui.Save.mark())
-
-	hit(m, "j", "k")
-	tick(t, m)
-	assert.Empty(t, m.ui.Screen.StatusMsg, "the refusal already told it")
-	got, _ := findTask(m.project, mine.ID)
-	assert.Equal(t, raised.Priority, got.Priority, "no reload drops the edit")
-	assert.Equal(t, "[changed on disk: r drops 1 edit]", m.ui.Save.mark())
 
 	onWeb(t, web, p.ID, func(p *domain.Project) { retitle(p, theirs.ID, "Web title again") })
 	tick(t, m)
-	assert.Empty(t, m.ui.Screen.StatusMsg, "a second version changes nothing for the edit")
-	got, _ = findTask(m.project, theirs.ID)
-	assert.Equal(t, theirs.Title, got.Title, "still no reload")
 
-	hit(m, "r")
-	assert.Equal(t, "Reloaded from disk, dropping 1 edit", m.ui.Screen.StatusMsg)
-	got, _ = findTask(m.project, theirs.ID)
+	assert.True(t, m.ui.Modes.IsNormal(), "the web built on the merge: nothing collides")
+	got, _ := findTask(m.project, theirs.ID)
 	assert.Equal(t, "Web title again", got.Title)
+	got, _ = findTask(m.project, mine.ID)
+	assert.Equal(t, raised.Priority, got.Priority)
 }
 
 func TestOutsideChangeTellsAtOnceOfAnEditThatFailedToSave(t *testing.T) {
@@ -138,9 +128,10 @@ func TestOutsideChangeTellsAtOnceOfAnEditThatFailedToSave(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, content, 0o644))
 	tick(t, m)
 
-	assert.Equal(t, "[changed on disk: r drops 1 edit]", m.ui.Save.mark())
-	assert.Equal(t, "Not saved: the project changed on disk", m.ui.Screen.StatusMsg)
-	assert.Equal(t, raised, m.project, "the edit stays until r")
+	assert.Equal(t, "[not saved: 1 edit]", m.ui.Save.mark(), "the merge can't save either")
+	got, _ := findTask(m.project, tasksIn(p, 1)[0].ID)
+	want, _ := findTask(raised, tasksIn(p, 1)[0].ID)
+	assert.Equal(t, want.Priority, got.Priority, "the edit stays")
 	assert.False(t, quits(hit(m, "q")), "q asks")
 	assert.True(t, m.ui.Modes.IsConfirmLeave())
 }
@@ -208,10 +199,11 @@ func TestOutsideChangeLeavesTheEditFieldAlone(t *testing.T) {
 		assert.Equal(t, changedMessage, m.ui.Screen.StatusMsg)
 		assert.Equal(t, "task:"+task.ID, cursorItem(t, m))
 	})
-	t.Run("committed, the edit is refused and kept", func(t *testing.T) {
+	t.Run("committed, the edit merges with the file", func(t *testing.T) {
 		m, task := open(t)
 		hit(m, "enter")
-		assert.Equal(t, "[changed on disk: r drops 1 edit]", m.ui.Save.mark())
+		assert.Empty(t, m.ui.Save.mark())
+		assert.Equal(t, "Elsewhere", m.project.Name)
 		got, _ := findTask(m.project, task.ID)
 		assert.Equal(t, task.Title+"!", got.Title)
 	})

@@ -330,8 +330,7 @@ func (m *model) createProjectFromPicker() {
 		return
 	}
 	if m.holdsUnsaved() {
-		m.ui.ConfirmLeave = ConfirmLeaveState{Kind: leaveCreate}
-		m.ui.Modes.ToConfirmLeave()
+		m.confirmLeave(ConfirmLeaveState{Kind: leaveCreate})
 		return
 	}
 	m.createPickedProject(name)
@@ -384,8 +383,7 @@ func (m *model) openPickedProject(status string) {
 		return
 	}
 	if m.holdsUnsaved() {
-		m.ui.ConfirmLeave = ConfirmLeaveState{Kind: leaveSwitch, status: status}
-		m.ui.Modes.ToConfirmLeave()
+		m.confirmLeave(ConfirmLeaveState{Kind: leaveSwitch, status: status})
 		return
 	}
 	m.switchToPicked(status)

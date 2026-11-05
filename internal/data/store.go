@@ -34,6 +34,9 @@ type ProjectRepository interface {
 	OutsideChange(id string) bool
 	Unsaved(id string) (int, error)
 	DropUnsaved(id string)
+	LoadOutside(id string) (Outside, error)
+	WriteRecovery(project domain.Project, side string) (string, error)
+	Refuse(id string, err error)
 }
 
 // Store manages JSON persistence in a directory.
@@ -73,7 +76,7 @@ func (s *Store) ListProjects() ([]domain.Project, error) {
 		}
 		// Stamp deliberately dropped: listing must not refresh the open
 		// project's baseline.
-		project, _, err := s.loadProjectFile(s.projectPath(id))
+		project, _, _, err := s.loadProjectFile(s.projectPath(id))
 		if err != nil {
 			return nil, err
 		}
@@ -97,20 +100,28 @@ func (s *Store) LoadProjectByID(id string) (domain.Project, error) {
 	if err := domain.ValidateID(id); err != nil {
 		return domain.Project{}, ErrProjectNotFound
 	}
-	path := s.projectPath(id)
-	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
-		return domain.Project{}, ErrProjectNotFound
-	}
-	project, info, err := s.loadProjectFile(path)
+	project, info, raw, err := s.readProject(id)
 	if err != nil {
 		return domain.Project{}, err
 	}
+	s.adopt(id, info, raw)
+	return project, nil
+}
+
+func (s *Store) readProject(id string) (domain.Project, os.FileInfo, []byte, error) {
+	path := s.projectPath(id)
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+		return domain.Project{}, nil, nil, ErrProjectNotFound
+	}
+	project, info, raw, err := s.loadProjectFile(path)
+	if err != nil {
+		return domain.Project{}, nil, nil, err
+	}
 	// Saves follow the inner ID, so a mismatch would split the project across two files.
 	if project.ID != id {
-		return domain.Project{}, ErrProjectNotFound
+		return domain.Project{}, nil, nil, ErrProjectNotFound
 	}
-	s.adopt(id, info)
-	return project, nil
+	return project, info, raw, nil
 }
 
 func (s *Store) LoadProject(selector string) (domain.Project, error) {
@@ -165,9 +176,11 @@ func (s *Store) writeProjectBytes(id string, data []byte) (os.FileInfo, error) {
 	if err := os.MkdirAll(s.Dir, 0o755); err != nil {
 		return nil, err
 	}
+	replaced, _ := os.ReadFile(s.projectPath(id))
 	if err := fsutil.WriteAtomic(s.projectPath(id), data, 0o644); err != nil {
 		return nil, err
 	}
+	s.logWrite(id, replaced, data)
 	info, _ := os.Stat(s.projectPath(id))
 	return info, nil
 }
@@ -182,7 +195,7 @@ func (s *Store) saveProjectAtomic(project domain.Project) error {
 		return err
 	}
 	if info != nil {
-		s.adopt(project.ID, info)
+		s.adopt(project.ID, info, data)
 	}
 	return nil
 }
@@ -404,22 +417,22 @@ func (s *Store) defaultCategories() ([]domain.Category, error) {
 
 // Stat from the same fd as the bytes: os.Stat would pair new metadata with
 // old content across a rename.
-func (s *Store) loadProjectFile(path string) (domain.Project, os.FileInfo, error) {
+func (s *Store) loadProjectFile(path string) (domain.Project, os.FileInfo, []byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return domain.Project{}, nil, err
+		return domain.Project{}, nil, nil, err
 	}
 	defer f.Close()
 	info, err := f.Stat()
 	if err != nil {
-		return domain.Project{}, nil, err
+		return domain.Project{}, nil, nil, err
 	}
 	data, err := io.ReadAll(f)
 	if err != nil {
-		return domain.Project{}, nil, err
+		return domain.Project{}, nil, nil, err
 	}
 	project, err := decodeProject(data, filepath.Base(path))
-	return project, info, err
+	return project, info, data, err
 }
 
 func decodeProject(data []byte, name string) (domain.Project, error) {

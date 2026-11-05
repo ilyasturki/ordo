@@ -181,7 +181,7 @@ var normalBindings = []keyBinding{
 		action: void((*model).undo)},
 	{keys: []string{"ctrl+r"}, desc: "redo", section: sectionApp,
 		action: void((*model).redo)},
-	{keys: []string{"r"}, desc: "reload from disk, dropping unsaved edits", section: sectionApp,
+	{keys: []string{"r"}, desc: "reload from disk, keeping unsaved edits", section: sectionApp,
 		action: void((*model).reloadProject)},
 	{keys: []string{","}, desc: "options", section: sectionApp,
 		action: func(m *model) tea.Cmd {

@@ -17,11 +17,13 @@ Version 0.9.0, released as phasionary, carried its own sync, made of a change jo
 │   └── attachments/             images, see Images
 │       ├── <hash>.<ext>             one image, never rewritten
 │       └── .<hash>.<ext>.*.tmp      a write in progress
+├── writes/<id>                  the versions local writers made of one project, see Edits from outside
+├── recovery/                    versions a merge could discard, see Edits from outside
 ├── state.json                   this device's UI state
 └── web.json                     devices paired with `ordo serve` and who paired them, mode 0600
 ```
 
-Only `projects/` travels between devices, `attachments/` included, and with it each project's folds and filter and the directory links. `state.json` holds cursor positions and when each project was last opened there; it belongs to one device and stays there, and so does `web.json`, which holds hashes of the paired devices' tokens and of the pending pairing codes, and which device paired which so that revoking one revokes those it paired. The config file, `~/.config/ordo/config.json`, is per device too.
+Only `projects/` travels between devices, `attachments/` included, and with it each project's folds and filter and the directory links. `state.json` holds cursor positions and when each project was last opened there; it belongs to one device and stays there, and so do `writes/`, `recovery/` and `web.json`, which holds hashes of the paired devices' tokens and of the pending pairing codes, and which device paired which so that revoking one revokes those it paired. The config file, `~/.config/ordo/config.json`, is per device too.
 
 A file in `projects/` is a project only when its name is `<id>.json`, `<id>` is a valid ID, and the `id` inside the file is that same `<id>`. An ID holds no dot, so `<id>.view.json` and `.directories.json` are never projects. Ordo reads those two by their exact names and ignores every other file in the directory, from the `.tmp` and `.lock` sidecars to renamed and conflict copies.
 
@@ -255,11 +257,22 @@ A client on the same machine as ordo takes the same locks, `<id>.json.lock` for 
 
 The TUI keeps the open project in memory and saves snapshots of it. When it loads the file it notes its identity (inode, size, modification time), each of its own saves moves the note to the version it wrote, and every snapshot is checked against the note of the load it came from. If Syncthing, the CLI, `ordo serve` or another app has changed the file in between, the save is refused, and so is every later one until a reload.
 
-The TUI also compares the file with the note about once a second, without a keypress, and after every key; its own saves move the note, so they never count. What a change does depends on the open copy:
+The TUI also compares the file with the note about once a second, without a keypress, and after every key; its own saves move the note, so they never count. A dialog or an input left open is not disturbed: the change comes as it closes.
 
-- **No edit waiting to be saved:** the TUI reloads the file and says `Changed on disk: reloaded`, with the cursor on the same row while that row exists. A dialog or an input left open is not disturbed: the reload comes as it closes. Undo history starts over, as with `r`.
-- **An edit waiting or refused:** nothing reloads, and the project is marked `[changed on disk: r drops N edits]` at once. `q`, `ctrl+c`, switching projects and creating one ask before dropping those edits. `r` waits for any save still in flight, loads the file again and drops the refused edits, so the other writer's change always wins. Quitting anyway exits with status 1 and names the lost edits on stderr.
-- **The file is gone or unreadable:** the copy stays on screen and the status line says so once. Its saves stay refused, and the next readable version reloads as above.
+A change merges into the open copy, whichever writer made it, row by row and field by field by ID, with the cursor on the same row while that row exists:
+
+- **What the merge starts from:** the version the copy last wrote when the file was built on it, otherwise the version its edits started from. A file is built on a write when `writes/<id>` chains from one to the other, or when it still holds a row that write changed, `updated_at` included. A file that was swapped in without those edits thus gets them back, and a later edit over them stays.
+- **No collision:** the TUI says `Changed on disk: reloaded` when the file already holds everything, and `Changed on disk: merged with your edits` when the merge added to it and saved over it. No dialog opens.
+- **A collision**, one field changed to two values, opens a dialog. `m` keeps mine, `t` theirs and `b` both, with mine as a copy just below the task; `M` and `T` settle the rest. `u` takes the picks back. `ctrl+c` leaves the file as theirs and exits with status 1, naming where mine is.
+- **Delete against edit:** the edited row stays, and with it the category that holds it.
+- **Order:** the file's order, with the rows the copy added or moved placed after the row they follow in it. A row both moved stays where the file has it. Two categories added under one name join.
+- **The file is gone or unreadable:** the copy stays on screen and the status line says so once. Its saves stay refused, and the next readable version merges as above. `q`, `ctrl+c`, switching projects and creating one ask before dropping those edits and keep a copy in `recovery/`; quitting anyway exits with status 1 and names them on stderr.
+
+`r` runs the same merge at once, and saves again an edit a failed write left behind, so it never drops one. Undo history survives: each step keeps what came from the file.
+
+`writes/<id>` holds a line per version, the stamp of its bytes, oldest first and at most 64: each version was written over the one before, under the lock, on this machine. A version from anywhere else starts it over. A file missing from it only means comparing contents.
+
+`recovery/<id>.<time>.<mine|theirs>.json` is a whole project in the format above, written before a collision asks and before a leave drops edits. Ordo never reads or deletes these files: getting one back is by hand. `ordo attachments prune` doesn't look there, so an image only they reference can go.
 
 A snapshot queued before a reload keeps the note of the load it came from, so it can't land after the reload and overwrite the change the reload just showed.
 
@@ -267,4 +280,4 @@ The CLI and `ordo serve` do each change as one read, change and write under the 
 
 ## Conflict copies
 
-When two devices change the same file before Syncthing reconciles them, Syncthing keeps one version as `<id>.json` and renames the other to `<id>.sync-conflict-<date>-<time>-<device>.json`. Ordo ignores conflict copies: it never loads, edits, deletes or mentions one. Reporting them is Syncthing's job, and merging the two and deleting the copy is a manual one. The same goes for `<id>.view.sync-conflict-*.json` and `.directories.sync-conflict-*.json`: the stem of neither is a valid ID, and Ordo only reads those two files by their exact names.
+When two devices change the same file before Syncthing reconciles them, Syncthing keeps one version as `<id>.json` and renames the other to `<id>.sync-conflict-<date>-<time>-<device>.json`. Ordo ignores conflict copies: it never loads, edits, deletes or mentions one. Reporting them is Syncthing's job, and deleting the copy is a manual one. An open TUI that loses its version this way merges its edits back, see [Edits from outside](#edits-from-outside), so its copy is then redundant; the edits of a device whose ordo was closed stay in the copy, to merge by hand. The same goes for `<id>.view.sync-conflict-*.json` and `.directories.sync-conflict-*.json`: the stem of neither is a valid ID, and Ordo only reads those two files by their exact names.

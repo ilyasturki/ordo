@@ -301,10 +301,15 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.ui.Modes.IsConfirmLeave() {
 			return m, tea.Quit
 		}
+		if m.ui.Modes.IsConflict() {
+			m.leaveConflict()
+			return m, tea.Quit
+		}
 		if m.ui.Modes.IsDescriptionEdit() {
 			m.finishDescriptionEdit()
 		}
-		if m.ui.Modes.IsEdit() && !m.holdsUnsaved() && !m.commitEditToQuit() {
+		// A refused edit is no reason to ask: quit merges it once the field is committed.
+		if m.ui.Modes.IsEdit() && (!m.holdsUnsaved() || errors.Is(m.ui.Save.Err, data.ErrStaleProject)) && !m.commitEditToQuit() {
 			return m, nil
 		}
 		return m, m.quit()
@@ -354,6 +359,8 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case modes.ModeConfirmLeave:
 		return m.handleConfirmLeaveKey(msg)
+	case modes.ModeConflict:
+		return m.handleConflictKey(msg)
 	default:
 		return m.handleNormalKey(msg)
 	}
@@ -836,6 +843,8 @@ func (m model) renderView() string {
 			return modal.Render(modal.Render(content, m.projectPickerView()), m.confirmLeaveView())
 		}
 		return modal.Render(content, m.confirmLeaveView())
+	case modes.ModeConflict:
+		return modal.Render(content, m.conflictView())
 	}
 	return content
 }

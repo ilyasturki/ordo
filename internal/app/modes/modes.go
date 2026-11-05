@@ -24,6 +24,7 @@ const (
 	ModeMovePicker
 	ModeChangelog
 	ModeConfirmLeave
+	ModeConflict
 )
 
 type Action int
@@ -190,6 +191,17 @@ func (m *Machine) ToConfirmLeave() {
 		m.covered = m.current
 	}
 	m.current = ModeConfirmLeave
+}
+
+func (m *Machine) ToConflict() {
+	if m.current != ModeConflict {
+		m.covered = m.current
+	}
+	m.current = ModeConflict
+}
+
+func (m *Machine) IsConflict() bool {
+	return m.current == ModeConflict
 }
 
 func (m *Machine) IsConfirmLeave() bool {

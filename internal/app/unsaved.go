@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -29,6 +30,8 @@ type ConfirmLeaveState struct {
 	Kind leaveKind
 	// The picker's status for the project it opens once the switch is confirmed.
 	status string
+	// Where the edits about to be dropped were kept, empty if they couldn't be.
+	kept string
 }
 
 func (s SaveState) edits() string {
@@ -41,7 +44,7 @@ func (s SaveState) mark() string {
 	case s.Err == nil:
 		return ""
 	case errors.Is(s.Err, data.ErrStaleProject):
-		return "[changed on disk: r drops " + s.edits() + "]"
+		return "[changed on disk: merging " + s.edits() + "]"
 	case errors.Is(s.Err, data.ErrProjectNotFound):
 		return "[deleted on disk: " + s.edits() + " not saved]"
 	}
@@ -56,20 +59,37 @@ func (m *model) checkSaves() {
 	m.ui.Save = SaveState{Unsaved: n, Err: err}
 }
 
-// holdsUnsaved waits out the queued writes, then reports whether any of the
-// open project's edits failed to reach disk.
+// holdsUnsaved waits out the queued writes, merges a change waiting on disk, and
+// reports whether any of the open project's edits still failed to reach disk.
 func (m *model) holdsUnsaved() bool {
 	if m.deps.Saver != nil {
 		m.deps.Saver.Drain()
 	}
 	m.checkSaves()
-	return m.ui.Save.Err != nil
+	if m.deps.Store != nil && !m.ui.Modes.IsEdit() &&
+		(errors.Is(m.ui.Save.Err, data.ErrStaleProject) || m.deps.Store.OutsideChange(m.project.ID)) {
+		m.takeOutside()
+		if m.deps.Saver != nil {
+			m.deps.Saver.Drain()
+		}
+		m.checkSaves()
+	}
+	return m.ui.Save.Err != nil || m.ui.Modes.IsConflict()
+}
+
+// confirmLeave asks before dropping edits, after keeping a copy; an open conflict settles first.
+func (m *model) confirmLeave(state ConfirmLeaveState) {
+	if m.ui.Modes.IsConflict() {
+		return
+	}
+	state.kept, _ = m.deps.Store.WriteRecovery(m.project, "mine")
+	m.ui.ConfirmLeave = state
+	m.ui.Modes.ToConfirmLeave()
 }
 
 func (m *model) quit() tea.Cmd {
 	if m.holdsUnsaved() {
-		m.ui.ConfirmLeave = ConfirmLeaveState{Kind: leaveQuit}
-		m.ui.Modes.ToConfirmLeave()
+		m.confirmLeave(ConfirmLeaveState{Kind: leaveQuit})
 		return nil
 	}
 	return tea.Quit
@@ -117,11 +137,13 @@ func (m model) confirmLeaveView() string {
 	default:
 		why = "Saving failed: " + save.Err.Error()
 	}
-	lines := []string{
-		question,
-		why,
+	lines := []string{question, why}
+	if kept := m.ui.ConfirmLeave.kept; kept != "" {
+		lines = append(lines, "A copy stays in "+filepath.Dir(kept))
+	}
+	lines = append(lines,
 		"",
 		ui.RenderHints([]ui.Hint{{Key: "y/enter", Label: confirm}, {Key: "n/esc", Label: "cancel"}}),
-	}
+	)
 	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
 }

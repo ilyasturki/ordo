@@ -18,6 +18,8 @@ type lineage struct {
 	queued  int       // snapshots handed in so far
 	saved   int       // the last of them that reached disk
 	err     error
+	origin  []byte // the version last taken from outside, what the copy's edits started from
+	written []byte // the last snapshot of this copy that reached disk
 }
 
 // FileWatch tells when a file moved on from the version it last saw, by stat
@@ -72,20 +74,24 @@ func sameVersion(a, b os.FileInfo) bool {
 }
 
 // adopt starts a new copy of id at the version just read or written.
-func (s *Store) adopt(id string, info os.FileInfo) {
+func (s *Store) adopt(id string, info os.FileInfo, raw []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.copies == nil {
 		s.copies = make(map[string]*lineage)
 	}
-	s.copies[id] = &lineage{version: info, watch: FileWatch{path: s.projectPath(id), seen: info}}
+	s.copies[id] = &lineage{version: info, watch: FileWatch{path: s.projectPath(id), seen: info}, origin: raw}
 }
 
 // wrote moves l to the version its own save just put on disk.
-func (s *Store) wrote(id string, l *lineage, info os.FileInfo) {
+func (s *Store) wrote(id string, l *lineage, info os.FileInfo, raw []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	l.version = info
+	l.written = raw
+	if l.origin == nil {
+		l.origin = raw
+	}
 	l.watch = FileWatch{path: s.projectPath(id), seen: info}
 }
 
@@ -173,6 +179,16 @@ func (s *Store) DropUnsaved(id string) {
 	if l := s.copies[id]; l != nil {
 		l.err = nil
 		l.saved = l.queued
+	}
+}
+
+// Refuse holds the open copy as unsaved, so ordo's exit names edits the user walked away from.
+func (s *Store) Refuse(id string, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if l := s.copies[id]; l != nil {
+		l.queued++
+		l.err = err
 	}
 }
 

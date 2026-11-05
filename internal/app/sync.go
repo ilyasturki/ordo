@@ -2,7 +2,7 @@ package app
 
 import (
 	"errors"
-	"fmt"
+	"strings"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/data"
@@ -33,7 +33,7 @@ func (m *model) storeTaskUpdate() {
 
 func saveFailedMessage(err error) string {
 	if errors.Is(err, data.ErrStaleProject) {
-		return "Not saved: the project changed on disk"
+		return "Changed on disk: merging your edits"
 	}
 	return "Save failed: " + err.Error()
 }
@@ -48,38 +48,18 @@ func (m *model) reloadProject() {
 	if m.deps.Store == nil {
 		return
 	}
-	// A snapshot still queued must land before the load, or the reload would miss it.
-	if m.deps.Saver != nil {
-		m.deps.Saver.Drain()
-	}
-	dropped, _ := m.deps.Store.Unsaved(m.project.ID)
-
-	project, err := m.deps.Store.LoadProject(m.project.ID)
-	if err != nil {
-		m.ui.Screen.StatusMsg = "Reload failed: " + err.Error()
-		return
-	}
-
 	m.ui.Filter.releaseHeld()
 	m.ui.Filter.endPeek()
-	// The move that used the cut up may be among the dropped edits: a copy would then duplicate the rows.
-	if dropped > 0 && m.ui.Clipboard.Moved {
-		m.ui.Clipboard.IsCut, m.ui.Clipboard.Moved = true, false
+	if status := m.takeOutside(); status != "" {
+		m.ui.Screen.StatusMsg = strings.Replace(status, "Changed on disk: reloaded", "Reloaded from disk", 1)
 	}
-	m.takeReloaded(project)
-	msg := "Reloaded from disk"
-	if dropped > 0 {
-		msg = fmt.Sprintf("Reloaded from disk, dropping %d edit%s", dropped, plural(dropped, "", "s"))
-	}
-	m.ui.Screen.StatusMsg = msg
 }
 
-// takeReloaded opens the copy just read from disk, with the cursor on its row while that row exists.
-func (m *model) takeReloaded(project domain.Project) {
+// showProject opens a copy from outside, with the cursor on its row while that row exists.
+func (m *model) showProject(project domain.Project) {
 	prev, hadSel := m.currentCursor()
 	m.project = project
 	m.checkSaves()
-	m.ui.History.Reset()
 	// A view that landed before this copy lost category IDs in memory: the file still has them.
 	m.readView()
 	m.rebuildPositions()

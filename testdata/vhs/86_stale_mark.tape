@@ -19,29 +19,12 @@ Type "jj"
 Enter
 Sleep 2200ms
 
-# Committing the title is refused, and the header says what r would drop.
+# Committing the title merges with the CLI's edit, with no dialog.
 Type "!"
 Enter
-Sleep 500ms
-Screenshot "/tmp/ordo-vt/vhs-out/86_refused.png"
+Sleep 1500ms
+Screenshot "/tmp/ordo-vt/vhs-out/86_merged.png"
 
-# The next key clears the status line, not the mark; it counts every refused edit.
-Type "j"
-Type "h"
-Type "j"
-Sleep 500ms
-Screenshot "/tmp/ordo-vt/vhs-out/86_mark_stays.png"
-
-# Scrolled down, the "more above" line carries the mark.
-Type "G"
-Sleep 500ms
-Screenshot "/tmp/ordo-vt/vhs-out/86_mark_scrolled.png"
-
-# r drops them and shows the CLI's edit.
-Type "gg"
-Type "r"
-Sleep 500ms
-Screenshot "/tmp/ordo-vt/vhs-out/86_reloaded.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
