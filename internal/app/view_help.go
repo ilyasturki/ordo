@@ -136,7 +136,7 @@ var helpMarksSection = helpSection{
 		{keys: "1/3", desc: "subtasks finished"},
 		{keys: "✂", desc: "cut, p puts it back"},
 		{keys: "━━", desc: "separator"},
-		{keys: "text, no [ ]", desc: "note"},
+		{keys: " -  text", desc: "note"},
 		{keys: "▼ / ▶", desc: "category open / folded"},
 		{keys: "↑", desc: "pinned category, first among its siblings"},
 		{keys: "(filtered out)", desc: "hidden by the filter, shown until the cursor leaves"},

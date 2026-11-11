@@ -478,9 +478,19 @@ func (m model) renderEditSeparatorLine(indent int) string {
 	return renderEditRows(m.editRows(overhead), overhead, styledPrefix, ui.HeaderStyle, cursorStyle)
 }
 
+// noteLead puts the dash under a task's status glyph and ends where a task's title starts.
+func noteLead(cursor string, indent int, statusDisplay string) string {
+	slot := ansi.StringWidth("[" + statusLabel("", statusDisplay) + "]")
+	return cursor + strings.Repeat(" ", indent+slot/2) + "-" + strings.Repeat(" ", slot-slot/2)
+}
+
+func noteTextColumn(statusDisplay string, indent int) int {
+	return taskTitleColumn(domain.Task{}, statusDisplay, indent)
+}
+
 // noteTextWidth is shared by the renderer and the layout so both count the same rows.
-func noteTextWidth(width, indent int, cut bool) int {
-	overhead := prefixWidth + indent
+func noteTextWidth(width, column int, cut bool) int {
+	overhead := column
 	if cut {
 		overhead += ansi.StringWidth(ui.CutMark)
 	}
@@ -491,14 +501,15 @@ func noteRows(limits rowLimits, note domain.Task) int {
 	return components.MaxRows(limits.titleRows(note.ID), note.Title)
 }
 
-// renderNoteLine draws a note: its text at the status column, in the terminal's
-// own colour and weight, wrapped and clamped like a title, with no rule or bracket.
+// renderNoteLine draws a note: a dash under the status glyph and its text where
+// titles start, in the terminal's own colour and weight, wrapped and clamped like a title.
 func (m model) renderNoteLine(note domain.Task, indent int, selected, focused, visualMode, isCursor, cut bool) string {
 	width := m.ui.Screen.Width
-	prefix := "  " + strings.Repeat(" ", indent)
+	statusDisplay := m.deps.CfgManager.Get().StatusDisplay
+	prefix := noteLead("  ", indent, statusDisplay)
 	style := lipgloss.NewStyle()
 	if selected {
-		prefix = "> " + strings.Repeat(" ", indent)
+		prefix = noteLead("> ", indent, statusDisplay)
 		switch {
 		case visualMode && isCursor:
 			style = ui.GetVisualCursorStyle(focused)
@@ -520,8 +531,9 @@ func (m model) renderNoteLine(note domain.Task, indent int, selected, focused, v
 	if width <= 0 {
 		return style.Render(prefix) + ui.HighlightMatches(note.Title, query, style, match) + cutBadge
 	}
-	lines := ui.WrapClamped(note.Title, noteTextWidth(width, indent, cut), noteRows(m.rowLimits(), note), ui.FirstMatchIndex(note.Title, query))
-	continuation := strings.Repeat(" ", prefixWidth+indent)
+	column := noteTextColumn(statusDisplay, indent)
+	lines := ui.WrapClamped(note.Title, noteTextWidth(width, column, cut), noteRows(m.rowLimits(), note), ui.FirstMatchIndex(note.Title, query))
+	continuation := strings.Repeat(" ", column)
 	out := make([]string, len(lines))
 	for i, line := range lines {
 		lead := continuation
@@ -540,8 +552,9 @@ func (m model) renderNoteLine(note domain.Task, indent int, selected, focused, v
 }
 
 func (m model) renderEditNoteLine(indent int) string {
-	prefix := "> " + strings.Repeat(" ", indent)
-	overhead := prefixWidth + indent
+	statusDisplay := m.deps.CfgManager.Get().StatusDisplay
+	prefix := noteLead("> ", indent, statusDisplay)
+	overhead := noteTextColumn(statusDisplay, indent)
 	cursorStyle := ui.GetCursorStyle(m.ui.Screen.WindowFocused)
 	if m.ui.Edit.input.Value() == "" {
 		placeholder := ui.MutedStyle.Render("Enter note text...")

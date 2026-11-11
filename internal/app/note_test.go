@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/config"
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
@@ -119,21 +120,71 @@ func TestDeleteNoteAtOnce(t *testing.T) {
 	assert.Len(t, m.project.Categories[0].Tasks, 3)
 }
 
-func TestNoteRendersWrappedWithoutABracket(t *testing.T) {
+func TestNoteRendersADashUnderTheStatusGlyph(t *testing.T) {
+	for display, lead := range map[string]string{
+		config.StatusDisplayIcons: "   -  ",
+		config.StatusDisplayText:  "       -      ",
+	} {
+		t.Run(display, func(t *testing.T) {
+			p := noteProject()
+			p.Categories[0].Tasks[2].Title = strings.Repeat("word ", 40)
+			m := newTestModel(t, p)
+			m.ui.Screen.Width = 40
+			_ = m.deps.CfgManager.Update(func(cfg *config.Config) { cfg.StatusDisplay = display })
+			m.invalidateLayout()
+
+			task := ansi.Strip(m.renderTaskLine(0, 3, false, m.ui.Screen.Width, true, false, false, false))
+			titleColumn := strings.Index(task, "Beta")
+			require.Equal(t, len(lead), titleColumn, "the note's text starts where titles start")
+			assert.Equal(t, "-", lead[strings.Index(task, "[")+len(statusLabel("", display))/2+1:][:1], "the dash sits under the status glyph")
+
+			item := itemFor(t, m, LayoutSeparator, 2)
+			rendered := m.renderNoteLine(p.Categories[0].Tasks[2], 0, false, true, false, false, false)
+			lines := strings.Split(ansi.Strip(rendered), "\n")
+			assert.Len(t, lines, 3, "a long note clamps like a title")
+			assert.Equal(t, item.Height, len(lines), "the layout reserves the rows the note draws")
+			assert.Equal(t, lead+"word", lines[0][:len(lead)+4])
+			for _, line := range lines[1:] {
+				assert.Equal(t, strings.Repeat(" ", titleColumn)+"word", line[:titleColumn+4], "a wrapped line hangs under the text")
+			}
+			assert.NotContains(t, rendered, "[")
+			assert.NotContains(t, rendered, "━")
+			assert.True(t, strings.HasSuffix(lines[2], "…"))
+
+			require.True(t, m.selectRow("n1"))
+			m, _ = pressKeys(m, "enter")
+			editor := strings.Split(ansi.Strip(m.renderEditNoteLine(0)), "\n")[0]
+			assert.Equal(t, ">"+lead[1:]+"word", editor[:len(lead)+4], "the editor keeps the dash and the column")
+		})
+	}
+}
+
+func TestNoteLayoutMatchesRender(t *testing.T) {
+	for _, display := range []string{config.StatusDisplayIcons, config.StatusDisplayText} {
+		for _, cut := range []bool{false, true} {
+			for n := 1; n <= 40; n++ {
+				p := noteProject()
+				p.Categories[0].Tasks[2].Title = strings.TrimSpace(strings.Repeat("word ", n))
+				m := newTestModel(t, p)
+				m.ui.Screen.Width = 50
+				_ = m.deps.CfgManager.Update(func(cfg *config.Config) { cfg.StatusDisplay = display })
+				if cut {
+					m.ui.Clipboard = ClipboardState{IsCut: true, TaskIDs: []string{"n1"}}
+				}
+				m.invalidateLayout()
+				item := itemFor(t, m, LayoutSeparator, 2)
+				drawn := strings.Count(m.renderLayoutItem(item), "\n") + 1
+				assert.Equal(t, item.Height, drawn, "%s cut=%v n=%d", display, cut, n)
+			}
+		}
+	}
+}
+
+func TestExpandShowsANoteInFull(t *testing.T) {
 	p := noteProject()
 	p.Categories[0].Tasks[2].Title = strings.Repeat("word ", 40)
 	m := newTestModel(t, p)
 	m.ui.Screen.Width = 40
-
-	item := itemFor(t, m, LayoutSeparator, 2)
-	rendered := m.renderNoteLine(p.Categories[0].Tasks[2], 0, false, true, false, false, false)
-	lines := strings.Split(ansi.Strip(rendered), "\n")
-	assert.Len(t, lines, 3, "a long note clamps like a title")
-	assert.Equal(t, item.Height, len(lines), "the layout reserves the rows the note draws")
-	assert.True(t, strings.HasPrefix(lines[0], "  word"), "the text starts at the bracket's column")
-	assert.NotContains(t, rendered, "[")
-	assert.NotContains(t, rendered, "━")
-	assert.True(t, strings.HasSuffix(lines[2], "…"))
 
 	require.True(t, m.selectRow("n1"))
 	m.toggleExpandRow()

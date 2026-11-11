@@ -214,7 +214,8 @@ func (b *LayoutBuilder) countNoteLines(cat domain.Category, taskIdx int) int {
 		return 1
 	}
 	cut := b.taskCut != nil && b.taskCut(note)
-	return ui.CountClamped(note.Title, noteTextWidth(b.width, taskIndent(cat, taskIdx), cut), noteRows(b.limits, note))
+	column := noteTextColumn(b.statusDisplay, taskIndent(cat, taskIdx))
+	return ui.CountClamped(note.Title, noteTextWidth(b.width, column, cut), noteRows(b.limits, note))
 }
 
 func (b *LayoutBuilder) countCategoryLines(project *domain.Project, catIdx int) int {
