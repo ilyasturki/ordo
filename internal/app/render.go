@@ -392,27 +392,38 @@ func sepContentWidth(avail int) int {
 	return avail
 }
 
-// separatorLayout is a divider row split into styleable segments. A bare or
-// over-wide label collapses the whole row into left (label/right empty);
-// otherwise left is the leading rule, label the text, right the trailing rule.
+// separatorLayout is a divider row split into styleable segments. A bare,
+// untagged or over-wide label collapses the whole row into left; otherwise left
+// is the leading rule, dot the tag mark, label the text, right the trailing rule.
 // It is the single source of the divider geometry, shared by the selected and
 // unselected render paths. width is assumed >= 1 (see sepContentWidth).
 type separatorLayout struct {
 	left  string
+	dot   string
 	label string
 	right string
 }
 
-func layoutSeparator(prefix, label string, width int) separatorLayout {
-	if label == "" {
+// layoutSeparator takes dot as ui.TagSegmentText gives it, "" when untagged.
+func layoutSeparator(prefix, label, dot string, width int) separatorLayout {
+	if label == "" && dot == "" {
 		return separatorLayout{left: prefix + strings.Repeat(separatorRule, width)}
 	}
-	used := ansi.StringWidth(separatorLead) + ansi.StringWidth(" "+label+" ")
+	head := separatorLead + " "
+	used := ansi.StringWidth(head + dot)
+	gap := ""
+	if label != "" {
+		gap = " "
+		used += ansi.StringWidth(label + gap)
+	}
 	if used >= width {
-		return separatorLayout{left: prefix + ansi.Truncate(separatorLead+" "+label, width, "…")}
+		if dot == "" {
+			return separatorLayout{left: prefix + ansi.Truncate(head+label, width, "…")}
+		}
+		return separatorLayout{left: prefix + head, dot: dot, label: ansi.Truncate(label, max(width-ansi.StringWidth(head+dot), 0), "…")}
 	}
 	trailing := strings.Repeat(separatorRule, width-used)
-	return separatorLayout{left: prefix + separatorLead + " ", label: label, right: " " + trailing}
+	return separatorLayout{left: prefix + head, dot: dot, label: label, right: gap + trailing}
 }
 
 // renderSeparatorLine draws an in-category divider: a heavy rule capped to the
@@ -420,7 +431,7 @@ func layoutSeparator(prefix, label string, width int) separatorLayout {
 // off from the rule. When selected the whole row takes the selection band; in
 // visual mode it takes the visual cursor or visual range band so a divider
 // swept into a task selection reads as part of the block.
-func (m model) renderSeparatorLine(label string, indent int, selected, focused, visualMode, isCursor, cut bool, width int, searchQuery string, searchMatch lipgloss.Style) string {
+func (m model) renderSeparatorLine(sep domain.Task, indent int, selected, focused, visualMode, isCursor, cut bool, width int, searchQuery string, searchMatch lipgloss.Style) string {
 	prefix := "  " + strings.Repeat(" ", indent)
 	if selected {
 		prefix = "> " + strings.Repeat(" ", indent)
@@ -429,7 +440,7 @@ func (m model) renderSeparatorLine(label string, indent int, selected, focused, 
 	if width > 0 {
 		avail = safeWidth(width, prefixWidth+indent)
 	}
-	layout := layoutSeparator(prefix, strings.TrimSpace(label), sepContentWidth(avail))
+	layout := layoutSeparator(prefix, strings.TrimSpace(sep.Title), ui.TagSegmentText(sep.TagColor), sepContentWidth(avail))
 
 	if selected {
 		style := ui.GetSelectedStyle(focused)
@@ -439,11 +450,12 @@ func (m model) renderSeparatorLine(label string, indent int, selected, focused, 
 		case visualMode:
 			style = ui.GetVisualSelectedStyle(focused)
 		}
+		dot := lineTagSegment(sep, layout.dot, true, cut)
 		if cut {
 			style = ui.ApplyCut(style)
-			return style.Render(layout.left+layout.label+layout.right) + style.Render(ui.CutMark)
+			return style.Render(layout.left) + dot + style.Render(layout.label+layout.right) + style.Render(ui.CutMark)
 		}
-		return style.Render(layout.left + layout.label + layout.right)
+		return style.Render(layout.left) + dot + style.Render(layout.label+layout.right)
 	}
 
 	ruleStyle := ui.SeparatorStyle
@@ -454,20 +466,37 @@ func (m model) renderSeparatorLine(label string, indent int, selected, focused, 
 		labelStyle = ui.ApplyCut(labelStyle)
 		cutBadge = ui.CutBadgeStyle.Render(ui.CutMark)
 	}
+	dot := lineTagSegment(sep, layout.dot, false, cut)
 	if layout.label == "" {
-		return ruleStyle.Render(layout.left) + cutBadge
+		return ruleStyle.Render(layout.left) + dot + ruleStyle.Render(layout.right) + cutBadge
 	}
 	// Labeled: heavy rule with the label emphasized so it anchors the row,
 	// honoring any active search highlight (a no-op when the query is empty).
 	styledLabel := ui.HighlightMatches(layout.label, searchQuery, labelStyle, searchMatch)
-	return ruleStyle.Render(layout.left) + styledLabel + ruleStyle.Render(layout.right) + cutBadge
+	return ruleStyle.Render(layout.left) + dot + styledLabel + ruleStyle.Render(layout.right) + cutBadge
+}
+
+// lineTagSegment draws a separator's or a note's mark as a task's tagSegment does.
+func lineTagSegment(row domain.Task, seg string, selected, cut bool) string {
+	if seg == "" {
+		return ""
+	}
+	style, _ := ui.TagDotStyle(row.TagColor, false)
+	if selected {
+		style, _ = ui.TagBlockStyle(row.TagColor)
+	}
+	if cut {
+		style = ui.ApplyCut(style)
+	}
+	return style.Render(seg)
 }
 
 // renderEditSeparatorLine draws the inline editor for a separator's label,
 // entered with Enter. An empty value shows a placeholder rather than a rule.
-func (m model) renderEditSeparatorLine(indent int) string {
-	styledPrefix := ui.SeparatorStyle.Render("> " + strings.Repeat(" ", indent) + separatorLead + " ")
-	overhead := separatorPrefixWidth + indent
+func (m model) renderEditSeparatorLine(sep domain.Task, indent int) string {
+	dot := ui.TagSegmentText(sep.TagColor)
+	styledPrefix := ui.SeparatorStyle.Render("> "+strings.Repeat(" ", indent)+separatorLead+" ") + lineTagSegment(sep, dot, false, false)
+	overhead := separatorPrefixWidth + indent + ansi.StringWidth(dot)
 	cursorStyle := ui.GetCursorStyle(m.ui.Screen.WindowFocused)
 
 	if m.ui.Edit.input.Value() == "" {
@@ -484,8 +513,8 @@ func noteLead(cursor string, indent int, statusDisplay string) string {
 	return cursor + strings.Repeat(" ", indent+slot/2) + "-" + strings.Repeat(" ", slot-slot/2)
 }
 
-func noteTextColumn(statusDisplay string, indent int) int {
-	return taskTitleColumn(domain.Task{}, statusDisplay, indent)
+func noteTextColumn(note domain.Task, statusDisplay string, indent int) int {
+	return taskTitleColumn(domain.Task{TagColor: note.TagColor}, statusDisplay, indent)
 }
 
 // noteTextWidth is shared by the renderer and the layout so both count the same rows.
@@ -528,19 +557,20 @@ func (m model) renderNoteLine(note domain.Task, indent int, selected, focused, v
 		}
 	}
 	query, match := m.searchQuery(), m.searchMatchStyle(isCursor)
+	dot := lineTagSegment(note, ui.TagSegmentText(note.TagColor), selected, cut)
 	if width <= 0 {
-		return style.Render(prefix) + ui.HighlightMatches(note.Title, query, style, match) + cutBadge
+		return style.Render(prefix) + dot + ui.HighlightMatches(note.Title, query, style, match) + cutBadge
 	}
-	column := noteTextColumn(statusDisplay, indent)
+	column := noteTextColumn(note, statusDisplay, indent)
 	lines := ui.WrapClamped(note.Title, noteTextWidth(width, column, cut), noteRows(m.rowLimits(), note), ui.FirstMatchIndex(note.Title, query))
 	continuation := strings.Repeat(" ", column)
 	out := make([]string, len(lines))
 	for i, line := range lines {
-		lead := continuation
+		lead := style.Render(continuation)
 		if i == 0 {
-			lead = prefix
+			lead = style.Render(prefix) + dot
 		}
-		out[i] = style.Render(lead) + ui.HighlightMatches(line, query, style, match)
+		out[i] = lead + ui.HighlightMatches(line, query, style, match)
 	}
 	out[len(out)-1] += cutBadge
 	if selected && visualMode {
@@ -551,10 +581,10 @@ func (m model) renderNoteLine(note domain.Task, indent int, selected, focused, v
 	return strings.Join(out, "\n")
 }
 
-func (m model) renderEditNoteLine(indent int) string {
+func (m model) renderEditNoteLine(note domain.Task, indent int) string {
 	statusDisplay := m.deps.CfgManager.Get().StatusDisplay
-	prefix := noteLead("> ", indent, statusDisplay)
-	overhead := noteTextColumn(statusDisplay, indent)
+	prefix := noteLead("> ", indent, statusDisplay) + lineTagSegment(note, ui.TagSegmentText(note.TagColor), false, false)
+	overhead := noteTextColumn(note, statusDisplay, indent)
 	cursorStyle := ui.GetCursorStyle(m.ui.Screen.WindowFocused)
 	if m.ui.Edit.input.Value() == "" {
 		placeholder := ui.MutedStyle.Render("Enter note text...")

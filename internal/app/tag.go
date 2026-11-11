@@ -38,7 +38,7 @@ func (m *model) cycleTag() {
 		return
 	}
 	position, ok := m.selectedPosition()
-	if !ok || position.Kind != selection.FocusTask {
+	if !ok || !taggable(position.Kind) {
 		return
 	}
 	id := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex].ID
@@ -56,7 +56,7 @@ func (m *model) startTagEdit() {
 		return
 	}
 	position, ok := m.selectedPosition()
-	if !ok || position.Kind != selection.FocusTask {
+	if !ok || !taggable(position.Kind) {
 		return
 	}
 	cat := m.project.Categories[position.CategoryIndex]
@@ -67,7 +67,7 @@ func (m *model) startTagEdit() {
 	}
 	var batch []string
 	for _, t := range cat.Tasks {
-		if t.IsTask() && t.TagColor == task.TagColor {
+		if t.TagColor == task.TagColor {
 			batch = append(batch, t.ID)
 		}
 	}
@@ -141,7 +141,7 @@ func (m *model) finishTagEdit() {
 	m.selectTaskByID(s.taskIDs[0])
 	m.ensureVisible()
 	if len(ids) > 1 {
-		m.ui.Screen.StatusMsg = fmt.Sprintf("Tagged %d task(s)", changed)
+		m.ui.Screen.StatusMsg = fmt.Sprintf("Tagged %d %s(s)", changed, rowsNoun(m.project, ids))
 	}
 }
 
@@ -149,7 +149,7 @@ func (m model) tagEditView() string {
 	s := m.ui.TagEdit
 	title := "Edit Tag"
 	if n := len(s.taskIDs); n > 1 {
-		title = fmt.Sprintf("Edit Tag · %d tasks", n)
+		title = fmt.Sprintf("Edit Tag · %d %ss", n, rowsNoun(m.project, s.taskIDs))
 	}
 	lines := []string{ui.DialogTitleStyle.Render(title), ""}
 
@@ -175,8 +175,8 @@ func (m model) tagEditView() string {
 			box = "[x]"
 		}
 		style, _ := ui.TagDotStyle(s.batchColor, false)
-		lines = append(lines, "", fmt.Sprintf("  %s all %d tasks marked %s in %s",
-			box, n, style.Render(ui.TagGlyph), truncateText(s.batchCat, 30)))
+		lines = append(lines, "", fmt.Sprintf("  %s all %d %ss marked %s in %s",
+			box, n, rowsNoun(m.project, s.batchIDs), style.Render(ui.TagGlyph), truncateText(s.batchCat, 30)))
 		hints = append([]ui.Hint{{Key: "space", Label: "whole batch"}}, hints...)
 	}
 	lines = append(lines, "", ui.RenderHints(hints))
@@ -188,7 +188,7 @@ func (m model) tagEditView() string {
 // empty tag, so a subsequent paste clears the target.
 func (m *model) copyTagFromSelected() {
 	pos, ok := m.selectedPosition()
-	if !ok || pos.Kind != selection.FocusTask {
+	if !ok || !taggable(pos.Kind) {
 		m.ui.Screen.StatusMsg = "Copy tag: focus a task first"
 		return
 	}
@@ -219,7 +219,7 @@ func (m *model) pasteTagOntoSelected() {
 		return
 	}
 	pos, ok := m.selectedPosition()
-	if !ok || pos.Kind != selection.FocusTask {
+	if !ok || !taggable(pos.Kind) {
 		m.ui.Screen.StatusMsg = "Paste tag: focus a task first"
 		return
 	}
@@ -233,15 +233,13 @@ func (m *model) pasteTagOntoSelected() {
 	m.ui.Screen.StatusMsg = "Pasted tag: " + tagClipDescription(m.ui.TagClip)
 }
 
-// visualTaskPositions keeps only real task rows from a visual selection,
-// dropping any separators caught in the range so tag actions — which have no
-// meaning on a divider — apply to tasks alone. Description rows round up to
+// visualTaskPositions keeps the rows a tag marks. Description rows round up to
 // their parent task (deduped), so a task touched via both its row and its
 // description is tagged exactly once.
 func visualTaskPositions(positions []selection.Position) []selection.Position {
 	var out []selection.Position
 	for _, p := range visualRoundUpPositions(positions) {
-		if p.Kind == selection.FocusTask {
+		if taggable(p.Kind) {
 			out = append(out, p)
 		}
 	}
@@ -273,7 +271,7 @@ func (m *model) visualPasteTag() {
 	}
 	m.storeTaskUpdate()
 	m.holdFilteredOut(ids)
-	m.ui.Screen.StatusMsg = fmt.Sprintf("Pasted tag onto %d task(s)", changed)
+	m.ui.Screen.StatusMsg = fmt.Sprintf("Pasted tag onto %d %s(s)", changed, rowsNoun(m.project, ids))
 }
 
 // tagClipDescription is a short human label for a copied tag, e.g. "Cyan" or
@@ -303,6 +301,37 @@ func (m *model) visualCycleTag() {
 		m.storeTaskUpdate()
 		m.holdFilteredOut(ids)
 	}
+}
+
+// taggable is a task, a separator or a note: FocusSeparator covers both lines.
+func taggable(kind selection.FocusKind) bool {
+	return kind == selection.FocusTask || kind == selection.FocusSeparator
+}
+
+// rowsNoun names a batch by its kind, "row" for a mix.
+func rowsNoun(p domain.Project, ids []string) string {
+	noun := ""
+	for _, id := range ids {
+		ci, ti, err := operations.LocateTask(&p, id)
+		if err != nil {
+			continue
+		}
+		kind := "task"
+		switch t := p.Categories[ci].Tasks[ti]; {
+		case t.IsSeparator():
+			kind = "separator"
+		case t.IsNote():
+			kind = "note"
+		}
+		if noun != "" && noun != kind {
+			return "row"
+		}
+		noun = kind
+	}
+	if noun == "" {
+		return "task"
+	}
+	return noun
 }
 
 func positionIDs(p domain.Project, positions []selection.Position) []string {

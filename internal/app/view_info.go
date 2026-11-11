@@ -183,6 +183,7 @@ func (m model) noteInfoLines(catIdx, taskIdx int) []string {
 	}
 	return append(lines,
 		fmt.Sprintf("Category: %s", m.infoValue(m.project.CategoryPath(catIdx))),
+		fmt.Sprintf("Tag:      %s", formatTagInfo(note)),
 		"",
 		fmt.Sprintf("Created:  %s", FormatDateWithRelative(note.CreatedAt)),
 		fmt.Sprintf("Updated:  %s", FormatDateWithRelative(note.UpdatedAt)),
@@ -205,6 +206,7 @@ func (m model) separatorInfoLines(catIdx, taskIdx int) []string {
 		"",
 		fmt.Sprintf("Label:    %s", label),
 		fmt.Sprintf("Category: %s", m.infoValue(m.project.CategoryPath(catIdx))),
+		fmt.Sprintf("Tag:      %s", formatTagInfo(sep)),
 		"",
 		fmt.Sprintf("Created:  %s", FormatDateWithRelative(sep.CreatedAt)),
 		fmt.Sprintf("Updated:  %s", FormatDateWithRelative(sep.UpdatedAt)),

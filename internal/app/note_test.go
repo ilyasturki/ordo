@@ -153,7 +153,7 @@ func TestNoteRendersADashUnderTheStatusGlyph(t *testing.T) {
 
 			require.True(t, m.selectRow("n1"))
 			m, _ = pressKeys(m, "enter")
-			editor := strings.Split(ansi.Strip(m.renderEditNoteLine(0)), "\n")[0]
+			editor := strings.Split(ansi.Strip(m.renderEditNoteLine(m.project.Categories[0].Tasks[2], 0)), "\n")[0]
 			assert.Equal(t, ">"+lead[1:]+"word", editor[:len(lead)+4], "the editor keeps the dash and the column")
 		})
 	}

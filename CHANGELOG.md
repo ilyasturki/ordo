@@ -11,6 +11,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - `ctrl+g` in a title, name or description being edited opens its unsaved text in `$VISUAL` or `$EDITOR`, as in Claude Code. Back from the editor, the field holds the new text, a title with its lines joined, and `enter` saves or `esc` cancels as usual; an editor that fails leaves the field as it was. It takes `ctrl+g` from select-all in the description editor
 - `gy` offers each path written in a title or description (`/…`, `~/…`, `./…`, `../…`, `file://…`) as typed, and no longer offers the digits inside a path, as in the `2` of `/x/v2`
 - Path suggestions while typing: a word starting `/`, `~/`, `./` or `../` in a title, note, separator or description lists the matching files under the field. `tab` completes the picked one, and a directory's list follows; `↑`/`↓` pick; `esc` closes the list, and a second `esc` cancels as before
+- Separators and notes take a tag: `t`, `T`, `gt` and `p` mark them as they mark a task, the dot shows on the row, `●` after the rule's lead or the note's dash, and the info view names it. The tasks below keep their own. In the app, the row shows its dot and its page has the tag field. A server from before this release leaves such a tag off
 
 ### Changed
 

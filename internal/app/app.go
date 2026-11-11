@@ -913,14 +913,14 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 		sep := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
 		if sep.IsNote() {
 			if m.editorOpen() && isCursor {
-				return m.renderEditNoteLine(indent)
+				return m.renderEditNoteLine(sep, indent)
 			}
 			return m.renderNoteLine(sep, indent, isSelected, focused, visualMode, isCursor, m.isTaskCut(sep.ID))
 		}
 		if m.editorOpen() && isCursor {
-			return m.renderEditSeparatorLine(indent)
+			return m.renderEditSeparatorLine(sep, indent)
 		}
-		return m.renderSeparatorLine(sep.Title, indent, isSelected, focused, visualMode, isCursor, m.isTaskCut(sep.ID), m.ui.Screen.Width, m.searchQuery(), m.searchMatchStyle(isCursor))
+		return m.renderSeparatorLine(sep, indent, isSelected, focused, visualMode, isCursor, m.isTaskCut(sep.ID), m.ui.Screen.Width, m.searchQuery(), m.searchMatchStyle(isCursor))
 
 	case LayoutDescription:
 		task := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
