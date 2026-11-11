@@ -1,4 +1,4 @@
-Output "/tmp/ordo-vt/vhs-out/101_conflict_dialog.gif"
+Output "/tmp/ordo-vt/vhs-out/115_conflict_dialog.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
@@ -20,18 +20,18 @@ Sleep 2200ms
 Type " v2"
 Enter
 Sleep 1500ms
-Screenshot "/tmp/ordo-vt/vhs-out/101_dialog.png"
+Screenshot "/tmp/ordo-vt/vhs-out/115_dialog.png"
 Sleep 500ms
 
 # b keeps theirs and adds mine below it.
 Type "b"
 Sleep 800ms
-Screenshot "/tmp/ordo-vt/vhs-out/101_both.png"
+Screenshot "/tmp/ordo-vt/vhs-out/115_both.png"
 
 # u takes the choice back.
 Type "u"
 Sleep 800ms
-Screenshot "/tmp/ordo-vt/vhs-out/101_undone.png"
+Screenshot "/tmp/ordo-vt/vhs-out/115_undone.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
