@@ -6,30 +6,18 @@ import (
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
-// maxFocusedDescriptionRows keeps one long body from taking the whole screen.
-const maxFocusedDescriptionRows = 10
-
 // rowLimits is the layout cache's key: any input that changes a row's height belongs here.
 type rowLimits struct {
-	// cursorCat/cursorTask address the description row under the cursor, -1/-1
-	// when the cursor is elsewhere.
-	cursorCat          int
-	cursorTask         int
-	focusedDescription int
 	// expandedTask is shown uncapped, title and description.
 	expandedTask string
 }
 
 func defaultRowLimits() rowLimits {
-	return rowLimits{cursorCat: -1, cursorTask: -1, focusedDescription: components.DescriptionPreviewLines}
+	return rowLimits{}
 }
 
 func (m *model) rowLimits() rowLimits {
 	l := defaultRowLimits()
-	if pos, ok := m.selectedPosition(); ok && pos.Kind == selection.FocusDescription {
-		l.cursorCat, l.cursorTask = pos.CategoryIndex, pos.TaskIndex
-	}
-	l.focusedDescription = max(components.DescriptionPreviewLines, min(maxFocusedDescriptionRows, m.availableHeight()/2))
 	l.expandedTask = m.ui.Screen.ExpandedTaskID
 	return l
 }
@@ -45,12 +33,9 @@ func (l rowLimits) titleRows(taskID string) int {
 	return ui.MaxLineRows
 }
 
-func (l rowLimits) descriptionRows(catIdx, taskIdx int, taskID string) int {
-	switch {
-	case l.expands(taskID):
+func (l rowLimits) descriptionRows(taskID string) int {
+	if l.expands(taskID) {
 		return components.Uncapped
-	case catIdx == l.cursorCat && taskIdx == l.cursorTask:
-		return l.focusedDescription
 	}
 	return components.DescriptionPreviewLines
 }

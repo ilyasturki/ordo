@@ -179,7 +179,7 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 			task := cat.Tasks[pos.TaskIndex]
 			item.Kind = LayoutDescription
 			column := taskTitleColumn(task, b.statusDisplay, taskIndent(cat, pos.TaskIndex))
-			item.Height = components.DescriptionHeight(task.Description, b.width, column, b.limits.descriptionRows(pos.CategoryIndex, pos.TaskIndex, task.ID))
+			item.Height = components.DescriptionHeight(task.Description, b.width, column, b.limits.descriptionRows(task.ID))
 			add(item)
 		}
 	}

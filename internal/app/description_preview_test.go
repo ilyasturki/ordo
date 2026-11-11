@@ -56,6 +56,17 @@ func TestDescriptionPreview_TruncatesUnfocusedRow(t *testing.T) {
 	assert.NotContains(t, rendered, "six")
 }
 
+func findTaskItemIndex(t *testing.T, layout *Layout, catIdx, taskIdx int) int {
+	t.Helper()
+	for i, item := range layout.Items {
+		if item.Kind == LayoutTask && item.CategoryIndex == catIdx && item.TaskIndex == taskIdx {
+			return i
+		}
+	}
+	t.Fatalf("no task layout item for (%d, %d)", catIdx, taskIdx)
+	return -1
+}
+
 func numberedLines(n int) string {
 	lines := make([]string, n)
 	for i := range lines {
@@ -73,33 +84,33 @@ func focusDescription(t *testing.T, m *model) {
 	}))
 }
 
-func TestDescriptionPreview_FocusedCapsAtTenRows(t *testing.T) {
+func TestDescriptionPreview_FocusKeepsTheRowHeight(t *testing.T) {
 	p := longDescriptionProject()
 	p.Categories[0].Tasks[0].Description = numberedLines(30)
+	p.Categories[0].Tasks[0].Title = strings.Repeat("long title ", 40)
 	m := newTestModel(t, p)
-	focusDescription(t, m)
+	m.ui.Screen.ExpandDescriptions = true
+	m.rebuildPositions()
+	require.True(t, m.selectTaskIdx(0, 0))
+	away := m.buildLayout()
+	titleAway, descAway := away.Items[findTaskItemIndex(t, away, 0, 0)].Height, findDescriptionItem(t, away, 0, 0).Height
 
-	item := findDescriptionItem(t, m.buildLayout(), 0, 0)
-	assert.Equal(t, maxFocusedDescriptionRows+1, item.Height, "10 lines plus the tail")
-
-	rendered := m.renderLayoutItem(item)
-	assert.Equal(t, item.Height, strings.Count(rendered, "\n")+1)
-	assert.Contains(t, rendered, "line10")
-	assert.NotContains(t, rendered, "line11")
-	assert.Contains(t, rendered, "+20 more lines · gi full view")
-}
-
-func TestDescriptionPreview_FocusedCapIsHalfAShortScreen(t *testing.T) {
-	p := longDescriptionProject()
-	p.Categories[0].Tasks[0].Description = numberedLines(30)
-	m := newTestModel(t, p)
-	m.ui.Screen.Height = 14
-	focusDescription(t, m)
-
-	item := findDescriptionItem(t, m.buildLayout(), 0, 0)
-	want := m.availableHeight() / 2
-	require.Less(t, want, maxFocusedDescriptionRows)
-	assert.Equal(t, want+1, item.Height)
+	for _, kind := range []selection.FocusKind{selection.FocusTask, selection.FocusDescription} {
+		require.True(t, m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
+			return p.Kind == kind && p.TaskIndex == 0
+		}))
+		layout := m.buildLayout()
+		assert.Equal(t, titleAway, layout.Items[findTaskItemIndex(t, layout, 0, 0)].Height, "title rows with the cursor on %v", kind)
+		item := findDescriptionItem(t, layout, 0, 0)
+		assert.Equal(t, descAway, item.Height, "description rows with the cursor on %v", kind)
+		assert.Equal(t, components.DescriptionPreviewLines+1, item.Height)
+		rendered := ansi.Strip(m.renderLayoutItem(item))
+		assert.Equal(t, item.Height, strings.Count(rendered, "\n")+1)
+	}
+	rendered := ansi.Strip(m.renderLayoutItem(findDescriptionItem(t, m.buildLayout(), 0, 0)))
+	assert.Contains(t, rendered, "line03")
+	assert.NotContains(t, rendered, "line04")
+	assert.Contains(t, rendered, "+27 more lines · gi full view")
 }
 
 func TestDescriptionPreview_WindowFollowsSearchMatch(t *testing.T) {
@@ -119,7 +130,7 @@ func TestDescriptionPreview_WindowFollowsSearchMatch(t *testing.T) {
 	assert.Contains(t, rendered, "line15")
 	assert.Contains(t, rendered, "…line14", "the first shown line marks the lines above")
 	assert.NotContains(t, rendered, "line01")
-	assert.Contains(t, rendered, "+7 more lines", "the tail counts the lines below")
+	assert.Contains(t, rendered, "+14 more lines", "the tail counts the lines below")
 }
 
 func TestDescriptionPreview_WindowAtTheEndCountsLinesAbove(t *testing.T) {
@@ -133,24 +144,7 @@ func TestDescriptionPreview_WindowAtTheEndCountsLinesAbove(t *testing.T) {
 	rendered := ansi.Strip(m.renderLayoutItem(findDescriptionItem(t, m.buildLayout(), 0, 0)))
 
 	assert.Contains(t, rendered, "line30")
-	assert.Contains(t, rendered, "… 20 lines above · gi full view")
-}
-
-func TestDescriptionPreview_ShortFocusedDescriptionShowsInFull(t *testing.T) {
-	m := newTestModel(t, longDescriptionProject())
-	m.ui.Screen.ExpandDescriptions = true
-	m.rebuildPositions()
-	require.True(t, m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		return p.Kind == selection.FocusDescription && p.TaskIndex == 0
-	}))
-
-	layout := m.buildLayout()
-	item := findDescriptionItem(t, layout, 0, 0)
-	assert.Equal(t, 6, item.Height, "a body under the cap lays out in full")
-
-	rendered := m.renderLayoutItem(item)
-	assert.Contains(t, rendered, "six")
-	assert.NotContains(t, rendered, "more line")
+	assert.Contains(t, rendered, "… 27 lines above · gi full view")
 }
 
 func TestDescriptionPreview_NoTruncationWhenTailSavesNothing(t *testing.T) {

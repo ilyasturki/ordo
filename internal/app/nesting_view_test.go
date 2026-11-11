@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ilyasturki/ordo/internal/app/components"
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/domain"
 )
@@ -241,7 +242,7 @@ func TestSubtaskDescriptionKeepsTheCapAndExpands(t *testing.T) {
 	assert.Equal(t, column(lineWith(t, screen(m), "Add a sound"), "Add"), column(desc, "line")-2, "the bar sits flush with the subtask's title")
 	start, end, ok := m.buildLayout().rowRange(m.selected())
 	require.True(t, ok)
-	assert.Equal(t, maxFocusedDescriptionRows+1, end-start, "a focused description is capped, plus its tail row")
+	assert.Equal(t, components.DescriptionPreviewLines+1, end-start, "a focused description keeps the preview cap, plus its tail row")
 
 	selectRow(t, m, selection.FocusTask, "sound")
 	m.toggleExpandRow()

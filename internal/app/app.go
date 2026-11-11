@@ -904,7 +904,7 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 	case LayoutDescription:
 		task := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]
 		cut := m.taskRowCut(task)
-		rows := m.rowLimits().descriptionRows(item.CategoryIndex, item.TaskIndex, task.ID)
+		rows := m.rowLimits().descriptionRows(task.ID)
 		return m.renderTaskDescription(item.CategoryIndex, item.TaskIndex, rows, isSelected, m.ui.Screen.Width, focused, visualMode, isCursor, cut)
 
 	case LayoutEmptyCategory:
