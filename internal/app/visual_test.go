@@ -223,6 +223,76 @@ func TestVisualDelete_OpensConfirmThenRemovesAll(t *testing.T) {
 	assert.Contains(t, m.ui.Screen.StatusMsg, "Deleted 3")
 }
 
+func TestVisualDelete_CursorLandsAtTheRangeStart(t *testing.T) {
+	tests := []struct {
+		name   string
+		anchor int // position index: 2 t1, 3 t2, 4 t3, 6 t4, 7 t5
+		move   int
+		want   string
+	}{
+		{name: "anchor on top", anchor: 2, move: 1, want: "t3"},
+		{name: "anchor at the bottom", anchor: 3, move: -1, want: "t3"},
+		{name: "end of category", anchor: 3, move: 1, want: "c2"},
+		{name: "end of list", anchor: 6, move: 1, want: "c2"},
+		{name: "end of list from the bottom", anchor: 7, move: -1, want: "c2"},
+		{name: "single row", anchor: 3, move: 0, want: "t3"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newTestModel(t, sampleProject())
+			m.ui.Selection.MoveTo(tt.anchor)
+			m.enterVisualMode()
+			if tt.move != 0 {
+				m.visualMoveCursor(tt.move)
+			}
+			m.visualDelete()
+			m.confirmDeleteVisualRange()
+
+			pos, ok := m.ui.Selection.SelectedPosition()
+			require.True(t, ok)
+			assert.Equal(t, tt.want, pos.ID)
+		})
+	}
+}
+
+func TestVisualDelete_CursorSkipsNothingOnALongRange(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	m.ui.Selection.MoveTo(2) // t1
+	m.enterVisualMode()
+	m.visualMoveCursor(2) // t1..t3
+	m.visualDelete()
+	m.confirmDeleteVisualRange()
+
+	pos, _ := m.ui.Selection.SelectedPosition()
+	assert.Equal(t, "c2", pos.ID, "the row now at the range's first slot is Cat B, not t5")
+}
+
+func TestVisualDelete_CursorAfterDeletingCategories(t *testing.T) {
+	p := sampleProject()
+	p.Categories = append(p.Categories, domain.Category{ID: "c3", Name: "Cat C", Tasks: []domain.Task{{ID: "t6", Title: "Zeta"}}})
+	m := newTestModel(t, p)
+	m.ui.Selection.MoveTo(1) // Cat A
+	m.enterVisualMode()
+	m.visualMoveCursor(1) // Cat A + Cat B
+	m.visualDelete()
+	m.confirmDeleteVisualRange()
+
+	pos, _ := m.ui.Selection.SelectedPosition()
+	assert.Equal(t, "c3", pos.ID)
+}
+
+func TestVisualDelete_CursorWhenTheRangeStartsOnADescription(t *testing.T) {
+	m := newTestModelWithDescription(t)
+	m.ui.Selection.MoveTo(3) // t1's description row
+	m.enterVisualMode()
+	m.visualMoveCursor(1) // extend down to t2
+	m.visualDelete()
+	m.confirmDeleteVisualRange()
+
+	pos, _ := m.ui.Selection.SelectedPosition()
+	assert.Equal(t, "t3", pos.ID)
+}
+
 func TestVisualDelete_CategoryRangeRemovesCategoriesAndTasks(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	m.ui.Selection.MoveTo(1) // Cat A

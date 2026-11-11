@@ -543,7 +543,7 @@ func (m *model) visualDelete() {
 		m.exitVisualMode()
 		return
 	}
-	state := ConfirmDeleteState{Kind: ConfirmDeleteVisualRange}
+	state := ConfirmDeleteState{Kind: ConfirmDeleteVisualRange, Cursor: m.visualDeleteCursor()}
 	switch m.ui.Visual.Kind {
 	case selection.FocusTask:
 		for _, t := range m.visualTaskRows(selPositions) {
@@ -559,7 +559,20 @@ func (m *model) visualDelete() {
 	m.ui.Modes.ToConfirmDelete()
 }
 
+// visualDeleteCursor is the index of the range's first row, which after the
+// delete holds the row that followed the range (or the one above when none did).
+// A range starting on a description row also takes its parent, one row up.
+func (m model) visualDeleteCursor() int {
+	lo, _, _ := m.visualRange()
+	positions := m.ui.Selection.Positions()
+	if lo > 0 && lo < len(positions) && positions[lo].Kind == selection.FocusDescription {
+		lo--
+	}
+	return lo
+}
+
 func (m *model) confirmDeleteVisualRange() {
+	cursor := m.ui.ConfirmDelete.Cursor
 	taskIDs := m.ui.ConfirmDelete.TaskIDs
 	catIDs := m.ui.ConfirmDelete.CategoryIDs
 	m.ui.ConfirmDelete.reset()
@@ -592,6 +605,8 @@ func (m *model) confirmDeleteVisualRange() {
 		return
 	}
 	m.rebuildAndClamp()
+	m.ui.Selection.SetSelected(cursor)
+	m.ensureVisible()
 	m.storeTaskUpdate()
 	if len(catIDs) > 0 {
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Deleted %d categor%s", deletedCats, plural(deletedCats, "y", "ies"))

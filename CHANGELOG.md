@@ -8,6 +8,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - An outside change now merges into the open project instead of refusing your edits, whichever writer made it: an edit committed under an open input, or one a sync tool replaced after it saved, stays, row by row and field by field, with no prompt. Only one field changed to two values asks: `m` keeps yours, `t` theirs, `b` both, with yours as a copy just below, `M` and `T` the rest, and `u` takes it back. An edited row outlives a delete. `r` keeps your edits, undo survives a change from outside, and what a choice could discard stays in `recovery/`. See [`docs/file-format.md`](docs/file-format.md#edits-from-outside)
 
+### Fixed
+
+- Deleting a visual selection leaves the cursor where the selection started: on the row that took its first slot, or the one above when nothing follows, instead of a few rows further down
+
 ## [0.14.2] - 2026-11-04
 
 ### Added
