@@ -56,6 +56,23 @@ class RankTest {
     fun anUnreadableEditTimeRanksLast() {
         assertEquals(listOf("Beta", "Alpha"), names(listOf(entry("Alpha", ""), entry("Beta", jan))))
     }
+
+    private fun grouped(name: String, group: String, updated: String) = Entry(name, name, "", "", Project(name, name, updated, group = group))
+
+    // The TUI picker's TestOrderProjectsGathersGroupsByTheirMostRecentProject, on the same projects.
+    @Test
+    fun groupsGatherWhereTheirMostRecentProjectStandsAndTheUngroupedGoLast() {
+        val entries = listOf(
+            grouped("Loose", "", "2026-05-01T00:00:00Z"),
+            grouped("Ferry", "Work", jan),
+            grouped("Garden", "Perso", "2026-04-01T00:00:00Z"),
+            grouped("Api", "work ", mar),
+            grouped("Books", "Perso", feb),
+            grouped("Old", "", jan),
+        )
+        assertEquals(listOf("Garden", "Books", "Api", "Ferry", "Loose", "Old"), names(entries))
+        assertEquals(listOf("Perso", "work"), projectGroups(rankProjects(entries, emptyMap())))
+    }
 }
 
 // The tab order across a sync: ranked at boot and on a return to the front, frozen in between.
@@ -122,6 +139,30 @@ class OrderTest {
             val cold = engine()
             cold.boot()
             assertEquals(e.names(), cold.names())
+        }
+    }
+
+    @Test
+    fun aGroupReachesTheFileAndMovesATabOnlyIntoItsGroup() = runBlocking {
+        withTimeout(90_000) {
+            server.ordo("project", "add", "Alpha", "-q")
+            server.ordo("project", "add", "Bravo", "-q")
+            val e = engine()
+            e.boot()
+            assertNull(e.pair(server.pairLink()))
+            val first = e.names()
+            val alpha = e.id("Alpha")
+
+            assertEquals(true, e.edit(alpha, Ops.projectGroup("Work")).applied)
+            assertEquals(first, e.names())
+            assertEquals(false, alpha in e.state.value.prefs.opened)
+            e.sync()
+            assertEquals("Work\n", server.ordo("project", "group", "Alpha"))
+
+            // Back in front, Alpha leads as its group's only project, the others follow ungrouped as they were.
+            e.foreground(false)
+            e.foreground(true)
+            assertEquals(listOf("Alpha") + first.filter { it != "Alpha" }, e.names())
         }
     }
 }

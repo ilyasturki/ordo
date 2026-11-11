@@ -48,9 +48,9 @@ data class Category(
 data class Project(
     val id: String,
     val name: String = "",
-    val group: String = "",
     @SerialName("updated_at") val updatedAt: String = "",
     val categories: List<Category> = emptyList(),
+    val group: String = "",
 ) {
     fun category(id: String): Category? = categories.firstOrNull { it.id == id }
 

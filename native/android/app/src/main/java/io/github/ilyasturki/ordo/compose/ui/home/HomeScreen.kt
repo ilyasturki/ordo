@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -35,6 +38,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,8 +52,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
@@ -64,6 +70,8 @@ import io.github.ilyasturki.ordo.compose.model.Board
 import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.sync.Entry
+import io.github.ilyasturki.ordo.compose.sync.groupKey
+import io.github.ilyasturki.ordo.compose.sync.projectGroups
 import io.github.ilyasturki.ordo.compose.ui.CategoriesKey
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
@@ -85,6 +93,7 @@ private sealed interface HomeSheet {
     data class Add(val pid: String, val cat: String) : HomeSheet
     data class Filters(val pid: String) : HomeSheet
     data class ProjectMenu(val pid: String) : HomeSheet
+    data class Group(val pid: String) : HomeSheet
     data class OfCategory(val pid: String, val sheet: CategorySheet) : HomeSheet
     data object NewProject : HomeSheet
     data object Sync : HomeSheet
@@ -184,6 +193,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                             HomeMenu(
                                 current,
                                 onRename = { sheet = HomeSheet.ProjectMenu(it) },
+                                onGroup = { sheet = HomeSheet.Group(it) },
                                 onNewCategory = { sheet = HomeSheet.OfCategory(it, CategorySheet.New("")) },
                                 onCategories = { open(CategoriesKey(it)) },
                                 onDelete = { confirm = Confirm.DeleteProject(it) },
@@ -199,10 +209,12 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                         indicator = { PagerIndicator(pager, projects.size) },
                         minTabWidth = 0.dp,
                     ) {
+                        val grouped = projects.any { groupKey(it) != "" }
                         projects.forEachIndexed { i, p ->
                             ProjectTab(
                                 p.name,
                                 selected = i == pager.currentPage,
+                                groupStart = grouped && i > 0 && groupKey(projects[i - 1]) != groupKey(p),
                                 onClick = {
                                     if (i == pager.currentPage) sheet = HomeSheet.ProjectMenu(p.id)
                                     else scope.launch { pager.animateScrollToPage(i) }
@@ -298,10 +310,22 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             NameSheet(e.name, "Project name", "Rename", onDismiss = { sheet = null }, onDone = { name ->
                 name == e.name || engine.edit(e.id, Ops.projectRename(name), quiet = true).applied
             }) {
+                SheetAction(Icons.Group, "Group") { sheet = HomeSheet.Group(e.id) }
                 SheetAction(Icons.NewFolder, "New category") { sheet = HomeSheet.OfCategory(e.id, CategorySheet.New("")) }
                 SheetAction(Icons.Delete, "Delete project", danger = true) {
                     sheet = null
                     confirm = Confirm.DeleteProject(e.id)
+                }
+            }
+        }
+        is HomeSheet.Group -> entry(s.pid)?.let { e ->
+            val group = e.project.group
+            NameSheet(group, "Group", "Set", onDismiss = { sheet = null }, blankAllowed = true, onDone = { name ->
+                name == group || engine.edit(e.id, Ops.projectGroup(name)).applied
+            }) {
+                GroupChoices(projectGroups(projects), group) { pick ->
+                    sheet = null
+                    if (pick != group) scope.launch { engine.edit(e.id, Ops.projectGroup(pick)) }
                 }
             }
         }
@@ -376,6 +400,7 @@ private fun ProjectSearchBar(project: String, query: String, onQuery: (String) -
 private fun HomeMenu(
     current: Entry?,
     onRename: (String) -> Unit,
+    onGroup: (String) -> Unit,
     onNewCategory: (String) -> Unit,
     onCategories: (String) -> Unit,
     onDelete: (String) -> Unit,
@@ -399,6 +424,7 @@ private fun HomeMenu(
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             if (current != null) {
                 Item("Rename project", Icons.Edit) { onRename(current.id) }
+                Item("Group", Icons.Group) { onGroup(current.id) }
                 Item("New category", Icons.NewFolder) { onNewCategory(current.id) }
                 Item("Categories", Icons.Categories) { onCategories(current.id) }
                 Item("Delete project", Icons.Delete, danger = true) { onDelete(current.id) }
@@ -409,13 +435,34 @@ private fun HomeMenu(
     }
 }
 
+// The groups in use as chips under the group field: a tap sets one, the current one shows selected.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GroupChoices(groups: List<String>, current: String, onPick: (String) -> Unit) {
+    if (groups.isEmpty()) return
+    FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        groups.forEach { g ->
+            val on = g.equals(current.trim(), ignoreCase = true)
+            FilterChip(selected = on, onClick = { onPick(if (on) "" else g) }, label = { Text(g) })
+        }
+    }
+}
+
+// groupStart draws the divider between two groups on the tab's leading edge, so the tab row's positions stay one per page.
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ProjectTab(name: String, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun ProjectTab(name: String, selected: Boolean, groupStart: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
     val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val divider = MaterialTheme.colorScheme.outlineVariant
     Box(
         Modifier
             .height(48.dp)
+            .drawBehind {
+                if (groupStart) {
+                    val h = 20.dp.toPx()
+                    drawLine(divider, Offset(0f, (size.height - h) / 2), Offset(0f, (size.height + h) / 2), strokeWidth = 1.dp.toPx())
+                }
+            }
             .combinedClickable(onClick = onClick, onLongClick = onLongClick, role = Role.Tab)
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,

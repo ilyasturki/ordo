@@ -3,6 +3,7 @@ package io.github.ilyasturki.ordo.compose
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.lerp
@@ -77,6 +79,34 @@ class TabsTest : AppFixture(NAMES) {
         compose.onNodeWithText("Rename project").performClick()
         compose.waitUntilAtLeastOneExists(hasSetTextAction() and hasText("Zed"), 20_000)
         compose.onNodeWithText("Delete project").assertExists()
+    }
+
+    private fun group(name: String) = engine.state.value.projects.first { it.name == name }.project.group
+
+    @Test
+    fun theMenuSetsAGroupAndOffersItToTheNextProject() {
+        settled()
+        tap("Zed")
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Group"), 20_000)
+        compose.onNodeWithText("Group").performClick()
+        compose.waitUntilAtLeastOneExists(hasSetTextAction(), 20_000)
+        compose.onNode(hasSetTextAction()).performTextInput("Work")
+        compose.onNodeWithText("Set").performClick()
+        compose.waitUntil(20_000) { group("Zed") == "Work" }
+
+        // The tab sheet's Group offers the groups in use; the tabs keep their places, a divider before Zed.
+        tap("Ab")
+        tap("Ab")
+        compose.onNodeWithText("Group").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Work") and hasClickAction(), 20_000)
+        compose.onNode(hasText("Work") and hasClickAction()).performClick()
+        compose.waitUntil(20_000) { group("Ab") == "Work" }
+        settled()
+        assertEquals(NAMES, engine.state.value.projects.map { it.name })
+        assertUnder("Ab")
+        tap("Zed")
+        assertUnder("Zed")
     }
 
     @Test
