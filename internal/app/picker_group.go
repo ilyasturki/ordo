@@ -250,5 +250,5 @@ func (m model) renderPickerGroupLine() string {
 }
 
 func (m model) renderPickerSeparator(label string, width int) string {
-	return m.renderSeparatorLine(label, 0, false, m.ui.Screen.WindowFocused, false, false, false, width, "", ui.SearchMatchStyle)
+	return m.renderSeparatorLine(domain.Task{Title: label, Kind: domain.KindSeparator}, 0, false, m.ui.Screen.WindowFocused, false, false, false, width, "", ui.SearchMatchStyle)
 }
