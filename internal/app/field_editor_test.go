@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -122,6 +123,19 @@ func TestCtrlG_DescriptionTakesTheEditorTextAndEscStillCancels(t *testing.T) {
 	next, _ := m.Update(keyPress("esc"))
 	cancelled := asModel(next)
 	assert.Equal(t, "saved", cancelled.project.Categories[0].Tasks[0].Description)
+}
+
+func TestCtrlG_LongDescriptionShowsTheCursorAtTheEnd(t *testing.T) {
+	useFakeEditor(t, numberedLines(30)+"\n", "0")
+	m := newTestModel(t, sampleProject())
+	m.ui.Screen.Width, m.ui.Screen.Height = 60, 24
+	_ = m.startDescriptionInlineEdit(0, 0)
+
+	m, _ = pressCtrlG(t, m)
+
+	view := ansi.Strip(m.ui.DescriptionEdit.textarea.View())
+	assert.Contains(t, view, "line30", "the editor window follows the cursor to the last line")
+	assert.Equal(t, descriptionEditorVisibleHeight(24)-1, descriptionMarkerRow(t, m))
 }
 
 func TestCtrlG_DescriptionSavesWithEnter(t *testing.T) {

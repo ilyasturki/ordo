@@ -199,6 +199,8 @@ func (f *areaField) replace(s string) {
 	f.edits.moved()
 	f.SetValue(s)
 	f.MoveToEnd()
+	// The textarea fills its viewport only in Update, so a scroll outside one lands on stale content.
+	f.Model, _ = f.Model.Update(nil)
 }
 
 func (e *fieldEdits) apply(buf fieldBuffer, msg tea.Msg) bool {
