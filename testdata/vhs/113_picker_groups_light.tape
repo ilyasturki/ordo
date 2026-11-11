@@ -1,4 +1,4 @@
-Output "/tmp/ordo-vt/vhs-out/111_picker_groups_light.gif"
+Output "/tmp/ordo-vt/vhs-out/113_picker_groups_light.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
@@ -17,11 +17,11 @@ Show
 # The separators read on a light theme, in the dialog and with the field open.
 Ctrl+P
 Sleep 500ms
-Screenshot "/tmp/ordo-vt/vhs-out/111_light_groups.png"
+Screenshot "/tmp/ordo-vt/vhs-out/113_light_groups.png"
 Sleep 500ms
 Type "m"
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/111_light_group_field.png"
+Screenshot "/tmp/ordo-vt/vhs-out/113_light_group_field.png"
 Sleep 500ms
 Escape
 Sleep 300ms
@@ -37,7 +37,7 @@ Show
 
 # The full-screen picker keeps the groups and its footer on one row.
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/111_light_full.png"
+Screenshot "/tmp/ordo-vt/vhs-out/113_light_full.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
