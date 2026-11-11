@@ -81,8 +81,11 @@ class TabsTest : AppFixture(NAMES) {
         compose.onNodeWithText("Delete project").assertExists()
     }
 
-    private fun group(name: String) = engine.state.value.projects.first { it.name == name }.project.group
+    private fun id(name: String) = if (NAMES.indexOf(name) == 0) PID else "$PID-${NAMES.indexOf(name)}"
 
+    private fun group(name: String) = engine.state.value.project(id(name))?.project?.group
+
+    // An edited project takes its file's name, the seed's "Ordo": the tabs left unedited are the ones to tap.
     @Test
     fun theMenuSetsAGroupAndOffersItToTheNextProject() {
         settled()
@@ -95,7 +98,7 @@ class TabsTest : AppFixture(NAMES) {
         compose.onNodeWithText("Set").performClick()
         compose.waitUntil(20_000) { group("Zed") == "Work" }
 
-        // The tab sheet's Group offers the groups in use; the tabs keep their places, a divider before Zed.
+        // The tab sheet's Group offers the groups in use, and the tabs keep their places.
         tap("Ab")
         tap("Ab")
         compose.onNodeWithText("Group").performClick()
@@ -103,10 +106,13 @@ class TabsTest : AppFixture(NAMES) {
         compose.onNode(hasText("Work") and hasClickAction()).performClick()
         compose.waitUntil(20_000) { group("Ab") == "Work" }
         settled()
-        assertEquals(NAMES, engine.state.value.projects.map { it.name })
-        assertUnder("Ab")
-        tap("Zed")
-        assertUnder("Zed")
+        assertEquals(NAMES.map(::id), engine.state.value.projects.map { it.id })
+
+        // Dividers now stand before Ordo app and Zulu field notes; the underline still sits under the tab.
+        for (name in listOf("Ordo app", "Zulu field notes", "Planning the next big release")) {
+            tap(name)
+            assertUnder(name)
+        }
     }
 
     @Test
