@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-11-11
+
 ### Added
 
 - `ordo pick <name>` opens that project: the exact name, else a unique name prefix, else a unique part of a name (a capital makes it case-sensitive). When several match, the picker opens with the name already in its filter, and with none the command exits with `no project matches "<name>"`. Shell completion offers the project names
@@ -598,7 +600,8 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
 
-[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.14.2...HEAD
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.14.3...HEAD
+[0.14.3]: https://github.com/ilyasturki/ordo/compare/v0.14.2...v0.14.3
 [0.14.2]: https://github.com/ilyasturki/ordo/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/ilyasturki/ordo/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/ilyasturki/ordo/compare/v0.13.0...v0.14.0
