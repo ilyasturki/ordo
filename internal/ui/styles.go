@@ -57,7 +57,8 @@ var (
 	// Description text mirrors its task title's color treatment (see
 	// TaskTitleStyle) with italic added; the faint left bar glyph gives it a
 	// markdown-blockquote look that keeps it distinct from the title row.
-	DescriptionBarStyle = lipgloss.NewStyle().Faint(true)
+	DescriptionBarStyle  = lipgloss.NewStyle().Faint(true)
+	DescriptionMarkStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Bold(true)
 
 	// Shortcut bar (lazygit-style footer): keys read brighter, labels read
 	// quieter so the eye can hop between them. Faint avoids any explicit

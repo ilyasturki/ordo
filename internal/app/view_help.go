@@ -126,7 +126,7 @@ var helpMarksSection = helpSection{
 		{keys: "[ ] [/] [x] [-]", desc: "todo / in progress / completed / cancelled"},
 		{keys: "⇈ ▲ ▼ ⇊", desc: "priority critical / high / low / trivial"},
 		{keys: "●", desc: "tag dot, green, blue, magenta or cyan: a batch"},
-		{keys: "¶", desc: "has a description"},
+		{keys: "¶", desc: "has a description, hidden: its first line follows"},
 		{keys: "▣ / ▣2", desc: "one image / two images attached"},
 		{keys: "~1h", desc: "estimate"},
 		{keys: "1/3", desc: "subtasks finished"},

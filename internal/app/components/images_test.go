@@ -95,9 +95,9 @@ func TestTitleRow_CountsImagesEvenWithDescriptionsExpanded(t *testing.T) {
 		Description: "text\n![a](" + shotTarget + ")\n![b](/tmp/b.png)"}
 	plain := domain.Task{Title: "Fix the bar", Status: domain.StatusTodo, Description: "just text"}
 
-	for expanded, suffix := range map[bool]string{false: "Fix the bar ¶ ▣", true: "Fix the bar ▣"} {
+	for expanded, want := range map[bool]string{false: "Fix the bar ¶ ▣ ", true: "Fix the bar ▣"} {
 		r := NewTaskLineRenderer(80, "text", "full", true).WithDescriptionExpanded(expanded)
-		assert.True(t, strings.HasSuffix(ansi.Strip(r.Render(one, false)), suffix), "expanded=%v", expanded)
+		assert.Contains(t, ansi.Strip(r.Render(one, false)), want, "expanded=%v", expanded)
 		assert.Contains(t, ansi.Strip(r.Render(two, true)), "▣2")
 		assert.NotContains(t, ansi.Strip(r.Render(plain, false)), "▣")
 	}

@@ -116,7 +116,7 @@ func TestTaskLineRenderer_RenderDescription(t *testing.T) {
 	})
 
 	t.Run("Render no longer appends description to task line", func(t *testing.T) {
-		renderer := NewTaskLineRenderer(80, "text", "full", true)
+		renderer := NewTaskLineRenderer(80, "text", "full", true).WithDescriptionExpanded(true)
 		task := domain.Task{
 			Title:       "Test task",
 			Status:      domain.StatusTodo,
@@ -153,5 +153,42 @@ func TestSafeWidth(t *testing.T) {
 
 	t.Run("returns minimum of 1 for negative result", func(t *testing.T) {
 		assert.Equal(t, 1, safeWidth(10, 20))
+	})
+}
+
+func TestTaskLineRenderer_DescriptionPreview(t *testing.T) {
+	task := domain.Task{Title: "Test task", Status: domain.StatusTodo, Description: "\n  First   line here\nsecond"}
+	line := func(r *TaskLineRenderer, selected bool) string { return ansi.Strip(r.Render(task, selected)) }
+
+	t.Run("hidden descriptions show the mark and the first line", func(t *testing.T) {
+		for _, selected := range []bool{false, true} {
+			assert.Contains(t, line(NewTaskLineRenderer(80, "text", "full", true), selected), "Test task ¶ First line here")
+		}
+	})
+
+	t.Run("shown descriptions show neither", func(t *testing.T) {
+		got := line(NewTaskLineRenderer(80, "text", "full", true).WithDescriptionExpanded(true), false)
+		assert.NotContains(t, got, "¶")
+		assert.NotContains(t, got, "First")
+	})
+
+	t.Run("the preview is cut to the free columns and never wraps", func(t *testing.T) {
+		r := NewTaskLineRenderer(40, "text", "full", true)
+		got := line(r, false)
+		assert.Equal(t, 40, ansi.StringWidth(strings.TrimRight(got, " ")), "the row fills its width")
+		assert.Contains(t, got, "…")
+		assert.Equal(t, 1, r.TitleRows(task))
+	})
+
+	t.Run("no room, no preview, the mark stays", func(t *testing.T) {
+		task.Title = strings.Repeat("a", 40)
+		got := ansi.Strip(NewTaskLineRenderer(60, "text", "full", true).Render(task, false))
+		assert.Contains(t, got, "¶")
+		assert.NotContains(t, got, "First")
+	})
+
+	t.Run("an image line reads as its label", func(t *testing.T) {
+		task.Description = "![mock](" + shotTarget + ")"
+		assert.Contains(t, line(NewTaskLineRenderer(80, "text", "full", true), false), "¶ ▣")
 	})
 }

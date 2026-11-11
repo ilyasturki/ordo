@@ -169,6 +169,11 @@ func (r *TaskLineRenderer) padToWidth(rendered string) string {
 
 const descriptionBar = "▎ "
 
+const descriptionMark = "¶"
+
+// descriptionPreviewMin is the free columns a title row needs before its description preview shows.
+const descriptionPreviewMin = 12
+
 // DescriptionPreviewLines is how many description lines an unfocused row shows
 // before truncating to a "… +N more lines" tail row.
 const DescriptionPreviewLines = 3
@@ -387,7 +392,7 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 	}
 	tagStyled := r.tagSegment(task, finished, false)
 	leading := tagStyled + iconStyled
-	descMarker := r.formatDescriptionBadge(task.Description, false) + r.formatImageBadge(task, false)
+	descMarker := r.formatDescriptionBadge(task.Description) + r.formatImageBadge(task, false)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, false)
 	cutBadge, _ := r.formatCutBadge(false)
 	suffix := cutBadge + r.formatProgressBadge(false) + descMarker + estimate + r.formatFilteredOutBadge(false)
@@ -399,7 +404,7 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 	}
 
 	indent := strings.Repeat(" ", ansi.StringWidth(prefixPart))
-	return r.wrapContentWithSuffix(task, prefixPart, leading, indent, titleStyle, suffix)
+	return r.wrapContentWithSuffix(task, prefixPart, leading, indent, titleStyle, suffix, false)
 }
 
 // tagSegment renders the leading tag mark and its trailing space, or "" when
@@ -440,7 +445,7 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 	tagStyled := r.tagSegment(task, finished, true)
 	leading := tagStyled + iconStyled
 
-	descMarker := r.formatDescriptionBadge(task.Description, true) + r.formatImageBadge(task, true)
+	descMarker := r.formatDescriptionBadge(task.Description) + r.formatImageBadge(task, true)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, true)
 	cutBadge, _ := r.formatCutBadge(true)
 	suffix := cutBadge + r.formatProgressBadge(true) + descMarker + estimate + r.formatFilteredOutBadge(true)
@@ -454,7 +459,7 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 	}
 
 	indent := r.selectedStyle().Render(strings.Repeat(" ", ansi.StringWidth(prefix+"["+statusText+"] ")))
-	return r.wrapContentWithSuffix(task, prefixPart, leading, indent, priorityStyle, suffix)
+	return r.wrapContentWithSuffix(task, prefixPart, leading, indent, priorityStyle, suffix, true)
 }
 
 // titleWidth reserves the trailing badges on every row although only the last carries them.
@@ -482,7 +487,7 @@ func (r *TaskLineRenderer) maxTitleRows(title string) int {
 
 // wrapContentWithSuffix lays the title out behind prefixPart, continuation rows
 // behind indent, with suffix on the last row.
-func (r *TaskLineRenderer) wrapContentWithSuffix(task domain.Task, prefixPart, leading, indent string, titleStyle lipgloss.Style, suffix string) string {
+func (r *TaskLineRenderer) wrapContentWithSuffix(task domain.Task, prefixPart, leading, indent string, titleStyle lipgloss.Style, suffix string, selected bool) string {
 	wrapLines := r.clampTitle(task.Title, r.titleWidth(task))
 	last := len(wrapLines) - 1
 
@@ -494,6 +499,7 @@ func (r *TaskLineRenderer) wrapContentWithSuffix(task domain.Task, prefixPart, l
 		}
 		if i == last {
 			rendered += suffix
+			rendered += r.descriptionPreview(task.Description, rendered, selected)
 		}
 		result[i] = rendered
 	}
@@ -605,15 +611,33 @@ func (r *TaskLineRenderer) formatProgressBadge(selected bool) string {
 	return ui.MutedStyle.Render(text)
 }
 
-func (r *TaskLineRenderer) formatDescriptionBadge(description string, selected bool) string {
-	text := r.descriptionBadgeText(description)
-	if text == "" {
+func (r *TaskLineRenderer) formatDescriptionBadge(description string) string {
+	if r.descriptionBadgeText(description) == "" {
 		return ""
 	}
-	if selected {
-		return r.selectedStyle().Render(text)
+	return " " + r.muteFilteredOut(r.maybeCut(ui.DescriptionMarkStyle)).Render(descriptionMark)
+}
+
+// descriptionPreview fills what is left of a title's last row with the first line of the description.
+func (r *TaskLineRenderer) descriptionPreview(description, rendered string, selected bool) string {
+	left := r.width - ansi.StringWidth(rendered)
+	if r.descriptionBadgeText(description) == "" || left < descriptionPreviewMin {
+		return ""
 	}
-	return ui.MutedStyle.Render(text)
+	text := ansi.Truncate(firstDescriptionLine(description), left-1, ui.Ellipsis)
+	if selected {
+		return " " + r.highlightLine(text, r.selectedStyle())
+	}
+	return " " + r.highlightLine(text, r.maybeCut(ui.MutedStyle))
+}
+
+func firstDescriptionLine(description string) string {
+	for _, line := range strings.Split(attachments.Display(description), "\n") {
+		if line = strings.Join(strings.Fields(line), " "); line != "" {
+			return line
+		}
+	}
+	return ""
 }
 
 func (r *TaskLineRenderer) formatImageBadge(task domain.Task, selected bool) string {
@@ -644,7 +668,7 @@ func (r *TaskLineRenderer) descriptionBadgeText(description string) string {
 	if description == "" || r.descriptionExpanded {
 		return ""
 	}
-	return " ¶"
+	return " " + descriptionMark
 }
 
 func (r *TaskLineRenderer) formatCutBadge(selected bool) (string, string) {
