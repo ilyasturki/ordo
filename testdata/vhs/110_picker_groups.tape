@@ -17,6 +17,7 @@ Show
 Ctrl+P
 Sleep 500ms
 Screenshot "/tmp/ordo-vt/vhs-out/110_groups.png"
+Sleep 500ms
 
 # m on an ungrouped project: the field offers the most recent group; P then tab completes Perso.
 Type "G"
@@ -24,14 +25,17 @@ Sleep 300ms
 Type "m"
 Sleep 300ms
 Screenshot "/tmp/ordo-vt/vhs-out/110_group_field_empty.png"
+Sleep 500ms
 Type "P"
 Sleep 300ms
 Screenshot "/tmp/ordo-vt/vhs-out/110_group_field_hint.png"
+Sleep 500ms
 Tab
 Sleep 300ms
 Enter
 Sleep 500ms
 Screenshot "/tmp/ordo-vt/vhs-out/110_group_set.png"
+Sleep 500ms
 
 # The search still runs across groups.
 Type "/o"

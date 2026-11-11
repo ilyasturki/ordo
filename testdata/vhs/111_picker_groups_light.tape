@@ -18,9 +18,11 @@ Show
 Ctrl+P
 Sleep 500ms
 Screenshot "/tmp/ordo-vt/vhs-out/111_light_groups.png"
+Sleep 500ms
 Type "m"
 Sleep 300ms
 Screenshot "/tmp/ordo-vt/vhs-out/111_light_group_field.png"
+Sleep 500ms
 Escape
 Sleep 300ms
 Escape
