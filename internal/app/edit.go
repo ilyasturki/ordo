@@ -141,19 +141,15 @@ func (m *model) startAddingNote() {
 	m.ensureVisible()
 }
 
-// insertLineRow puts an empty row of kind after the selection's top-level block.
-// A filter hides every such row, so it refuses one rather than add it out of reach.
+// insertLineRow puts an empty row of kind after the selection's top-level block,
+// refused when the filter would hide it out of reach.
 func (m *model) insertLineRow(kind string) (domain.Task, bool) {
 	position, ok := m.selectedPosition()
-	if !ok {
+	if !ok || position.Kind == selection.FocusHidden {
 		return domain.Task{}, false
 	}
 	catIndex := position.CategoryIndex
 	if catIndex < 0 || catIndex >= len(m.project.Categories) {
-		return domain.Task{}, false
-	}
-	if m.ui.Filter.HasActiveFilter() {
-		m.ui.Screen.StatusMsg = "Clear the filter to add a " + kind
 		return domain.Task{}, false
 	}
 	row, err := domain.NewLine(kind, "")
@@ -165,6 +161,14 @@ func (m *model) insertLineRow(kind string) (domain.Task, bool) {
 	switch position.Kind {
 	case selection.FocusTask, selection.FocusSeparator, selection.FocusDescription:
 		taskIndex = domain.BlockEnd(cat.Tasks, domain.BlockStart(cat.Tasks, position.TaskIndex))
+	}
+	if m.ui.Filter.HasActiveFilter() {
+		after := *cat
+		after.Tasks = append(append(append([]domain.Task(nil), cat.Tasks[:taskIndex]...), row), cat.Tasks[taskIndex:]...)
+		if !shownRows(after, &m.ui.Filter, nil)[taskIndex] {
+			m.ui.Screen.StatusMsg = "Clear the filter to add a " + kind + " here"
+			return domain.Task{}, false
+		}
 	}
 	m.recordHistory()
 	cat.InsertTask(taskIndex, row)

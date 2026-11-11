@@ -81,21 +81,6 @@ func TestAddNoteLeftEmptyIsDropped(t *testing.T) {
 	}
 }
 
-func TestAddNoteRefusedUnderAFilter(t *testing.T) {
-	m := newTestModel(t, noteProject())
-	m.ui.Filter = NewFilterState()
-	m.ui.Filter.statuses = map[string]bool{domain.StatusTodo: true}
-	m.rebuildPositions()
-	require.True(t, m.selectRow("t2"))
-	for _, p := range m.ui.Selection.Positions() {
-		require.NotEqual(t, "n1", p.ID, "a filter hides notes")
-	}
-
-	m, _ = pressKeys(m, "_")
-	assert.Equal(t, "Clear the filter to add a note", m.ui.Screen.StatusMsg)
-	assert.Len(t, m.project.Categories[0].Tasks, 4)
-}
-
 func TestEditNoteNeverEmptiesIt(t *testing.T) {
 	m := newTestModel(t, noteProject())
 	require.True(t, m.selectRow("n1"))

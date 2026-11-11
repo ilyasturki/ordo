@@ -240,6 +240,21 @@ func (f *FilterState) TaskVisible(task domain.Task, categoryID, parentCategoryID
 	return true
 }
 
+// LineMatches is a separator's or a note's own verdict: no status or priority, and
+// no "untagged" either, matches one; its tag does, and a category list alone keeps it.
+func (f *FilterState) LineMatches(line domain.Task, categoryID, parentCategoryID string) bool {
+	if !f.HasActiveFilter() {
+		return true
+	}
+	if !f.CategoryVisible(categoryID, parentCategoryID) {
+		return false
+	}
+	if len(f.statuses) == 0 && len(f.priorities) == 0 && len(f.tags) == 0 {
+		return true
+	}
+	return line.TagColor != "" && f.tags[line.TagColor]
+}
+
 func (f *FilterState) hold(taskID string) {
 	if f.held == nil {
 		f.held = make(map[string]bool)

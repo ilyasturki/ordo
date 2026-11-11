@@ -87,12 +87,34 @@ func (m *model) restoreSelection(kind selection.FocusKind, catID, taskID string)
 		(catID != "" && m.selectItem(selection.FocusCategory, catID))
 }
 
-// taskRowVisible is the filter's verdict alone; shownRows adds nesting and folds on top.
+// taskRowVisible is the filter's verdict alone; shownRows adds sections, nesting and folds on top.
 func taskRowVisible(filter *FilterState, task domain.Task, categoryID, parentCategoryID string) bool {
-	if !task.IsTask() {
-		return filter == nil || !filter.HasActiveFilter() || filter.peeks(categoryID)
+	if filter == nil || filter.holds(task.ID) || filter.peeks(categoryID) {
+		return true
 	}
-	return filter == nil || filter.holds(task.ID) || filter.peeks(categoryID) || filter.TaskVisible(task, categoryID, parentCategoryID)
+	if !task.IsTask() {
+		return filter.LineMatches(task, categoryID, parentCategoryID)
+	}
+	return filter.TaskVisible(task, categoryID, parentCategoryID)
+}
+
+// showSections shows a line whose section, from a separator to the next or the
+// category's end, has a task the filter shows.
+func showSections(cat domain.Category, shown []bool) {
+	for start := 0; start < len(cat.Tasks); {
+		end := start + 1
+		for end < len(cat.Tasks) && !cat.Tasks[end].IsSeparator() {
+			end++
+		}
+		visible := false
+		for i := start; i < end; i++ {
+			visible = visible || (cat.Tasks[i].IsTask() && shown[i])
+		}
+		for i := start; i < end; i++ {
+			shown[i] = shown[i] || (visible && !cat.Tasks[i].IsTask())
+		}
+		start = end
+	}
 }
 
 func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool {
@@ -100,6 +122,7 @@ func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool
 	for i, task := range cat.Tasks {
 		shown[i] = taskRowVisible(filter, task, cat.ID, cat.ParentID)
 	}
+	showSections(cat, shown)
 	for i := 0; i < len(cat.Tasks); {
 		end := domain.BlockEnd(cat.Tasks, i)
 		folded := fold != nil && fold.IsFolded(cat.Tasks[i].ID)
@@ -112,7 +135,7 @@ func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool
 	return shown
 }
 
-// hiddenByFilter leaves out separators, which every filter hides, and counts the same during a peek.
+// hiddenByFilter counts tasks alone, and the same during a peek.
 func hiddenByFilter(cat domain.Category, filter *FilterState) int {
 	if filter == nil || !filter.HasActiveFilter() {
 		return 0

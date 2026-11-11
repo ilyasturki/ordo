@@ -46,19 +46,6 @@ func TestRebuildPositionsEmitsSeparator(t *testing.T) {
 	assert.True(t, found, "expected a FocusSeparator position for the separator row")
 }
 
-func TestSeparatorHiddenWhileFiltered(t *testing.T) {
-	m := newTestModel(t, separatorProject())
-	m.ui.Filter = NewFilterState()
-	m.ui.Filter.statuses = map[string]bool{domain.StatusTodo: true}
-	m.rebuildPositions()
-
-	for _, p := range m.ui.Selection.Positions() {
-		if p.Kind == selection.FocusSeparator {
-			t.Fatal("separator should be hidden while a filter is active")
-		}
-	}
-}
-
 func TestStartAddingSeparatorInsertsBelow(t *testing.T) {
 	m := newTestModel(t, separatorProject())
 	// Select the first task (Alpha) then insert a separator below it.
@@ -99,20 +86,6 @@ func TestStartAddingTaskBelowSeparator(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, selection.FocusTask, pos.Kind)
 	assert.Equal(t, 2, pos.TaskIndex)
-}
-
-func TestStartAddingSeparatorBlockedWhileFiltered(t *testing.T) {
-	m := newTestModel(t, separatorProject())
-	m.ui.Filter = NewFilterState()
-	m.ui.Filter.statuses = map[string]bool{domain.StatusTodo: true}
-	m.rebuildPositions()
-	require.True(t, m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		return p.Kind == selection.FocusTask
-	}))
-
-	before := len(m.project.Categories[0].Tasks)
-	m.startAddingSeparator()
-	assert.Equal(t, before, len(m.project.Categories[0].Tasks), "insert must be blocked while filtered")
 }
 
 func TestDeleteSeparatorInstant(t *testing.T) {

@@ -174,7 +174,7 @@ Pins need no schema bump: an older ordo that saves the file drops `pinned` but k
 | Field | Type | Rule |
 | --- | --- | --- |
 | `folds` | array | Optional. IDs of the folded categories and of the folded tasks that have subtasks. |
-| `filter` | object | Optional. A list holds the values to keep, any of which matches, and a task must match every list that isn't empty. |
+| `filter` | object | Optional. A list holds the values to keep, any of which matches, and a task must match every list that isn't empty. A separator or a note shows when a task of its section shows, from a separator to the next or the category's end, or when its own tag is in `tags`; under `categories` alone, every one in a kept category shows. A status, a priority or `none` never matches one by itself. |
 | `filter.off` | boolean | Optional. `true` keeps the lists but shows every task, as with no filter. Only written beside a list; older builds ignore it, show the filter on and drop `off` when they write the filter. |
 | `filter.statuses` | array | Optional. Task statuses. |
 | `filter.priorities` | array | Optional. Priorities, with `none` for medium, the task without one. Older builds also wrote `medium`, which a reader folds into `none`. |

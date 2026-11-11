@@ -102,7 +102,7 @@ func (m *model) holdFilteredOut(ids []string) {
 	}
 	shown := make(map[string]bool)
 	for _, p := range m.positions() {
-		if p.Kind == selection.FocusTask {
+		if taggable(p.Kind) {
 			shown[p.ID] = true
 		}
 	}
@@ -113,8 +113,8 @@ func (m *model) holdFilteredOut(ids []string) {
 			continue
 		}
 		cat := m.project.Categories[ci]
-		if m.ui.Filter.TaskVisible(cat.Tasks[ti], cat.ID, cat.ParentID) {
-			m.ui.Filter.unhold(id)
+		m.ui.Filter.unhold(id)
+		if m.filterShows(cat, ti) {
 			continue
 		}
 		m.ui.Filter.hold(id)
@@ -127,12 +127,22 @@ func (m *model) holdFilteredOut(ids []string) {
 	}
 }
 
+// filterShows is the row's verdict with no peek: a line's follows its section.
+func (m *model) filterShows(cat domain.Category, ti int) bool {
+	if cat.Tasks[ti].IsTask() {
+		return m.ui.Filter.TaskVisible(cat.Tasks[ti], cat.ID, cat.ParentID)
+	}
+	unpeeked := m.ui.Filter
+	unpeeked.endPeek()
+	return shownRows(cat, &unpeeked, nil)[ti]
+}
+
 // releaseFilteredOut waits for normal mode: a visual range may still cover the held rows.
 func (m *model) releaseFilteredOut() {
 	if !m.ui.Modes.IsNormal() || !m.ui.Filter.holding() {
 		return
 	}
-	if id := m.cursorTaskID(); id != "" && m.ui.Filter.holds(id) {
+	if pos, ok := m.selectedPosition(); ok && taggable(pos.Kind) && m.ui.Filter.holds(pos.ID) {
 		return
 	}
 	m.ui.Filter.releaseHeld()
