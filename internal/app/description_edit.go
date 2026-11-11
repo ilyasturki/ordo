@@ -248,7 +248,6 @@ func (m model) descriptionEditView() string {
 		ui.RenderHints([]ui.Hint{
 			{Key: "enter", Label: "save"},
 			{Key: "shift+enter", Label: "newline"},
-			{Key: "ctrl+g", Label: "$EDITOR"},
 			{Key: "esc", Label: "cancel"},
 		}),
 	}
