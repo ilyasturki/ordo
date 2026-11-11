@@ -435,7 +435,6 @@ private fun HomeMenu(
     }
 }
 
-// The groups in use as chips under the group field: a tap sets one, the current one shows selected.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GroupChoices(groups: List<String>, current: String, onPick: (String) -> Unit) {
