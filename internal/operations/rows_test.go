@@ -286,6 +286,20 @@ func TestTagsMarkSeparatorsAndNotes(t *testing.T) {
 	if _, err := Apply(p, Op{Action: "tag.set", IDs: []string{"n"}, Value: ""}); err != nil || p.Categories[0].Tasks[2].TagColor != "" {
 		t.Fatalf("tag.set on a note: err = %v", err)
 	}
+
+	before := Clone(*p)
+	op := Op{Action: "tag.set", IDs: []string{"s"}, Value: domain.TagMagenta}
+	if _, err := Apply(p, op); err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range Undo(before, *p, op) {
+		if _, err := Apply(p, u); err != nil {
+			t.Fatalf("undo %+v: %v", u, err)
+		}
+	}
+	if got := p.Categories[0].Tasks[0].TagColor; got != before.Categories[0].Tasks[0].TagColor {
+		t.Fatalf("undo left the separator %q", got)
+	}
 }
 
 func TestEveryActionHasASurface(t *testing.T) {
