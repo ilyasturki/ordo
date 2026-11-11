@@ -109,7 +109,7 @@ func TestPasteKeepsPinsFirst(t *testing.T) {
 
 func TestThePinMarkFollowsTheName(t *testing.T) {
 	h := categoryHeader{name: "Release", pinned: true}
-	line := ansi.Strip(renderCategoryLine(h, false, 40, true, false, false, "", ui.MutedStyle))
+	line := ansi.Strip(renderCategoryLine(h, false, 40, ui.MaxLineRows, true, false, false, "", ui.MutedStyle))
 	assert.True(t, strings.HasPrefix(strings.TrimSpace(line), "▼ Release"+ui.PinMark), line)
 	assert.Equal(t, categoryNameWidth(40, categoryHeader{name: "Release"})-ansi.StringWidth(ui.PinMark), categoryNameWidth(40, h))
 }

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/ilyasturki/ordo/internal/app/components"
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/ui"
@@ -8,18 +10,36 @@ import (
 
 // rowLimits is the layout cache's key: any input that changes a row's height belongs here.
 type rowLimits struct {
+	// lineCap bounds every title, name and description; components.Uncapped shows them whole.
+	lineCap int
 	// expandedTask is shown uncapped, title and description.
 	expandedTask string
 }
 
+var lineCapSteps = []int{ui.MaxLineRows, 6, 10, components.Uncapped}
+
 func defaultRowLimits() rowLimits {
-	return rowLimits{}
+	return rowLimits{lineCap: lineCapSteps[0]}
 }
 
 func (m *model) rowLimits() rowLimits {
 	l := defaultRowLimits()
+	l.lineCap = lineCapSteps[m.ui.Screen.LineCapStep]
 	l.expandedTask = m.ui.Screen.ExpandedTaskID
 	return l
+}
+
+func (m *model) stepLineCap(delta int) {
+	m.ui.Screen.LineCapStep = min(max(m.ui.Screen.LineCapStep+delta, 0), len(lineCapSteps)-1)
+	m.ui.Screen.StatusMsg = lineCapStatus(lineCapSteps[m.ui.Screen.LineCapStep])
+	m.ensureVisible()
+}
+
+func lineCapStatus(limit int) string {
+	if limit == components.Uncapped {
+		return "Long text shows whole"
+	}
+	return fmt.Sprintf("Long text shows up to %d rows", limit)
 }
 
 func (l rowLimits) expands(taskID string) bool {
@@ -30,14 +50,18 @@ func (l rowLimits) titleRows(taskID string) int {
 	if l.expands(taskID) {
 		return components.Uncapped
 	}
-	return ui.MaxLineRows
+	return l.lineCap
 }
 
 func (l rowLimits) descriptionRows(taskID string) int {
 	if l.expands(taskID) {
 		return components.Uncapped
 	}
-	return components.DescriptionPreviewLines
+	return l.lineCap
+}
+
+func (l rowLimits) categoryRows(name string) int {
+	return components.MaxRows(l.lineCap, name)
 }
 
 // cursorTaskID is "" unless the cursor is on a task's title or description row, or on a note.
@@ -85,7 +109,7 @@ func (m *model) setExpandedTask(id string) {
 	m.ensureVisible()
 }
 
-// stepCursor scrolls an expanded row reaching past the screen edge before moving off it.
+// stepCursor scrolls an expanded row, or one taller than the screen, reaching past its edge before moving off it.
 func (m *model) stepCursor(delta int) {
 	if !m.scrollExpandedRow(delta) {
 		m.moveSelection(delta)
@@ -93,9 +117,10 @@ func (m *model) stepCursor(delta int) {
 }
 
 func (m *model) scrollExpandedRow(delta int) bool {
-	if m.ui.Screen.ExpandedTaskID == "" || m.ui.Screen.ExpandedTaskID != m.cursorTaskID() || m.selected() < 0 {
+	if m.selected() < 0 {
 		return false
 	}
+	expanded := m.ui.Screen.ExpandedTaskID != "" && m.ui.Screen.ExpandedTaskID == m.cursorTaskID()
 	layout := m.buildLayout()
 	start, end, ok := layout.rowRange(m.selected())
 	if !ok {
@@ -105,6 +130,9 @@ func (m *model) scrollExpandedRow(delta int) bool {
 	vp.ComputeVisibility(m.ui.Screen.TopRow)
 	top := vp.TopRow
 	bottom := top + vp.windowAt(top)
+	if !expanded && end-start <= bottom-top {
+		return false
+	}
 	if start >= bottom || end <= top {
 		return false // off screen: moving brings the cursor back into view
 	}

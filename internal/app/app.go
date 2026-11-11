@@ -877,7 +877,7 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 		}
 		cut := m.categoryRowCut(m.project.Categories[item.CategoryIndex])
 		header := headerOf(&m.project, item.CategoryIndex, &m.ui.Fold, cut, m.deps.CfgManager.Get().ShowCategoryCounts)
-		return renderCategoryLine(header, isSelected, m.ui.Screen.Width, focused, inVisualRange, isCursor, m.searchQuery(), m.searchMatchStyle(isCursor))
+		return renderCategoryLine(header, isSelected, m.ui.Screen.Width, m.rowLimits().lineCap, focused, inVisualRange, isCursor, m.searchQuery(), m.searchMatchStyle(isCursor))
 
 	case LayoutTask:
 		task := m.project.Categories[item.CategoryIndex].Tasks[item.TaskIndex]

@@ -7,6 +7,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Added
 
 - `ordo pick <name>` opens that project: the exact name, else a unique name prefix, else a unique part of a name (a capital makes it case-sensitive). When several match, the picker opens with the name already in its filter, and with none the command exits with `no project matches "<name>"`. Shell completion offers the project names
+- `z+` and `z-` show more or fewer rows of every long title, name and description: 3, 6, 10, then whole, and back. The status line says the new limit, and ordo starts at 3 again on the next launch. `j` and `k` scroll through a row taller than the screen before leaving it
 
 ### Changed
 

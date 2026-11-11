@@ -224,7 +224,7 @@ func (b *LayoutBuilder) countCategoryLines(project *domain.Project, catIdx int) 
 	category := project.Categories[catIdx]
 	cut := b.categoryCut != nil && b.categoryCut(category)
 	available := categoryNameWidth(b.width, headerOf(project, catIdx, b.fold, cut, b.categoryCounts))
-	return ui.CountClamped(category.Name, available, ui.MaxLineRows)
+	return ui.CountClamped(category.Name, available, b.limits.categoryRows(category.Name))
 }
 
 func (m *model) buildLayout() *Layout {

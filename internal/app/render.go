@@ -98,7 +98,7 @@ func (m model) withEditError(rows string, overhead int) string {
 	return rows + "\n" + strings.Repeat(" ", overhead) + ui.ErrorStyle.Render(msg)
 }
 
-func renderCategoryLine(h categoryHeader, selected bool, width int, focused bool, visualMode bool, isCursor bool, searchQuery string, searchMatch lipgloss.Style) string {
+func renderCategoryLine(h categoryHeader, selected bool, width, maxRows int, focused bool, visualMode bool, isCursor bool, searchQuery string, searchMatch lipgloss.Style) string {
 	name, estimateMinutes, aggregateStatus, cut := h.name, h.estimate, h.status, h.cut
 	prefix := "  " + strings.Repeat(" ", h.indent)
 	if selected {
@@ -203,7 +203,7 @@ func renderCategoryLine(h categoryHeader, selected bool, width int, focused bool
 	}
 
 	available := categoryNameWidth(width, h)
-	lines := ui.WrapClamped(name, available, ui.MaxLineRows, ui.FirstMatchIndex(name, searchQuery))
+	lines := ui.WrapClamped(name, available, components.MaxRows(maxRows, name), ui.FirstMatchIndex(name, searchQuery))
 	indent := strings.Repeat(" ", prefixWidth+h.indent+categoryFoldWidth)
 
 	var result []string

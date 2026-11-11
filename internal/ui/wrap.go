@@ -7,8 +7,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// MaxLineRows caps how many wrapped rows a single-line field — a task title, a
-// category name — may occupy in the list.
+// MaxLineRows is the default cap on how many wrapped rows a single-line field — a
+// task title, a category name — may occupy in the list; z+ raises it.
 //
 // Titles carry no length limit, so the bound has to live here instead: it holds
 // even on the focused row, so j/k past a long title never shifts the rows below.

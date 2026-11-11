@@ -75,6 +75,8 @@ type Screen struct {
 	HelpExpanded       bool
 	// ExpandedTaskID is shown in full by `ze` until the cursor leaves it.
 	ExpandedTaskID string
+	// LineCapStep indexes lineCapSteps, for this session only.
+	LineCapStep int
 	// WheelAccum accumulates mouse-wheel events between scroll steps. Trackpads
 	// and hi-res wheels emit several events per physical notch, so we only move
 	// a line once wheelScrollDivisor events pile up (see wheelTick). Sign tracks
