@@ -269,6 +269,25 @@ func TestSetTagsCountsOnlyChanges(t *testing.T) {
 	}
 }
 
+func TestTagsMarkSeparatorsAndNotes(t *testing.T) {
+	p := outline(t, "cat:a", "--s", "x")
+	note, _ := domain.NewLine(domain.KindNote, "n")
+	note.ID = "n"
+	p.Categories[0].Tasks = append(p.Categories[0].Tasks, note)
+	if n, err := SetTags(p, []string{"s", "n"}, domain.TagCyan); err != nil || n != 2 {
+		t.Fatalf("n = %d, err = %v", n, err)
+	}
+	if got := p.Categories[0].Tasks[1].TagColor; got != "" {
+		t.Fatalf("the task below took %q", got)
+	}
+	if color, err := CycleTags(p, []string{"s"}); err != nil || color != domain.NextTagColor(domain.TagCyan) {
+		t.Fatalf("color = %q, err = %v", color, err)
+	}
+	if _, err := Apply(p, Op{Action: "tag.set", IDs: []string{"n"}, Value: ""}); err != nil || p.Categories[0].Tasks[2].TagColor != "" {
+		t.Fatalf("tag.set on a note: err = %v", err)
+	}
+}
+
 func TestEveryActionHasASurface(t *testing.T) {
 	seen := make(map[string]bool)
 	for _, a := range Actions {

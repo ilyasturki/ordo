@@ -18,6 +18,17 @@ func realTasks(p *domain.Project, ids []string) []*domain.Task {
 	return out
 }
 
+// taggedRows is realTasks with separators and notes, which carry a mark too.
+func taggedRows(p *domain.Project, ids []string) []*domain.Task {
+	var out []*domain.Task
+	for _, id := range ids {
+		if ci, ti, err := LocateTask(p, id); err == nil {
+			out = append(out, &p.Categories[ci].Tasks[ti])
+		}
+	}
+	return out
+}
+
 // CycleStatus sets every task to the status after the first one's, so a batch steps together.
 func CycleStatus(p *domain.Project, ids []string, reverse bool) (string, int, error) {
 	tasks := realTasks(p, ids)
@@ -84,10 +95,10 @@ func StepPriority(p *domain.Project, id string, up bool) error {
 	return nil
 }
 
-// CycleTags gives every task the mark after the first one's; an untagged first takes the
+// CycleTags gives every row the mark after the first one's; an untagged first takes the
 // first mark no open task beside the batch uses.
 func CycleTags(p *domain.Project, ids []string) (string, error) {
-	tasks := realTasks(p, ids)
+	tasks := taggedRows(p, ids)
 	if len(tasks) == 0 {
 		return "", ErrNoChange
 	}
@@ -122,14 +133,14 @@ func tasksAround(p *domain.Project, ids []string) []domain.Task {
 	return out
 }
 
-// SetTags sets color ("" clears) on every task among ids and counts the ones it changed.
+// SetTags sets color ("" clears) on every row among ids and counts the ones it changed.
 func SetTags(p *domain.Project, ids []string, color string) (int, error) {
 	if err := domain.ValidateTagColor(color); err != nil {
 		return 0, err
 	}
 	color = domain.CanonicalTagColor(color)
 	changed := 0
-	for _, t := range realTasks(p, ids) {
+	for _, t := range taggedRows(p, ids) {
 		if t.TagColor == color {
 			continue
 		}

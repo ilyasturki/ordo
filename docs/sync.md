@@ -77,7 +77,7 @@ An op names its rows by ID and says where they end up, never how far they moved,
 | `task.delete` | `ids`, `keep` | Deletes the rows with their subtasks, or frees the subtasks with `keep`. |
 | `status.set` | `ids`, `value` | `todo`, `in_progress`, `completed` or `cancelled`. |
 | `priority.set` | `ids`, `value` | A priority, or empty for medium. `medium` from an older client lands as empty. |
-| `tag.set` | `ids`, `value` | A tag mark, or empty to clear it. A `-diamond` name from an older client lands as its colour's dot. |
+| `tag.set` | `ids`, `value` | A tag mark, or empty to clear it, on tasks, separators and notes. A `-diamond` name from an older client lands as its colour's dot. A server from before 0.14.3 leaves a separator or a note untagged and answers no change. |
 | `estimate.set` | `ids`, `value` | Minutes, `0` to clear. |
 | `task.place` | `ids`, `cat`, `parent`, `before` | Moves the rows' blocks above `before` in `cat`, under `parent` when set, or last without `before`. |
 | `task.move` | `ids`, `cat` | Moves the rows' blocks last in `cat`. |

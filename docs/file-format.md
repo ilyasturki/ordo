@@ -97,8 +97,8 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | `completion_date` | timestamp | Optional. Set when the status becomes `completed`, cleared when it leaves it. |
 | `estimate_minutes` | integer | Optional. |
 | `description` | string | Optional. The one field that may hold newlines and tabs. |
-| `kind` | string | Optional. `separator` turns the row into a divider, `note` into a line of free text; missing means an ordinary task. Either kind keeps only its `title`: no status, priority, estimate, description or tag. |
-| `tag_color` | string | Optional. A mark, drawn as a dot: `green`, `blue`, `magenta` or `cyan`. Older builds also wrote these names with `-diamond` appended; a reader takes such a name as its colour's dot, and ordo writes the plain name back on its next save. |
+| `kind` | string | Optional. `separator` turns the row into a divider, `note` into a line of free text; missing means an ordinary task. Either kind keeps only its `title` and `tag_color`: no status, priority, estimate or description. |
+| `tag_color` | string | Optional. A mark, drawn as a dot, on a task, a separator or a note: `green`, `blue`, `magenta` or `cyan`. Older builds also wrote these names with `-diamond` appended; a reader takes such a name as its colour's dot, and ordo writes the plain name back on its next save. |
 
 Every string is valid UTF-8 with no control characters: nothing below U+0020, no U+007F, nothing from U+0080 to U+009F. `description` is the exception for newline and tab. Ordo strips control characters from any file it loads, since a terminal would run them as commands.
 
