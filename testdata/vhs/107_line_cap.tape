@@ -1,4 +1,4 @@
-Output "/tmp/ordo-vt/vhs-out/105_line_cap.gif"
+Output "/tmp/ordo-vt/vhs-out/107_line_cap.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 900
@@ -22,23 +22,23 @@ Show
 
 Type "zd"
 Sleep 800ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_cap_3.png"
+Screenshot "/tmp/ordo-vt/vhs-out/107_cap_3.png"
 
 Type "z+"
 Sleep 800ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_cap_6.png"
+Screenshot "/tmp/ordo-vt/vhs-out/107_cap_6.png"
 
 Type "z+"
 Sleep 800ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_cap_10.png"
+Screenshot "/tmp/ordo-vt/vhs-out/107_cap_10.png"
 
 Type "z+"
 Sleep 800ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_cap_whole.png"
+Screenshot "/tmp/ordo-vt/vhs-out/107_cap_whole.png"
 
 Type "z-z-z-"
 Sleep 800ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_cap_back_to_3.png"
+Screenshot "/tmp/ordo-vt/vhs-out/107_cap_back_to_3.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
