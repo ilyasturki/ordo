@@ -1,0 +1,25 @@
+{
+  "schema": 2,
+  "id": "9b0f6c1e-3d52-4a7b-8c14-5e2a7d9f1b30",
+  "name": "Marks",
+  "created_at": "2026-10-01T09:00:00Z",
+  "updated_at": "2026-10-09T18:00:00Z",
+  "categories": [
+    {
+      "id": "c-marks",
+      "name": "Descriptions",
+      "created_at": "2026-10-01T09:01:00Z",
+      "tasks": [
+        {"id": "t-short", "title": "Rest timer", "status": "todo", "created_at": "2026-10-01T09:10:00Z", "updated_at": "2026-10-01T09:10:00Z", "priority": "medium", "description": "Count the rest between two sets down from the last set's length.\nBuzz when it ends."},
+        {"id": "t-plain", "title": "Pick a default rest length", "status": "todo", "created_at": "2026-10-01T09:11:00Z", "updated_at": "2026-10-01T09:11:00Z", "priority": "low"},
+        {"id": "t-long", "title": "Rework the onboarding flow so a first launch walks through the three screens that matter before any data exists, and skips the rest", "status": "in_progress", "created_at": "2026-10-01T09:12:00Z", "updated_at": "2026-10-01T09:12:00Z", "priority": "high", "estimate_minutes": 120, "description": "Welcome, units, first workout.\n\nThe skip link stays on every screen.\n![mock](/tmp/ordo-vt/mock.png)\n- keep it under 30 seconds\n- no account\n- no permissions asked up front"},
+        {"id": "t-done", "title": "Fix date formatting in reports", "status": "completed", "created_at": "2026-10-01T09:13:00Z", "updated_at": "2026-10-02T09:13:00Z", "completion_date": "2026-10-02T09:13:00Z", "priority": "low", "description": "Dates rendered with the locale default; pinned to ISO 8601."},
+        {"id": "t-plain2", "title": "Polish the help overlay", "status": "todo", "created_at": "2026-10-01T09:14:00Z", "updated_at": "2026-10-01T09:14:00Z"},
+        {"id": "t-parent", "title": "Export a workout as CSV", "status": "todo", "created_at": "2026-10-01T09:15:00Z", "updated_at": "2026-10-01T09:15:00Z", "tag_color": "blue"},
+        {"id": "t-sub1", "parent_id": "t-parent", "title": "Pick the columns", "status": "completed", "created_at": "2026-10-01T09:16:00Z", "updated_at": "2026-10-02T09:16:00Z", "completion_date": "2026-10-02T09:16:00Z"},
+        {"id": "t-sub2", "parent_id": "t-parent", "title": "Quote commas in notes", "status": "todo", "created_at": "2026-10-01T09:17:00Z", "updated_at": "2026-10-01T09:17:00Z", "description": "RFC 4180: wrap in double quotes, double the inner quotes."},
+        {"id": "t-sub3", "parent_id": "t-parent", "title": "Write the file next to the database", "status": "todo", "created_at": "2026-10-01T09:18:00Z", "updated_at": "2026-10-01T09:18:00Z"}
+      ]
+    }
+  ]
+}
