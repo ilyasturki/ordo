@@ -392,10 +392,10 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 	}
 	tagStyled := r.tagSegment(task, finished, false)
 	leading := tagStyled + iconStyled
-	descMarker := r.formatDescriptionBadge(task.Description) + r.formatImageBadge(task, false)
+	imageBadge := r.formatImageBadge(task, false)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, false)
 	cutBadge, _ := r.formatCutBadge(false)
-	suffix := cutBadge + r.formatProgressBadge(false) + descMarker + estimate + r.formatFilteredOutBadge(false)
+	suffix := cutBadge + r.formatProgressBadge(false) + imageBadge + estimate + r.formatFilteredOutBadge(false) + r.formatDescriptionBadge(task.Description, false)
 	titleStyle := r.muteFilteredOut(r.maybeCut(ui.TaskTitleStyle(task.Priority, task.Status, r.priorityColor)))
 	prefixPart := fmt.Sprintf("%s[%s] ", prefix, status)
 
@@ -445,10 +445,10 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 	tagStyled := r.tagSegment(task, finished, true)
 	leading := tagStyled + iconStyled
 
-	descMarker := r.formatDescriptionBadge(task.Description) + r.formatImageBadge(task, true)
+	imageBadge := r.formatImageBadge(task, true)
 	estimate := r.formatEstimateBadge(task.EstimateMinutes, true)
 	cutBadge, _ := r.formatCutBadge(true)
-	suffix := cutBadge + r.formatProgressBadge(true) + descMarker + estimate + r.formatFilteredOutBadge(true)
+	suffix := cutBadge + r.formatProgressBadge(true) + imageBadge + estimate + r.formatFilteredOutBadge(true) + r.formatDescriptionBadge(task.Description, true)
 
 	prefixPart := selectedStyle.Render(prefix+"[") +
 		statusStyle.Render(statusText) +
@@ -469,7 +469,7 @@ func (r *TaskLineRenderer) titleWidth(task domain.Task) int {
 		lead += icon + " "
 	}
 	_, cutText := r.formatCutBadge(false)
-	badges := cutText + r.progressBadgeText() + r.descriptionBadgeText(task.Description) + imageBadgeText(task) + r.estimateBadgeText(task.EstimateMinutes) + r.filteredOutBadgeText()
+	badges := cutText + r.progressBadgeText() + imageBadgeText(task) + r.estimateBadgeText(task.EstimateMinutes) + r.filteredOutBadgeText() + r.descriptionBadgeText(task.Description)
 	return safeWidth(r.width, ansi.StringWidth(lead+badges))
 }
 
@@ -611,14 +611,17 @@ func (r *TaskLineRenderer) formatProgressBadge(selected bool) string {
 	return ui.MutedStyle.Render(text)
 }
 
-func (r *TaskLineRenderer) formatDescriptionBadge(description string) string {
-	if r.descriptionBadgeText(description) == "" {
+func (r *TaskLineRenderer) formatDescriptionBadge(description string, selected bool) string {
+	text := r.descriptionBadgeText(description)
+	if text == "" {
 		return ""
+	}
+	if selected {
+		return r.selectedStyle().Render(text)
 	}
 	return " " + r.muteFilteredOut(r.maybeCut(ui.DescriptionMarkStyle)).Render(descriptionMark)
 }
 
-// descriptionPreview fills what is left of a title's last row with the first line of the description.
 func (r *TaskLineRenderer) descriptionPreview(description, rendered string, selected bool) string {
 	left := r.width - ansi.StringWidth(rendered)
 	if r.descriptionBadgeText(description) == "" || left < descriptionPreviewMin {
@@ -626,7 +629,7 @@ func (r *TaskLineRenderer) descriptionPreview(description, rendered string, sele
 	}
 	text := ansi.Truncate(firstDescriptionLine(description), left-1, ui.Ellipsis)
 	if selected {
-		return " " + r.highlightLine(text, r.selectedStyle())
+		return r.selectedStyle().Render(" ") + r.highlightLine(text, r.selectedStyle())
 	}
 	return " " + r.highlightLine(text, r.maybeCut(ui.MutedStyle))
 }
