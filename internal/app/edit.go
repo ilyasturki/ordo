@@ -598,6 +598,7 @@ func (m *model) handlePaste(text string) tea.Cmd {
 		case m.ui.Picker.isAdding || m.ui.Picker.grouping:
 			m.ui.Picker.input, cmd = m.ui.Picker.input.Update(flat)
 			sanitizeInput(&m.ui.Picker.input)
+			m.ui.Picker.groupCycling = false
 		case m.ui.Picker.filtering:
 			cmd = m.updatePickerFilter(flat)
 		default:

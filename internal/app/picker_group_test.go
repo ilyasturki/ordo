@@ -169,6 +169,41 @@ func TestGroupOnTheOpenProjectSurvivesItsNextEdit(t *testing.T) {
 	assert.Equal(t, "Edited after", edited.Title)
 }
 
+func TestUndoAfterAGroupKeepsTheGroup(t *testing.T) {
+	m, store, alpha, _ := groupStoreModel(t)
+	m.ui.Modes.ToNormal()
+	task := tasksIn(m.project, 1)[0]
+	m.recordHistory()
+	retitle(&m.project, task.ID, "Edited before")
+	m.storeTaskUpdate()
+	require.NoError(t, m.ui.Save.Err)
+
+	m.openProjectPicker()
+	m.ui.Picker.selected = indexOf(m.ui.Picker.projects, alpha.ID)
+	pressPickerKey(t, m, "m")
+	typeIn(t, m, "Work")
+	hit(m, "enter")
+	require.Equal(t, "Work", m.project.Group)
+
+	m.undo()
+	assert.Equal(t, "Work", m.project.Group)
+	undone, _ := findTask(m.project, task.ID)
+	assert.Equal(t, task.Title, undone.Title)
+	assert.Equal(t, "Work", onDisk(t, store, alpha.ID).Group)
+}
+
+func TestGroupFieldCyclesFromAGroupTypedInAnotherCase(t *testing.T) {
+	m := newPickerModel(t, 0, 80, 40)
+	m.ui.Picker.projects = []domain.Project{
+		grouped("Ferry", "Work", ""), grouped("Garden", "Perso", ""), {ID: "loose", Name: "Loose"},
+	}
+	m.ui.Picker.selected = 2
+	pressPickerKey(t, m, "m")
+	typeIn(t, m, "work")
+	hit(m, "tab")
+	assert.Equal(t, "Perso", m.ui.Picker.input.Value())
+}
+
 func TestGroupFieldCompletesAndCyclesTheGroupsInUse(t *testing.T) {
 	m := newPickerModel(t, 0, 80, 40)
 	m.ui.Picker.projects = []domain.Project{

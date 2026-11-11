@@ -44,7 +44,6 @@ func groupProjects(ordered []domain.Project) []domain.Project {
 	return out
 }
 
-// pickerRow is one line of the picker's list: a project, or the separator heading a group.
 type pickerRow struct {
 	project int // index into projects, -1 on a separator
 	label   string
@@ -53,7 +52,7 @@ type pickerRow struct {
 // pickerRows heads each group with a separator, the projects without one with a bare rule, and
 // draws none while no project has a group.
 func pickerRows(projects []domain.Project) []pickerRow {
-	grouped := slices.ContainsFunc(projects, func(p domain.Project) bool { return p.Group != "" })
+	grouped := slices.ContainsFunc(projects, func(p domain.Project) bool { return groupKey(p) != "" })
 	rows := make([]pickerRow, 0, len(projects))
 	for i, p := range projects {
 		if grouped && (i == 0 || groupKey(projects[i-1]) != groupKey(p)) {
@@ -62,15 +61,6 @@ func pickerRows(projects []domain.Project) []pickerRow {
 		rows = append(rows, pickerRow{project: i})
 	}
 	return rows
-}
-
-func (p *ProjectPickerState) rowOf(project int) int {
-	for r, row := range pickerRows(p.projects) {
-		if row.project == project {
-			return r
-		}
-	}
-	return 0
 }
 
 // projectGroups are the groups in use, the most recent first, each spelt as its most recent project has it.
@@ -122,10 +112,11 @@ func (p *ProjectPickerState) completeGroup() {
 	value := p.input.Value()
 	if !p.groupCycling {
 		p.groupCycling, p.groupStem, p.groupNext = true, value, 0
-		if slices.Contains(p.groupsLike(""), strings.TrimSpace(value)) {
+		names := func(g string) bool { return domain.NormalizeName(g) == domain.NormalizeName(value) }
+		if slices.ContainsFunc(p.groupsLike(""), names) {
 			p.groupStem = ""
 		}
-		if i := slices.Index(p.groupsLike(p.groupStem), strings.TrimSpace(value)); i >= 0 {
+		if i := slices.IndexFunc(p.groupsLike(p.groupStem), names); i >= 0 {
 			p.groupNext = i + 1
 		}
 	}
@@ -144,9 +135,10 @@ func (p *ProjectPickerState) groupHint() string {
 	if p.groupCycling || p.input.Position() < len([]rune(value)) {
 		return ""
 	}
-	for _, g := range p.groupsLike(value) {
-		if len([]rune(g)) > len([]rune(value)) {
-			return string([]rune(g)[len([]rune(value)):])
+	n := len([]rune(value))
+	for _, g := range projectGroups(p.projects) {
+		if r := []rune(g); len(r) > n && strings.EqualFold(string(r[:n]), value) {
+			return string(r[n:])
 		}
 	}
 	return ""
@@ -185,7 +177,9 @@ func (m *model) setProjectGroup(id, value string) {
 		if m.ui.Modes.IsConflict() {
 			return
 		}
+		mine := cloneProject(m.project)
 		if out, err = operations.Apply(&m.project, op); err == nil {
+			m.ui.History.rebase(mine, m.project)
 			m.storeTaskUpdate()
 		}
 	} else {
@@ -196,6 +190,7 @@ func (m *model) setProjectGroup(id, value string) {
 			return applyErr
 		})
 		if err == nil && id == m.project.ID {
+			m.ui.History.rebase(m.project, saved)
 			m.showProject(saved)
 		}
 	}
@@ -214,21 +209,19 @@ func (m *model) setProjectGroup(id, value string) {
 	m.reloadPickerProjects(id)
 }
 
-// reloadPickerProjects lists the projects again in order, the cursor on id.
 func (m *model) reloadPickerProjects(id string) {
 	projects, err := m.deps.Store.ListProjects()
 	if err != nil {
 		m.ui.Screen.StatusMsg = fmt.Sprintf("Error reloading projects: %v", err)
 		return
 	}
-	p := &m.ui.Picker
-	projects = orderProjects(projects, m.deps.StateManager.GetLastOpened())
-	if p.filtering {
-		p.allProjects = projects
-		p.applyFilter(m.pickerVisibleCount())
-	} else {
-		p.projects = projects
+	for i := range projects {
+		if projects[i].ID == m.project.ID {
+			projects[i].Group = m.project.Group
+		}
 	}
+	p := &m.ui.Picker
+	p.projects = orderProjects(projects, m.deps.StateManager.GetLastOpened())
 	if i := slices.IndexFunc(p.projects, func(pr domain.Project) bool { return pr.ID == id }); i >= 0 {
 		p.onNew, p.selected = false, i
 	}

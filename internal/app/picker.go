@@ -511,7 +511,7 @@ func (p *ProjectPickerState) ensureVisible(visible int) {
 			scrollOff = maxOff
 		}
 
-		row := p.rowOf(p.selected)
+		row := max(slices.IndexFunc(rows, func(r pickerRow) bool { return r.project == p.selected }), 0)
 		top := row
 		if top > 0 && rows[top-1].project < 0 {
 			top--
