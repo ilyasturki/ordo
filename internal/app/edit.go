@@ -539,7 +539,7 @@ func (m model) forwardToInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sanitizeInput(&m.ui.TaskCommand.input)
 		return m, cmd
 	}
-	if m.ui.Picker.isAdding {
+	if m.ui.Picker.isAdding || m.ui.Picker.grouping {
 		var cmd tea.Cmd
 		m.ui.Picker.input, cmd = m.ui.Picker.input.Update(msg)
 		sanitizeInput(&m.ui.Picker.input)
@@ -595,7 +595,7 @@ func (m *model) handlePaste(text string) tea.Cmd {
 		cmd = tea.Batch(cmd, m.updateHelpFilter(flat))
 	case modes.ModeProjectPicker:
 		switch {
-		case m.ui.Picker.isAdding:
+		case m.ui.Picker.isAdding || m.ui.Picker.grouping:
 			m.ui.Picker.input, cmd = m.ui.Picker.input.Update(flat)
 			sanitizeInput(&m.ui.Picker.input)
 		case m.ui.Picker.filtering:

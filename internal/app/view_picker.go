@@ -32,7 +32,7 @@ const (
 )
 
 // pickerNormalHints are the footer hints shown while browsing the picker. Plain
-// navigation (j/k, paging, g/G) is intentionally omitted per dialog-footer
+// navigation (j/k, paging, g/G, ⏎ to open) is intentionally omitted per dialog-footer
 // convention; only picker-specific actions are listed. link is the label of l,
 // "unlink" on the linked row.
 func (m model) pickerNormalHints(link string) []ui.Hint {
@@ -41,10 +41,10 @@ func (m model) pickerNormalHints(link string) []ui.Hint {
 		back = "quit"
 	}
 	return []ui.Hint{
-		{Key: "⏎", Label: "select"},
 		{Key: "a", Label: "new"},
 		{Key: "/", Label: "search"},
 		{Key: "l", Label: link},
+		{Key: "m", Label: "group"},
 		{Key: "d", Label: "delete"},
 		{Key: "esc", Label: back},
 	}
@@ -54,6 +54,8 @@ func (m model) pickerHints() []ui.Hint {
 	switch {
 	case m.ui.Picker.isAdding:
 		return []ui.Hint{{Key: "⏎", Label: "create"}, {Key: "esc", Label: "cancel"}}
+	case m.ui.Picker.grouping:
+		return []ui.Hint{{Key: "⏎", Label: "set"}, {Key: "tab", Label: "complete"}, {Key: "esc", Label: "cancel"}}
 	case m.ui.Picker.filtering:
 		return []ui.Hint{{Key: "⏎", Label: "select"}, {Key: "esc", Label: "clear"}}
 	}
@@ -84,8 +86,9 @@ func (m model) pickerHintRows() int {
 	return lipgloss.Height(rendered)
 }
 
+// pickerVisibleCount is in list rows, a group's separator counting as one.
 func (m model) pickerVisibleCount() int {
-	total := len(m.ui.Picker.projects)
+	total := len(pickerRows(m.ui.Picker.projects))
 	if m.ui.Screen.Height <= 0 {
 		return min(total, pickerFallbackVisible)
 	}
@@ -127,12 +130,16 @@ func (m model) pickerBody(contentWidth int) []string {
 	// While filtering, the query prompt takes the pinned top row's place: New
 	// Project isn't a filter target, so it's hidden until the filter is cleared.
 	topLine := m.renderNewProjectLine(contentWidth)
-	if p.filtering {
+	switch {
+	case p.grouping:
+		topLine = m.renderPickerGroupLine()
+	case p.filtering:
 		topLine = m.renderPickerFilterLine(contentWidth)
 	}
 	lines := []string{ui.DialogTitleStyle.Render(title), "", topLine, ""}
 
-	n := len(p.projects)
+	rows := pickerRows(p.projects)
+	n := len(rows)
 	start := p.scrollOffset
 	end := min(start+m.pickerVisibleCount(), n)
 
@@ -150,9 +157,13 @@ func (m model) pickerBody(contentWidth int) []string {
 	}
 	cols := measurePickerColumns(source, contentWidth)
 	linkedID := m.linkedProjectID()
-	for i := start; i < end; i++ {
-		isSelected := !p.onNew && !p.isAdding && i == p.selected
-		lines = append(lines, m.renderPickerRow(i, isSelected, linkedID, cols, contentWidth))
+	for _, row := range rows[start:end] {
+		if row.project < 0 {
+			lines = append(lines, m.renderPickerSeparator(row.label, contentWidth))
+			continue
+		}
+		isSelected := !p.onNew && !p.isAdding && row.project == p.selected
+		lines = append(lines, m.renderPickerRow(row.project, isSelected, linkedID, cols, contentWidth))
 	}
 	if end < n {
 		lines = append(lines, ui.DialogHintStyle.Render(scrollMoreBelow))

@@ -61,7 +61,7 @@ func orderProjects(projects []domain.Project, lastOpened map[string]string) []do
 			cmp.Compare(a.ID, b.ID),
 		)
 	})
-	return ordered
+	return groupProjects(ordered)
 }
 
 func recency(p domain.Project, lastOpened map[string]string) time.Time {
@@ -81,6 +81,9 @@ func (m *model) markOpened(id string) {
 func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	if m.ui.Picker.isAdding {
 		return m.handlePickerAddKey(msg)
+	}
+	if m.ui.Picker.grouping {
+		return m.handlePickerGroupKey(msg)
 	}
 	if m.ui.Picker.filtering {
 		return m.handlePickerFilterKey(msg)
@@ -123,6 +126,8 @@ func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 		}
 	case "d":
 		m.initiateProjectDelete()
+	case "m":
+		m.startGrouping()
 	case "esc", "q":
 		if m.project.ID == "" {
 			return m, tea.Quit
@@ -497,7 +502,8 @@ func (p *ProjectPickerState) ensureVisible(visible int) {
 	if visible < 1 {
 		visible = 1
 	}
-	n := len(p.projects)
+	rows := pickerRows(p.projects)
+	n := len(rows)
 
 	if !p.onNew {
 		scrollOff := pickerScrollOff
@@ -505,11 +511,16 @@ func (p *ProjectPickerState) ensureVisible(visible int) {
 			scrollOff = maxOff
 		}
 
-		if p.selected < p.scrollOffset+scrollOff {
-			p.scrollOffset = p.selected - scrollOff
+		row := p.rowOf(p.selected)
+		top := row
+		if top > 0 && rows[top-1].project < 0 {
+			top--
 		}
-		if p.selected > p.scrollOffset+visible-1-scrollOff {
-			p.scrollOffset = p.selected - visible + 1 + scrollOff
+		if top < p.scrollOffset+scrollOff {
+			p.scrollOffset = top - scrollOff
+		}
+		if row > p.scrollOffset+visible-1-scrollOff {
+			p.scrollOffset = row - visible + 1 + scrollOff
 		}
 	}
 

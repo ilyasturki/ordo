@@ -385,6 +385,12 @@ type ProjectPickerState struct {
 	query       string
 	allProjects []domain.Project
 	fullscreen  bool
+	// grouping edits the group of groupFor in input; tab cycles groupStem's matches from groupNext.
+	grouping     bool
+	groupFor     string
+	groupCycling bool
+	groupStem    string
+	groupNext    int
 }
 
 func (p *ProjectPickerState) reset() {

@@ -301,7 +301,7 @@ func (m model) lineInputFocused() bool {
 	case modes.ModeHelp:
 		return m.ui.Help.Filtering
 	case modes.ModeProjectPicker:
-		return m.ui.Picker.isAdding || m.ui.Picker.filtering
+		return m.ui.Picker.isAdding || m.ui.Picker.filtering || m.ui.Picker.grouping
 	}
 	return false
 }
