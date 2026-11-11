@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/ilyasturki/ordo/internal/app"
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
@@ -56,6 +57,24 @@ func completeProjects(cmd *cobra.Command, args []string, toComplete string) ([]s
 		completions = append(completions, p.Name)
 	}
 	return completions, cobra.ShellCompDirectiveNoFileComp
+}
+
+func completeProjectThenGroup(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) == 0 {
+		return completeProjects(cmd, args, toComplete)
+	}
+	if len(args) > 1 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	store, err := storeFromViper()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	projects, err := store.ListProjects()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return app.ProjectGroups(projects), cobra.ShellCompDirectiveNoFileComp
 }
 
 func completeTasks(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

@@ -13,6 +13,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/config"
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
@@ -101,10 +102,15 @@ func newPickCmd() *cobra.Command {
 }
 
 func newProjectsCmd() *cobra.Command {
+	return newListProjectsCmd("projects", "ps")
+}
+
+func newListProjectsCmd(use, alias string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "projects",
-		Aliases: []string{"ps"},
-		Short:   "List all projects",
+		Use:     use,
+		Aliases: []string{alias},
+		Short:   "List all projects, by group as the picker lists them",
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := storeFromViper()
 			if err != nil {
@@ -114,7 +120,11 @@ func newProjectsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return writeProjects(cmd.OutOrStdout(), projects)
+			var opened map[string]string
+			if mgr, err := stateManagerFromViper(); err == nil {
+				opened = mgr.GetLastOpened()
+			}
+			return writeProjects(cmd.OutOrStdout(), app.OrderProjects(projects, opened))
 		},
 	}
 	return cmd
@@ -126,9 +136,11 @@ func newProjectCmd() *cobra.Command {
 		Short: "Manage projects",
 	}
 
+	cmd.AddCommand(newListProjectsCmd("list", "ls"))
 	cmd.AddCommand(newProjectShowCmd())
 	cmd.AddCommand(newProjectAddCmd())
 	cmd.AddCommand(newProjectEditCmd())
+	cmd.AddCommand(newProjectGroupCmd())
 	cmd.AddCommand(newProjectDeleteCmd())
 	cmd.AddCommand(newProjectLinkCmd())
 	cmd.AddCommand(newProjectUnlinkCmd())
@@ -206,6 +218,44 @@ func newProjectEditCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&name, "name", "n", "", "new project name")
 
+	return cmd
+}
+
+func newProjectGroupCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "group <project> [group]",
+		Aliases:           []string{"pg"},
+		Short:             "Show a project's group, or set it (\"\" clears it)",
+		Args:              cobra.RangeArgs(1, 2),
+		ValidArgsFunction: completeProjectThenGroup,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, project, err := loadStoreAndProject(args[0])
+			if err != nil {
+				return err
+			}
+			if len(args) == 1 {
+				if project.Group != "" {
+					fmt.Fprintln(cmd.OutOrStdout(), project.Group)
+				} else if !isQuiet() {
+					fmt.Fprintf(cmd.OutOrStdout(), "%s has no group.\n", project.Name)
+				}
+				return nil
+			}
+			var out operations.Outcome
+			_, err = store.WithProjectLocked(project.ID, func(p *domain.Project) error {
+				out, err = operations.Apply(p, operations.Op{Action: "project.group", Value: args[1]})
+				return err
+			})
+			switch {
+			case errors.Is(err, operations.ErrNoChange):
+				return nil
+			case err != nil:
+				return err
+			}
+			writeSuccess(cmd.OutOrStdout(), out.Msg)
+			return nil
+		},
+	}
 	return cmd
 }
 

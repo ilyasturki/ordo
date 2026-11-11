@@ -40,6 +40,7 @@ func isLong() bool {
 type ProjectListItem struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
+	Group     string `json:"group,omitempty"`
 	CreatedAt string `json:"created_at"`
 }
 
@@ -56,6 +57,7 @@ func writeProjects(w io.Writer, projects []domain.Project) error {
 			output.Projects = append(output.Projects, ProjectListItem{
 				ID:        p.ID,
 				Name:      p.Name,
+				Group:     p.Group,
 				CreatedAt: p.CreatedAt,
 			})
 		}
@@ -69,7 +71,8 @@ func writeProjects(w io.Writer, projects []domain.Project) error {
 		return nil
 	}
 
-	if !isLong() {
+	grouped := slices.ContainsFunc(projects, func(p domain.Project) bool { return p.Group != "" })
+	if !isLong() && !grouped {
 		for _, p := range projects {
 			fmt.Fprintln(w, p.Name)
 		}
@@ -77,9 +80,16 @@ func writeProjects(w io.Writer, projects []domain.Project) error {
 	}
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "NAME\tID\tCREATED")
+	if !isLong() {
+		fmt.Fprintln(tw, "NAME\tGROUP")
+		for _, p := range projects {
+			fmt.Fprintf(tw, "%s\t%s\n", p.Name, p.Group)
+		}
+		return tw.Flush()
+	}
+	fmt.Fprintln(tw, "NAME\tGROUP\tID\tCREATED")
 	for _, p := range projects {
-		fmt.Fprintf(tw, "%s\t%s\t%s\n", p.Name, p.ID, app.FormatDate(p.CreatedAt))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", p.Name, p.Group, p.ID, app.FormatDate(p.CreatedAt))
 	}
 	return tw.Flush()
 }
@@ -329,6 +339,7 @@ type ProjectDetailOutput struct {
 type ProjectDetail struct {
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
+	Group         string   `json:"group,omitempty"`
 	CreatedAt     string   `json:"created_at"`
 	UpdatedAt     string   `json:"updated_at"`
 	CategoryCount int      `json:"category_count"`
@@ -347,6 +358,7 @@ func writeProjectDetail(w io.Writer, project domain.Project) error {
 	detail := ProjectDetail{
 		ID:            project.ID,
 		Name:          project.Name,
+		Group:         project.Group,
 		CreatedAt:     project.CreatedAt,
 		UpdatedAt:     project.UpdatedAt,
 		CategoryCount: len(project.Categories),
@@ -360,6 +372,9 @@ func writeProjectDetail(w io.Writer, project domain.Project) error {
 	}
 
 	fmt.Fprintf(w, "Name:       %s\n", detail.Name)
+	if detail.Group != "" {
+		fmt.Fprintf(w, "Group:      %s\n", detail.Group)
+	}
 	fmt.Fprintf(w, "Categories: %d\n", detail.CategoryCount)
 	fmt.Fprintf(w, "Tasks:      %d\n", detail.TaskCount)
 	fmt.Fprintf(w, "Created:    %s\n", app.FormatDate(detail.CreatedAt))
