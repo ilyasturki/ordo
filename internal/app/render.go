@@ -250,14 +250,15 @@ func (m model) renderTaskLine(catIdx, taskIdx int, selected bool, width int, foc
 	cfg := m.deps.CfgManager.Get()
 	cat := m.project.Categories[catIdx]
 	task := cat.Tasks[taskIdx]
+	limits := m.rowLimits()
 	renderer := components.NewTaskLineRenderer(width, cfg.StatusDisplay, cfg.PriorityColor, focused).
 		WithNesting(taskIndent(cat, taskIdx), taskProgress(cat, taskIdx, &m.ui.Fold)).
 		WithVisualMode(visualMode).
 		WithCursor(isCursor).
 		WithCut(cut).
 		WithFilteredOut(m.ui.Filter.FilteredOut(task, cat.ID, cat.ParentID)).
-		WithDescriptionExpanded(m.ui.Screen.ExpandDescriptions).
-		WithRowLimits(m.rowLimits().titleRows(task.ID), components.DescriptionPreviewLines)
+		WithDescriptionExpanded(m.ui.Screen.ExpandDescriptions || limits.expands(task.ID)).
+		WithRowLimits(limits.titleRows(task.ID), components.DescriptionPreviewLines)
 	if q := m.searchQuery(); q != "" {
 		renderer = renderer.WithSearch(q, m.searchMatchStyle(isCursor))
 	}

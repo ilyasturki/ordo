@@ -200,7 +200,7 @@ func (b *LayoutBuilder) countTaskLines(cat domain.Category, taskIdx int) int {
 	task := cat.Tasks[taskIdx]
 	return components.NewTaskLineRenderer(b.width, b.statusDisplay, "", false).
 		WithNesting(taskIndent(cat, taskIdx), taskProgress(cat, taskIdx, b.fold)).
-		WithDescriptionExpanded(b.expandDescriptions).
+		WithDescriptionExpanded(b.expandDescriptions || b.limits.expands(task.ID)).
 		WithCut(b.taskCut != nil && b.taskCut(task)).
 		WithFilteredOut(b.filter != nil && b.filter.FilteredOut(task, cat.ID, cat.ParentID)).
 		WithRowLimits(b.limits.titleRows(task.ID), components.DescriptionPreviewLines).
