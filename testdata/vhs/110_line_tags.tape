@@ -1,9 +1,8 @@
-Output "/tmp/ordo-vt/vhs-out/106_line_tags_light.gif"
+Output "/tmp/ordo-vt/vhs-out/110_line_tags.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
 Set FontSize 16
-Set Theme "Builtin Light"
 Env ORDO_DATA_PATH "/tmp/ordo-vt/data"
 Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
 
@@ -13,7 +12,7 @@ Enter
 Sleep 800ms
 Show
 
-# The tagged separator and note of 105_line_tags on a light theme.
+# A labelled separator below the first task, and t marks it like a task.
 Type "j"
 Sleep 200ms
 Type "-"
@@ -24,6 +23,8 @@ Enter
 Sleep 300ms
 Type "t"
 Sleep 300ms
+
+# A note below it, and T picks its mark.
 Type "_"
 Sleep 300ms
 Type "Check the old totals first"
@@ -32,25 +33,29 @@ Sleep 300ms
 Type "T"
 Sleep 300ms
 Type "jj"
+Sleep 300ms
+Screenshot "/tmp/ordo-vt/vhs-out/110_note_picker.png"
+Sleep 300ms
 Enter
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/106_tagged_note_light.png"
-Sleep 300ms
-Type "k"
+Type "j"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/106_tagged_separator_light.png"
+Screenshot "/tmp/ordo-vt/vhs-out/110_tagged_lines.png"
 Sleep 500ms
 
-# A todo filter: the separator and its note stay with the todo tasks of their section.
+# The filter hub, then the tag list: the green separator alone matches it.
 Type "f"
-Sleep 300ms
+Sleep 400ms
+Screenshot "/tmp/ordo-vt/vhs-out/110_filter_hub.png"
+Type "jjj"
 Enter
-Sleep 200ms
+Sleep 300ms
+Type "j"
 Type " "
-Sleep 200ms
+Sleep 300ms
 Type "q"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/106_status_filter_light.png"
+Screenshot "/tmp/ordo-vt/vhs-out/110_tag_filter.png"
 Sleep 500ms
 
 Hide
