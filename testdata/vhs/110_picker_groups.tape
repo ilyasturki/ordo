@@ -1,4 +1,4 @@
-Output "/tmp/ordo-vt/vhs-out/100_picker_groups.gif"
+Output "/tmp/ordo-vt/vhs-out/110_picker_groups.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
@@ -16,27 +16,27 @@ Show
 # Each group under its name, the projects without one last under a bare rule.
 Ctrl+P
 Sleep 500ms
-Screenshot "/tmp/ordo-vt/vhs-out/100_groups.png"
+Screenshot "/tmp/ordo-vt/vhs-out/110_groups.png"
 
 # m on an ungrouped project: the field offers the most recent group; P then tab completes Perso.
 Type "G"
 Sleep 300ms
 Type "m"
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/100_group_field_empty.png"
+Screenshot "/tmp/ordo-vt/vhs-out/110_group_field_empty.png"
 Type "P"
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/100_group_field_hint.png"
+Screenshot "/tmp/ordo-vt/vhs-out/110_group_field_hint.png"
 Tab
 Sleep 300ms
 Enter
 Sleep 500ms
-Screenshot "/tmp/ordo-vt/vhs-out/100_group_set.png"
+Screenshot "/tmp/ordo-vt/vhs-out/110_group_set.png"
 
 # The search still runs across groups.
 Type "/o"
 Sleep 500ms
-Screenshot "/tmp/ordo-vt/vhs-out/100_group_search.png"
+Screenshot "/tmp/ordo-vt/vhs-out/110_group_search.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
