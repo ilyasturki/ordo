@@ -29,6 +29,24 @@ func ProjectName(title string) (string, error) {
 	return name, domain.ValidateLine(name)
 }
 
+// ProjectGroup is title as a project's group: trimmed, on one line, empty for none.
+func ProjectGroup(title string) (string, error) {
+	group := strings.TrimSpace(title)
+	return group, domain.ValidateLine(group)
+}
+
+func setGroup(p *domain.Project, op Op) (Outcome, error) {
+	group, err := ProjectGroup(op.Value)
+	if err != nil {
+		return Outcome{}, err
+	}
+	p.Group = group
+	if group == "" {
+		return Outcome{Msg: "Group cleared"}, nil
+	}
+	return Outcome{Msg: "Group set to " + quote(group)}, nil
+}
+
 // ProjectMsg phrases an applied project op on the project it named name.
 func ProjectMsg(action, name string) string {
 	switch action {

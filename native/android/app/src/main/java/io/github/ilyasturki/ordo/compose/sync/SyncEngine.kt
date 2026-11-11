@@ -305,7 +305,7 @@ class SyncEngine(
             opened += pid
             val e = Entry(pid, p.name, prev?.stamp.orEmpty(), raw, p, prev?.error)
             publish { copy(projects = arranged(projects.filter { it.id != pid } + e), pending = queue.size) }
-            stamp(pid)
+            if (ops.any { it.action != "project.group" }) stamp(pid)
             // The queue first: an op that is queued brings the server's copy back, a copy saved without its op stays behind.
             store.saveQueue(queue)
             store.saveProject(StoredProject(pid, p.name, e.stamp, e.error), raw)

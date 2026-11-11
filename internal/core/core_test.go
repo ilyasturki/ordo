@@ -162,6 +162,23 @@ func TestPerformAnswersHowToUndoIt(t *testing.T) {
 	}
 }
 
+func TestAGroupQueuesItselfAndItsUndo(t *testing.T) {
+	s, pid := opened(t)
+	a := s.Perform(pid, op(operations.Op{Action: "project.group", Value: " Work "}))
+	if a.Status != operations.Applied || a.Queue == nil || a.Queue.Action != "project.group" || a.Queue.Value != " Work " {
+		t.Fatalf("group = %+v", a)
+	}
+	if g := held(t, s, pid).Group; g != "Work" {
+		t.Fatalf("group %q", g)
+	}
+	if len(a.Undo) != 1 || a.Undo[0].Action != "project.group" || a.Undo[0].Value != "" {
+		t.Fatalf("undo = %+v", a.Undo)
+	}
+	if r := s.Replay(pid, op(*a.Queue)); r.Status != operations.Unchanged {
+		t.Fatalf("replay = %+v", r)
+	}
+}
+
 func TestSessionCreatesRenamesAndDeletesProjects(t *testing.T) {
 	s, _ := opened(t)
 	created := s.Perform("", op(operations.Op{Action: "project.create", Title: " Laptop "}))

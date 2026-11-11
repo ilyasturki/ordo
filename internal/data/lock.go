@@ -8,6 +8,7 @@ import (
 
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/fsutil"
+	"github.com/ilyasturki/ordo/internal/merge"
 )
 
 // globalLockName is the lock file used to serialize operations that span
@@ -117,13 +118,29 @@ func (s *Store) WithProjectLocked(id string, fn func(*domain.Project) error) (do
 	if err != nil {
 		return domain.Project{}, err
 	}
+	before := merge.Clone(project)
 	if err := fn(&project); err != nil {
 		return project, err
 	}
-	if err := s.saveProjectAtomic(project); err != nil {
+	if !regroupedOnly(before, project) {
+		return project, s.saveProjectAtomic(project)
+	}
+	project.UpdatedAt = before.UpdatedAt
+	data, err := marshalStamped(project)
+	if err != nil {
 		return project, err
 	}
-	return project, nil
+	return project, s.saveBytes(id, data)
+}
+
+// regroupedOnly: a project's group isn't an edit to it, so a save that changes nothing else
+// keeps updated_at and leaves the project where it was in the recency order.
+func regroupedOnly(before, after domain.Project) bool {
+	if before.Group == after.Group {
+		return false
+	}
+	after.Group = before.Group
+	return merge.Same(before, after)
 }
 
 func (s *Store) acquireProjectLock(id string) (*os.File, error) {

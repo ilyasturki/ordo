@@ -98,6 +98,26 @@ func TestSyncAppliesTheQueueOnceAndSendsWhatChanged(t *testing.T) {
 	}
 }
 
+func TestAQueuedGroupLandsOnceAndKeepsTheStamp(t *testing.T) {
+	f := newFixture(t)
+	before, err := f.store.LoadProjectByID(f.pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ops := []queuedOp{f.queued("1", operations.Op{Action: "project.group", Value: "Work"})}
+	resp := f.sync(ops, nil)
+	if got := strings.Join(statuses(resp.Results), ","); got != "applied" {
+		t.Fatalf("results = %s", got)
+	}
+	if d := resp.Projects[0].Data; d == nil || d.Group != "Work" || d.UpdatedAt != before.UpdatedAt {
+		t.Fatalf("answer = %+v, was updated %s", d, before.UpdatedAt)
+	}
+	again := f.sync(ops, map[string]string{f.pid: resp.Projects[0].Stamp})
+	if got := strings.Join(statuses(again.Results), ","); got != "unchanged" {
+		t.Fatalf("replay = %s", got)
+	}
+}
+
 func TestSyncRunsPastARefusedOp(t *testing.T) {
 	f := newFixture(t)
 	resp := f.sync([]queuedOp{

@@ -85,6 +85,7 @@ type Project struct {
 	Schema     int        `json:"schema,omitempty"`
 	ID         string     `json:"id"`
 	Name       string     `json:"name"`
+	Group      string     `json:"group,omitempty"`
 	CreatedAt  string     `json:"created_at"`
 	UpdatedAt  string     `json:"updated_at"`
 	Categories []Category `json:"categories"`

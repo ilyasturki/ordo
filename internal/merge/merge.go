@@ -78,6 +78,7 @@ var categoryFields = []field[domain.Category]{
 
 var projectFields = []field[domain.Project]{
 	{"name", func(p domain.Project) string { return p.Name }, func(d *domain.Project, s domain.Project) { d.Name = s.Name }},
+	{"group", func(p domain.Project) string { return orNone(p.Group) }, func(d *domain.Project, s domain.Project) { d.Group = s.Group }},
 }
 
 func mergeFields[T any](fields []field[T], base, mine, theirs T) (T, []field[T]) {
@@ -454,7 +455,7 @@ func Clone(p domain.Project) domain.Project {
 
 // Same ignores save stamps.
 func Same(a, b domain.Project) bool {
-	if a.Name != b.Name {
+	if a.Name != b.Name || a.Group != b.Group {
 		return false
 	}
 	return slices.EqualFunc(a.Categories, b.Categories, func(x, y domain.Category) bool {

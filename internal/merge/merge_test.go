@@ -204,6 +204,25 @@ func TestProjectNameCollidesWithNoCopyOnOffer(t *testing.T) {
 	assert.Equal(t, "Mine", p.Name)
 }
 
+func TestAGroupSetOnOneSideSurvivesAnEditOnTheOther(t *testing.T) {
+	base := project(row("a", "A"))
+	mine := Clone(base)
+	mine.Group = "Work"
+	theirs := edit(base, func(c *domain.Category) { c.Tasks[0].Title = "A theirs" })
+
+	res := Three(base, mine, theirs)
+	assert.Empty(t, res.Collisions)
+	assert.Equal(t, "Work", res.Project.Group)
+	assert.Equal(t, []string{"A theirs"}, titles(res.Project))
+
+	other := Clone(base)
+	other.Group = "Perso"
+	res = Three(base, mine, other)
+	require.Len(t, res.Collisions, 1)
+	assert.Equal(t, "group", res.Collisions[0].Field)
+	assert.False(t, Same(base, mine))
+}
+
 func TestHoldsNeedsTheRowItself(t *testing.T) {
 	base := project(row("a", "A"), row("b", "B"))
 	wrote := edit(base, func(c *domain.Category) {

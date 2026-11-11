@@ -162,6 +162,10 @@ func (s *Store) LoadProject(selector string) (domain.Project, error) {
 // goroutine where the fsync cost is hidden from the UI.
 func (s *Store) marshalProject(project domain.Project) ([]byte, error) {
 	project.UpdatedAt = domain.NowTimestamp()
+	return marshalStamped(project)
+}
+
+func marshalStamped(project domain.Project) ([]byte, error) {
 	// Stamping on every save is also the migration: a pre-versioning file
 	// gains the schema field the first time it is written back.
 	project.Schema = domain.RequiredSchema(project)
@@ -190,12 +194,16 @@ func (s *Store) saveProjectAtomic(project domain.Project) error {
 	if err != nil {
 		return err
 	}
-	info, err := s.writeProjectBytes(project.ID, data)
+	return s.saveBytes(project.ID, data)
+}
+
+func (s *Store) saveBytes(id string, data []byte) error {
+	info, err := s.writeProjectBytes(id, data)
 	if err != nil {
 		return err
 	}
 	if info != nil {
-		s.adopt(project.ID, info, data)
+		s.adopt(id, info, data)
 	}
 	return nil
 }

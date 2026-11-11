@@ -52,4 +52,5 @@ var Actions = []Action{
 	{"category.pin", "Pin or unpin a category", Both},
 	{"categories.reverse", "Reverse categories", TUI},
 	{"project.manage", "Create, rename or delete a project", TUI},
+	{"project.group", "Set a project's group", Both},
 }

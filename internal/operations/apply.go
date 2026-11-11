@@ -80,6 +80,7 @@ var appliers = map[string]applier{
 	"category.pin":     pinCategory,
 	"category.delete":  deleteCategory,
 	"category.restore": restoreCategories,
+	"project.group":    setGroup,
 }
 
 var gestures = map[string]bool{"status.cycle": true, "task.shift": true, "task.nest": true, "task.unnest": true}

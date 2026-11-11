@@ -66,8 +66,9 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | `schema` | integer | Format version, see [Schema](#schema). Missing means 1. |
 | `id` | string | Same as the filename. |
 | `name` | string | One line. Unique across projects, compared trimmed and case-insensitive. |
+| `group` | string | Optional. One line, trimmed. See [Groups](#groups). |
 | `created_at` | timestamp | |
-| `updated_at` | timestamp | Restamped on every save. |
+| `updated_at` | timestamp | Restamped on every save, but one that changes only `group`. |
 | `categories` | array | In display order. |
 
 ### Category
@@ -154,6 +155,14 @@ Pinned categories come first among their siblings: the top-level categories, or 
 - Ordo repairs a file that breaks the order when it loads it, moving each pinned category, with its sub-categories, ahead of its unpinned siblings and keeping the order within each run. The repair reaches the file on the next save.
 
 Pins need no schema bump: an older ordo that saves the file drops `pinned` but keeps the order, so only the pin itself is lost.
+
+## Groups
+
+`group` sorts projects into groups, such as Work and Perso. Two projects are in the same group when their groups match trimmed and case-insensitive; a project without one is in none. A list of projects shows each group's projects together, the groups ordered by their most recent project and the projects without a group last.
+
+A save that changes only `group` keeps `updated_at`, so a project keeps its place among its group's projects by recency.
+
+Groups need no schema bump: an older ordo that saves the file drops `group`, so only the group itself is lost.
 
 ## Views
 

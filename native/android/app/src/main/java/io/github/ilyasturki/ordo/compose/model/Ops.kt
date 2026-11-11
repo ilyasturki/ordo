@@ -79,6 +79,7 @@ object Ops {
     fun projectCreate(title: String) = op("project.create", "title" to title)
     fun projectRename(title: String) = op("project.rename", "title" to title)
     fun projectDelete() = op("project.delete")
+    fun projectGroup(group: String) = op("project.group", "value" to group)
 
     private val random = SecureRandom()
 

@@ -54,6 +54,8 @@ func Undo(before, after domain.Project, op Op) []Op {
 		return []Op{{Action: "project.delete"}}
 	case "project.rename":
 		return []Op{{Action: "project.rename", Title: before.Name}}
+	case "project.group":
+		return []Op{{Action: "project.group", Value: before.Group}}
 	}
 	return nil
 }

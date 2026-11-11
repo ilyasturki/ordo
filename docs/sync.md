@@ -91,6 +91,7 @@ An op names its rows by ID and says where they end up, never how far they moved,
 | `project.create` | `title` | Creates the project `project` names, with no categories. |
 | `project.rename` | `title` | Renames the project. |
 | `project.delete` | | Deletes the project. |
+| `project.group` | `value` | Sets the project's group, or clears it with an empty `value`. See [Groups](file-format.md#groups). |
 
 `new` is a client-minted ID (see [IDs](file-format.md#ids-and-timestamps)), so the ops queued after an add can name its row or category. An add whose `new` is already in the project is `unchanged`. A row an op was made beside can be gone by the time it lands: `task.insert` then adds first in `cat`, `task.add`, `task.place`, `task.restore` and `category.add` drop a missing `parent` and land top-level, and `task.place` and `task.restore` put a missing `before` last. `category.place` puts a `before` that is missing or no longer its sibling last among its siblings.
 
@@ -104,7 +105,7 @@ Undoing an edit queues more ops: `operations.Undo` lists the ones that put back 
 
 ### Projects
 
-A project op's `project` is the project it creates, renames or deletes. `project.create` takes the ID the client minted, like `new`, so the ops queued after it can name the project. The server runs each project op on its own, between the runs of edits around it; a create or a rename holds the lock that guards project names (see [Locks](file-format.md#locks)). A create whose ID is already on disk, a rename to the name the project already has and a delete of a project already gone are `unchanged`; a rename of a project that is gone is `gone`.
+A project op's `project` is the project it creates, renames or deletes. `project.group` isn't one of them: it changes nothing but the project's own file, so it runs like any edit, in the run of its project's ops, and keeps `updated_at` when it is the only change. `project.create` takes the ID the client minted, like `new`, so the ops queued after it can name the project. The server runs each project op on its own, between the runs of edits around it; a create or a rename holds the lock that guards project names (see [Locks](file-format.md#locks)). A create whose ID is already on disk, a rename to the name the project already has and a delete of a project already gone are `unchanged`; a rename of a project that is gone is `gone`.
 
 ## Views
 

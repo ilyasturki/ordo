@@ -129,7 +129,7 @@ func StripControl(s string, allowNewlines bool) string {
 // renders dates), and a field being enum-like in normal use is no guarantee
 // about what a hand-written file puts there.
 func ValidateProjectText(p Project) error {
-	lines := []string{p.ID, p.Name, p.CreatedAt, p.UpdatedAt}
+	lines := []string{p.ID, p.Name, p.Group, p.CreatedAt, p.UpdatedAt}
 	for _, c := range p.Categories {
 		lines = append(lines, c.ID, c.Name, c.ParentID, c.CreatedAt, c.UpdatedAt)
 		for _, t := range c.Tasks {
