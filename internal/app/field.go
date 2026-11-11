@@ -140,6 +140,15 @@ func (f *lineField) insert(s string) {
 	f.setCurrentLine(append(append(append([]rune{}, r[:pos]...), ins...), r[pos:]...), pos+len(ins))
 }
 
+func (f *lineField) replace(s string) {
+	if s != f.Value() {
+		f.edits.push(f.snap())
+	}
+	f.edits.moved()
+	f.SetValue(s)
+	f.CursorEnd()
+}
+
 func (f areaField) Update(msg tea.Msg) (areaField, tea.Cmd) {
 	if !f.Focused() {
 		return f, nil
@@ -181,6 +190,15 @@ func (f *areaField) setCurrentLine(r []rune, pos int) {
 
 func (f *areaField) insert(s string) {
 	f.InsertString(s)
+}
+
+func (f *areaField) replace(s string) {
+	if s != f.Value() {
+		f.edits.push(f.snap())
+	}
+	f.edits.moved()
+	f.SetValue(s)
+	f.MoveToEnd()
 }
 
 func (e *fieldEdits) apply(buf fieldBuffer, msg tea.Msg) bool {

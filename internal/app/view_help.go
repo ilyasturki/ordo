@@ -90,6 +90,7 @@ var helpModeSections = []helpSection{
 			{keys: "ctrl+d / ctrl+u", desc: "in the help filter: page down / up"},
 			{keys: "ctrl+v", desc: "paste (several lines ask how)"},
 			{keys: "ctrl+v / drop", desc: "insert an image in a description"},
+			{keys: "ctrl+g", desc: "edit a title or description in $EDITOR"},
 		},
 	},
 	{

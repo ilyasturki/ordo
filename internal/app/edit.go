@@ -262,6 +262,8 @@ func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case "ctrl+v":
 		return readClipboardForEditor(modes.ModeEdit)
+	case "ctrl+g":
+		return m.startFieldExternalEdit()
 	}
 	before := m.ui.Edit.input.Value()
 	var cmd tea.Cmd

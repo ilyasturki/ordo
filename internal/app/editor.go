@@ -20,7 +20,9 @@ type editorFinishedMsg struct {
 }
 
 type ExternalEditState struct {
-	TempFilePath  string
+	TempFilePath string
+	// IntoField sends the editor's text back to the open title or description field.
+	IntoField     bool
 	ItemType      selection.FocusKind
 	CategoryIndex int
 	TaskIndex     int
@@ -28,6 +30,7 @@ type ExternalEditState struct {
 
 func (e *ExternalEditState) reset() {
 	e.TempFilePath = ""
+	e.IntoField = false
 	e.ItemType = selection.FocusProject
 	e.CategoryIndex = -1
 	e.TaskIndex = -1
@@ -141,7 +144,62 @@ func (m *model) startExternalEdit() tea.Cmd {
 	})
 }
 
+// startFieldExternalEdit opens the open field's unsaved text in the editor; the field stays open.
+func (m *model) startFieldExternalEdit() tea.Cmd {
+	content, pattern := m.ui.Edit.input.Value(), "ordo-edit-*.txt"
+	if m.ui.Modes.IsDescriptionEdit() {
+		content, pattern = m.ui.DescriptionEdit.textarea.Value(), "ordo-edit-*.md"
+	}
+	tempFile, err := os.CreateTemp("", pattern)
+	if err != nil {
+		m.ui.Screen.StatusMsg = fmt.Sprintf("Failed to create temp file: %v", err)
+		return nil
+	}
+	if _, err := tempFile.WriteString(content); err != nil {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+		m.ui.Screen.StatusMsg = fmt.Sprintf("Failed to write temp file: %v", err)
+		return nil
+	}
+	tempFile.Close()
+	m.ui.ExternalEdit = ExternalEditState{TempFilePath: tempFile.Name(), IntoField: true}
+	return tea.ExecProcess(exec.Command(getEditorCmd(), tempFile.Name()), func(err error) tea.Msg {
+		return editorFinishedMsg{err: err, tempFile: tempFile.Name()}
+	})
+}
+
+func (m *model) finishFieldExternalEdit(msg editorFinishedMsg) {
+	m.distrustClipboardWrites()
+	defer func() {
+		os.Remove(msg.tempFile)
+		m.ui.ExternalEdit.reset()
+	}()
+	if msg.err != nil {
+		m.ui.Screen.StatusMsg = fmt.Sprintf("Editor error: %v", msg.err)
+		return
+	}
+	content, err := os.ReadFile(msg.tempFile)
+	if err != nil {
+		m.ui.Screen.StatusMsg = fmt.Sprintf("Failed to read edited file: %v", err)
+		return
+	}
+	text := strings.ReplaceAll(string(content), "\r\n", "\n")
+	switch {
+	case m.ui.Modes.IsEdit():
+		m.ui.Edit.input.replace(flattenPaste(text))
+		sanitizeInput(&m.ui.Edit.input)
+		m.ui.Edit.err = ""
+		m.ensureVisible()
+	case m.ui.Modes.IsDescriptionEdit():
+		m.ui.DescriptionEdit.textarea.replace(strings.TrimRight(text, "\n"))
+	}
+}
+
 func (m *model) handleEditorFinished(msg editorFinishedMsg) {
+	if m.ui.ExternalEdit.IntoField {
+		m.finishFieldExternalEdit(msg)
+		return
+	}
 	// The editor owned the terminal, so a copy made in it or a focus loss sent no BlurMsg.
 	m.distrustClipboardWrites()
 	defer func() {

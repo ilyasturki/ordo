@@ -130,6 +130,8 @@ func (m *model) handleDescriptionEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		return m, nil
 	case "ctrl+v":
 		return m, readClipboardForEditor(modes.ModeDescriptionEdit)
+	case "ctrl+g":
+		return m, m.startFieldExternalEdit()
 	case "ctrl+shift+c":
 		if ta := m.ui.DescriptionEdit.textarea; ta.HasSelection() {
 			return m, m.copyToClipboard(ta.SelectedText(), "")
@@ -246,6 +248,7 @@ func (m model) descriptionEditView() string {
 		ui.RenderHints([]ui.Hint{
 			{Key: "enter", Label: "save"},
 			{Key: "shift+enter", Label: "newline"},
+			{Key: "ctrl+g", Label: "$EDITOR"},
 			{Key: "esc", Label: "cancel"},
 		}),
 	}
