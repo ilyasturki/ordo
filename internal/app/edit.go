@@ -249,6 +249,10 @@ func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.handleClashKey(msg.String())
 		return nil
 	}
+	if m.ui.Edit.paths.key(msg.String(), &m.ui.Edit.input, &m.ui.Edit.input.edits) {
+		m.ui.Edit.err = ""
+		return nil
+	}
 	switch msg.String() {
 	case "enter":
 		m.finishEditing()

@@ -549,6 +549,7 @@ type EditState struct {
 	// the chooser of what to do about it is open.
 	clash     string
 	clashPick int
+	paths     pathSuggest
 }
 
 type editWrapCache struct {
@@ -575,6 +576,7 @@ func (e *EditState) reset() {
 	e.wrap = editWrapCache{}
 	e.err = ""
 	e.clash, e.clashPick = "", 0
+	e.paths = pathSuggest{}
 }
 
 func newEditState(value string, isAdding bool, newID string, kind selection.FocusKind) EditState {

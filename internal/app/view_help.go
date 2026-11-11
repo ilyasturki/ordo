@@ -91,6 +91,9 @@ var helpModeSections = []helpSection{
 			{keys: "ctrl+v", desc: "paste (several lines ask how)"},
 			{keys: "ctrl+v / drop", desc: "insert an image in a description"},
 			{keys: "ctrl+g", desc: "edit a title or description in $EDITOR"},
+			{keys: "tab", desc: "complete the path picked in the list"},
+			{keys: "↑ / ↓, ctrl+p / ctrl+n", desc: "pick in the path list"},
+			{keys: "esc", desc: "close the path list, a second esc cancels"},
 		},
 	},
 	{

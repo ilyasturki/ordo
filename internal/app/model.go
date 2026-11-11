@@ -20,6 +20,7 @@ type DescriptionEditState struct {
 	// pointer with the prompt func so it can draw the ">" gutter on that line.
 	// Refreshed each render in descriptionEditView.
 	cursorRow *int
+	paths     pathSuggest
 }
 
 // A cut moves the live rows its IDs name, not the snapshots.

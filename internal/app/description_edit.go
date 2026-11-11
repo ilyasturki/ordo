@@ -121,6 +121,9 @@ func descriptionEditorVisibleHeight(screenHeight int) int {
 }
 
 func (m *model) handleDescriptionEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if m.ui.DescriptionEdit.paths.key(msg.String(), &m.ui.DescriptionEdit.textarea, &m.ui.DescriptionEdit.textarea.edits) {
+		return m, nil
+	}
 	switch msg.String() {
 	case "esc":
 		m.cancelDescriptionEdit()
@@ -251,7 +254,11 @@ func (m model) descriptionEditView() string {
 			{Key: "esc", Label: "cancel"},
 		}),
 	}
-	return m.dialogStyle().Render(strings.Join(lines, "\n"))
+	content := strings.Join(lines, "\n")
+	if state.paths.open() {
+		content = descriptionPathList(content, &state.paths, state.textarea.Model)
+	}
+	return m.dialogStyle().Render(content)
 }
 
 func (m *model) descriptionEditTaskID() string {

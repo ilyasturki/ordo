@@ -1,6 +1,7 @@
 package app
 
 import (
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -31,4 +32,30 @@ func barePrefix(p string) bool {
 		}
 	}
 	return true
+}
+
+// pathBeforeCaret is the path the text before the caret ends in, and the rune
+// index it starts at.
+func pathBeforeCaret(line []rune, caret int) (string, int, bool) {
+	text := string(line[:caret])
+	locs := pathPattern.FindAllStringSubmatchIndex(text, -1)
+	if len(locs) == 0 {
+		return "", 0, false
+	}
+	last := locs[len(locs)-1]
+	if last[3] != len(text) {
+		return "", 0, false
+	}
+	return text[last[2]:], len([]rune(text[:last[2]])), true
+}
+
+// resolvePath turns a typed path into one the filesystem takes; a relative
+// one is against ordo's working directory.
+func resolvePath(typed string) (string, bool) {
+	if strings.HasPrefix(typed, "./") || strings.HasPrefix(typed, "../") {
+		abs, err := filepath.Abs(typed)
+		return abs, err == nil
+	}
+	p, ok := dropPath(typed)
+	return filepath.Clean(p), ok
 }

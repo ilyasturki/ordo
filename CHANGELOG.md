@@ -10,6 +10,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - `z+` and `z-` show more or fewer rows of every long title, name and description: 3, 6, 10, then whole, and back. The status line says the new limit, and ordo starts at 3 again on the next launch. `j` and `k` scroll through a row taller than the screen before leaving it
 - `ctrl+g` in a title, name or description being edited opens its unsaved text in `$VISUAL` or `$EDITOR`, as in Claude Code. Back from the editor, the field holds the new text, a title with its lines joined, and `enter` saves or `esc` cancels as usual; an editor that fails leaves the field as it was. It takes `ctrl+g` from select-all in the description editor
 - `gy` offers each path written in a title or description (`/…`, `~/…`, `./…`, `../…`, `file://…`) as typed, and no longer offers the digits inside a path, as in the `2` of `/x/v2`
+- Path suggestions while typing: a word starting `/`, `~/`, `./` or `../` in a title, note, separator or description lists the matching files under the field. `tab` completes the picked one, and a directory's list follows; `↑`/`↓` pick; `esc` closes the list, and a second `esc` cancels as before
 
 ### Changed
 

@@ -143,7 +143,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		updated.releaseFilteredOut()
 		updated.releasePeek()
 		updated.trackCursor()
+		if read := updated.refreshPathSuggest(); read != nil {
+			cmd = tea.Batch(cmd, read)
+		}
 		return updated, cmd
+	}
+	if updated, ok := next.(*model); ok {
+		if read := updated.refreshPathSuggest(); read != nil {
+			cmd = tea.Batch(cmd, read)
+		}
 	}
 	return next, cmd
 }
@@ -184,6 +192,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.handleTaskCommandResult(msg)
 	case editorFinishedMsg:
 		m.handleEditorFinished(msg)
+		return m, nil
+	case pathDirMsg:
+		m.pathListed(msg)
 		return m, nil
 	case tea.FocusMsg:
 		m.ui.Screen.WindowFocused = true
@@ -767,7 +778,11 @@ func (m model) renderView() string {
 	// Only the first item drawn can be entered partway through; if none fit at
 	// all, the partial below is that item and inherits the offset.
 	top := viewport.RowOffset
+	editLine, editSkip := -1, 0
 	for i := viewport.VisibleStart; i < viewport.VisibleEnd; i++ {
+		if layout.Items[i].PositionIndex == m.selected() && m.ui.Edit.paths.open() {
+			editLine, editSkip = lineCount(lines), top
+		}
 		lines = append(lines, m.renderLayoutItemWindow(layout.Items[i], top, 0))
 		top = 0
 	}
@@ -801,6 +816,9 @@ func (m model) renderView() string {
 			content += "\n"
 		}
 		content += bar
+	}
+	if editLine >= 0 {
+		content = m.withTitlePathList(content, editLine, editSkip)
 	}
 	modal := components.NewModal(m.ui.Screen.Width, m.ui.Screen.Height)
 	if m.ui.Modes.IsEdit() && m.ui.Edit.clash != "" {

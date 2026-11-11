@@ -33,12 +33,17 @@ func (m *Modal) Render(background, overlay string) string {
 }
 
 func placeOverlay(bg, fg string, width, height int) string {
+	fgW := lipgloss.Width(fg)
+	fgH := strings.Count(fg, "\n") + 1
+	return OverlayAt(bg, fg, max(0, (width-fgW)/2), max(0, (height-fgH)/2))
+}
+
+// OverlayAt paints fg over bg with its top left corner at column startX of
+// line startY, cutting what runs past bg's last line.
+func OverlayAt(bg, fg string, startX, startY int) string {
 	bgLines := strings.Split(bg, "\n")
 	fgLines := strings.Split(fg, "\n")
 	fgW := lipgloss.Width(fg)
-	fgH := len(fgLines)
-	startY := max(0, (height-fgH)/2)
-	startX := max(0, (width-fgW)/2)
 	for i, fgLine := range fgLines {
 		y := startY + i
 		if y >= len(bgLines) {
