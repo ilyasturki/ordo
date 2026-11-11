@@ -6,14 +6,11 @@ import (
 	"strings"
 )
 
-// pathPattern is the one path detector: gy's paths and the path under the
-// caret. A path starts a word, or follows an opening delimiter, and ends at
-// whitespace or markup, so a name with a space is cut there.
+// A space ends a path, so a name holding one is cut there.
 var pathPattern = regexp.MustCompile(`(?:^|[\s(\[{<"'\x60])((?:file://|~/|\.\.?/|/)[^\s<>"'\x60]*)`)
 
 var pathPrefixes = []string{"file://", "~/", "../", "./", "/"}
 
-// extractPaths lists the paths written in text, as typed, in order.
 func extractPaths(text string) []string {
 	var out []string
 	for _, loc := range pathPattern.FindAllStringSubmatchIndex(text, -1) {
@@ -34,8 +31,6 @@ func barePrefix(p string) bool {
 	return true
 }
 
-// pathBeforeCaret is the path the text before the caret ends in, and the rune
-// index it starts at.
 func pathBeforeCaret(line []rune, caret int) (string, int, bool) {
 	text := string(line[:caret])
 	locs := pathPattern.FindAllStringSubmatchIndex(text, -1)
@@ -49,8 +44,7 @@ func pathBeforeCaret(line []rune, caret int) (string, int, bool) {
 	return text[last[2]:], len([]rune(text[:last[2]])), true
 }
 
-// resolvePath turns a typed path into one the filesystem takes; a relative
-// one is against ordo's working directory.
+// A relative path resolves against ordo's working directory.
 func resolvePath(typed string) (string, bool) {
 	if strings.HasPrefix(typed, "./") || strings.HasPrefix(typed, "../") {
 		abs, err := filepath.Abs(typed)

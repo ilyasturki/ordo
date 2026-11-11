@@ -32,12 +32,15 @@ type pathDirMsg struct {
 	entries []pathEntry
 }
 
-// pathSuggest is the list of entries matching the path under a field's caret.
 type pathSuggest struct {
 	listings map[string][]pathEntry
 	reading  map[string]bool
-	// word names the path under the caret by its line and start, so a
-	// dismissal holds until the caret leaves it.
+	last     fieldSnap
+	seen     bool
+	// idle holds the list shut after a caret move until the next edit, so
+	// only typing a path opens it.
+	idle bool
+	// word is the path's line and start: a dismissal holds until it changes.
 	word      string
 	start     int
 	typed     string
@@ -45,28 +48,38 @@ type pathSuggest struct {
 	items     []pathEntry
 	sel       int
 	dismissed bool
-	// completed is the file path tab put in, which keeps the list closed
-	// until the path changes.
+	// completed is the file path tab put in, shut until the path changes.
 	completed string
 }
 
 func (s *pathSuggest) open() bool {
-	return !s.dismissed && len(s.items) > 0 && s.typed != s.completed
+	return !s.idle && !s.dismissed && len(s.items) > 0 && s.typed != s.completed
 }
 
-// refresh follows the field's caret, returning a read of a directory not
-// listed yet.
 func (s *pathSuggest) refresh(buf fieldBuffer) tea.Cmd {
+	snap := buf.snap()
+	switch {
+	case !s.seen:
+		s.idle = true
+	case snap.value != s.last.value:
+		s.idle = false
+	case snap != s.last:
+		s.idle = true
+	}
+	s.last, s.seen = snap, true
 	line, caret := buf.currentLine()
 	typed, start, ok := pathBeforeCaret(line, caret)
 	if !ok {
-		*s = pathSuggest{listings: s.listings, reading: s.reading}
+		s.word, s.typed, s.shown, s.items, s.dismissed, s.completed = "", "", "", nil, false, ""
 		return nil
 	}
-	if word := fmt.Sprint(buf.snap().line, ":", start); word != s.word {
+	if word := fmt.Sprint(snap.line, ":", start); word != s.word {
 		s.word, s.dismissed, s.completed = word, false, ""
 	}
 	s.start, s.typed = start, typed
+	if s.idle || s.dismissed {
+		return nil
+	}
 	cut := strings.LastIndex(typed, "/") + 1
 	dir, ok := resolvePath(typed[:cut])
 	if !ok {
@@ -132,7 +145,6 @@ func readPathDir(dir string) tea.Cmd {
 	}
 }
 
-// key runs the open list's keys and reports whether it took key.
 func (s *pathSuggest) key(key string, buf fieldBuffer, edits *fieldEdits) bool {
 	if !s.open() {
 		return false
@@ -153,8 +165,6 @@ func (s *pathSuggest) key(key string, buf fieldBuffer, edits *fieldEdits) bool {
 	return true
 }
 
-// complete puts the selected entry in place of the typed name; a file ends
-// the list, a directory opens its own.
 func (s *pathSuggest) complete(buf fieldBuffer, edits *fieldEdits) {
 	entry := s.items[s.sel]
 	line, caret := buf.currentLine()
@@ -191,7 +201,6 @@ func (m *model) pathListed(msg pathDirMsg) {
 	m.ui.DescriptionEdit.paths.listed(msg)
 }
 
-// renderPathList draws at most rows entries around the selection.
 func renderPathList(s *pathSuggest, rows, width int) string {
 	inner := max(min(pathListMaxWidth, width-4), 1)
 	n := min(len(s.items), max(rows, 1))
@@ -238,8 +247,6 @@ func lineCount(lines []string) int {
 	return strings.Count(strings.Join(lines, "\n"), "\n") + 1
 }
 
-// withTitlePathList paints the open list under the edited row that starts at
-// line editLine of content, entered skip rows down.
 func (m model) withTitlePathList(content string, editLine, skip int) string {
 	if !m.ui.Modes.IsEdit() || m.ui.Edit.clash != "" {
 		return content
@@ -267,8 +274,7 @@ func (m model) withTitlePathList(content string, editLine, skip int) string {
 	return painted
 }
 
-// descriptionPathList paints the open list over the description dialog's
-// content, whose textarea starts on its third line behind a 2-wide gutter.
+// The dialog's textarea starts on its third line, behind a 2-wide gutter.
 func descriptionPathList(content string, s *pathSuggest, ta textarea.Model) string {
 	row := 2 + descriptionCursorDisplayRow(ta) - ta.ScrollYOffset()
 	x := 2 + max(0, ta.LineInfo().CharOffset-ansi.StringWidth(s.typed))
@@ -277,7 +283,6 @@ func descriptionPathList(content string, s *pathSuggest, ta textarea.Model) stri
 
 var pathListStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1)
 
-// pathListHeight is the box's rows for n entries of a list of total.
 func pathListHeight(n, total int) int {
 	if total > n {
 		return n + 3
@@ -285,8 +290,6 @@ func pathListHeight(n, total int) int {
 	return n + 2
 }
 
-// placePathList paints the open list over the first limit lines of bg, under
-// the lines from top to bottom, or above them when there is more room there.
 func placePathList(bg string, s *pathSuggest, top, bottom, x, limit, width int) string {
 	below, above := limit-bottom-1, top
 	room := below

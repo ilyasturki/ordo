@@ -789,6 +789,9 @@ func (m model) renderView() string {
 
 	if viewport.HasMoreBelow && viewport.VisibleEnd < len(layout.Items) {
 		if remaining := viewport.RemainingContentHeight(); remaining > 0 {
+			if layout.Items[viewport.VisibleEnd].PositionIndex == m.selected() && m.ui.Edit.paths.open() {
+				editLine, editSkip = lineCount(lines), top
+			}
 			if partial := m.renderLayoutItemWindow(layout.Items[viewport.VisibleEnd], top, remaining); partial != "" {
 				lines = append(lines, partial)
 			}

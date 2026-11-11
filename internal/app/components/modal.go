@@ -38,8 +38,6 @@ func placeOverlay(bg, fg string, width, height int) string {
 	return OverlayAt(bg, fg, max(0, (width-fgW)/2), max(0, (height-fgH)/2))
 }
 
-// OverlayAt paints fg over bg with its top left corner at column startX of
-// line startY, cutting what runs past bg's last line.
 func OverlayAt(bg, fg string, startX, startY int) string {
 	bgLines := strings.Split(bg, "\n")
 	fgLines := strings.Split(fg, "\n")

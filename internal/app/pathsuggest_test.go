@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
 func pathTree(t *testing.T) string {
@@ -38,6 +39,10 @@ func pathKey(k string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyEscape}
 	case "backspace":
 		return tea.KeyPressMsg{Code: tea.KeyBackspace}
+	case "left":
+		return tea.KeyPressMsg{Code: tea.KeyLeft}
+	case "right":
+		return tea.KeyPressMsg{Code: tea.KeyRight}
 	case "ctrl+n", "ctrl+p", "ctrl+_":
 		return tea.KeyPressMsg{Code: rune(k[len(k)-1]), Mod: tea.ModCtrl}
 	}
@@ -45,9 +50,6 @@ func pathKey(k string) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: r, Text: k}
 }
 
-// sendField runs each key through Update, delivering the directory reads it
-// starts as the runtime would; a key longer than one rune that names no key
-// is typed rune by rune.
 func sendField(t *testing.T, m *model, keys ...string) *model {
 	t.Helper()
 	for _, k := range keys {
@@ -281,4 +283,46 @@ func TestPathSuggest_ListShiftsNoRow(t *testing.T) {
 	}
 	last := len(closed) - 1
 	assert.Equal(t, closed[last], open[last], "the bottom bar stays")
+}
+
+func TestPathSuggest_CaretMovesLeaveItShut(t *testing.T) {
+	dir := pathTree(t)
+	m := sendField(t, editingTask(t, "see "+dir+"/al"), "left", "right")
+	assert.False(t, m.ui.Edit.paths.open(), "a path already there opens nothing")
+	m = sendField(t, m, "left", "left", "down")
+	assert.False(t, m.ui.Edit.paths.open())
+	m = sendField(t, m, "esc")
+	assert.True(t, m.ui.Modes.IsNormal(), "one esc cancels as before")
+
+	m = sendField(t, editingTask(t, "see "+dir+"/al"), "left", "right", "p")
+	assert.Equal(t, []string{"alpha/", "alpine.txt"}, pathNames(m.ui.Edit.paths), "an edit in it opens it")
+}
+
+func TestPathSuggest_ArrowsThroughADescription(t *testing.T) {
+	dir := pathTree(t)
+	p := sampleProject()
+	p.Categories[0].Tasks[0].Description = "top\n" + dir + "/alpha/inner.md\nend"
+	m := newTestModel(t, p)
+	m.ui.Selection.MoveTo(2)
+	m.startDescriptionInlineEdit(0, 0)
+
+	m = sendField(t, m, "up")
+	require.Equal(t, 1, m.ui.DescriptionEdit.textarea.Line())
+	for i := 0; i < 5 && m.ui.DescriptionEdit.textarea.Line() > 0; i++ {
+		assert.False(t, m.ui.DescriptionEdit.paths.open())
+		m = sendField(t, m, "up")
+	}
+	assert.Equal(t, 0, m.ui.DescriptionEdit.textarea.Line(), "up still moves the caret past a path")
+}
+
+func TestPathSuggest_InANote(t *testing.T) {
+	dir := pathTree(t)
+	p := sampleProject()
+	p.Categories[0].Tasks[0].Kind = domain.KindNote
+	m := newTestModel(t, p)
+	m.ui.Selection.MoveTo(2)
+	m.startEditing()
+	require.Equal(t, selection.FocusSeparator, m.ui.Edit.itemType)
+	m = sendField(t, m, " "+dir+"/be")
+	assert.Equal(t, []string{"beta"}, pathNames(m.ui.Edit.paths))
 }
