@@ -10,7 +10,7 @@
       "name": "Descriptions",
       "created_at": "2026-10-01T09:01:00Z",
       "tasks": [
-        {"id": "t-short", "title": "Rest timer", "status": "todo", "created_at": "2026-10-01T09:10:00Z", "updated_at": "2026-10-01T09:10:00Z", "priority": "medium", "description": "Count the rest between two sets down from the last set's length.\nBuzz when it ends."},
+        {"id": "t-short", "title": "Rest timer", "status": "todo", "created_at": "2026-10-01T09:10:00Z", "updated_at": "2026-10-01T09:10:00Z", "priority": "medium", "estimate_minutes": 45, "description": "Count the rest between two sets down from the last set's length.\nBuzz when it ends."},
         {"id": "t-plain", "title": "Pick a default rest length", "status": "todo", "created_at": "2026-10-01T09:11:00Z", "updated_at": "2026-10-01T09:11:00Z", "priority": "low"},
         {"id": "t-long", "title": "Rework the onboarding flow so a first launch walks through the three screens that matter before any data exists, and skips the rest", "status": "in_progress", "created_at": "2026-10-01T09:12:00Z", "updated_at": "2026-10-01T09:12:00Z", "priority": "high", "estimate_minutes": 120, "description": "Welcome, units, first workout.\n\nThe skip link stays on every screen.\n![mock](/tmp/ordo-vt/mock.png)\n- keep it under 30 seconds\n- no account\n- no permissions asked up front"},
         {"id": "t-done", "title": "Fix date formatting in reports", "status": "completed", "created_at": "2026-10-01T09:13:00Z", "updated_at": "2026-10-02T09:13:00Z", "completion_date": "2026-10-02T09:13:00Z", "priority": "low", "description": "Dates rendered with the locale default; pinned to ISO 8601."},

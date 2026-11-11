@@ -29,6 +29,28 @@ Sleep 500ms
 Screenshot "/tmp/ordo-vt/vhs-out/107_marks_long_selected.png"
 Sleep 300ms
 
+# A visual band over described rows, and a cut row, keep the mark inside the bar.
+Type "k"
+Sleep 300ms
+Type "k"
+Sleep 300ms
+Type "v"
+Sleep 200ms
+Type "j"
+Sleep 500ms
+Screenshot "/tmp/ordo-vt/vhs-out/107_marks_visual.png"
+Sleep 300ms
+Escape
+Sleep 300ms
+Type "k"
+Sleep 300ms
+Type "x"
+Sleep 500ms
+Screenshot "/tmp/ordo-vt/vhs-out/107_marks_cut.png"
+Sleep 300ms
+Escape
+Sleep 300ms
+
 # ze shows the row's description, so that row drops its mark; the others keep it.
 Type "g"
 Sleep 200ms
