@@ -14,8 +14,8 @@ import (
 // uuidPattern matches both the app's own NewID format and standard UUIDs.
 var uuidPattern = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
 
-// numberPattern matches runs of digits. It is applied only after URLs and
-// UUIDs are scrubbed out, so it never reports the digit groups inside them.
+// numberPattern matches runs of digits. It is applied only after URLs, paths
+// and UUIDs are scrubbed out, so it never reports the digit groups inside them.
 var numberPattern = regexp.MustCompile(`\d+`)
 
 const yankPreviewMax = 50
@@ -46,7 +46,7 @@ func (s *yankItemSet) add(val string) {
 }
 
 // extractEntities scans the given texts for copy-worthy substrings: UUIDs,
-// URLs, and bare numbers, in that order. Values are deduped across kinds.
+// URLs, paths and bare numbers, in that order. Values are deduped across kinds.
 func extractEntities(texts ...string) []components.YankItem {
 	joined := strings.Join(texts, "\n")
 	set := newYankItemSet()
@@ -57,9 +57,13 @@ func extractEntities(texts ...string) []components.YankItem {
 	for _, u := range extractURLs(joined) {
 		set.add(u)
 	}
-	// Blank out URLs/UUIDs first so their internal digits aren't reported.
-	scrubbed := uuidPattern.ReplaceAllString(joined, " ")
-	scrubbed = urlPattern.ReplaceAllString(scrubbed, " ")
+	noURLs := urlPattern.ReplaceAllString(joined, " ")
+	for _, p := range extractPaths(noURLs) {
+		set.add(p)
+	}
+	// Blank out URLs, paths and UUIDs first so their internal digits aren't reported.
+	scrubbed := pathPattern.ReplaceAllString(noURLs, " ")
+	scrubbed = uuidPattern.ReplaceAllString(scrubbed, " ")
 	for _, n := range numberPattern.FindAllString(scrubbed, -1) {
 		set.add(n)
 	}

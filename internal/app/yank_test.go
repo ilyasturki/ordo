@@ -39,6 +39,18 @@ func TestExtractEntities(t *testing.T) {
 		{"digits inside url not reported", []string{"open https://example.com/123"},
 			[]string{"https://example.com/123"}},
 		{"dedupe across texts", []string{"ticket 99", "still ticket 99"}, []string{"99"}},
+		{"paths as typed", []string{"edit /etc/nixos/x.nix and ~/Projects/foo, then ./docs/a.md or ../up"},
+			[]string{"/etc/nixos/x.nix", "~/Projects/foo", "./docs/a.md", "../up"}},
+		{"file uri is one entry", []string{"open file:///home/me/notes.md"}, []string{"file:///home/me/notes.md"}},
+		{"digits inside a path not reported", []string{"build /x/v2/file1 in 3"}, []string{"/x/v2/file1", "3"}},
+		{"backticked path", []string{"run `~/bin/sync` now"}, []string{"~/bin/sync"}},
+		{"parenthesized path drops the trailing dot", []string{"(see /var/log/app.log)."}, []string{"/var/log/app.log"}},
+		{"path holding a uuid", []string{"/srv/550e8400-e29b-41d4-a716-446655440000/data"},
+			[]string{"550e8400-e29b-41d4-a716-446655440000", "/srv/550e8400-e29b-41d4-a716-446655440000/data"}},
+		{"a space ends a path", []string{"~/My Files/a"}, []string{"~/My"}},
+		{"slashes inside words are no path", []string{"and/or on 11/11/2026"}, []string{"11", "2026"}},
+		{"a bare slash is no path", []string{"a / b ~/ ./"}, nil},
+		{"url path is the url alone", []string{"https://example.com/a/b2"}, []string{"https://example.com/a/b2"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

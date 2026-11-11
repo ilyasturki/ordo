@@ -168,7 +168,7 @@ var normalBindings = []keyBinding{
 		action: func(m *model) tea.Cmd { return m.cutSelectedTask() }},
 	{keys: []string{"p"}, desc: "paste (an image attaches to the task)", section: sectionClipboard,
 		action: func(m *model) tea.Cmd { return m.paste() }},
-	{keys: []string{"y"}, prefix: 'g', display: "gy", desc: "copy id, url, image path…", section: sectionClipboard,
+	{keys: []string{"y"}, prefix: 'g', display: "gy", desc: "copy id, url, path…", section: sectionClipboard,
 		action: func(m *model) tea.Cmd { return m.yankPartForSelected() }},
 	{keys: []string{"t"}, prefix: 'g', display: "gt", desc: "copy tag (p paints it elsewhere)", section: sectionClipboard,
 		action: void((*model).copyTagFromSelected)},
