@@ -1,4 +1,4 @@
-Output "/tmp/ordo-vt/vhs-out/105_path_suggest.gif"
+Output "/tmp/ordo-vt/vhs-out/109_path_suggest.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
@@ -19,7 +19,7 @@ Type "a"
 Sleep 200ms
 Type "read /tmp/ordo-vt/tree/"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_open.png"
+Screenshot "/tmp/ordo-vt/vhs-out/109_open.png"
 Sleep 200ms
 
 # Typing on filters; down picks the next one.
@@ -27,27 +27,27 @@ Type "n"
 Sleep 300ms
 Down
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_filtered.png"
+Screenshot "/tmp/ordo-vt/vhs-out/109_filtered.png"
 Sleep 200ms
 
 # tab completes a directory with / and the list follows into it.
 Down
 Tab
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_into_dir.png"
+Screenshot "/tmp/ordo-vt/vhs-out/109_into_dir.png"
 Sleep 200ms
 
 # Hidden files only once the name starts with a dot.
 Backspace 6
 Type "."
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_hidden.png"
+Screenshot "/tmp/ordo-vt/vhs-out/109_hidden.png"
 Sleep 200ms
 
 # esc closes the list and keeps the edit; a second esc cancels it.
 Escape
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_dismissed.png"
+Screenshot "/tmp/ordo-vt/vhs-out/109_dismissed.png"
 Sleep 200ms
 Escape
 Sleep 300ms
@@ -67,7 +67,7 @@ Ctrl+E
 Alt+Enter
 Type "see /tmp/ordo-vt/tree/notes/"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_description.png"
+Screenshot "/tmp/ordo-vt/vhs-out/109_description.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 

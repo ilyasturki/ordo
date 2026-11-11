@@ -1,4 +1,4 @@
-Output "/tmp/ordo-vt/vhs-out/105_path_suggest_light.gif"
+Output "/tmp/ordo-vt/vhs-out/109_path_suggest_light.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 700
@@ -15,14 +15,14 @@ Enter
 Sleep 800ms
 Show
 
-# The list of 105_path_suggest on a light theme.
+# The list of 109_path_suggest on a light theme.
 Type "a"
 Sleep 200ms
 Type "read /tmp/ordo-vt/tree/n"
 Sleep 300ms
 Down
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/105_light.png"
+Screenshot "/tmp/ordo-vt/vhs-out/109_light.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 
