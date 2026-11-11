@@ -144,11 +144,11 @@ fun StatusIcon(status: String, onClick: () -> Unit, modifier: Modifier = Modifie
 fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier, onFold: (() -> Unit)? = null) {
     val t = row.task
     if (t.separator) {
-        SeparatorRow(t.title, child, onOpen, modifier)
+        SeparatorRow(t.title, t.tagColor, child, onOpen, modifier)
         return
     }
     if (t.note) {
-        NoteRow(t.title, onOpen, modifier)
+        NoteRow(t.title, t.tagColor, onOpen, modifier)
         return
     }
     val colors = MaterialTheme.colorScheme
@@ -219,7 +219,7 @@ fun TagDot(color: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SeparatorRow(label: String, child: Boolean, onOpen: () -> Unit, modifier: Modifier) {
+private fun SeparatorRow(label: String, tag: String, child: Boolean, onOpen: () -> Unit, modifier: Modifier) {
     Row(
         modifier
             .fillMaxWidth()
@@ -243,21 +243,37 @@ private fun SeparatorRow(label: String, child: Boolean, onOpen: () -> Unit, modi
             Spacer(Modifier.width(10.dp))
         }
         SeparatorRule(Modifier.weight(1f))
+        if (tag != "") TagDot(tag, Modifier.padding(start = 12.dp))
     }
 }
 
+// The dash sits where a task's status icon does and the text where its title starts.
 @Composable
-private fun NoteRow(text: String, onOpen: () -> Unit, modifier: Modifier) {
-    Text(
-        text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier
+private fun NoteRow(text: String, tag: String, onOpen: () -> Unit, modifier: Modifier) {
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier
             .fillMaxWidth()
             .clickable(onClick = onOpen)
-            .defaultMinSize(minHeight = 48.dp)
-            .padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
-    )
+            .padding(start = 4.dp, end = 12.dp)
+            .defaultMinSize(minHeight = 48.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(width = 10.dp, height = 2.dp).background(color, CircleShape))
+        }
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = color,
+            modifier = Modifier
+                .weight(1f)
+                .padding(top = 14.dp, bottom = 14.dp, end = 4.dp),
+        )
+        if (tag != "") {
+            Box(Modifier.height(48.dp), contentAlignment = Alignment.Center) { TagDot(tag) }
+        }
+    }
 }
 
 @Composable

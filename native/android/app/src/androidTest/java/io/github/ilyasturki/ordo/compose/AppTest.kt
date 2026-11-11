@@ -194,12 +194,30 @@ class AppTest : AppFixture() {
     }
 
     @Test
-    fun theFilterRefusesANote() {
+    fun theFilterRefusesANoteItWouldHide() {
+        runBlocking { engine.setFilter(PID, Filter(statuses = setOf("completed"))) }
+        scrollTo("Research")
+        header("Research").performClick()
+        compose.onNodeWithText("Add a note").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Clear the filter to add a note here"), 20_000)
+    }
+
+    @Test
+    fun aNoteAddedUnderTheFilterShowsWithItsSectionAndTakesATag() {
         runBlocking { engine.setFilter(PID, Filter(statuses = setOf("todo"))) }
         scrollTo("Research")
         header("Research").performClick()
         compose.onNodeWithText("Add a note").performClick()
-        compose.waitUntilAtLeastOneExists(hasText("Clear the filter to add a note"), 20_000)
+        compose.onNode(hasSetTextAction()).performTextInput("Ask Sam first")
+        compose.onNode(hasSetTextAction()).performImeAction()
+        scrollTo("Ask Sam first")
+        compose.onNodeWithText("Ask Sam first").performClick()
+        waitAcrossPages(hasText("Colour"))
+        compose.onNodeWithText("Colour").performClick()
+        compose.onNodeWithText("Cyan").performClick()
+        compose.waitUntil(20_000) { task("Ask Sam first")?.tagColor == "cyan" }
+        compose.onNodeWithText("Priority").assertDoesNotExist()
+        compose.onNodeWithText("Medium").assertDoesNotExist()
     }
 
     @Test
@@ -269,12 +287,12 @@ class AppTest : AppFixture() {
     }
 
     @Test
-    fun theFilterRefusesASeparator() {
-        runBlocking { engine.setFilter(PID, Filter(statuses = setOf("todo"))) }
+    fun theFilterRefusesASeparatorItWouldHide() {
+        runBlocking { engine.setFilter(PID, Filter(statuses = setOf("completed"))) }
         scrollTo("Research")
         header("Research").performClick()
         compose.onNodeWithText("Add a separator").performClick()
-        compose.waitUntilAtLeastOneExists(hasText("Clear the filter to add a separator"), 20_000)
+        compose.waitUntilAtLeastOneExists(hasText("Clear the filter to add a separator here"), 20_000)
     }
 
     @Test

@@ -361,17 +361,17 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                 if (refs.isNotEmpty()) {
                     Thumbnails(refs, onOpen = { open(ViewerKey(pid, tid, it)) }, onRemove = ::removeImage)
                 }
-                Properties(task, menu, { menu = it }, ::edit)
-                if (task.parentId == "") {
-                    Subtasks(pid, cat.id, task, children, open)
-                }
+            }
+            Properties(task, menu, { menu = it }, ::edit)
+            if (!task.line && task.parentId == "") {
+                Subtasks(pid, cat.id, task, children, open)
             }
             Spacer(Modifier.height(120.dp))
         }
     }
 }
 
-// The fields that are set as chips, then one small button for each of the others.
+// The fields that are set as chips, then one small button for each of the others; a separator or a note has its tag alone.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Properties(
@@ -401,12 +401,14 @@ private fun Properties(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        if (statusSet) Field("status") { MarkChip(Status.label(task.status), icon = Icons.status(task.status), onClick = it) }
-        Field("priority") { PriorityChip(task.priority, task.finished, onClick = it) }
+        val line = task.line
+        if (statusSet && !line) Field("status") { MarkChip(Status.label(task.status), icon = Icons.status(task.status), onClick = it) }
+        if (!line) Field("priority") { PriorityChip(task.priority, task.finished, onClick = it) }
         // Named until it is set: a palette alone doesn't say it colours the task.
         Field("tag") {
             if (task.tagColor == "") MarkChip("Colour", icon = Icons.Palette, onClick = it) else MarkChip(Tags.label(task.tagColor), tag = task.tagColor, onClick = it)
         }
+        if (line) return@FlowRow
         if (task.estimateMinutes > 0) Field("estimate") { MarkChip(Estimates.format(task.estimateMinutes), icon = Icons.Schedule, onClick = it) }
         if (!statusSet) Field("status") { IconButton(onClick = it) { Icon(Icons.status(task.status), "Status: ${Status.label(task.status)}", tint = muted) } }
         if (task.estimateMinutes == 0) Field("estimate") { IconButton(onClick = it) { Icon(Icons.Schedule, "Add an estimate", tint = muted) } }

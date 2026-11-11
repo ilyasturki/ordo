@@ -179,7 +179,17 @@ object Board {
         val tasks = cat.tasks
         val shown = BooleanArray(tasks.size) { i ->
             val t = tasks[i]
-            if (t.line) !filter.active else t.id in held || filter.taskVisible(t, cat)
+            t.id in held || if (t.line) filter.lineMatches(t, cat) else filter.taskVisible(t, cat)
+        }
+        // A line shows with a task of its section, from a separator to the next or the category's end (internal/app/sync.go showSections).
+        var start = 0
+        while (start < tasks.size) {
+            var end = start + 1
+            while (end < tasks.size && !tasks[end].separator) end++
+            if ((start until end).any { !tasks[it].line && shown[it] }) {
+                for (j in start until end) if (tasks[j].line) shown[j] = true
+            }
+            start = end
         }
         var i = 0
         while (i < tasks.size) {
@@ -189,6 +199,10 @@ object Board {
         }
         return shown
     }
+
+    // Whether a separator or a note the category's menu adds, first in cat, would show under the filter.
+    fun addedLineShows(cat: Category, filter: Filter, kind: String): Boolean =
+        shownRows(cat.copy(tasks = listOf(Task(id = "+", status = "", kind = kind)) + cat.tasks), filter)[0]
 
     fun blockEnd(tasks: List<Task>, i: Int): Int {
         var end = i + 1

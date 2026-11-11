@@ -45,6 +45,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.ilyasturki.ordo.compose.model.Board
 import io.github.ilyasturki.ordo.compose.model.Category
 import io.github.ilyasturki.ordo.compose.model.Clash
 import io.github.ilyasturki.ordo.compose.model.Filter
@@ -102,19 +103,19 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
             }) {
                 SheetAction(Icons.NewFolder, "New sub-category") { onSheet(CategorySheet.New(cat.parentId.ifEmpty { cat.id })) }
                 SheetAction(Icons.Separator, "Add a separator") {
-                    if (filter.active) {
+                    if (!Board.addedLineShows(cat, filter, "separator")) {
                         onSheet(null)
                         feedback.reject()
-                        engine.say("Clear the filter to add a separator")
+                        engine.say("Clear the filter to add a separator here")
                     } else {
                         onSheet(CategorySheet.NewSeparator(cat.id))
                     }
                 }
                 SheetAction(Icons.Note, "Add a note") {
-                    if (filter.active) {
+                    if (!Board.addedLineShows(cat, filter, "note")) {
                         onSheet(null)
                         feedback.reject()
-                        engine.say("Clear the filter to add a note")
+                        engine.say("Clear the filter to add a note here")
                     } else {
                         onSheet(CategorySheet.NewNote(cat.id))
                     }

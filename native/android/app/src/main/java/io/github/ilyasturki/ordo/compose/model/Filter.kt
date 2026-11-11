@@ -48,6 +48,14 @@ data class Filter(
         return true
     }
 
+    // A separator's or a note's own verdict (internal/app/state.go LineMatches): only its tag or a category list alone matches it.
+    fun lineMatches(line: Task, cat: Category): Boolean {
+        if (!active) return true
+        if (!categoryVisible(cat)) return false
+        if (statuses.isEmpty() && priorities.isEmpty() && tags.isEmpty()) return true
+        return line.tagColor != "" && Tags.dot(line.tagColor) in tags
+    }
+
     fun pruned(project: Project): Filter {
         val ids = project.categories.mapTo(HashSet()) { it.id }
         return if (categories.all { it in ids }) this else copy(categories = categories.filterTo(HashSet()) { it in ids })

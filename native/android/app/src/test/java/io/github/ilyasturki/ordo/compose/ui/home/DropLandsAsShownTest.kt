@@ -74,7 +74,9 @@ class DropLandsAsShownTest {
                     val folds = if (into.folded) v.folds - into.category.id else v.folds
                     val held = if (v.filter.active) setOf(block.row.task.id) else emptySet()
                     val after = shape(Board.lines(Project.parse(core.project(PID)), v.filter, v.peek, held, folds))
-                    val shown = shape(order)
+                    // A separator or a note whose section the drop emptied hides with it.
+                    val emptied = order.filterIsInstance<Block>().filter { it.row.task.line && it.key != block.key && it.key !in after }.map { it.key }
+                    val shown = shape(order) - emptied.toSet()
                     val landed = if (into.folded) after.filter { it in shown } else after
                     val above = { s: List<String> -> s.getOrNull(s.indexOf(block.key) - 1) }
                     if (landed != shown || above(after) != above(shown)) failures += "$what: shown $shown, landed $after"

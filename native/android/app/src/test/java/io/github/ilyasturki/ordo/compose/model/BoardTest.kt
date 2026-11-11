@@ -187,13 +187,59 @@ class BoardTest {
         )
     }
 
+    // Cat [t1, s1, n1, t2 done blue, s2, t3, n2, s4] and Cat B [s3, t4], as internal/app/line_filter_test.go.
+    private fun sections(green: Set<String> = emptySet()): Project {
+        fun line(id: String, kind: String) = task(id, status = "", kind = kind, tag = if (id in green) "green" else "")
+        return Project(
+            id = "p",
+            categories = listOf(
+                Category("c1", "A", tasks = listOf(
+                    task("t1"), line("s1", "separator"), line("n1", "note"), task("t2", Status.COMPLETED, tag = "blue"),
+                    line("s2", "separator"), task("t3"), line("n2", "note"), line("s4", "separator"),
+                )),
+                Category("c2", "B", tasks = listOf(line("s3", "separator"), task("t4"))),
+            ),
+        )
+    }
+
+    private fun shown(p: Project, f: Filter): List<String> =
+        p.categories.flatMap { cat -> Board.shownRows(cat, f).withIndex().filter { it.value }.map { cat.tasks[it.index].id } }
+
+    @Test
+    fun linesFollowTheirSectionUnderTheFilter() {
+        assertEquals(listOf("t1", "s2", "t3", "n2", "s3", "t4"), shown(sections(), Filter(statuses = setOf(Status.TODO))))
+        assertEquals(listOf("s1", "n1", "t2"), shown(sections(), Filter(statuses = setOf(Status.COMPLETED))))
+        assertEquals("a priority matches no line by itself", emptyList<String>(), shown(sections(), Filter(priorities = setOf("high"))))
+        assertEquals("a line's own tag", listOf("n2", "s4"), shown(sections(setOf("n2", "s4")), Filter(tags = setOf("green"))))
+        assertEquals("its own tag under a status too", listOf("s4"), shown(sections(setOf("s4")), Filter(statuses = setOf(Status.TODO), tags = setOf("green"))))
+        assertEquals("untagged matches no line by itself", listOf("t1", "s2", "t3", "n2", "s3", "t4"), shown(sections(), Filter(tags = setOf(""))))
+        assertEquals(
+            "a category alone keeps all its lines",
+            listOf("t1", "s1", "n1", "t2", "s2", "t3", "n2", "s4"),
+            shown(sections(), Filter(categories = setOf("c1"))),
+        )
+        assertEquals("a tagged line outside the kept category", emptyList<String>(), shown(sections(setOf("s3")), Filter(categories = setOf("c1"), tags = setOf("green"))))
+        assertEquals(10, shown(sections(), Filter(statuses = setOf(Status.TODO), off = true)).size)
+    }
+
+    @Test
+    fun aLineAddedFirstMustShowUnderTheFilter() {
+        val p = sections()
+        val todo = Filter(statuses = setOf(Status.TODO))
+        assertTrue("t1 shares the first section", Board.addedLineShows(p.categories[0], todo, "note"))
+        assertFalse("s3 already ends the first section", Board.addedLineShows(p.categories[1], todo, "separator"))
+        assertFalse(Board.addedLineShows(p.categories[0], Filter(statuses = setOf(Status.CANCELLED)), "separator"))
+        assertTrue(Board.addedLineShows(p.categories[1], Filter.NONE, "separator"))
+        assertTrue(Board.addedLineShows(p.categories[1], Filter(categories = setOf("c2")), "separator"))
+    }
+
     @Test
     fun aSelectedCategoryKeepsItsSubCategories() {
         val f = Filter(categories = setOf("feat"))
         assertTrue(f.categoryVisible(project.categories[1]))
         assertFalse(f.categoryVisible(project.categories[2]))
         assertEquals(
-            listOf("# Feature", "a,  a1,  a2", "b", "c", "# UI < Feature", "d", "# Fix", "(1 hidden)"),
+            listOf("# Feature", "a,  a1,  a2", "sep", "b", "c", "# UI < Feature", "d", "# Fix", "(1 hidden)"),
             shape(Board.lines(project, f)),
         )
     }
@@ -201,13 +247,13 @@ class BoardTest {
     @Test
     fun theMediumAndUntaggedBucketsAreEmpty() {
         val f = Filter(priorities = setOf(""), tags = setOf(""))
-        assertEquals(listOf("a", "a1", "b", "d"), Board.lines(project, f).filterIsInstance<Block>().flatMap { listOf(it.row) + it.children }.map { it.task.id })
+        assertEquals(listOf("a", "a1", "sep", "b", "d"), Board.lines(project, f).filterIsInstance<Block>().flatMap { listOf(it.row) + it.children }.map { it.task.id })
     }
 
     @Test
     fun aDiamondTagMatchesItsColoursDot() {
         val f = Filter(tags = setOf("green"))
-        assertEquals(listOf("c"), Board.lines(project, f).filterIsInstance<Block>().map { it.row.task.id })
+        assertEquals(listOf("sep", "c"), Board.lines(project, f).filterIsInstance<Block>().map { it.row.task.id })
     }
 
     @Test
@@ -223,12 +269,12 @@ class BoardTest {
     fun aHeldRowStaysMutedAndIsNotCountedHidden() {
         val f = Filter(statuses = setOf(Status.TODO))
         assertEquals(
-            listOf("# Feature", "a,  a2", "c", "(2 hidden)"),
-            shape(Board.lines(project, f)).take(4),
+            listOf("# Feature", "a,  a2", "sep", "c", "(2 hidden)"),
+            shape(Board.lines(project, f)).take(5),
         )
         assertEquals(
-            listOf("# Feature", "a,  a2", "b~", "c", "(1 hidden)"),
-            shape(Board.lines(project, f, held = setOf("b"))).take(5),
+            listOf("# Feature", "a,  a2", "sep", "b~", "c", "(1 hidden)"),
+            shape(Board.lines(project, f, held = setOf("b"))).take(6),
         )
     }
 
@@ -298,8 +344,8 @@ class BoardTest {
         )
         assertEquals(listOf("# C", "a", "n", "b"), shape(Board.lines(noted, Filter.NONE)))
         assertEquals(
-            "a filter hides a note and leaves it out of the count",
-            listOf("# C", "a", "(1 hidden)"),
+            "a note shows with its section's tasks and stays out of the count",
+            listOf("# C", "a", "n", "(1 hidden)"),
             shape(Board.lines(noted, Filter(statuses = setOf(Status.TODO)))),
         )
         val header = Board.lines(noted, Filter.NONE, folds = setOf("c")).first() as Header
