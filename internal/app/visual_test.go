@@ -3,12 +3,14 @@ package app
 import (
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ilyasturki/ordo/internal/app/modes"
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/config"
+	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
@@ -253,6 +255,32 @@ func TestVisualDelete_CursorLandsAtTheRangeStart(t *testing.T) {
 			assert.Equal(t, tt.want, pos.ID)
 		})
 	}
+}
+
+func TestVisualDelete_CursorThroughTheKeys(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	m.ui.Selection.MoveTo(2) // t1
+	for _, key := range []rune{'v', 'j', 'd', 'y'} {
+		_, _ = m.Update(tea.KeyPressMsg{Code: key})
+	}
+
+	assert.Equal(t, []string{"t3"}, taskIDs(m.project.Categories[0]))
+	pos, _ := m.ui.Selection.SelectedPosition()
+	assert.Equal(t, "t3", pos.ID)
+}
+
+func TestVisualDelete_CursorLandsOnTheHiddenRowsMarkerUnderAFilter(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	m.ui.Filter = filterStateFrom(data.Filter{Statuses: []string{"todo"}})
+	m.rebuildPositions()
+	m.ui.Selection.MoveTo(2) // t1, the only todo task of Cat A
+	m.enterVisualMode()
+	m.visualDelete()
+	m.confirmDeleteVisualRange()
+
+	pos, _ := m.ui.Selection.SelectedPosition()
+	assert.Equal(t, selection.FocusHidden, pos.Kind)
+	assert.Equal(t, "c1", pos.ID)
 }
 
 func TestVisualDelete_CursorSkipsNothingOnALongRange(t *testing.T) {

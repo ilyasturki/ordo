@@ -21,9 +21,6 @@ type pickTarget struct {
 	query     string
 }
 
-// resolvePick settles `ordo pick <name>`: the first rule that gives exactly one
-// project opens it (exact match, unique name prefix, unique smartcase
-// substring); several matches open the picker filtered by name.
 func resolvePick(store *data.Store, name string) (pickTarget, error) {
 	if p, err := store.LoadProject(name); err == nil {
 		return pickTarget{projectID: p.ID}, nil

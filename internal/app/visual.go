@@ -559,9 +559,7 @@ func (m *model) visualDelete() {
 	m.ui.Modes.ToConfirmDelete()
 }
 
-// visualDeleteCursor is the index of the range's first row, which after the
-// delete holds the row that followed the range (or the one above when none did).
-// A range starting on a description row also takes its parent, one row up.
+// A range starting on a description row also deletes its parent, one row up.
 func (m model) visualDeleteCursor() int {
 	lo, _, _ := m.visualRange()
 	positions := m.ui.Selection.Positions()

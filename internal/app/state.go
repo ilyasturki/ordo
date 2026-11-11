@@ -455,7 +455,6 @@ func (p *ProjectPickerState) startFiltering() {
 	p.scrollOffset = 0
 }
 
-// prefillFilter opens the filter with query already typed in.
 func (p *ProjectPickerState) prefillFilter(query string, visible int) {
 	p.startFiltering()
 	p.filter.SetValue(query)

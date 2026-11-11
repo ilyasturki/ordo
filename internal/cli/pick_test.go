@@ -85,6 +85,17 @@ func TestResolvePickByPrefixAndNoMatch(t *testing.T) {
 	}
 }
 
+func TestPickCompletionOffersProjectNames(t *testing.T) {
+	dir := initDefault(t)
+	out, err := runCLI(t, dir, "__complete", "pick", "")
+	if err != nil {
+		t.Fatalf("complete: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "Default\n") {
+		t.Fatalf("completion = %q, want the project names", out)
+	}
+}
+
 func TestPickWithNoMatchExitsWithAnError(t *testing.T) {
 	dir := initDefault(t)
 	_, err := runCLI(t, dir, "pick", "zzz")
