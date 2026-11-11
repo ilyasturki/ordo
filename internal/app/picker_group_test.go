@@ -201,6 +201,8 @@ func TestGroupFieldCyclesFromAGroupTypedInAnotherCase(t *testing.T) {
 	pressPickerKey(t, m, "m")
 	typeIn(t, m, "work")
 	hit(m, "tab")
+	assert.Equal(t, "Work", m.ui.Picker.input.Value())
+	hit(m, "tab")
 	assert.Equal(t, "Perso", m.ui.Picker.input.Value())
 }
 

@@ -116,8 +116,12 @@ func (p *ProjectPickerState) completeGroup() {
 		if slices.ContainsFunc(p.groupsLike(""), names) {
 			p.groupStem = ""
 		}
-		if i := slices.IndexFunc(p.groupsLike(p.groupStem), names); i >= 0 {
-			p.groupNext = i + 1
+		like := p.groupsLike(p.groupStem)
+		if i := slices.IndexFunc(like, names); i >= 0 {
+			p.groupNext = i
+			if like[i] == strings.TrimSpace(value) {
+				p.groupNext++
+			}
 		}
 	}
 	matches := p.groupsLike(p.groupStem)
