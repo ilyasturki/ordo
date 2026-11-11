@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -11,14 +13,63 @@ import (
 	"github.com/ilyasturki/ordo/internal/config"
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/ui"
 )
+
+type pickTarget struct {
+	projectID string
+	query     string
+}
+
+// resolvePick settles `ordo pick <name>`: the first rule that gives exactly one
+// project opens it (exact match, unique name prefix, unique smartcase
+// substring); several matches open the picker filtered by name.
+func resolvePick(store *data.Store, name string) (pickTarget, error) {
+	if p, err := store.LoadProject(name); err == nil {
+		return pickTarget{projectID: p.ID}, nil
+	} else if !errors.Is(err, data.ErrProjectNotFound) {
+		return pickTarget{}, err
+	}
+	projects, err := store.ListProjects()
+	if err != nil {
+		return pickTarget{}, err
+	}
+	return matchPick(projects, name)
+}
+
+func matchPick(projects []domain.Project, name string) (pickTarget, error) {
+	name = strings.TrimSpace(name)
+	needle := domain.NormalizeName(name)
+	var prefix, substring []domain.Project
+	for _, p := range projects {
+		if strings.HasPrefix(domain.NormalizeName(p.Name), needle) {
+			prefix = append(prefix, p)
+		}
+		if ui.Contains(p.Name, name) {
+			substring = append(substring, p)
+		}
+	}
+	for _, found := range [][]domain.Project{prefix, substring} {
+		if len(found) == 1 {
+			return pickTarget{projectID: found[0].ID}, nil
+		}
+	}
+	switch {
+	case len(substring) > 0:
+		return pickTarget{query: name}, nil
+	case len(prefix) > 0:
+		return pickTarget{query: strings.ToLower(name)}, nil
+	}
+	return pickTarget{}, fmt.Errorf("no project matches %q", name)
+}
 
 func newPickCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "pick",
-		Aliases: []string{"switch"},
-		Short:   "Launch the TUI and open the project picker",
-		Args:    cobra.NoArgs,
+		Use:               "pick [project]",
+		Aliases:           []string{"switch"},
+		Short:             "Launch the TUI and open the project picker, or the project a name points to",
+		Args:              cobra.MaximumNArgs(1),
+		ValidArgsFunction: completeProjects,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			configPath, err := config.ResolveConfigPath(viper.GetString("config"))
 			if err != nil {
@@ -36,7 +87,17 @@ func newPickCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return app.Run(dataDir, viper.GetString("project"), "", cfgManager, workingDir, true)
+			if len(args) == 1 && strings.TrimSpace(args[0]) != "" {
+				target, err := resolvePick(data.NewStore(dataDir), args[0])
+				if err != nil {
+					return err
+				}
+				if target.projectID != "" {
+					return app.Run(dataDir, target.projectID, "", cfgManager, workingDir, false, "")
+				}
+				return app.Run(dataDir, viper.GetString("project"), "", cfgManager, workingDir, true, target.query)
+			}
+			return app.Run(dataDir, viper.GetString("project"), "", cfgManager, workingDir, true, "")
 		},
 	}
 	return cmd

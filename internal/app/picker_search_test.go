@@ -131,6 +131,16 @@ func TestPickerFilter_ArrowsStayWithinProjects(t *testing.T) {
 	assert.False(t, after.ui.Picker.onNew)
 }
 
+func TestPickerFilter_PrefillShowsTheQueryAndItsMatches(t *testing.T) {
+	m := namedPickerModel(t, "Ferry", "Ferret", "Billing")
+	m.ui.Picker.prefillFilter("fer", m.pickerVisibleCount())
+
+	assert.True(t, m.ui.Picker.filtering)
+	assert.Equal(t, "fer", m.ui.Picker.filter.Value())
+	assert.Equal(t, []string{"Ferry", "Ferret"}, pickerNames(m.ui.Picker.projects))
+	assert.Equal(t, 0, m.ui.Picker.selected)
+}
+
 func pickerNames(projects []domain.Project) []string {
 	names := make([]string, len(projects))
 	for i, p := range projects {

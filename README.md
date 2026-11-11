@@ -69,6 +69,7 @@ ordo                        # open the project linked to this directory, or the 
 ordo -p ferry               # open a project by name
 ordo -p ferry --task <id>   # open with the cursor on a task
 ordo pick                   # open the project picker
+ordo pick fer               # open the project `fer` names: a unique prefix or part of a name; several open the picker filtered
 ordo project link <project> # link this directory to a project
 ordo project unlink         # remove this directory's link
 ```

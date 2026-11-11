@@ -4,6 +4,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- `ordo pick <name>` opens that project: the exact name, else a unique name prefix, else a unique part of a name (a capital makes it case-sensitive). When several match, the picker opens with the name already in its filter, and with none the command exits with `no project matches "<name>"`. Shell completion offers the project names
+
 ### Changed
 
 - An outside change now merges into the open project instead of refusing your edits, whichever writer made it: an edit committed under an open input, or one a sync tool replaced after it saved, stays, row by row and field by field, with no prompt. Only one field changed to two values asks: `m` keeps yours, `t` theirs, `b` both, with yours as a copy just below, `M` and `T` the rest, and `u` takes it back. An edited row outlives a delete. `r` keeps your edits, undo survives a change from outside, and what a choice could discard stays in `recovery/`. See [`docs/file-format.md`](docs/file-format.md#edits-from-outside)

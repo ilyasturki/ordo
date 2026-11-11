@@ -950,7 +950,7 @@ func linkDirIfUnset(sm data.StateRepository, projectID string) {
 	}
 }
 
-func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader, workingDir string, forcePicker bool) (err error) {
+func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader, workingDir string, forcePicker bool, pickerQuery string) (err error) {
 	taskCommands, err := bindTaskCommands(cfgManager.Get().TaskCommands)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
@@ -1079,6 +1079,9 @@ func Run(dataDir, projectSelector, taskSelector string, cfgManager config.Reader
 			fullscreen: true,
 		}
 		m.ui.Picker.ensureVisible(m.pickerVisibleCount())
+		if pickerQuery != "" && len(ordered) > 0 {
+			m.ui.Picker.prefillFilter(pickerQuery, m.pickerVisibleCount())
+		}
 	}
 
 	_, err = tea.NewProgram(m).Run()
