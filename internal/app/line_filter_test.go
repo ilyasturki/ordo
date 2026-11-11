@@ -148,3 +148,19 @@ func TestUntaggingAMatchedLineHoldsItUntilTheCursorLeaves(t *testing.T) {
 	m, _ = pressKeys(m, "k")
 	assert.NotContains(t, rowIDs(m), "separator:s4")
 }
+
+func TestAHeldTaskStaysWhileTheCursorIsOnItsDescription(t *testing.T) {
+	p := sectionsProject()
+	p.Categories[0].Tasks[5].Description = "details"
+	m := newTestModel(t, p)
+	m.ui.Screen.ExpandDescriptions = true
+	m.ui.Filter.statuses[domain.StatusTodo] = true
+	m.rebuildPositions()
+	require.True(t, m.selectRow("t3"))
+
+	m, _ = pressKeys(m, "space")
+	require.NotEqual(t, domain.StatusTodo, m.taskByID("t3").Status)
+	m, _ = pressKeys(m, "j")
+	require.Equal(t, "description:t3", cursorItem(t, m))
+	assert.Contains(t, rowIDs(m), "task:t3", "its own description keeps it held")
+}

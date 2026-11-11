@@ -75,6 +75,20 @@ func TestVisualTagCoversLines(t *testing.T) {
 	}
 }
 
+func TestVisualTagAnchoredOnALine(t *testing.T) {
+	for _, id := range []string{"s1", "n1"} {
+		t.Run(id, func(t *testing.T) {
+			m := newTestModel(t, lineTagProject())
+			require.True(t, m.selectRow(id))
+			m, _ = pressKeys(m, "v", "j", "t")
+			color := m.taskByID(id).TagColor
+			require.NotEmpty(t, color, "a range from a line tags it")
+			next := map[string]string{"s1": "n1", "n1": "t2"}[id]
+			assert.Equal(t, color, m.taskByID(next).TagColor)
+		})
+	}
+}
+
 func TestTagBatchNamesLinesByKind(t *testing.T) {
 	p := lineTagProject()
 	for i := range p.Categories[0].Tasks {

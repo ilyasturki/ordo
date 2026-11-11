@@ -142,7 +142,7 @@ func (m *model) releaseFilteredOut() {
 	if !m.ui.Modes.IsNormal() || !m.ui.Filter.holding() {
 		return
 	}
-	if pos, ok := m.selectedPosition(); ok && taggable(pos.Kind) && m.ui.Filter.holds(pos.ID) {
+	if pos, ok := m.selectedPosition(); ok && m.ui.Filter.holds(pos.ID) {
 		return
 	}
 	m.ui.Filter.releaseHeld()
