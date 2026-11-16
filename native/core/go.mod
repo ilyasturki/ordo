@@ -2,7 +2,7 @@ module github.com/ilyasturki/ordo/native/core
 
 go 1.26.0
 
-require github.com/ilyasturki/ordo v0.0.0
+require github.com/ilyasturki/ordo v0.14.3
 
 require (
 	golang.org/x/mobile v0.0.0-20261011034528-197770444867 // indirect
