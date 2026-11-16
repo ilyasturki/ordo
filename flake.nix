@@ -31,7 +31,7 @@
               root = ./.;
               fileset = pkgs.lib.fileset.difference ./. ./native;
             };
-            vendorHash = "sha256-y6cR7/CISh9WTtW+g4SfqbbSlpGcYTxoJP0cycCF4bo=";
+            vendorHash = "sha256-YcV3OAIbedLV/SivDJIxow4qJJxfv7Fgax7TzIjNEmQ=";
             subPackages = [ "cmd/ordo" ];
             ldflags = [
               "-s"
