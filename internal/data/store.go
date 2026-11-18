@@ -174,31 +174,41 @@ func marshalStamped(project domain.Project) ([]byte, error) {
 
 // writeProjectBytes atomically writes pre-marshaled bytes for id: an fsync'd
 // temp file, renamed into place, then a directory fsync so the rename survives
-// a crash. It performs no locking or existence check; callers layer those on.
-// The version it returns is nil when the file can't be stat'ed afterwards.
-func (s *Store) writeProjectBytes(id string, data []byte) (os.FileInfo, error) {
+// a crash. It performs no locking or existence check; callers layer those on,
+// and pass fresh, run again just before the rename, when they hold a version.
+// The version it returns is nil when the file can't be stat'ed.
+func (s *Store) writeProjectBytes(id string, data []byte, fresh func() error) (os.FileInfo, error) {
 	if err := os.MkdirAll(s.Dir, 0o755); err != nil {
 		return nil, err
 	}
 	replaced, _ := os.ReadFile(s.projectPath(id))
-	if err := fsutil.WriteAtomic(s.projectPath(id), data, 0o644); err != nil {
+	info, err := fsutil.WriteAtomicIf(s.projectPath(id), data, 0o644, func() error {
+		beforeRename(id)
+		if fresh == nil {
+			return nil
+		}
+		return fresh()
+	})
+	if err != nil {
 		return nil, err
 	}
 	s.logWrite(id, replaced, data)
-	info, _ := os.Stat(s.projectPath(id))
 	return info, nil
 }
 
-func (s *Store) saveProjectAtomic(project domain.Project) error {
+// beforeRename lets a test replace the file between a writer's checks and its rename.
+var beforeRename = func(id string) {}
+
+func (s *Store) saveProjectAtomic(project domain.Project, fresh func() error) error {
 	data, err := s.marshalProject(project)
 	if err != nil {
 		return err
 	}
-	return s.saveBytes(project.ID, data)
+	return s.saveBytes(project.ID, data, fresh)
 }
 
-func (s *Store) saveBytes(id string, data []byte) error {
-	info, err := s.writeProjectBytes(id, data)
+func (s *Store) saveBytes(id string, data []byte, fresh func() error) error {
+	info, err := s.writeProjectBytes(id, data, fresh)
 	if err != nil {
 		return err
 	}
@@ -351,12 +361,11 @@ func (s *Store) RenameProject(id, newName string) (domain.Project, error) {
 		return domain.Project{}, err
 	}
 	defer pl.Close()
-	project, err := s.LoadProjectByID(id)
+	project, err := s.rewrite(id, func(p *domain.Project) error {
+		p.Name = newName
+		return nil
+	})
 	if err != nil {
-		return domain.Project{}, err
-	}
-	project.Name = newName
-	if err := s.saveProjectAtomic(project); err != nil {
 		return domain.Project{}, err
 	}
 	return project, nil

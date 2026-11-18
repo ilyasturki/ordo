@@ -64,13 +64,16 @@ func (s *Store) writeSnapshot(id string, data []byte, l *lineage) error {
 		return err
 	}
 	defer f.Close()
-	if _, err := os.Stat(s.projectPath(id)); errors.Is(err, fs.ErrNotExist) {
-		return ErrProjectNotFound
+	fresh := func() error {
+		if _, err := os.Stat(s.projectPath(id)); errors.Is(err, fs.ErrNotExist) {
+			return ErrProjectNotFound
+		}
+		return s.checkFresh(id, l)
 	}
-	if err := s.checkFresh(id, l); err != nil {
+	if err := fresh(); err != nil {
 		return err
 	}
-	info, err := s.writeProjectBytes(id, data)
+	info, err := s.writeProjectBytes(id, data, fresh)
 	if err != nil {
 		return err
 	}
@@ -89,7 +92,7 @@ func (s *Store) saveNewProjectLocked(project domain.Project) error {
 		return err
 	}
 	defer f.Close()
-	return s.saveProjectAtomic(project)
+	return s.saveProjectAtomic(project, nil)
 }
 
 // WithProjectLocked acquires the project flock, loads the project, runs fn,
@@ -112,25 +115,53 @@ func (s *Store) WithProjectLocked(id string, fn func(*domain.Project) error) (do
 		return domain.Project{}, err
 	}
 	defer f.Close()
-	// Re-check after locking: another process may have deleted the project
-	// between the existence check and the flock acquisition.
-	project, err := s.LoadProjectByID(id)
-	if err != nil {
-		return domain.Project{}, err
-	}
-	before := merge.Clone(project)
-	if err := fn(&project); err != nil {
+	return s.rewrite(id, fn)
+}
+
+// rewriteTries bounds the retries of a writer whose file keeps changing under it.
+const rewriteTries = 3
+
+// rewrite loads id, runs fn and saves, under the project flock the caller holds. Syncthing
+// takes no flock, so a file it replaced before the rename sends fn round again on the new one.
+func (s *Store) rewrite(id string, fn func(*domain.Project) error) (domain.Project, error) {
+	for try := 1; ; try++ {
+		// Read under the lock: another process may have deleted the project
+		// between the caller's existence check and the flock acquisition.
+		project, info, raw, err := s.readProject(id)
+		if err != nil {
+			return domain.Project{}, err
+		}
+		s.adopt(id, info, raw)
+		before := merge.Clone(project)
+		if err := fn(&project); err != nil {
+			return project, err
+		}
+		fresh := func() error {
+			now, err := os.Stat(s.projectPath(id))
+			switch {
+			case errors.Is(err, fs.ErrNotExist):
+				return ErrProjectNotFound
+			case err != nil:
+				return err
+			case !sameVersion(now, info):
+				return ErrStaleProject
+			}
+			return nil
+		}
+		if !regroupedOnly(before, project) {
+			err = s.saveProjectAtomic(project, fresh)
+		} else {
+			project.UpdatedAt = before.UpdatedAt
+			var data []byte
+			if data, err = marshalStamped(project); err == nil {
+				err = s.saveBytes(id, data, fresh)
+			}
+		}
+		if errors.Is(err, ErrStaleProject) && try < rewriteTries {
+			continue
+		}
 		return project, err
 	}
-	if !regroupedOnly(before, project) {
-		return project, s.saveProjectAtomic(project)
-	}
-	project.UpdatedAt = before.UpdatedAt
-	data, err := marshalStamped(project)
-	if err != nil {
-		return project, err
-	}
-	return project, s.saveBytes(id, data)
 }
 
 // regroupedOnly: a project's group isn't an edit to it, so a save that changes nothing else

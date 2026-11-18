@@ -17,7 +17,7 @@ func TestSaver_CloseFlushesLastWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := domain.Project{ID: "p1", Name: "P"}
-	if err := store.saveProjectAtomic(p); err != nil {
+	if err := store.saveProjectAtomic(p, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -45,7 +45,7 @@ func TestSaver_PersistsSingleEdit(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := domain.Project{ID: "p1", Name: "before"}
-	if err := store.saveProjectAtomic(p); err != nil {
+	if err := store.saveProjectAtomic(p, nil); err != nil {
 		t.Fatal(err)
 	}
 	saver := NewSaver(store)

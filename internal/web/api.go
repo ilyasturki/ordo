@@ -375,8 +375,8 @@ func (s *Server) applyViews(views map[string]data.ViewChange) {
 // applyRun applies one project's consecutive ops under one lock and one save; a refused op
 // leaves the project as it was and the next one runs.
 func (s *Server) applyRun(ops []queuedOp, results []opResult) {
-	changed := false
 	_, err := s.store.WithProjectLocked(ops[0].Project, func(p *domain.Project) error {
+		changed := false
 		for k, op := range ops {
 			results[k] = applyQueued(p, op)
 			changed = changed || results[k].Status == operations.Applied

@@ -41,7 +41,7 @@ func BenchmarkSaveProjectLocked(b *testing.B) {
 		if err := store.Ensure(); err != nil {
 			b.Fatal(err)
 		}
-		if err := store.saveProjectAtomic(p); err != nil {
+		if err := store.saveProjectAtomic(p, nil); err != nil {
 			b.Fatal(err)
 		}
 		b.Run(s.name, func(b *testing.B) {
@@ -72,7 +72,7 @@ func BenchmarkSaverEnqueue(b *testing.B) {
 		if err := store.Ensure(); err != nil {
 			b.Fatal(err)
 		}
-		if err := store.saveProjectAtomic(p); err != nil {
+		if err := store.saveProjectAtomic(p, nil); err != nil {
 			b.Fatal(err)
 		}
 		saver := NewSaver(store)
@@ -99,7 +99,7 @@ func BenchmarkListProjects(b *testing.B) {
 			p := benchSaveProject(8, 40)
 			p.ID = fmt.Sprintf("proj%d", i)
 			p.Name = fmt.Sprintf("Project %d", i)
-			if err := store.saveProjectAtomic(p); err != nil {
+			if err := store.saveProjectAtomic(p, nil); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -125,7 +125,7 @@ func BenchmarkLoadProjectByID(b *testing.B) {
 		p := benchSaveProject(8, 40)
 		p.ID = fmt.Sprintf("proj%d", i)
 		p.Name = fmt.Sprintf("Project %d", i)
-		if err := store.saveProjectAtomic(p); err != nil {
+		if err := store.saveProjectAtomic(p, nil); err != nil {
 			b.Fatal(err)
 		}
 	}

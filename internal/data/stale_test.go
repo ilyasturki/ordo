@@ -191,7 +191,7 @@ func TestSnapshotQueuedBeforeReloadIsRefused(t *testing.T) {
 	saver.Enqueue(mine)
 	edited := mine
 	edited.Name = "Web edit"
-	require.NoError(t, web.saveProjectAtomic(edited))
+	require.NoError(t, web.saveProjectAtomic(edited, nil))
 	_, err = tui.LoadProjectByID(p.ID)
 	require.NoError(t, err)
 	require.NoError(t, lock.Close())

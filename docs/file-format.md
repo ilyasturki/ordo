@@ -251,10 +251,13 @@ Ordo decodes a project into fixed types and writes back only the fields listed a
 
 1. Write the whole project to `<id>.json.tmp` in the same directory.
 2. fsync it.
-3. Rename it over `<id>.json`.
-4. fsync the directory.
+3. Check that `<id>.json` is still the version the write started from (inode, size, modification time). If it isn't, delete the temp file and don't rename: see [Edits from outside](#edits-from-outside).
+4. Rename it over `<id>.json`.
+5. fsync the directory.
 
 A reader then sees either the old file or the new one in full. Syncthing should ignore the temp files: `(?d)*.tmp` in `.stignore`.
+
+Syncthing takes no lock, so it can replace `<id>.json` at any moment. Step 3 shrinks the time in which its version would be overwritten unseen from the whole write to the instant between the check and the rename; nothing short of Syncthing taking the lock closes that instant.
 
 ## Locks
 
@@ -285,7 +288,9 @@ A change merges into the open copy, whichever writer made it, row by row and fie
 
 A snapshot queued before a reload keeps the note of the load it came from, so it can't land after the reload and overwrite the change the reload just showed.
 
-The CLI and `ordo serve` do each change as one read, change and write under the lock, so they always start from the current file. The app queues its edits and `ordo serve` replays them under the lock, see [sync.md](sync.md). A title or details edit carries the text it was typed over, and the server refuses it when the file holds other text: the app shows the file's text and offers Keep mine, which sends the edit again over it. Another client should do the same: re-read before writing, or check that the file is still the one it loaded.
+The TUI checks the note again just before each rename, so a file Syncthing swapped in while a snapshot was being written refuses that snapshot and merges like any other change.
+
+The CLI and `ordo serve` do each change as one read, change and write under the lock, so they always start from the current file. When the file was replaced between their read and their rename, they read it again and redo the change on it, up to three times, then fail. The app queues its edits and `ordo serve` replays them under the lock, see [sync.md](sync.md). A title or details edit carries the text it was typed over, and the server refuses it when the file holds other text: the app shows the file's text and offers Keep mine, which sends the edit again over it. Another client should do the same: re-read before writing, or check that the file is still the one it loaded.
 
 ## Conflict copies
 

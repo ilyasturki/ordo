@@ -18,7 +18,7 @@ func TestARegroupKeepsTheStampAndAnEditRestampsIt(t *testing.T) {
 	raw.UpdatedAt = "2026-01-02T03:04:05Z"
 	data, err := marshalStamped(raw)
 	require.NoError(t, err)
-	require.NoError(t, s.saveBytes(p.ID, data))
+	require.NoError(t, s.saveBytes(p.ID, data, nil))
 
 	_, err = s.WithProjectLocked(p.ID, func(p *domain.Project) error {
 		p.Group = "Work"

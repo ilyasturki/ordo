@@ -9,6 +9,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The app answers an edit as soon as it is made: the phone saves it right after, in order, instead of the buzz waiting on the disk. A sync that brings nothing new redraws nothing and leaves the saved queue alone, a cold start shows the project you were on before loading the others, and with the server out of reach the live stream retries every 5 seconds, then less often, up to once a minute
 - A change from Syncthing or the phone no longer freezes the TUI for a moment after a long session of edits: undo history catches up with it only when `u` or `ctrl+r` reaches a step, and merging is faster on big projects
 
+### Fixed
+
+- A save no longer overwrites a version Syncthing put in place while the save was writing: the TUI merges it with your edits, and the CLI and `ordo serve` redo their change on it. See [`docs/file-format.md`](docs/file-format.md#writing-a-file)
+
 ## [0.14.3] - 2026-11-11
 
 ### Added
