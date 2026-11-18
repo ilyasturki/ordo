@@ -135,7 +135,7 @@ func (s *Store) rewrite(id string, fn func(*domain.Project) error) (domain.Proje
 		} else {
 			project.UpdatedAt = before.UpdatedAt
 			var data []byte
-			if data, err = marshalStamped(project); err == nil {
+			if data, err = domain.FileBytes(project); err == nil {
 				err = s.saveBytes(id, data, fresh)
 			}
 		}

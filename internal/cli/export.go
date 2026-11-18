@@ -160,22 +160,12 @@ func importJSON(r io.Reader, overrideName string) (domain.Project, error) {
 		return domain.Project{}, err
 	}
 
-	var p domain.Project
-	if err := json.Unmarshal(data, &p); err != nil {
-		return domain.Project{}, fmt.Errorf("invalid JSON: %w", err)
-	}
-	if err := domain.CheckSchema(p); err != nil {
+	p, err := domain.ParseImport(data)
+	if err != nil {
 		return domain.Project{}, err
 	}
-
 	if overrideName != "" {
 		p.Name = overrideName
 	}
-	// The repair can move a category to the top level, so siblings are only known after it.
-	domain.NormalizeNesting(&p)
-	for i := range p.Categories {
-		p.Categories[i].Name = domain.UniqueCategoryName(p.Categories[:i], p.Categories[i].ParentID, p.Categories[i].Name)
-	}
-
 	return p, nil
 }

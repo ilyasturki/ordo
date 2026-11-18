@@ -16,7 +16,7 @@ func TestARegroupKeepsTheStampAndAnEditRestampsIt(t *testing.T) {
 	raw, err := s.LoadProjectByID(p.ID)
 	require.NoError(t, err)
 	raw.UpdatedAt = "2026-01-02T03:04:05Z"
-	data, err := marshalStamped(raw)
+	data, err := domain.FileBytes(raw)
 	require.NoError(t, err)
 	require.NoError(t, s.saveBytes(p.ID, data, nil))
 

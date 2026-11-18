@@ -42,7 +42,7 @@ func syncthingSwaps(t *testing.T, s *Store, id string, edit func(p *domain.Proje
 		p, _, _, err := s.readProject(id)
 		require.NoError(t, err)
 		edit(&p)
-		data, err := marshalStamped(p)
+		data, err := domain.FileBytes(p)
 		require.NoError(t, err)
 		tmp := filepath.Join(s.Dir, ".syncthing."+id+".json.tmp")
 		require.NoError(t, os.WriteFile(tmp, data, 0o644))
