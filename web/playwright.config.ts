@@ -1,18 +1,7 @@
-import { createServer } from 'node:net';
 import { defineConfig, devices, type PlaywrightTestOptions, type Project } from '@playwright/test';
 import type { Options } from './e2e/fixtures';
 import { csp } from './e2e/front';
-
-function freePort(): Promise<number> {
-	return new Promise((resolve, reject) => {
-		const server = createServer();
-		server.on('error', reject);
-		server.listen(0, '127.0.0.1', () => {
-			const { port } = server.address() as { port: number };
-			server.close(() => resolve(port));
-		});
-	});
-}
+import { freePort } from './e2e/serve';
 
 // Workers load this file again: the runner picks the ports once and hands them down in the environment.
 process.env.ORDO_E2E_SITE ??= String(await freePort());
