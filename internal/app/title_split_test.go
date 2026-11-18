@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -26,7 +27,6 @@ func shiftEnter(m *model) *model {
 	return &updated
 }
 
-// editTitleWithCursor opens the first task's title editor holding text, the cursor after its first at runes.
 func editTitleWithCursor(t *testing.T, m *model, text string, at int) *model {
 	t.Helper()
 	selectFirstTask(m)
@@ -64,6 +64,18 @@ func TestShiftEnterInTitle_PutsTheMovedTextAboveTheDescription(t *testing.T) {
 	ta := m.ui.DescriptionEdit.textarea
 	assert.Equal(t, 0, ta.Line())
 	assert.Equal(t, len("it fails on DST"), ta.Column())
+}
+
+func TestShiftEnterInTitle_ShowsTheMovedTextAboveALongDescription(t *testing.T) {
+	p := sampleProject()
+	p.Categories[0].Tasks[0].Description = numberedLines(100)
+	m := newTestModel(t, p)
+	m = editTitleWithCursor(t, m, "Alpha it fails on DST", len("Alpha "))
+
+	m = shiftEnter(m)
+
+	assert.Equal(t, 0, descriptionMarkerRow(t, m), "the editor shows the moved text, its cursor on the top row")
+	assert.Contains(t, ansi.Strip(m.ui.DescriptionEdit.textarea.View()), "it fails on DST")
 }
 
 func TestShiftEnterInTitle_IsOneUndoStep(t *testing.T) {

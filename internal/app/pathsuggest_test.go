@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -251,6 +252,11 @@ func TestPathSuggest_InTheDescription(t *testing.T) {
 	m = sendField(t, m, "see "+dir+"/b")
 	assert.Equal(t, []string{"beta"}, pathNames(m.ui.DescriptionEdit.paths))
 	assert.Contains(t, m.renderView(), "beta")
+	rows := strings.Split(ansi.Strip(m.renderView()), "\n")
+	caret := rowContaining(rows, "> see ")
+	require.GreaterOrEqual(t, caret, 0)
+	assert.Contains(t, rows[caret+1], "╭", "the list opens on the row under the caret")
+	assert.Contains(t, rows[caret+2], "beta")
 	m = sendField(t, m, "tab")
 	assert.Equal(t, "see "+dir+"/beta", m.ui.DescriptionEdit.textarea.Value())
 
