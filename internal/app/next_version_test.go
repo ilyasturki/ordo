@@ -156,6 +156,16 @@ func TestTheShortcutBarOffersGNOnAVersionOnly(t *testing.T) {
 	assert.NotContains(t, ansi.Strip(m.renderShortcutBar()), "gn next version")
 }
 
+func TestTheHelpListsGN(t *testing.T) {
+	var found bool
+	for _, s := range builtinHelpSections {
+		for _, e := range s.entries {
+			found = found || (e.keys == "gn" && e.desc == "add the next version's category")
+		}
+	}
+	assert.True(t, found)
+}
+
 func categoryNames(m *model) []string {
 	names := make([]string, len(m.project.Categories))
 	for i, c := range m.project.Categories {
