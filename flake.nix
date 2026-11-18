@@ -63,7 +63,16 @@
           };
           default = self.packages.${system}.ordo;
         }
-        // pkgs.callPackage ./nix/web.nix { inherit version vendorHash; }
+        // import ./nix/web.nix {
+          inherit (pkgs)
+            lib
+            stdenvNoCC
+            buildGoModule
+            bun
+            nodejs
+            ;
+          inherit version vendorHash;
+        }
         // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
           android-sdk = import ./nix/android-sdk.nix { inherit nixpkgs system; };
         }
