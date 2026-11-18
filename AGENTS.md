@@ -74,7 +74,8 @@ Run after a change to the app:
   `testdata/native/seed.json`, then `adb -s <serial> exec-out screencap -p`, with
   `adb -s <serial> shell cmd uimode night yes` for dark. The README's
   `assets/phone-light.png` and `phone-dark.png` are such shots of the list, a task
-  and the add sheet on `assets/demo/ferry.json`: retake them after a change to one.
+  and the add sheet on `assets/demo/ferry.json`: retake them after a change to one,
+  then run `web/scripts/landing.sh`, which cuts the landing page's phone from them.
 
 `just native` installs the `phone` build, R8-optimized and signed with the debug
 key, on the connected phone.

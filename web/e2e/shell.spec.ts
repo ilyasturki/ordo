@@ -7,11 +7,11 @@ test('the site build opens on the landing, which leads to the app without loadin
 		if (request.url().endsWith('.wasm')) wasm.push(request.url());
 	});
 	await page.goto('/');
-	await expect(page.getByRole('heading', { name: 'Ordo' })).toBeVisible();
+	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 	await shoot(page, 'landing', info.project.name);
 	expect(wasm).toEqual([]);
 
-	await page.getByRole('link', { name: 'Open in the browser' }).click();
+	await page.getByRole('link', { name: 'Open Ordo in your browser' }).first().click();
 	await expect(page).toHaveURL('/app');
 	await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
 	expect(wasm).toHaveLength(1);

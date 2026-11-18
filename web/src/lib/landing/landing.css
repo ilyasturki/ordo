@@ -1,0 +1,52 @@
+@font-face {
+	font-family: 'Fira Code';
+	src: url('/fonts/fira-code.woff2') format('woff2');
+	font-weight: 400 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+:root {
+	--font-code: 'Fira Code', var(--font-mono);
+}
+
+/* The terminal mocks' colours: Catppuccin Latte in light, Tokyo Night in dark. */
+.tty {
+	--t-bg: light-dark(#eff1f5, #1a1b26);
+	--t-fg: light-dark(#4c4f69, #c0caf5);
+	--t-dim: light-dark(#9ca0b0, #6c7299);
+	--t-muted: light-dark(#5c5f77, #a9b1d6);
+	background: var(--t-bg);
+	color: var(--t-fg);
+	font-family: var(--font-code);
+	font-variant-ligatures: none;
+}
+.tty b {
+	font-weight: 700;
+}
+.tty .t-dim {
+	color: var(--t-dim);
+}
+.tty .t-red {
+	color: light-dark(#d20f39, #f7768e);
+}
+.tty .t-cyan {
+	color: light-dark(#179299, #73daca);
+}
+.tty .t-blue {
+	color: light-dark(#1e66f5, #7aa2f7);
+}
+.tty .t-yellow {
+	color: light-dark(#df9e1b, #e0af68);
+}
+.tty .t-mag {
+	color: light-dark(#8839ef, #bb9af7);
+}
+.tty .t-green {
+	color: light-dark(#40a02b, #9ece6a);
+}
+.tty .t-sel {
+	background: var(--t-fg);
+	color: var(--t-bg);
+	font-weight: 700;
+}
