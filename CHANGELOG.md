@@ -12,6 +12,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - The app answers an edit as soon as it is made: the phone saves it right after, in order, instead of the buzz waiting on the disk. A sync that brings nothing new redraws nothing and leaves the saved queue alone, a cold start shows the project you were on before loading the others, and with the server out of reach the live stream retries every 5 seconds, then less often, up to once a minute
 - A change from Syncthing or the phone no longer freezes the TUI for a moment after a long session of edits: undo history catches up with it only when `u` or `ctrl+r` reaches a step, and merging is faster on big projects
+- `esc` in a title, name, note, separator label or description being edited saves it, as `enter` does, instead of throwing the text away: `u` takes it back. A new row left empty still goes away, and a name already taken keeps the editor open until a second `esc` drops the edit. Search, the filters, a command's prompt and the pickers keep `esc` as cancel
+- The description editor names its task under its heading, the title cut to one row, and grows with the text up to the screen's height, its top staying put. It follows a terminal resize, and a description past 99 lines takes a new line again
 
 ### Fixed
 
@@ -21,7 +23,6 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - `gn` on a category named after a version, or any row in it, adds the next version's category: `v1.3.0 - polish` gives `v1.4.0`, in the same format and without the label, on the newest side of the versions you have, newest first or last as the project runs them. Its name opens in the editor to tweak, `esc` saves it like `enter`, and it is one undo step. With no version in the name, the status line says so. The app's category menu has Add next version
 - `esc` in a title, name, note, separator label or description being edited saves it, as `enter` does, instead of throwing the text away: `u` takes it back. A new row left empty still goes away, and a name already taken keeps the editor open until a second `esc` drops the edit. Search, the filters, a command's prompt and the pickers keep `esc` as cancel
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
-- The description editor names its task under its heading, the title cut to one row, and grows with the text up to the screen's height, its top staying put. It follows a terminal resize, and a description past 99 lines takes a new line again
 
 ## [0.14.3] - 2026-11-11
 
