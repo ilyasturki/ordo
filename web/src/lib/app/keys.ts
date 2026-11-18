@@ -30,6 +30,7 @@ export const keyHelp: [string, [string, string][]][] = [
 			['space / x', 'cycle status'],
 			['h / l', 'priority down / up'],
 			['t', 'next colour'],
+			['c', 'task ↔ note'],
 			['d', 'delete']
 		]
 	],

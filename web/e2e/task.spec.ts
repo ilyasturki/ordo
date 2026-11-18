@@ -66,6 +66,27 @@ test('the task page edits title, description, status, priority, colour and subta
 	await expect(pane(page).getByRole('button', { name: 'Mark todo' })).toBeVisible();
 });
 
+test('a task turns into a note and back from its menu, with an Undo', async ({ page, app }, info) => {
+	await withFerry(page, app());
+	await taskLink(page, 'Shell completions').click();
+	await pane(page).getByRole('button', { name: 'More' }).click();
+	await page.getByRole('menuitem', { name: 'Turn into note' }).click();
+	await expect(page.getByRole('status')).toContainText('Turned into a note');
+	await expect(pane(page).getByRole('button', { name: 'Mark done' })).toBeHidden();
+	await expect(pane(page).getByRole('button', { name: /^Status/ })).toHaveCount(0);
+	await expect(pane(page).getByRole('textbox', { name: 'Title' })).toHaveValue('Shell completions for fish');
+	await shoot(page, 'note', info.project.name);
+
+	await pane(page).getByRole('button', { name: 'More' }).click();
+	await page.getByRole('menuitem', { name: 'Turn into task' }).click();
+	await expect(pane(page).getByRole('button', { name: 'Mark done' })).toBeVisible();
+	await pane(page).getByRole('button', { name: 'More' }).click();
+	await page.getByRole('menuitem', { name: 'Turn into note' }).click();
+	await expect(pane(page).getByRole('button', { name: 'Mark done' })).toBeHidden();
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+	await expect(pane(page).getByRole('button', { name: 'Mark done' })).toBeVisible();
+});
+
 test('a task moves to another category, up and down, and deletes with an Undo', async ({ page, app }, info) => {
 	await withFerry(page, app());
 	await taskLink(page, 'Page long output').click();

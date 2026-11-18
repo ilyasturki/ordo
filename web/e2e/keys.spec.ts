@@ -125,8 +125,12 @@ test('c turns a task into a note and back, and refuses one with subtasks', async
 	await page.keyboard.press('j');
 	await page.keyboard.press('c');
 	await expect(row(page, 'Shell completions').getByRole('button', { name: /change status/ })).toHaveCount(0);
-	await expect(page.getByRole('status')).toBeVisible();
+	await expect(page.getByRole('status')).toContainText('Turned into a note');
 	await page.keyboard.press('c');
+	await expect(page.getByRole('status')).toContainText('Turned into a task');
+	await expect(row(page, 'Shell completions').getByRole('button', { name: 'Todo, change status' })).toBeVisible();
+	await page.keyboard.press('c');
+	await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
 	await expect(row(page, 'Shell completions').getByRole('button', { name: 'Todo, change status' })).toBeVisible();
 
 	await taskLink(page, 'Encrypt secrets with age').click();
