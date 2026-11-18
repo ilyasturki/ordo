@@ -92,7 +92,7 @@
 
 {#if project}
 	<article aria-label="Categories" class="flex min-h-dvh flex-col bg-surface wide:h-full wide:min-h-0 wide:overflow-y-auto wide:rounded-xl wide:bg-surface-container-low">
-		<header bind:this={bar} class="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-1 bg-inherit px-1 wide:h-14 wide:px-2">
+		<header bind:this={bar} class="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-1 bg-inherit px-1 wide:h-14 wide:px-2">
 			<IconButton icon="back" label="Back" tone="plain" class="wide:hidden" onclick={back} />
 			<h1 class="text-title-large min-w-0 flex-1 truncate px-3">{project.name} categories</h1>
 			<IconButton icon="add" label="New category" onclick={() => (ui.sheet = { kind: 'newCategory', pid, parent: '' })} />
