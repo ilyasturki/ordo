@@ -6,9 +6,30 @@ import { readSession, syncedStore } from '$lib/sync/session';
 import { Sync } from '$lib/sync/sync.svelte';
 
 /** The server's copy once signed in, else the site build's own projects; the private build signs in first. */
-export const session: { local?: Local; sync?: Sync; signIn?: boolean; error?: string } = $state({});
+export const session: { local?: Local; sync?: Sync; signIn?: boolean; elsewhere?: boolean; error?: string } = $state({});
 
 let opening: Promise<void> | undefined;
+
+/** One tab owns the synced copy: two would number their queued edits alike and overwrite each other's. */
+function own(steal = false): Promise<boolean> {
+	if (!navigator.locks) return Promise.resolve(true);
+	return new Promise((owned) => {
+		navigator.locks
+			.request(`ordo:${syncedStore}`, steal ? { steal } : { ifAvailable: true }, (lock) => {
+				owned(lock !== null);
+				return lock && new Promise<void>(() => {});
+			})
+			.catch(() => {
+				session.sync?.stop();
+				session.elsewhere = true;
+			});
+	});
+}
+
+export async function useHere(): Promise<void> {
+	await own(true);
+	location.reload();
+}
 
 export function openSession(): Promise<void> {
 	opening ??= (async () => {
@@ -16,6 +37,10 @@ export function openSession(): Promise<void> {
 			const saved = readSession();
 			if (!saved && !site) {
 				session.signIn = true;
+				return;
+			}
+			if (saved && !(await own())) {
+				session.elsewhere = true;
 				return;
 			}
 			const [core, db] = await Promise.all([loadCore(), openStore(saved ? syncedStore : 'ordo')]);

@@ -213,6 +213,25 @@ test('the site build offers to connect from its empty page and the project menu'
 	await shoot(page, 'menu', info.project.name);
 });
 
+test('one tab syncs at a time, and another can take over', async ({ page, app, build, served }, info) => {
+	served.add(ferry);
+	await signInWithPassphrase(page, app, build, served);
+	const them = await other(served);
+	const second = await page.context().newPage();
+	try {
+		await second.goto(page.url());
+		await expect(second.getByRole('heading', { name: 'Open in another tab' })).toBeVisible();
+		await shoot(second, 'elsewhere', info.project.name);
+		await second.getByRole('button', { name: 'Use here' }).click();
+		await expect(second.getByRole('list', { name: 'ferry' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Open in another tab' })).toBeVisible();
+		await row(second, 'Shell completions').getByRole('button', { name: 'Todo, change status' }).click();
+		await expect.poll(() => shellStatus(them), { timeout: 10_000 }).toBe('in_progress');
+	} finally {
+		await second.close();
+	}
+});
+
 test('connecting to another server signs out of the first, and an empty copy still shows sync trouble', async ({ page, app, build, served, noise }, info) => {
 	test.skip(build !== 'site', 'the private build has one server');
 	noise(/401/);
