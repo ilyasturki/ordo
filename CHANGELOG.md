@@ -19,6 +19,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ### Changed
 
+- `ordo serve` refuses a sign-in that asks for the browser cookie from another origin, without spending its pairing code or counting a wrong guess
 - The app answers an edit as soon as it is made: the phone saves it right after, in order, instead of the buzz waiting on the disk. A sync that brings nothing new redraws nothing and leaves the saved queue alone, a cold start shows the project you were on before loading the others, and with the server out of reach the live stream retries every 5 seconds, then less often, up to once a minute
 - A change from Syncthing or the phone no longer freezes the TUI for a moment after a long session of edits: undo history catches up with it only when `u` or `ctrl+r` reaches a step, and merging is faster on big projects
 - `esc` in a title, name, note, separator label or description being edited saves it, as `enter` does, instead of throwing the text away: `u` takes it back. A new row left empty still goes away, and a name already taken keeps the editor open until a second `esc` drops the edit. Search, the filters, a command's prompt and the pickers keep `esc` as cancel
