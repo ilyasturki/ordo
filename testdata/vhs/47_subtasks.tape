@@ -38,7 +38,7 @@ Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/47_unnested.png"
 Sleep 300ms
 
-# Deleting a parent says what happens to its subtasks; k keeps them.
+# Deleting a parent says what happens to its subtasks; s keeps them.
 Type "gg"
 Type "j"
 Type "j"
@@ -47,7 +47,7 @@ Type "d"
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/47_delete_parent.png"
 Sleep 300ms
-Type "k"
+Type "s"
 Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/47_kept_subtasks.png"
 # Let the final capture land before quitting (see run.sh).

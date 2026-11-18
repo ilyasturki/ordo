@@ -55,8 +55,8 @@ Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/140_group.png"
 Sleep 300ms
 
-# k then enter puts Versions in Perso.
-Type "k"
+# j then enter puts Versions in Perso.
+Type "j"
 Sleep 300ms
 Enter
 Sleep 500ms
