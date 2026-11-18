@@ -123,6 +123,18 @@ var helpModeSections = []helpSection{
 			{keys: "j / k", desc: "leave an edited row or a shown category to hide it"},
 		},
 	},
+	{
+		title: "In a dialog",
+		entries: []helpEntry{
+			{keys: "↑ / ↓, j / k", desc: "move"},
+			{keys: "enter", desc: "pick the highlighted row"},
+			{keys: "letter / digit", desc: "pick the row it underlines or heads"},
+			{keys: "esc / q", desc: "cancel"},
+			{keys: "y / n", desc: "confirm / cancel a question"},
+			{keys: "s", desc: "on a delete: keep the subtasks"},
+			{keys: "m", desc: "in the project picker: choose the project's group"},
+		},
+	},
 }
 
 // What the glyphs on a row mean: a legend, not shortcuts.
