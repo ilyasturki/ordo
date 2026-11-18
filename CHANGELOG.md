@@ -13,6 +13,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - `o` adds a note below the cursor, like `_`, in one press on any keyboard layout
 - In the app, holding `+` opens a menu of what it can add to the focused category: a task, a note, a separator, a category or a project. A tap still adds a task, and in a project without categories the `+` adds the first one
 - The web app has every screen of the phone app in its look, keeping its projects and images in the browser: tabs and one list on a phone, a project list and the open task beside its list on a wider screen. Create, rename, group and delete projects, add and order categories, fold them, step statuses, set priorities, tags and subtasks, add notes and separators, turn a task into a note and back, attach images, search and filter, and undo any edit from the snackbar. On a keyboard it takes the TUI's keys, `?` listing them
+- The web app drags rows into place with the mouse, or a finger held on them: a task with its subtasks, a note or a separator, within its category or into another, the list scrolling at its edges. The categories page drags categories, with their sub-categories. A drop lands where it shows under the filter and folded headers, as on the phone, and `u` takes it back
 - A landing page at the public site's `/`: the same project in the terminal, the browser and the phone, a version you can bump with `ctrl+a`, `gm` and `gM`, the plain JSON file, and the ways to get Ordo, with copy buttons for the install commands. No cookies, no analytics
 
 ### Changed

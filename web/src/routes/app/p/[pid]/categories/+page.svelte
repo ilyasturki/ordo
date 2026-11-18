@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/app/Icon.svelte';
 	import IconButton from '$lib/app/IconButton.svelte';
+	import { Reorder } from '$lib/app/reorder.svelte';
 	import { ui, wide } from '$lib/app/ui.svelte';
 	import type { Category } from '$lib/core/types';
 	import { categoryVisible } from '$lib/model/filter';
@@ -13,10 +14,41 @@
 	const local = session.local!;
 	const pid = $derived(page.params.pid ?? '');
 	const project = $derived(local.project(pid));
-	const tops = $derived(project ? project.categories.filter((c) => !c.parent_id) : []);
+	const drag = new Reorder();
+	let bar: HTMLElement | undefined = $state();
+	// A drop's order stays on screen until its edit lands.
+	let landing: { parent: string; ids: string[] } | undefined = $state.raw();
+
+	function ordered(cats: Category[], parent: string): Category[] {
+		if (landing?.parent !== parent) return cats;
+		const at = new Map(landing.ids.map((id, i) => [id, i]));
+		return [...cats].sort((a, b) => (at.get(a.id) ?? Infinity) - (at.get(b.id) ?? Infinity));
+	}
+
+	const tops = $derived(ordered(project ? project.categories.filter((c) => !c.parent_id) : [], ''));
 
 	function subs(cat: Category): Category[] {
-		return project ? project.categories.filter((c) => c.parent_id === cat.id) : [];
+		return ordered(project ? project.categories.filter((c) => c.parent_id === cat.id) : [], cat.id);
+	}
+
+	/** Drags a category among its siblings, its sub-categories with it. */
+	function press(e: PointerEvent, cat: Category) {
+		const items = (e.currentTarget as HTMLElement).parentElement?.children;
+		if (!items) return;
+		drag.press(e, {
+			key: cat.id,
+			items: [...items] as HTMLElement[],
+			top: () => bar?.getBoundingClientRect().bottom ?? 0,
+			drop: (order) => void land(cat, order)
+		});
+	}
+
+	async function land(cat: Category, ids: string[]) {
+		const order = { parent: cat.parent_id ?? '', ids };
+		landing = order;
+		const before = ids[ids.indexOf(cat.id) + 1] ?? '';
+		await local.perform(pid, { action: 'category.place', cat: cat.id, before }, { quiet: true });
+		if (landing === order) landing = undefined;
 	}
 
 	/** Moves a category one place among its siblings, by naming the sibling it lands above. */
@@ -60,19 +92,32 @@
 
 {#if project}
 	<article aria-label="Categories" class="flex min-h-dvh flex-col bg-surface wide:h-full wide:min-h-0 wide:overflow-y-auto wide:rounded-xl wide:bg-surface-container-low">
-		<header class="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-1 bg-inherit px-1 wide:h-14 wide:px-2">
+		<header bind:this={bar} class="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-1 bg-inherit px-1 wide:h-14 wide:px-2">
 			<IconButton icon="back" label="Back" tone="plain" class="wide:hidden" onclick={back} />
 			<h1 class="text-title-large min-w-0 flex-1 truncate px-3">{project.name} categories</h1>
 			<IconButton icon="add" label="New category" onclick={() => (ui.sheet = { kind: 'newCategory', pid, parent: '' })} />
 			<IconButton icon="close" label="Close" class="max-wide:hidden" onclick={back} />
 		</header>
-		<div class="px-2 pb-24">
+		<div
+			{@attach drag.surface}
+			role="list"
+			aria-label="Categories"
+			class={['px-2 pb-24 select-none [-webkit-touch-callout:none]', drag.key && 'cursor-grabbing [&_*]:cursor-grabbing']}
+		>
 			{#each tops as cat (cat.id)}
-				{@render line(cat, tops, false)}
 				{@const children = subs(cat)}
-				{#each children as sub (sub.id)}
-					{@render line(sub, children, true)}
-				{/each}
+				<div role="listitem" data-line={cat.id} class={drag.look(cat.id)} style:transform={drag.transform(cat.id)} onpointerdown={(e) => press(e, cat)}>
+					{#if drag.key === cat.id}<span class="absolute inset-0 -z-10 rounded-lg bg-surface-container-high shadow-lg"></span>{/if}
+					{@render line(cat, tops, false)}
+					<div role="list" aria-label={`${cat.name} sub-categories`}>
+						{#each children as sub (sub.id)}
+							<div role="listitem" data-line={sub.id} class={drag.look(sub.id)} style:transform={drag.transform(sub.id)} onpointerdown={(e) => press(e, sub)}>
+								{#if drag.key === sub.id}<span class="absolute inset-0 -z-10 rounded-lg bg-surface-container-high shadow-lg"></span>{/if}
+								{@render line(sub, children, true)}
+							</div>
+						{/each}
+					</div>
+				</div>
 			{:else}
 				<p class="text-body-large px-4 py-16 text-center text-on-surface-variant">No categories yet</p>
 			{/each}

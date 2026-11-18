@@ -179,7 +179,7 @@
 				{/if}
 			</header>
 
-			<ProjectList {local} {project} lines={shown} />
+			<ProjectList {local} {project} lines={shown} top={() => bar?.getBoundingClientRect().bottom ?? 0} />
 
 			{#if project.categories.length > 0 && !ui.searching}
 				<button
