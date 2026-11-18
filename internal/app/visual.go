@@ -166,6 +166,17 @@ func (m *model) exitVisualMode() {
 	m.ui.Modes.ToNormal()
 }
 
+// dropEmptyVisual ends visual mode once nothing on screen is selected, whatever hid its rows.
+func (m *model) dropEmptyVisual() {
+	if !m.ui.Modes.IsVisual() || len(m.visualSelectedPositions()) > 0 {
+		return
+	}
+	m.exitVisualMode()
+	if m.ui.Screen.StatusMsg == "" {
+		m.ui.Screen.StatusMsg = "Visual mode off: its rows are hidden"
+	}
+}
+
 // visualSwap exchanges the anchor and cursor positions, leaving the covered
 // range unchanged. Useful for extending the selection from the other end.
 func (m *model) visualSwap() {

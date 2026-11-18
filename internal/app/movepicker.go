@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -152,6 +153,23 @@ func (m *model) movedRows(ids []string) []domain.Task {
 	return rows
 }
 
+func (m *model) anyRowShown(ids []string) bool {
+	for _, p := range m.positions() {
+		if taggable(p.Kind) && slices.Contains(ids, p.ID) {
+			return true
+		}
+	}
+	return false
+}
+
+func rowIDsOf(rows []domain.Task) []string {
+	ids := make([]string, len(rows))
+	for i, t := range rows {
+		ids[i] = t.ID
+	}
+	return ids
+}
+
 func countTasks(rows []domain.Task) int {
 	n := 0
 	for _, t := range rows {
@@ -299,6 +317,8 @@ func (m *model) moveToCategory(categoryID string) {
 	status := strings.TrimSuffix(pastedRowsStatus(rows, true), "!") + " to " + m.project.CategoryPath(dst)
 	if m.ui.Fold.IsFolded(categoryID) {
 		status += " (folded)"
+	} else if !m.anyRowShown(rowIDsOf(rows)) {
+		status += " (hidden by the filter)"
 	}
 	m.ui.Screen.StatusMsg = status
 }

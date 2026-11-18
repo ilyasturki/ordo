@@ -51,9 +51,11 @@ func (m *model) shiftCategories(lo, hi, dir int) string {
 
 func (m *model) shiftTasks(ids []string, dir int) {
 	m.recordHistory()
+	moved := m.movedRows(ids)
 	if !m.applied(operations.ShiftTasks(&m.project, ids, dir, tuiView{m})) {
 		return
 	}
+	m.holdFilteredOut(rowIDsOf(moved))
 	m.rebuildPositions()
 	m.ensureVisible()
 	m.storeTaskUpdate()

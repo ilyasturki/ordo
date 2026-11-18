@@ -140,6 +140,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		updated.noticeOutsideChange()
 		updated.noticeViewChange()
 		updated.collapseLeftRow()
+		updated.dropEmptyVisual()
 		updated.releaseFilteredOut()
 		updated.releasePeek()
 		updated.trackCursor()
@@ -149,6 +150,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return updated, cmd
 	}
 	if updated, ok := next.(*model); ok {
+		updated.dropEmptyVisual()
 		if read := updated.refreshPathSuggest(); read != nil {
 			cmd = tea.Batch(cmd, read)
 		}

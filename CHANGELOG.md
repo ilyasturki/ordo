@@ -27,6 +27,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
 ### Fixed
 
+- Rows shown by `enter` on `(N hidden by the filter)` and moved into another category with `J`/`K`, one or a visual range, stay shown and selected until the cursor leaves them, instead of hiding and leaving visual mode on `0 tasks selected`. Visual mode now ends by itself when none of its rows shows, and its status line counts notes and separators too, as `2 tasks, 1 note selected`. `m` says when the filter hides the rows where they landed
 - `t` reaches every tag dot, those other tasks of the category wear included: it starts at a free one, steps through the rest and ends on none
 
 ## [0.14.3] - 2026-11-11

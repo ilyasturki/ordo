@@ -258,14 +258,13 @@ func TestVisualCopy_SeparatorSurvivesAnotherSessionsPaste(t *testing.T) {
 	assert.True(t, tasks[3].IsSeparator())
 }
 
-func TestVisualCounts_ExcludeSeparators(t *testing.T) {
+func TestVisualCounts_NameEachKind(t *testing.T) {
 	m := newTestModel(t, separatorProject())
 	require.True(t, m.selectTaskIdx(0, 0))
 	m.enterVisualMode()
 	m.visualMoveCursor(2) // Alpha .. Beta, separator swept in
 
-	// Header reports the two real tasks, not the 3-row span.
-	assert.Equal(t, "-- VISUAL -- 2 tasks selected", m.statusText())
+	assert.Equal(t, "-- VISUAL -- 2 tasks, 1 separator selected", m.statusText())
 
 	m.visualCut()
 	assert.Equal(t, "Cut: 2 task(s), p moves them here, esc cancels", m.ui.Screen.StatusMsg)

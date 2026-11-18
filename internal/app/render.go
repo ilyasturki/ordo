@@ -602,25 +602,46 @@ func (m model) statusText() string {
 		count := len(positions)
 		noun := plural(count, "category", "categories")
 		if m.ui.Visual.Kind != selection.FocusCategory {
-			// Task-level: count the tasks operations will act on — descriptions
-			// round up to their parent (a lone description still selects its
-			// task) and a swept-in divider never inflates the number.
-			count = countRealTasks(visualRoundUpPositions(positions))
-			noun = plural(count, "task", "tasks")
-			folded, hidden := 0, 0
-			for _, p := range positions {
-				if p.Kind == selection.FocusCategory {
-					folded++
-					hidden += countTasks(m.foldedCategoryRows(p.CategoryIndex))
-				}
-			}
-			if folded > 0 {
-				noun += fmt.Sprintf(" + %d folded categor%s (%d %s)", folded, plural(folded, "y", "ies"), hidden, plural(hidden, "task", "tasks"))
-			}
+			return "-- VISUAL -- " + m.visualRowsLabel(positions) + " selected"
 		}
 		return fmt.Sprintf("-- VISUAL -- %d %s selected", count, noun)
 	}
 	return ""
+}
+
+// visualRowsLabel counts a task-level selection by kind, a description standing for its task.
+func (m model) visualRowsLabel(positions []selection.Position) string {
+	tasks, seps, notes, folded, hidden := 0, 0, 0, 0, 0
+	for _, p := range visualRoundUpPositions(positions) {
+		switch p.Kind {
+		case selection.FocusTask:
+			tasks++
+		case selection.FocusSeparator:
+			if m.project.Categories[p.CategoryIndex].Tasks[p.TaskIndex].IsNote() {
+				notes++
+			} else {
+				seps++
+			}
+		case selection.FocusCategory:
+			folded++
+			hidden += countTasks(m.foldedCategoryRows(p.CategoryIndex))
+		}
+	}
+	var kinds []string
+	for _, k := range []struct {
+		n         int
+		one, many string
+	}{{tasks, "task", "tasks"}, {notes, "note", "notes"}, {seps, "separator", "separators"}} {
+		if k.n > 0 {
+			kinds = append(kinds, fmt.Sprintf("%d %s", k.n, plural(k.n, k.one, k.many)))
+		}
+	}
+	label := strings.Join(kinds, ", ")
+	if folded > 0 {
+		fold := fmt.Sprintf("%d folded categor%s (%d %s)", folded, plural(folded, "y", "ies"), hidden, plural(hidden, "task", "tasks"))
+		label = strings.TrimPrefix(label+" + "+fold, " + ")
+	}
+	return label
 }
 
 func truncateText(s string, max int) string {
