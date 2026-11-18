@@ -234,10 +234,25 @@ func nextShownBlocks(cat domain.Category, shown []bool, lo, hi, dir int) (int, i
 			return 0, 0, false
 		}
 		if slices.Contains(shown[nlo:head], true) {
-			return nlo, lo, true
+			return aboveHiddenSection(cat.Tasks, shown, nlo), lo, true
 		}
 		head = nlo
 	}
+}
+
+func aboveHiddenSection(tasks []domain.Task, shown []bool, a int) int {
+	s := a
+	for {
+		nlo, _, ok := domain.SiblingBlock(tasks, s, -1)
+		if !ok || slices.Contains(shown[nlo:s], true) {
+			break
+		}
+		s = nlo
+	}
+	if s < a && tasks[s].IsSeparator() {
+		return s
+	}
+	return a
 }
 
 // shiftTasksAcross expects tasks [lo, hi) of category catIdx to be top-level blocks.

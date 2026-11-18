@@ -115,3 +115,40 @@ func TestMoveOfPeekedRowsSaysTheFilterHidesThem(t *testing.T) {
 	assert.True(t, m.ui.Modes.IsNormal())
 	assert.Contains(t, m.ui.Screen.StatusMsg, "(hidden by the filter)")
 }
+
+func hiddenSectionModel(t *testing.T) *model {
+	t.Helper()
+	p := domain.Project{ID: "p1", Name: "P", Categories: []domain.Category{{ID: "c1", Name: "Inbox", Tasks: []domain.Task{
+		{ID: "p", Title: "p", Status: domain.StatusTodo},
+		{ID: "done", Title: "done", Kind: domain.KindSeparator},
+		{ID: "b", Title: "b", Status: domain.StatusCompleted},
+		{ID: "k", Title: "k", Status: domain.StatusCompleted},
+		{ID: "next", Title: "next", Kind: domain.KindSeparator},
+		{ID: "c", Title: "c", Status: domain.StatusTodo},
+		{ID: "r", Title: "r", Status: domain.StatusTodo},
+	}}}}
+	m := newTestModel(t, p)
+	withStubStateManager(m)
+	m.ui.Filter.statuses[domain.StatusTodo] = true
+	m.rebuildPositions()
+	require.NotContains(t, rowIDs(m), "separator:done")
+	return m
+}
+
+func TestShiftUpStopsAboveAHiddenSection(t *testing.T) {
+	m := hiddenSectionModel(t)
+	selectRow(t, m, selection.FocusTask, "c")
+	m, _ = pressKeys(m, "K")
+	assert.Equal(t, []string{"p", "c", "done", "b", "k", "next", "r"}, taskIDs(m.project.Categories[0]))
+	assert.Equal(t, "task:c", cursorItem(t, m))
+	assert.NotContains(t, rowIDs(m), "separator:done")
+}
+
+func TestVisualShiftUpStopsAboveAHiddenSection(t *testing.T) {
+	m := hiddenSectionModel(t)
+	selectRow(t, m, selection.FocusTask, "c")
+	m, _ = pressKeys(m, "v", "j", "K")
+	assert.Equal(t, []string{"p", "c", "r", "done", "b", "k", "next"}, taskIDs(m.project.Categories[0]))
+	assert.True(t, m.ui.Modes.IsVisual())
+	assert.NotContains(t, rowIDs(m), "separator:done")
+}

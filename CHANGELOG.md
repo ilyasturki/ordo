@@ -33,6 +33,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - A save no longer overwrites a version Syncthing put in place while the save was writing: the TUI merges it with your edits, and the CLI and `ordo serve` redo their change on it. See [`docs/file-format.md`](docs/file-format.md#writing-a-file)
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
 - Rows shown by `enter` on `(N hidden by the filter)` and moved into another category with `J`/`K`, one or a visual range, stay shown and selected until the cursor leaves them, instead of hiding and leaving visual mode on `0 tasks selected`. Visual mode now ends by itself when none of its rows shows, and its status line counts notes and separators too, as `2 tasks, 1 note selected`. `m` says when the filter hides the rows where they landed
+- `K` on a row, or a visual range, just under a section the filter hides whole now lands it above that section, where it shows, instead of inside it with the hidden separator popping up beside it
 - `t` reaches every tag dot, those other tasks of the category wear included: it starts at a free one, steps through the rest and ends on none
 ### Changed
 

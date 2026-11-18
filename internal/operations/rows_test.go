@@ -205,6 +205,52 @@ func TestShiftTasksSkipsHiddenBlocks(t *testing.T) {
 	wantLayout(t, p, "cat:a", "h", "y", "x")
 }
 
+func TestShiftTasksUpStopsAboveAHiddenSection(t *testing.T) {
+	hidden := hiding{hidden: map[string]bool{"done": true, "b": true, "k": true}}
+	t.Run("row", func(t *testing.T) {
+		p := outline(t, "cat:a", "p", "--done", "b", "k", "--next", "c", "r")
+		if err := ShiftTasks(p, []string{"c"}, -1, hidden); err != nil {
+			t.Fatal(err)
+		}
+		wantLayout(t, p, "cat:a", "p", "c", "--done", "b", "k", "--next", "r")
+	})
+	t.Run("block", func(t *testing.T) {
+		p := outline(t, "cat:a", "p", "--done", "b", "k", "--next", "c", "r")
+		if err := ShiftTasks(p, []string{"c", "r"}, -1, hidden); err != nil {
+			t.Fatal(err)
+		}
+		wantLayout(t, p, "cat:a", "p", "c", "r", "--done", "b", "k", "--next")
+	})
+	t.Run("first in the category", func(t *testing.T) {
+		p := outline(t, "cat:a", "--done", "b", "k", "--next", "c")
+		if err := ShiftTasks(p, []string{"c"}, -1, hidden); err != nil {
+			t.Fatal(err)
+		}
+		wantLayout(t, p, "cat:a", "c", "--done", "b", "k", "--next")
+	})
+	t.Run("down unchanged", func(t *testing.T) {
+		p := outline(t, "cat:a", "p", "--done", "b", "k", "--next", "c", "r")
+		if err := ShiftTasks(p, []string{"p"}, 1, hidden); err != nil {
+			t.Fatal(err)
+		}
+		wantLayout(t, p, "cat:a", "--done", "b", "k", "--next", "p", "c", "r")
+	})
+	t.Run("hidden plain rows unchanged", func(t *testing.T) {
+		p := outline(t, "cat:a", "p", "b", "k", "--next", "c", "r")
+		if err := ShiftTasks(p, []string{"c"}, -1, hidden); err != nil {
+			t.Fatal(err)
+		}
+		wantLayout(t, p, "cat:a", "p", "b", "k", "c", "--next", "r")
+	})
+	t.Run("hidden run opening on a plain row unchanged", func(t *testing.T) {
+		p := outline(t, "cat:a", "p", "b", "--done", "k", "--next", "c")
+		if err := ShiftTasks(p, []string{"c"}, -1, hidden); err != nil {
+			t.Fatal(err)
+		}
+		wantLayout(t, p, "cat:a", "p", "b", "--done", "k", "c", "--next")
+	})
+}
+
 func TestShiftTasksCrossesIntoTheNextCategory(t *testing.T) {
 	p := outline(t, "cat:a", "x", "cat:b", "y")
 	if err := ShiftTasks(p, []string{"x"}, 1, AllShown); err != nil {
