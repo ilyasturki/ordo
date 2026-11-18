@@ -102,6 +102,27 @@ jobs:
                       exit 1
                   fi
 
+    # In the flake's devShell: its Playwright browsers are the ones web/package.json pins @playwright/test to.
+    web:
+        runs-on: ubuntu-26.04
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Install Nix
+              uses: DeterminateSystems/nix-installer-action@main
+
+            - name: Cache Nix store
+              uses: DeterminateSystems/magic-nix-cache-action@main
+              with:
+                  use-flakehub: false
+
+            - name: Check
+              run: nix develop .#web --command scripts/web.sh check
+
+            - name: Build the static sites
+              run: nix build .#web-site .#web-private
+
     nix-build:
         runs-on: ubuntu-26.04
         steps:

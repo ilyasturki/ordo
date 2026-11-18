@@ -60,6 +60,23 @@ wasm:
 wasm-test:
     scripts/wasm.sh test
 
+# Run the web app on vite's dev server, as the site build or the private one (BUILD=private); /api goes to ORDO_SERVE.
+web-dev BUILD="site":
+    scripts/wasm.sh build
+    cd web && bun install --frozen-lockfile && ORDO_WEB={{BUILD}} bun run dev
+
+# Check the web app: typecheck, Vitest, then Playwright on both builds in Chromium, Firefox and WebKit.
+web-check:
+    nix develop .#web --command scripts/web.sh check
+
+# Run Playwright alone, with its args: `just web-e2e e2e/app.spec.ts --project site-webkit-phone`.
+web-e2e *ARGS:
+    nix develop .#web --command scripts/web.sh e2e {{ARGS}}
+
+# Refresh this system's hash of the web app's node_modules after a change to web/bun.lock.
+web-deps-hash:
+    nix/refresh-web-deps-hash.sh
+
 # Run every test, then the nix build.
 test:
     go test ./...

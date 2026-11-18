@@ -1,0 +1,48 @@
+import { createServer } from 'node:net';
+import { defineConfig, devices, type PlaywrightTestOptions, type Project } from '@playwright/test';
+import type { Options } from './e2e/fixtures';
+
+function freePort(): Promise<number> {
+	return new Promise((resolve, reject) => {
+		const server = createServer();
+		server.on('error', reject);
+		server.listen(0, '127.0.0.1', () => {
+			const { port } = server.address() as { port: number };
+			server.close(() => resolve(port));
+		});
+	});
+}
+
+// Workers load this file again: the runner picks the ports once and hands them down in the environment.
+process.env.ORDO_E2E_SITE ??= String(await freePort());
+process.env.ORDO_E2E_PRIVATE ??= String(await freePort());
+
+const builds = { site: Number(process.env.ORDO_E2E_SITE), private: Number(process.env.ORDO_E2E_PRIVATE) };
+const engines = { chromium: devices['Desktop Chrome'], firefox: devices['Desktop Firefox'], webkit: devices['Desktop Safari'] };
+const viewports = { phone: { width: 390, height: 844 }, desktop: { width: 1440, height: 900 } };
+
+const projects: Project<PlaywrightTestOptions & Options>[] = [];
+for (const [build, port] of Object.entries(builds)) {
+	for (const [engine, device] of Object.entries(engines)) {
+		for (const [size, viewport] of Object.entries(viewports)) {
+			projects.push({
+				name: `${build}-${engine}-${size}`,
+				use: { ...device, viewport, baseURL: `http://127.0.0.1:${port}`, build: build as Options['build'] }
+			});
+		}
+	}
+}
+
+export default defineConfig<Options>({
+	testDir: 'e2e',
+	forbidOnly: !!process.env.CI,
+	retries: process.env.CI ? 1 : 0,
+	reporter: process.env.CI ? 'github' : 'list',
+	projects,
+	webServer: Object.entries(builds).map(([build, port]) => ({
+		command: `bunx vite preview --host 127.0.0.1 --port ${port} --strictPort`,
+		env: { ORDO_WEB: build },
+		url: `http://127.0.0.1:${port}`,
+		reuseExistingServer: false
+	}))
+});
