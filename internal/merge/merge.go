@@ -440,8 +440,12 @@ func mergeOrder(base, mine, theirs []string, keep map[string]bool) []string {
 				break
 			}
 		}
+		if at == len(out) && atOut != nil {
+			atOut[id] = at
+		} else {
+			atOut = nil
+		}
 		out = slices.Insert(out, at, id)
-		atOut = nil
 	}
 	return out
 }
