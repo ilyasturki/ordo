@@ -22,12 +22,30 @@ func sharedModel(t *testing.T) (*model, *data.Store, domain.Project) {
 	tui, web := data.NewStore(dir), data.NewStore(dir)
 	p, err := tui.CreateProject("Shared")
 	require.NoError(t, err)
-	p, err = tui.LoadProjectByID(p.ID)
-	require.NoError(t, err)
+	p = withSamples(t, tui, p)
 	m := newTestModel(t, p)
 	m.deps.Store = tui
 	m.rebuildPositions()
 	return m, web, p
+}
+
+// withSamples saves p with two categories of two tasks each and returns it as loaded.
+func withSamples(t *testing.T, store *data.Store, p domain.Project) domain.Project {
+	t.Helper()
+	for _, name := range []string{"Feature", "Fix"} {
+		c, err := domain.NewCategory(name)
+		require.NoError(t, err)
+		for _, title := range []string{name + " one", name + " two"} {
+			task, err := domain.NewTask(title)
+			require.NoError(t, err)
+			c.AddTask(task)
+		}
+		p.Categories = append(p.Categories, c)
+	}
+	require.NoError(t, store.SaveProjectLocked(p))
+	p, err := store.LoadProjectByID(p.ID)
+	require.NoError(t, err)
+	return p
 }
 
 func withSaver(t *testing.T, m *model) *data.Saver {

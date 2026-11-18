@@ -48,9 +48,7 @@ func firstCategoryTasks(t *testing.T, p domain.Project, name string) []domain.Ta
 	return nil
 }
 
-// findTask returns the task with the given title, or ok=false. Projects are
-// seeded with sample tasks, so assertions target the task under test by title
-// rather than by position or count.
+// findTask returns the task with the given title, or ok=false.
 func findTask(tasks []domain.Task, title string) (domain.Task, bool) {
 	for _, t := range tasks {
 		if t.Title == title {
@@ -61,10 +59,7 @@ func findTask(tasks []domain.Task, title string) (domain.Task, bool) {
 }
 
 func TestTaskAdd_PersistsWithPriority(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := runCLI(t, dir, "init"); err != nil {
-		t.Fatalf("init: %v", err)
-	}
+	dir := initDefault(t)
 
 	if _, err := runCLI(t, dir, "task", "add", "Write docs",
 		"--category", "Feature", "--priority", "high", "--project", "Default"); err != nil {
@@ -85,10 +80,7 @@ func TestTaskAdd_PersistsWithPriority(t *testing.T) {
 }
 
 func TestTaskAddAndEdit_RefuseTheEstimateFlag(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := runCLI(t, dir, "init"); err != nil {
-		t.Fatalf("init: %v", err)
-	}
+	dir := initDefault(t)
 	if _, err := runCLI(t, dir, "task", "add", "kept", "--category", "Feature", "--project", "Default"); err != nil {
 		t.Fatalf("task add: %v", err)
 	}
@@ -107,10 +99,7 @@ func TestTaskAddAndEdit_RefuseTheEstimateFlag(t *testing.T) {
 }
 
 func TestTaskAdd_UnknownCategory(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := runCLI(t, dir, "init"); err != nil {
-		t.Fatalf("init: %v", err)
-	}
+	dir := initDefault(t)
 
 	if _, err := runCLI(t, dir, "task", "add", "x",
 		"--category", "Nope", "--project", "Default"); err == nil {
@@ -119,10 +108,7 @@ func TestTaskAdd_UnknownCategory(t *testing.T) {
 }
 
 func TestTaskDescription_AddShowEditClear(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := runCLI(t, dir, "init"); err != nil {
-		t.Fatalf("init: %v", err)
-	}
+	dir := initDefault(t)
 	if _, err := runCLI(t, dir, "task", "add", "Call the bank",
 		"--category", "Feature", "--description", "ask about fees\nbring the contract",
 		"--project", "Default"); err != nil {
@@ -164,10 +150,7 @@ func TestTaskDescription_AddShowEditClear(t *testing.T) {
 }
 
 func TestTaskEdit_RejectsControlCharsInDescription(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := runCLI(t, dir, "init"); err != nil {
-		t.Fatalf("init: %v", err)
-	}
+	dir := initDefault(t)
 	if _, err := runCLI(t, dir, "task", "add", "Plain", "--category", "Feature", "--project", "Default"); err != nil {
 		t.Fatalf("task add: %v", err)
 	}
@@ -178,10 +161,7 @@ func TestTaskEdit_RejectsControlCharsInDescription(t *testing.T) {
 }
 
 func TestTaskPriority_MediumAndNoneAreOneLevel(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := runCLI(t, dir, "init"); err != nil {
-		t.Fatalf("init: %v", err)
-	}
+	dir := initDefault(t)
 	for _, args := range [][]string{
 		{"task", "add", "Plain", "--category", "Feature"},
 		{"task", "add", "Named", "--category", "Feature", "--priority", "medium"},

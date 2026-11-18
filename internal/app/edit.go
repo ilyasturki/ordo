@@ -76,6 +76,10 @@ func (m *model) startEditing() {
 }
 
 func (m *model) startAddingTask() {
+	if len(m.project.Categories) == 0 {
+		m.startAddingCategory()
+		return
+	}
 	position, ok := m.selectedPosition()
 	if !ok {
 		return

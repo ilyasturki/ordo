@@ -7,11 +7,17 @@ import (
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
+// initDefault is a fresh `ordo init` holding the categories Feature and Fix.
 func initDefault(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	if _, err := runCLI(t, dir, "init"); err != nil {
 		t.Fatalf("init: %v", err)
+	}
+	for _, name := range []string{"Feature", "Fix"} {
+		if _, err := runCLI(t, dir, "category", "add", name, "--project", "Default"); err != nil {
+			t.Fatalf("category add %s: %v", name, err)
+		}
 	}
 	return dir
 }

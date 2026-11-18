@@ -112,8 +112,7 @@ func groupStoreModel(t *testing.T) (*model, *data.Store, domain.Project, domain.
 	require.NoError(t, err)
 	beta, err := store.CreateProject("Beta")
 	require.NoError(t, err)
-	alpha, err = store.LoadProjectByID(alpha.ID)
-	require.NoError(t, err)
+	alpha = withSamples(t, store, alpha)
 	m := newTestModel(t, alpha)
 	withStubStateManager(m)
 	m.deps.Store = store

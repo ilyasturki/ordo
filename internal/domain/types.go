@@ -55,8 +55,6 @@ const LegacyPriorityMedium = "medium"
 // PriorityOrder lists the levels highest-first; medium is the missing field.
 var PriorityOrder = []string{PriorityCritical, PriorityHigh, PriorityMedium, PriorityLow, PriorityTrivial}
 
-var DefaultCategories = []string{"Feature", "Fix", "Ergonomy", "Documentation", "Research"}
-
 var (
 	ErrDuplicateCategoryName = errors.New("category name already exists")
 	ErrCategoryNotFound      = errors.New("category not found")

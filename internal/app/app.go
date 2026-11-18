@@ -810,7 +810,7 @@ func (m model) renderView() string {
 		lines = append(lines, ui.MutedStyle.Render(scrollMoreBelow))
 	}
 
-	content := strings.Join(lines, "\n")
+	content := m.withEmptyHint(strings.Join(lines, "\n"))
 	if bar := m.renderBottomBar(); bar != "" {
 		// Push the bar to the bottom row even when content is shorter than the
 		// screen. The viewport already reserved this row via FooterHeight, so

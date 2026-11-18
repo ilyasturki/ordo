@@ -249,16 +249,7 @@ func (s *Store) CreateProject(name string) (domain.Project, error) {
 		return domain.Project{}, err
 	}
 	return s.createNewProjectLocked(name, func() (domain.Project, error) {
-		project, err := domain.NewProject(name)
-		if err != nil {
-			return domain.Project{}, err
-		}
-		project.Categories, err = s.defaultCategories()
-		if err != nil {
-			return domain.Project{}, err
-		}
-		project.Categories = populateSampleTasks(project.Categories)
-		return project, nil
+		return domain.NewProject(name)
 	})
 }
 
@@ -291,7 +282,7 @@ func (s *Store) CreateEmptyProject(id, name string) (domain.Project, error) {
 // ImportProject persists a fully-formed project parsed from an external file
 // as a NEW project on disk. Unlike SaveProjectLocked it does not require the
 // project to already exist, and unlike CreateProject it keeps the caller's
-// categories and tasks instead of seeding defaults. The global lock is held
+// categories and tasks. The global lock is held
 // across the duplicate-name check and the write so a concurrent create can't
 // slip in with the same name. A blank ID or CreatedAt is filled in so imports
 // of hand-written files still produce a valid record; an ID that collides with
@@ -416,18 +407,6 @@ func (s *Store) InitDefault() (domain.Project, error) {
 	return s.CreateProject("Default")
 }
 
-func (s *Store) defaultCategories() ([]domain.Category, error) {
-	categories := make([]domain.Category, 0, len(domain.DefaultCategories))
-	for _, name := range domain.DefaultCategories {
-		category, err := domain.NewCategory(name)
-		if err != nil {
-			return nil, err
-		}
-		categories = append(categories, category)
-	}
-	return categories, nil
-}
-
 // Stat from the same fd as the bytes: os.Stat would pair new metadata with
 // old content across a rename.
 func (s *Store) loadProjectFile(path string) (domain.Project, os.FileInfo, []byte, error) {
@@ -504,52 +483,4 @@ func (s *Store) DeleteProject(id string) error {
 	_ = os.Remove(s.viewPath(id))
 	s.forget(id)
 	return nil
-}
-
-type sampleTask struct {
-	title    string
-	status   string
-	priority string
-}
-
-var sampleTasksByCategory = map[string][]sampleTask{
-	"Feature": {
-		{"Build the main dashboard", domain.StatusInProgress, domain.PriorityHigh},
-		{"Add user preferences panel", domain.StatusTodo, domain.PriorityMedium},
-	},
-	"Fix": {
-		{"Resolve login timeout issue", domain.StatusTodo, domain.PriorityHigh},
-		{"Fix date formatting in reports", domain.StatusCompleted, domain.PriorityLow},
-	},
-	"Ergonomy": {
-		{"Improve keyboard navigation", domain.StatusInProgress, domain.PriorityMedium},
-		{"Add dark mode support", domain.StatusTodo, domain.PriorityLow},
-	},
-	"Documentation": {
-		{"Write getting started guide", domain.StatusTodo, domain.PriorityMedium},
-		{"Document API endpoints", domain.StatusTodo, domain.PriorityLow},
-	},
-	"Research": {
-		{"Evaluate caching strategies", domain.StatusCompleted, domain.PriorityMedium},
-		{"Investigate performance bottlenecks", domain.StatusTodo, domain.PriorityHigh},
-	},
-}
-
-func populateSampleTasks(categories []domain.Category) []domain.Category {
-	for i := range categories {
-		samples, ok := sampleTasksByCategory[categories[i].Name]
-		if !ok {
-			continue
-		}
-		for _, s := range samples {
-			task, err := domain.NewTask(s.title)
-			if err != nil {
-				continue
-			}
-			_ = task.SetStatus(s.status)
-			_ = task.SetPriority(s.priority)
-			categories[i].AddTask(task)
-		}
-	}
-	return categories
 }

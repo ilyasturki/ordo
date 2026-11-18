@@ -33,6 +33,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
 - Rows shown by `enter` on `(N hidden by the filter)` and moved into another category with `J`/`K`, one or a visual range, stay shown and selected until the cursor leaves them, instead of hiding and leaving visual mode on `0 tasks selected`. Visual mode now ends by itself when none of its rows shows, and its status line counts notes and separators too, as `2 tasks, 1 note selected`. `m` says when the filter hides the rows where they landed
 - `t` reaches every tag dot, those other tasks of the category wear included: it starts at a free one, steps through the rest and ends on none
+### Changed
+
+- A new project starts empty, from the TUI, `ordo init` and `ordo project add` as from the app: no sample categories or tasks to delete first. An empty project says "No categories yet: A adds one, ? shows the keys", and `a` there opens the first category's name, as `A` does
+
 ### Removed
 
 - **Breaking:** time estimates, everywhere. The TUI drops `ctrl+t`, the `~1h` marks and the Estimate line in `gi`; the app drops the Estimate chip and picker. `ordo task add` and `ordo task edit` no longer take `-e`/`--estimate`, `ordo tasks -l` and `ordo categories` lose the ESTIMATE column, and their JSON loses `estimate_minutes`. A project file keeps its `estimate_minutes` until ordo next saves it, then drops the key. An app not yet updated gets its estimate edits refused by an updated `ordo serve`

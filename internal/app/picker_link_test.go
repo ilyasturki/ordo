@@ -51,6 +51,7 @@ func newPickerTestModel(t *testing.T, link string) (*model, *linkTrackingState, 
 	require.NoError(t, store.Ensure())
 	alpha, err := store.CreateProject("Alpha")
 	require.NoError(t, err)
+	alpha = withSamples(t, store, alpha)
 	beta, err := store.CreateProject("Beta")
 	require.NoError(t, err)
 

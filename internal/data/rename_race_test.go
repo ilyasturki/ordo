@@ -16,7 +16,7 @@ import (
 func twoRows(t *testing.T) (*Store, domain.Project) {
 	t.Helper()
 	s := NewStore(t.TempDir())
-	p, err := s.CreateProject("Shared")
+	p, err := withSamples(t, s, "Shared")
 	require.NoError(t, err)
 	p, err = s.WithProjectLocked(p.ID, func(p *domain.Project) error {
 		p.Categories[0].Tasks = []domain.Task{

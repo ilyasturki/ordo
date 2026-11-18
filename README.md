@@ -75,7 +75,7 @@ ordo project unlink         # remove this directory's link
 ordo project group ferry Work # put a project in a group ("" takes it out)
 ```
 
-The first run creates a `Default` project. In the TUI, `a` adds a task, `space` cycles its status, `gi` shows its details, `u` and `ctrl+r` undo and redo, and `?` lists every key and what each mark on a row means. `gc` shows the changelog, and so does `ordo changelog` in a terminal, to pipe into a pager. In the picker (`ctrl+p`), `l` links this directory to the focused project, and on the row marked `(linked)` it unlinks it. `m` puts the focused project in a group, such as Work or Perso: it lists the groups in use, the current one marked, then No group and New group…, and the picker then lists each group under its name, the projects without one last.
+The first run creates an empty `Default` project. In the TUI, `A` adds a category, `a` adds a task, `space` cycles its status, `gi` shows its details, `u` and `ctrl+r` undo and redo, and `?` lists every key and what each mark on a row means. `gc` shows the changelog, and so does `ordo changelog` in a terminal, to pipe into a pager. In the picker (`ctrl+p`), `l` links this directory to the focused project, and on the row marked `(linked)` it unlinks it. `m` puts the focused project in a group, such as Work or Perso: it lists the groups in use, the current one marked, then No group and New group…, and the picker then lists each group under its name, the projects without one last.
 
 ## Features
 

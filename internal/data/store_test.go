@@ -132,7 +132,7 @@ func TestImportProject_RejectsDuplicateName(t *testing.T) {
 	store := NewStore(tmpDir)
 	require.NoError(t, store.Ensure())
 
-	original, err := store.CreateProject("Roadmap")
+	original, err := withSamples(t, store, "Roadmap")
 	require.NoError(t, err)
 
 	// Re-importing a project that still exists must not silently overwrite it;
@@ -207,7 +207,7 @@ func TestSchemaStampedOnSave(t *testing.T) {
 
 func TestSchemaFollowsNesting(t *testing.T) {
 	store := NewStore(t.TempDir())
-	project, err := store.CreateProject("Nested")
+	project, err := withSamples(t, store, "Nested")
 	require.NoError(t, err)
 	schemaOnDisk := func() int {
 		t.Helper()
@@ -235,7 +235,7 @@ func TestSchemaFollowsNesting(t *testing.T) {
 
 func TestSchemaFollowsNotes(t *testing.T) {
 	store := NewStore(t.TempDir())
-	project, err := store.CreateProject("Noted")
+	project, err := withSamples(t, store, "Noted")
 	require.NoError(t, err)
 	schemaOnDisk := func() int {
 		t.Helper()
@@ -436,13 +436,45 @@ func TestLoadReadsLegacyMediumAsMissingAndSavesNone(t *testing.T) {
 	assert.Contains(t, string(saved), `"high"`)
 }
 
-func TestTheDefaultProjectWritesNoMedium(t *testing.T) {
-	tmpDir := t.TempDir()
-	store := NewStore(tmpDir)
+func TestNewProjectsStartEmpty(t *testing.T) {
+	store := NewStore(t.TempDir())
 	require.NoError(t, store.Ensure())
-	project, err := store.InitDefault()
+	first, err := store.InitDefault()
 	require.NoError(t, err)
-	saved, err := os.ReadFile(filepath.Join(tmpDir, project.ID+".json"))
+	assert.Equal(t, "Default", first.Name)
+	assert.Empty(t, first.Categories)
+	next, err := store.CreateProject("Next")
 	require.NoError(t, err)
-	assert.NotContains(t, string(saved), `"medium"`)
+	assert.Empty(t, next.Categories)
+	loaded, err := store.LoadProjectByID(next.ID)
+	require.NoError(t, err)
+	assert.Empty(t, loaded.Categories)
+}
+
+// withSamples creates a project holding two categories of two tasks each, as tests expect rows to exist.
+func withSamples(t *testing.T, s *Store, name string) (domain.Project, error) {
+	t.Helper()
+	p, err := s.CreateProject(name)
+	if err != nil {
+		return p, err
+	}
+	p.Categories = sampleCategories(t)
+	require.NoError(t, s.SaveProjectLocked(p))
+	return s.LoadProjectByID(p.ID)
+}
+
+func sampleCategories(t *testing.T) []domain.Category {
+	t.Helper()
+	var cats []domain.Category
+	for _, name := range []string{"Feature", "Fix"} {
+		c, err := domain.NewCategory(name)
+		require.NoError(t, err)
+		for _, title := range []string{name + " one", name + " two"} {
+			task, err := domain.NewTask(title)
+			require.NoError(t, err)
+			c.AddTask(task)
+		}
+		cats = append(cats, c)
+	}
+	return cats
 }
