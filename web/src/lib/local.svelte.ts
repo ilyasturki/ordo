@@ -1,19 +1,34 @@
 import type { Core } from '$lib/core/core';
-import type { Answer, Op, Project } from '$lib/core/types';
+import type { Answer, Category, Op, Project } from '$lib/core/types';
 import { fromFile, noFilter, pruned, toFile, type Filter } from '$lib/model/filter';
 import { rankProjects } from '$lib/model/project';
-import type { DB } from '$lib/store';
+import type { DB, Queued } from '$lib/store';
+import type { ProjectState, SyncOp, ViewFile } from '$lib/sync/api';
 
 export type View = { folds: string[]; filter: Filter };
 
-export type Snack = { id: number; msg: string; undo?: () => void };
+export type Snack = { id: number; msg: string; action?: { label: string; run: () => void } };
 
 /** One edit the history can take back: the ops that undo it, and its own replayable op to redo it. */
 type Step = { pid: string; forward: Op; back: Op[] };
 
+/** What a round sends, and what adopting its answer needs to know of it. */
+export type Outgoing = { ops: SyncOp[]; have: Record<string, string>; views: Record<string, ViewFile>; sent: Queued[]; last: number };
+
+type Options = {
+	/** A copy of a server's projects: every edit is queued for it. */
+	synced?: boolean;
+	/** Fetches an image this browser doesn't hold yet. */
+	fetchImage?: (name: string) => Promise<{ bytes: ArrayBuffer; type: string } | undefined>;
+};
+
 const emptyView: View = { folds: [], filter: noFilter };
 
-/** The projects kept in this browser: every edit runs through the core, then the project goes back to IndexedDB. */
+/**
+ * The projects kept in this browser: every edit runs through the core, then the project goes back to
+ * IndexedDB. A synced copy also queues each edit's replayable op for the server, and takes the
+ * server's copy after each round with the ops queued since put back on top.
+ */
 export class Local {
 	/** In the order the tabs show them: ranked once at start, new ones after. */
 	projects: Project[] = $state([]);
@@ -22,8 +37,18 @@ export class Local {
 	views: Record<string, View> = $state({});
 	current = $state('');
 	snack: Snack | undefined = $state();
+	/** Edits, images and views the server hasn't had yet. */
+	pending = $state(0);
+	uploads = $state(0);
+	viewsWaiting = $state(0);
+	/** Projects whose file the server can't load, by ID: their copy here stays as it was. */
+	broken: Record<string, string> = $state({});
+	readonly synced: boolean;
+	/** Called when something new waits for the server. */
+	onWaiting: () => void = () => {};
 	readonly #core: Core;
 	readonly #db: DB;
+	readonly #fetchImage: Options['fetchImage'];
 	#order: string[] = [];
 	#opened: Record<string, number> = {};
 	#history: Step[] = [];
@@ -31,18 +56,27 @@ export class Local {
 	#snacks = 0;
 	#viewing = Promise.resolve();
 	readonly #urls = new Map<string, string>();
+	#stamps = new Map<string, string>();
+	#queue: Queued[] = [];
+	#seq = 0;
+	#viewEdits: Record<string, ViewFile> = {};
+	#unsent: string[] = [];
 
-	private constructor(core: Core, db: DB) {
+	private constructor(core: Core, db: DB, options: Options) {
 		this.#core = core;
 		this.#db = db;
+		this.synced = options.synced ?? false;
+		this.#fetchImage = options.fetchImage;
 	}
 
-	static async open(core: Core, db: DB): Promise<Local> {
-		const local = new Local(core, db);
+	static async open(core: Core, db: DB, options: Options = {}): Promise<Local> {
+		const local = new Local(core, db, options);
 		const ids: string[] = [];
 		for (const stored of await db.getAll('projects')) {
 			try {
 				ids.push(core.open(stored.raw));
+				local.#stamps.set(stored.id, stored.stamp);
+				if (stored.error) local.broken[stored.id] = stored.error;
 			} catch (error) {
 				local.unreadable.push({ id: stored.id, error: String(error) });
 			}
@@ -52,6 +86,11 @@ export class Local {
 		}
 		local.#opened = ((await db.get('meta', 'opened')) as Record<string, number> | undefined) ?? {};
 		local.current = ((await db.get('meta', 'current')) as string | undefined) ?? '';
+		local.#queue = await db.getAll('queue');
+		local.#seq = local.#queue.at(-1)?.seq ?? 0;
+		local.#viewEdits = ((await db.get('meta', 'viewEdits')) as Record<string, ViewFile> | undefined) ?? {};
+		local.#unsent = ((await db.get('meta', 'unsent')) as string[] | undefined) ?? [];
+		local.#counted();
 		local.#order = rankProjects(local.#read(ids), local.#opened).map((p) => p.id);
 		local.#show(ids);
 		return local;
@@ -84,21 +123,33 @@ export class Local {
 
 	setFolded(pid: string, id: string, folded: boolean): Promise<void> {
 		return this.#setView(pid, (v) =>
-			v.folds.includes(id) === folded ? undefined : { ...v, folds: folded ? [...v.folds, id] : v.folds.filter((f) => f !== id) }
+			v.folds.includes(id) === folded ? undefined : { folds: folded ? [...v.folds, id] : v.folds.filter((f) => f !== id) }
 		);
 	}
 
 	setFilter(pid: string, filter: Filter): Promise<void> {
-		return this.#setView(pid, (v) => ({ ...v, filter }));
+		return this.#setView(pid, () => ({ filter }));
 	}
 
 	/** One change at a time, each written before it shows, so a reload never loses one already on screen. */
-	#setView(pid: string, change: (view: View) => View | undefined): Promise<void> {
+	#setView(pid: string, change: (view: View) => Partial<View> | undefined): Promise<void> {
 		const run = this.#viewing.then(async () => {
-			const view = change(this.view(pid));
-			if (!view) return;
-			await this.#db.put('views', { id: pid, folds: [...view.folds].sort(), filter: toFile(view.filter) });
-			this.views[pid] = view;
+			const edit = change(this.view(pid));
+			if (!edit) return;
+			const view = { ...this.view(pid), ...edit };
+			const tx = this.#db.transaction(['views', 'meta'], 'readwrite');
+			void tx.objectStore('views').put({ id: pid, folds: [...view.folds].sort(), filter: toFile(view.filter) });
+			if (this.synced) {
+				const sent: ViewFile = {};
+				if (edit.folds) sent.folds = [...edit.folds].sort();
+				if (edit.filter) sent.filter = toFile(edit.filter);
+				this.#viewEdits = { ...this.#viewEdits, [pid]: { ...this.#viewEdits[pid], ...sent } };
+				void tx.objectStore('meta').put($state.snapshot(this.#viewEdits), 'viewEdits');
+				this.#counted();
+			}
+			await tx.done;
+			this.views[pid] = { ...(this.views[pid] ?? emptyView), ...edit };
+			if (this.synced) this.onWaiting();
 		});
 		this.#viewing = run.catch(() => {});
 		return run;
@@ -113,10 +164,12 @@ export class Local {
 		const answer = this.#core.perform(pid, op);
 		const target = op.action === 'project.create' && pid === '' ? (answer.row ?? '') : pid;
 		if (answer.status === 'applied') {
-			await this.#keep(target);
+			await this.#land(target, answer.queue ? [answer.queue] : []);
 		}
 		const step = this.#record(target, answer);
-		if (!quiet) {
+		if (answer.status === 'conflict' && answer.theirs !== undefined) {
+			this.offer(answer.msg || 'Changed on another device', 'Keep mine', () => void this.perform(pid, { ...op, base: answer.theirs }));
+		} else if (!quiet) {
 			this.say(answer.msg || said, step);
 		}
 		return answer;
@@ -132,7 +185,11 @@ export class Local {
 
 	say(msg: string, step?: Step): void {
 		if (msg === '') return;
-		this.snack = { id: ++this.#snacks, msg, undo: step && (() => void this.#takeBack(step)) };
+		this.snack = { id: ++this.#snacks, msg, action: step && { label: 'Undo', run: () => void this.#takeBack(step) } };
+	}
+
+	offer(msg: string, label: string, run: () => void): void {
+		this.snack = { id: ++this.#snacks, msg, action: { label, run } };
 	}
 
 	get canUndo(): boolean {
@@ -151,15 +208,16 @@ export class Local {
 
 	async #takeBack(step: Step): Promise<boolean> {
 		this.#history = this.#history.filter((s) => s !== step);
-		let applied = false;
+		const landed: Op[] = [];
 		for (const op of step.back) {
-			applied = this.#core.perform(step.pid, op).status === 'applied' || applied;
+			const answer = this.#core.perform(step.pid, op);
+			if (answer.status === 'applied') landed.push(answer.queue ?? op);
 		}
-		if (!applied) {
+		if (landed.length === 0) {
 			this.say("Can't undo that: it changed since");
 			return false;
 		}
-		await this.#keep(step.pid);
+		await this.#land(step.pid, landed);
 		this.#future.push(step);
 		this.say('Undone');
 		return true;
@@ -177,7 +235,7 @@ export class Local {
 			this.say("Can't redo that: it changed since");
 			return false;
 		}
-		await this.#keep(step.pid);
+		await this.#land(step.pid, [answer.queue ?? step.forward]);
 		if (answer.queue && answer.undo?.length) this.#history.push({ pid: step.pid, forward: answer.queue, back: answer.undo });
 		this.say('Redone');
 		return true;
@@ -186,7 +244,7 @@ export class Local {
 	/** Adds a project file as a new project and answers its ID; throws on a file ordo can't import. */
 	async import(raw: string): Promise<string> {
 		const id = this.#core.import(raw);
-		await this.#keep(id);
+		await this.#land(id, this.synced ? importOps(this.held(id)!) : []);
 		return id;
 	}
 
@@ -207,7 +265,14 @@ export class Local {
 			const name = [...digest.slice(0, 16)].map((b) => b.toString(16).padStart(2, '0')).join('') + '.' + ext;
 			try {
 				if (!(await this.#db.get('images', name))) {
-					await this.#db.put('images', { name, bytes, type: { jpg: 'image/jpeg' }[ext] ?? 'image/' + ext, pending: false });
+					const tx = this.#db.transaction(['images', 'meta'], 'readwrite');
+					void tx.objectStore('images').put({ name, bytes, type: { jpg: 'image/jpeg' }[ext] ?? 'image/' + ext, pending: this.synced });
+					if (this.synced && !this.#unsent.includes(name)) {
+						this.#unsent = [...this.#unsent, name];
+						void tx.objectStore('meta').put(this.#unsent, 'unsent');
+					}
+					await tx.done;
+					this.#counted();
 				}
 			} catch {
 				return 'This browser can’t keep that image';
@@ -217,28 +282,196 @@ export class Local {
 		return this.perform(pid, { action: 'task.attach', ids: [tid], lines }, { said: lines.length === 1 ? 'Image added' : 'Images added' });
 	}
 
-	/** A URL for a kept image, undefined when this browser doesn't hold it. */
+	/** A URL for a kept image, undefined when this browser doesn't hold it and can't get it. */
 	async imageURL(name: string): Promise<string | undefined> {
 		const known = this.#urls.get(name);
 		if (known) return known;
-		const image = await this.#db.get('images', name);
+		let image = await this.#db.get('images', name);
+		if (!image && this.#fetchImage) {
+			const got = await this.#fetchImage(name).catch(() => undefined);
+			if (!got) return undefined;
+			image = { name, bytes: got.bytes, type: got.type, pending: false };
+			await this.#db.put('images', image).catch(() => {});
+		}
 		if (!image) return undefined;
 		const url = URL.createObjectURL(new Blob([image.bytes], { type: image.type }));
 		this.#urls.set(name, url);
 		return url;
 	}
 
-	async #keep(pid: string): Promise<void> {
-		const raw = this.#core.project(pid);
-		if (raw === null) {
-			await this.#db.delete('projects', pid);
-			await this.#db.delete('views', pid);
-			delete this.views[pid];
-		} else {
-			const { name } = JSON.parse(raw) as Project;
-			await this.#db.put('projects', { id: pid, name, stamp: '', raw });
+	/** The next image the server hasn't stored, ahead of the ops naming it. */
+	async nextUpload(): Promise<{ name: string; bytes: ArrayBuffer } | undefined> {
+		for (const name of this.#unsent) {
+			const image = await this.#db.get('images', name);
+			if (image) return { name, bytes: image.bytes };
+			await this.uploaded(name);
 		}
-		this.#show([...this.projects.map((p) => p.id).filter((id) => id !== pid), ...(raw === null ? [] : [pid])]);
+		return undefined;
+	}
+
+	async uploaded(name: string): Promise<void> {
+		this.#unsent = this.#unsent.filter((n) => n !== name);
+		const tx = this.#db.transaction(['images', 'meta'], 'readwrite');
+		const images = tx.objectStore('images');
+		const image = await images.get(name);
+		if (image) void images.put({ ...image, pending: false });
+		void tx.objectStore('meta').put(this.#unsent, 'unsent');
+		await tx.done;
+		this.#counted();
+	}
+
+	get waiting(): boolean {
+		return this.#queue.length > 0 || this.#unsent.length > 0 || Object.keys(this.#viewEdits).length > 0;
+	}
+
+	/** What reaches the server next: the queue, the stamp of each copy no op waits on, the view changes. */
+	outgoing(): Outgoing {
+		const sent = [...this.#queue];
+		const busy = new Set(sent.map((q) => q.project));
+		const have: Record<string, string> = {};
+		for (const [id, stamp] of this.#stamps) {
+			if (!busy.has(id) && stamp !== '' && !this.broken[id]) have[id] = stamp;
+		}
+		return {
+			ops: sent.map((q) => ({ ...q.op, id: q.qid, project: q.project })),
+			have,
+			views: { ...this.#viewEdits },
+			sent,
+			last: sent.at(-1)?.seq ?? this.#seq
+		};
+	}
+
+	/** Takes the server's copy of each project, with the edits queued since the request put back on top. */
+	adopt(states: ProjectState[], out: Outgoing): Promise<void> {
+		this.#queue = this.#queue.filter((q) => q.seq > out.last);
+		const later = this.#queue;
+		const held = new Set(this.projects.map((p) => p.id));
+		const saves: string[] = [];
+		const keep: string[] = [];
+		for (const st of states) {
+			if (!st.data) {
+				if (!held.has(st.id)) continue;
+				keep.push(st.id);
+				if ((this.broken[st.id] ?? '') !== (st.error ?? '')) {
+					if (st.error) this.broken[st.id] = st.error;
+					else delete this.broken[st.id];
+					saves.push(st.id);
+				}
+				continue;
+			}
+			try {
+				this.#core.open(JSON.stringify(st.data));
+			} catch (error) {
+				if (!held.has(st.id)) continue;
+				keep.push(st.id);
+				this.broken[st.id] = error instanceof Error ? error.message : "Can't open this project";
+				saves.push(st.id);
+				continue;
+			}
+			for (const q of later) if (q.project === st.id) this.#core.replay(st.id, q.op);
+			this.#stamps.set(st.id, st.stamp);
+			delete this.broken[st.id];
+			keep.push(st.id);
+			saves.push(st.id);
+		}
+		const createdSince = new Set(later.filter((q) => q.op.action === 'project.create').map((q) => q.project));
+		const gone = [...held].filter((id) => !keep.includes(id) && !createdSince.has(id));
+		for (const id of gone) {
+			this.#core.close(id);
+			this.#stamps.delete(id);
+			delete this.broken[id];
+			delete this.views[id];
+			delete this.#viewEdits[id];
+		}
+		this.#counted();
+		this.#show([...keep, ...[...createdSince].filter((id) => !keep.includes(id))]);
+		const tx = this.#db.transaction(['projects', 'queue', 'views', 'meta'], 'readwrite');
+		void tx.objectStore('queue').delete(IDBKeyRange.upperBound(out.last));
+		for (const id of saves) {
+			const raw = this.#core.project(id);
+			if (raw !== null) void tx.objectStore('projects').put(this.#stored(id, raw));
+		}
+		for (const id of gone) {
+			void tx.objectStore('projects').delete(id);
+			void tx.objectStore('views').delete(id);
+		}
+		if (gone.length) void tx.objectStore('meta').put($state.snapshot(this.#viewEdits), 'viewEdits');
+		return tx.done;
+	}
+
+	/**
+	 * Takes the server's view of each project, with the changes made since the request on top. A
+	 * project with no view file gets the one held here, unless it just went out: a server that can't
+	 * write the file would otherwise have it sent again every round. No views at all is a server
+	 * that doesn't sync them: what went out is dropped and the views here stay.
+	 */
+	adoptViews(theirs: Record<string, ViewFile> | undefined, out: Outgoing): Promise<void> {
+		const edits: Record<string, ViewFile> = {};
+		for (const [pid, edit] of Object.entries(this.#viewEdits)) {
+			if (out.views[pid] !== edit) edits[pid] = edit;
+		}
+		const changed: string[] = [];
+		if (theirs) {
+			for (const p of this.projects) {
+				const view = theirs[p.id];
+				const mine = this.views[p.id];
+				if (view) {
+					const next = { ...view, ...edits[p.id] };
+					this.views[p.id] = { folds: next.folds ?? [], filter: fromFile(next.filter) };
+					changed.push(p.id);
+				} else if (mine && (mine.folds.length > 0 || Object.keys(toFile(mine.filter)).length > 0) && !edits[p.id] && !out.views[p.id]) {
+					edits[p.id] = { folds: [...mine.folds].sort(), filter: toFile(mine.filter) };
+				}
+			}
+		}
+		this.#viewEdits = edits;
+		this.#counted();
+		const tx = this.#db.transaction(['views', 'meta'], 'readwrite');
+		for (const id of changed) {
+			const v = this.views[id];
+			void tx.objectStore('views').put({ id, folds: [...v.folds].sort(), filter: toFile(v.filter) });
+		}
+		void tx.objectStore('meta').put($state.snapshot(this.#viewEdits), 'viewEdits');
+		if (changed.length || Object.keys(edits).length) this.onWaiting();
+		return tx.done;
+	}
+
+	#counted(): void {
+		this.pending = this.#queue.length;
+		this.uploads = this.#unsent.length;
+		this.viewsWaiting = Object.keys(this.#viewEdits).length;
+	}
+
+	#stored(id: string, raw: string) {
+		const { name } = JSON.parse(raw) as Project;
+		return { id, name, stamp: this.#stamps.get(id) ?? '', raw, error: this.broken[id] };
+	}
+
+	/** Keeps what the core holds of the project, and queues ops for the server: both in one write, made before any await. */
+	async #land(pid: string, ops: Op[]): Promise<void> {
+		const raw = this.#core.project(pid);
+		const queued = this.synced ? ops.map((op) => ({ seq: ++this.#seq, qid: crypto.randomUUID(), project: pid, op })) : [];
+		this.#queue.push(...queued);
+		const tx = this.#db.transaction(['projects', 'queue', 'views', 'meta'], 'readwrite');
+		for (const q of queued) void tx.objectStore('queue').put($state.snapshot(q));
+		if (raw === null) {
+			this.#stamps.delete(pid);
+			delete this.broken[pid];
+			void tx.objectStore('projects').delete(pid);
+			void tx.objectStore('views').delete(pid);
+			delete this.views[pid];
+			if (this.#viewEdits[pid]) {
+				delete this.#viewEdits[pid];
+				void tx.objectStore('meta').put($state.snapshot(this.#viewEdits), 'viewEdits');
+			}
+		} else {
+			void tx.objectStore('projects').put(this.#stored(pid, raw));
+		}
+		this.#counted();
+		if (queued.length) this.onWaiting();
+		await tx.done;
+		const ids = this.projects.map((p) => p.id).filter((id) => id !== pid);
+		this.#show(this.#core.project(pid) === null ? ids : [...ids, pid]);
 	}
 
 	#read(ids: string[]): Project[] {
@@ -253,6 +486,18 @@ export class Local {
 		const at = new Map(this.#order.map((id, i) => [id, i]));
 		this.projects = held.sort((a, b) => at.get(a.id)! - at.get(b.id)!);
 	}
+}
+
+/** The ops that build an imported project on the server: no op imports a file. */
+function importOps(p: Project): Op[] {
+	const ops: Op[] = [{ action: 'project.create', title: p.name }];
+	if (p.group) ops.push({ action: 'project.group', value: p.group });
+	const under = (parent: Category): Category[] =>
+		p.categories.filter((c) => c.parent_id === parent.id).flatMap((c) => [c, ...under(c)]);
+	for (const top of p.categories.filter((c) => !c.parent_id)) {
+		ops.push({ action: 'category.restore', cats: [top, ...under(top)] });
+	}
+	return ops;
 }
 
 const maxImage = 25 << 20;

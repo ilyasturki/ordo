@@ -3,7 +3,7 @@
 	import { importProject } from '$lib/app/actions';
 	import Sheets from '$lib/app/Sheets.svelte';
 	import { ui } from '$lib/app/ui.svelte';
-	import { app } from '$lib/paths';
+	import { app, site } from '$lib/paths';
 	import { session } from '$lib/session.svelte';
 
 	const local = session.local!;
@@ -18,7 +18,9 @@
 	<main class="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
 		<img src="/icon.svg" alt="" width="48" height="48" />
 		<h1 class="text-headline-small">No projects yet</h1>
-		<p class="text-body-medium max-w-80 text-on-surface-variant">They stay in this browser. A project file from ordo opens here too.</p>
+		<p class="text-body-medium max-w-80 text-on-surface-variant">
+			{local.synced ? 'They sync with your ordo serve.' : 'They stay in this browser.'} A project file from ordo opens here too.
+		</p>
 		<div class="mt-2 flex flex-wrap justify-center gap-2">
 			<button
 				type="button"
@@ -34,6 +36,14 @@
 			>
 				Import a project
 			</button>
+			{#if site && !local.synced}
+				<a
+					href={app('/signin')}
+					class="text-label-large flex h-10 items-center rounded-full px-4 text-primary outline-primary hover:bg-primary/8 focus-visible:outline-2"
+				>
+					Connect to ordo serve
+				</a>
+			{/if}
 		</div>
 		{#each local.unreadable as u (u.id)}
 			<p role="alert" class="text-body-small text-error">Can't open a stored project ({u.id}): {u.error}</p>

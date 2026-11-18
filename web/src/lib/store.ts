@@ -9,6 +9,8 @@ export type StoredProject = {
 	stamp: string;
 	/** The project as the core answers it. */
 	raw: string;
+	/** Why the server can't load its file: the copy here stays as it was. */
+	error?: string;
 };
 
 export type Queued = {
@@ -59,4 +61,13 @@ export function openStore(name = 'ordo'): Promise<DB> {
 			}
 		}
 	});
+}
+
+/** Empties every store of that database, open elsewhere or not. */
+export async function clearStore(name: string): Promise<void> {
+	const db = await openStore(name);
+	const tx = db.transaction(['meta', 'projects', 'queue', 'images', 'views'], 'readwrite');
+	await Promise.all([...tx.objectStoreNames].map((store) => tx.objectStore(store).clear()));
+	await tx.done;
+	db.close();
 }

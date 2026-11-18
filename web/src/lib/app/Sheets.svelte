@@ -5,6 +5,7 @@
 	import { addedLineShows } from '$lib/model/board';
 	import { categoryPath, category as findCategory, deletedWith, find, groupKey, isLine, projectGroups, versioned } from '$lib/model/project';
 	import { app } from '$lib/paths';
+	import { session } from '$lib/session.svelte';
 	import AddSheet from './AddSheet.svelte';
 	import Dialog from './Dialog.svelte';
 	import FilterSheet from './FilterSheet.svelte';
@@ -12,6 +13,7 @@
 	import NameSheet from './NameSheet.svelte';
 	import Sheet from './Sheet.svelte';
 	import SheetAction from './SheetAction.svelte';
+	import SyncSheet from './SyncSheet.svelte';
 	import TextButton from './TextButton.svelte';
 	import { ui } from './ui.svelte';
 
@@ -67,6 +69,8 @@
 	<AddSheet {local} pid={sheet.pid} cat={sheet.cat} after={sheet.after} onclose={close} />
 {:else if sheet?.kind === 'filter' && local.project(sheet.pid)}
 	<FilterSheet {local} pid={sheet.pid} onclose={close} />
+{:else if sheet?.kind === 'sync' && session.sync}
+	<SyncSheet sync={session.sync} {local} onclose={close} />
 {:else if sheet?.kind === 'help'}
 	<HelpSheet onclose={close} />
 {:else if sheet?.kind === 'newProject'}

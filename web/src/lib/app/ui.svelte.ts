@@ -13,7 +13,8 @@ export type SheetState =
 	| { kind: 'deleteCategory'; pid: string; cat: string }
 	| { kind: 'deleteProject'; pid: string }
 	| { kind: 'move'; pid: string; tid: string }
-	| { kind: 'help' };
+	| { kind: 'help' }
+	| { kind: 'sync' };
 
 /**
  * What the screen shows beside the projects: the sheet open, the keyboard's cursor, the search, and

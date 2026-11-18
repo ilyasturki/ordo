@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Local } from '$lib/local.svelte';
 	import { groupKey } from '$lib/model/project';
-	import { app } from '$lib/paths';
+	import { app, site } from '$lib/paths';
 	import { importProject } from './actions';
 	import Icon from './Icon.svelte';
 	import { ui } from './ui.svelte';
@@ -53,5 +53,13 @@
 		>
 			<Icon name="upload" />Import a project
 		</button>
+		{#if local.synced || site}
+			<a
+				href={app(local.synced ? '/devices' : '/signin')}
+				class="text-label-large flex h-12 items-center gap-3 rounded-full px-4 text-on-surface-variant outline-primary hover:bg-on-surface/8 focus-visible:outline-2"
+			>
+				<Icon name={local.synced ? 'devices' : 'sync'} />{local.synced ? 'Devices' : 'Connect to ordo serve'}
+			</a>
+		{/if}
 	</div>
 </nav>

@@ -129,7 +129,8 @@ describe('undo and redo', () => {
 		const id = local.project(pid)!.categories[0].tasks[0].id;
 		await local.perform(pid, { action: 'task.delete', ids: [id] });
 		expect(local.snack?.msg).toBeTruthy();
-		local.snack!.undo!();
+		expect(local.snack?.action?.label).toBe('Undo');
+		local.snack!.action!.run();
 		await new Promise((r) => setTimeout(r, 0));
 		expect(local.project(pid)!.categories[0].tasks[0].id).toBe(id);
 	});

@@ -23,17 +23,17 @@
 				class="snack text-body-medium pointer-events-auto flex min-h-12 w-full max-w-xl items-center gap-2 rounded-xs bg-inverse-surface py-1 pr-2 pl-4 text-inverse-on-surface shadow-lg wide:w-auto wide:min-w-80"
 			>
 				<span class="flex-1 py-2">{snack.msg}</span>
-				{#if snack.undo}
+				{#if snack.action}
+					{@const action = snack.action}
 					<button
 						type="button"
 						class="text-label-large h-10 cursor-pointer rounded-full px-3 text-inverse-primary hover:bg-inverse-primary/8"
 						onclick={() => {
-							const undo = snack.undo;
 							local.snack = undefined;
-							undo?.();
+							action.run();
 						}}
 					>
-						Undo
+						{action.label}
 					</button>
 				{/if}
 			</div>

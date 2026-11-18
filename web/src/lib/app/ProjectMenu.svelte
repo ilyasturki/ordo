@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import type { Local } from '$lib/local.svelte';
-	import { app } from '$lib/paths';
+	import { app, site } from '$lib/paths';
 	import { exportProject, importProject } from './actions';
 	import IconButton from './IconButton.svelte';
 	import Menu from './Menu.svelte';
@@ -24,5 +24,10 @@
 	<MenuItem icon="upload" label="Import a project" onclick={() => importProject(local)} />
 	<MenuItem icon="delete" label="Delete project" danger onclick={() => (ui.sheet = { kind: 'deleteProject', pid })} />
 	<hr class="my-2 border-outline-variant" />
+	{#if local.synced}
+		<MenuItem icon="devices" label="Devices" onclick={() => void goto(app('/devices'))} />
+	{:else if site}
+		<MenuItem icon="sync" label="Connect to ordo serve" onclick={() => void goto(app('/signin'))} />
+	{/if}
 	<MenuItem icon="keyboard" label="Keyboard shortcuts" keys="?" onclick={() => (ui.sheet = { kind: 'help' })} />
 </Menu>
