@@ -21,7 +21,7 @@ Screenshot "/tmp/ordo-vt/vhs-out/113_light_groups.png"
 Sleep 500ms
 Type "m"
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/113_light_group_field.png"
+Screenshot "/tmp/ordo-vt/vhs-out/113_light_group_choice.png"
 Sleep 500ms
 Escape
 Sleep 300ms

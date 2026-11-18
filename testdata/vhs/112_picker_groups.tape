@@ -19,18 +19,14 @@ Sleep 500ms
 Screenshot "/tmp/ordo-vt/vhs-out/112_groups.png"
 Sleep 500ms
 
-# m on an ungrouped project: the field offers the most recent group; P then tab completes Perso.
+# m on an ungrouped project lists the groups in use, No group marked current; k then enter picks Perso.
 Type "G"
 Sleep 300ms
 Type "m"
 Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/112_group_field_empty.png"
+Screenshot "/tmp/ordo-vt/vhs-out/112_group_choice.png"
 Sleep 500ms
-Type "P"
-Sleep 300ms
-Screenshot "/tmp/ordo-vt/vhs-out/112_group_field_hint.png"
-Sleep 500ms
-Tab
+Type "k"
 Sleep 300ms
 Enter
 Sleep 500ms
