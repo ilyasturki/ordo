@@ -25,6 +25,9 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - A save no longer overwrites a version Syncthing put in place while the save was writing: the TUI merges it with your edits, and the CLI and `ordo serve` redo their change on it. See [`docs/file-format.md`](docs/file-format.md#writing-a-file)
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
+### Fixed
+
+- `t` reaches every tag dot, those other tasks of the category wear included: it starts at a free one, steps through the rest and ends on none
 
 ## [0.14.3] - 2026-11-11
 

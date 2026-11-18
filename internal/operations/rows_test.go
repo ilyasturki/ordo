@@ -250,8 +250,25 @@ func TestCycleTagsPicksAFreeMarkForAnUntaggedBatch(t *testing.T) {
 	if p.Categories[0].Tasks[0].TagColor != color || p.Categories[0].Tasks[1].TagColor != color {
 		t.Fatal("batch not tagged together")
 	}
-	if color, _ = CycleTags(p, []string{"x"}); color != domain.NextTagColor(p.Categories[0].Tasks[1].TagColor) {
-		t.Fatalf("tagged task stepped to %q", color)
+	if color, _ = CycleTags(p, []string{"x"}); color != "" {
+		t.Fatalf("x stepped to %q: blue taken by y leaves magenta free, where the round ends on no tag", color)
+	}
+}
+
+func TestCycleTagsReachesAMarkAnotherTaskUses(t *testing.T) {
+	p := outline(t, "cat:a", "x", "y")
+	p.Categories[0].Tasks[0].TagColor = domain.TagGreen
+	var got []string
+	for range len(domain.TagColorCycle) + 1 {
+		color, err := CycleTags(p, []string{"y"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, color)
+	}
+	want := []string{domain.TagBlue, domain.TagMagenta, domain.TagCyan, domain.TagGreen, ""}
+	if !slices.Equal(got, want) {
+		t.Fatalf("t on y walked %v, want %v", got, want)
 	}
 }
 

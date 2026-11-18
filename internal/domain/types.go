@@ -447,6 +447,23 @@ func NextTagColor(color string) string {
 	return "" // last color, or any unrecognized value, wraps to no tag
 }
 
+// RotateTagColor steps color round the palette starting at free: no tag takes free,
+// and the step that would come back to free takes no tag instead, so every mark is reachable.
+func RotateTagColor(color, free string) string {
+	color = CanonicalTagColor(color)
+	if color == "" {
+		return free
+	}
+	i := slices.Index(TagColorCycle, color)
+	if i < 0 {
+		return ""
+	}
+	if next := TagColorCycle[(i+1)%len(TagColorCycle)]; next != free {
+		return next
+	}
+	return ""
+}
+
 // FreeTagColor picks a mark for a new batch among tasks: the first mark in
 // TagColorCycle that no open (todo or in progress) task uses, or, when every
 // mark is taken, the one the fewest open tasks use.

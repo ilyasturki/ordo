@@ -95,17 +95,14 @@ func StepPriority(p *domain.Project, id string, up bool) error {
 	return nil
 }
 
-// CycleTags gives every row the mark after the first one's; an untagged first takes the
-// first mark no open task beside the batch uses.
+// CycleTags gives every row the mark after the first one's, in a round that starts at the
+// first mark no open task beside the batch uses and ends on no tag.
 func CycleTags(p *domain.Project, ids []string) (string, error) {
 	tasks := taggedRows(p, ids)
 	if len(tasks) == 0 {
 		return "", ErrNoChange
 	}
-	next := domain.NextTagColor(tasks[0].TagColor)
-	if tasks[0].TagColor == "" {
-		next = domain.FreeTagColor(tasksAround(p, ids))
-	}
+	next := domain.RotateTagColor(tasks[0].TagColor, domain.FreeTagColor(tasksAround(p, ids)))
 	for _, t := range tasks {
 		_ = t.SetTagColor(next)
 	}

@@ -517,6 +517,22 @@ func TestNextTagColor(t *testing.T) {
 	assert.Equal(t, "", NextTagColor("bogus"))
 }
 
+func TestRotateTagColor(t *testing.T) {
+	round := func(free string) []string {
+		var got []string
+		color := ""
+		for range len(TagColorCycle) + 1 {
+			color = RotateTagColor(color, free)
+			got = append(got, color)
+		}
+		return got
+	}
+	assert.Equal(t, []string{TagGreen, TagBlue, TagMagenta, TagCyan, ""}, round(TagGreen))
+	assert.Equal(t, []string{TagMagenta, TagCyan, TagGreen, TagBlue, ""}, round(TagMagenta))
+	assert.Equal(t, TagGreen, RotateTagColor("cyan-diamond", TagBlue), "a retired diamond rotates on from its hue")
+	assert.Equal(t, "", RotateTagColor("bogus", TagGreen))
+}
+
 func TestCanonicalTagColor_ReadsADiamondAsItsDot(t *testing.T) {
 	for _, hue := range TagColorCycle {
 		assert.Equal(t, hue, CanonicalTagColor(hue+TagDiamondSuffix))
