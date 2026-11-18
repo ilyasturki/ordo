@@ -186,6 +186,7 @@ class AppTest : AppFixture() {
         compose.onNode(hasSetTextAction()).performTextInput("Ask Sam first")
         compose.onNode(hasSetTextAction()).performImeAction()
         compose.waitUntil(20_000) { engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }.tasks.first().note }
+        waitSheetGone()
         scrollTo("Ask Sam first")
         compose.onNodeWithText("Ask Sam first").performClick()
         waitAcrossPages(hasContentDescription("More"))
@@ -223,6 +224,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Add a note").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Ask Sam first")
         compose.onNode(hasSetTextAction()).performImeAction()
+        waitSheetGone()
         scrollTo("Ask Sam first")
         compose.onNodeWithText("Ask Sam first").performClick()
         waitAcrossPages(hasText("Colour"))
@@ -585,7 +587,12 @@ class AppTest : AppFixture() {
 
         header("Research").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Delete category"), 20_000)
-        back()
+        // A back while the keyboard is still coming up only stops it.
+        compose.waitUntil(30_000) {
+            back()
+            Thread.sleep(1_000)
+            compose.onAllNodes(sheetPane).fetchSemanticsNodes().isEmpty()
+        }
 
         compose.onNodeWithContentDescription("Unfold Research").performClick()
         compose.waitUntil(20_000) { engine.state.value.views[PID]?.folds?.isEmpty() == true }

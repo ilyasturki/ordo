@@ -9,7 +9,6 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -69,10 +68,10 @@ class TopBarTest : AppFixture() {
 
     private fun closeSheet() {
         compose.waitUntil(30_000) {
-            if (compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty()) return@waitUntil true
+            if (compose.onAllNodes(sheetPane).fetchSemanticsNodes().isEmpty()) return@waitUntil true
             InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-            compose.waitForIdle()
-            compose.onAllNodes(isDialog()).fetchSemanticsNodes().isEmpty()
+            Thread.sleep(1_000)
+            compose.onAllNodes(sheetPane).fetchSemanticsNodes().isEmpty()
         }
     }
 
@@ -166,7 +165,7 @@ class TopBarTest : AppFixture() {
         ready()
         assertLabel("Feature")
         compose.onNodeWithContentDescription("Add a task").performClick()
-        compose.onNode(hasText("Feature") and hasAnyAncestor(isDialog())).performClick()
+        compose.onNode(hasText("Feature") and hasAnyAncestor(sheetPane)).performClick()
         compose.onNode(hasText("Research") and hasAnyAncestor(isPopup())).performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Water the plants")
         compose.onNode(hasSetTextAction()).performImeAction()

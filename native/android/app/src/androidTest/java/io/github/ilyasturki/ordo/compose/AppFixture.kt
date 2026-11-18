@@ -3,6 +3,9 @@ package io.github.ilyasturki.ordo.compose
 import android.view.KeyEvent
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -87,6 +90,13 @@ abstract class AppFixture(private val names: List<String> = listOf("Ordo"), comp
     // A rotation: the activity goes and comes back with what it saved.
     protected fun recreate() {
         scenario.recreate()
+    }
+
+    // A keyboard sheet: it stays on screen, scrim and all, until the keyboard has taken it down.
+    protected val sheetPane = SemanticsMatcher.keyIsDefined(SemanticsProperties.PaneTitle) and hasAnyDescendant(hasSetTextAction())
+
+    protected fun waitSheetGone() {
+        compose.waitUntil(30_000) { compose.onAllNodes(sheetPane).fetchSemanticsNodes().isEmpty() }
     }
 
     protected fun task(title: String): Task? =

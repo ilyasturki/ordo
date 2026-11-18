@@ -97,6 +97,7 @@ class TabsTest : AppFixture(NAMES) {
         compose.onNode(hasSetTextAction()).performTextInput("Work")
         compose.onNodeWithText("Set").performClick()
         compose.waitUntil(20_000) { group("Zed") == "Work" }
+        waitSheetGone()
 
         // The tab sheet's Group offers the groups in use, and the tabs keep their places.
         tap("Ab")

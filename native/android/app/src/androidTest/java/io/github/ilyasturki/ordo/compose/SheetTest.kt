@@ -270,6 +270,7 @@ class SheetTest : AppFixture() {
         compose.waitUntilAtLeastOneExists(field, 20_000)
         compose.onNode(field).performTextInput("Garden")
         compose.onNodeWithText("Add").performClick()
+        waitGone()
         compose.waitUntilAtLeastOneExists(hasContentDescription("New category"), 20_000)
         compose.onNodeWithContentDescription("New category").performClick()
         compose.waitUntilAtLeastOneExists(field, 20_000)
