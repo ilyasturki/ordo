@@ -213,7 +213,7 @@ test('the site build offers to connect from its empty page and the project menu'
 	await shoot(page, 'menu', info.project.name);
 });
 
-test('connecting to another server signs out of the first, and an empty copy still shows sync trouble', async ({ page, app, build, served, noise }) => {
+test('connecting to another server signs out of the first, and an empty copy still shows sync trouble', async ({ page, app, build, served, noise }, info) => {
 	test.skip(build !== 'site', 'the private build has one server');
 	noise(/401/);
 	served.add(ferry);
@@ -231,6 +231,8 @@ test('connecting to another server signs out of the first, and an empty copy sti
 		const browser = (await them.api.devices()).devices.find((d) => d.name !== 'Test client')!;
 		await them.api.revoke(browser.id);
 		await page.reload();
+		await expect(page.getByRole('button', { name: 'Not synced' })).toBeVisible();
+		await shoot(page, 'empty-trouble', info.project.name);
 		await page.getByRole('button', { name: 'Not synced' }).click();
 		await expect(page.getByRole('dialog', { name: 'Sync' })).toContainText('Sign in again');
 	} finally {
