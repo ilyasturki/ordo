@@ -382,7 +382,12 @@
 		</div>
 
 		{#if !isLine(task)}
-			<div class="pointer-events-none sticky bottom-0 mt-auto flex justify-end p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+			<div
+				class={[
+					'pointer-events-none sticky bottom-0 mt-auto flex justify-end p-4 transition-[padding]',
+					local.snack ? 'pb-20 wide:pb-4' : 'pb-[max(1rem,env(safe-area-inset-bottom))]'
+				]}
+			>
 				<button
 					type="button"
 					class="text-label-large pointer-events-auto flex h-14 cursor-pointer items-center gap-3 rounded-lg bg-primary-container pr-5 pl-4 text-on-primary-container shadow-md outline-primary hover:shadow-lg focus-visible:outline-2"
