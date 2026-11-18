@@ -41,7 +41,7 @@ a file changed since gives the same result. A step from the current state
 (`status.cycle`, `task.shift`, `task.nest`) runs in the app only, and
 `operations.Perform` turns it into the replayable op that gets queued.
 `docs/sync.md` is the contract of `/api` and its op table: a change to an op's
-fields or the sync answer updates it and `sync/SyncEngine.kt` in the same commit,
+fields or the sync answer updates it, `sync/SyncEngine.kt` and `web/src/lib/sync` in the same commit,
 and bumps `web.Protocol` when its Protocol section says so.
 
 # The app
@@ -90,10 +90,18 @@ and links go through `app()` in `$lib/paths`. Edits run in the wasm core
 (`$lib/core`), never in TypeScript, so an op change reaches the web at the next
 `just wasm`. Colours come from `bun run theme`, never by hand in `colors.css`.
 
+Signed in to an `ordo serve`, the app works on a copy of the server's projects
+(`$lib/sync`, the phone's `SyncEngine.kt` in TypeScript): `Local` queues each
+edit's replayable op, `Sync` sends the queue and adopts the answer. The private
+build signs in with the cookie on its own origin; the site build keeps a bearer
+token and the server's copy in `ordo-server`, apart from its own projects in `ordo`.
+
 `just web-check` (typecheck, Vitest, Playwright on both builds in three engines,
 phone and desktop) runs in `nix develop .#web`, whose browsers are the flake's
 `playwright-driver`: `@playwright/test` is pinned to its version, so a
 `flake.lock` update that moves it moves the pin. A behaviour only a browser shows
-gets a spec in `web/e2e`; `just web-e2e <spec> [--project …]` runs one. A change
+gets a spec in `web/e2e`; `just web-e2e <spec> [--project …]` runs one. Each
+private-build test gets its own `ordo serve` (`e2e/serve.ts`) behind a front
+serving the build with the deploy's CSP (`e2e/front.ts`), and starts signed in. A change
 to `web/bun.lock` needs `just web-deps-hash`. `nix build .#ordo` stays node-free:
 the web lives only in `packages.web-site` and `web-private`.
