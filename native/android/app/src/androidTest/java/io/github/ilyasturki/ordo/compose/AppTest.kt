@@ -199,11 +199,11 @@ class AppTest : AppFixture() {
         compose.onNodeWithContentDescription("More").performClick()
         menuItem("Turn into note").performClick()
         compose.waitUntil(20_000) { task("Export a project as Markdown")?.note == true }
-        compose.onNodeWithText("Mark done").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Mark done").assertDoesNotExist()
         compose.onNodeWithContentDescription("More").performClick()
         menuItem("Turn into task").performClick()
         compose.waitUntil(20_000) { task("Export a project as Markdown")?.status == "todo" }
-        waitAcrossPages(hasText("Mark done"))
+        waitAcrossPages(hasContentDescription("Mark done"))
     }
 
     @Test
