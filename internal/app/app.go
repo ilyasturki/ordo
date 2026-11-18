@@ -488,8 +488,15 @@ func (m model) runFocusedHelpBinding() (tea.Model, tea.Cmd) {
 }
 
 func (m model) handleConfirmDeleteKey(msg tea.KeyPressMsg) model {
-	switch msg.String() {
-	case "y", "enter":
+	c, picks := m.confirmDeleteChoice()
+	act, i := c.Handle(msg.String())
+	m.ui.ConfirmDelete.Pick = c.Selected
+	pick, done := confirmOutcome(act, i, picks)
+	if !done {
+		return m
+	}
+	switch pick {
+	case confirmDelete:
 		switch m.ui.ConfirmDelete.Kind {
 		case ConfirmDeleteProject:
 			m.confirmDeleteProject()
@@ -498,21 +505,28 @@ func (m model) handleConfirmDeleteKey(msg tea.KeyPressMsg) model {
 		default:
 			m.confirmDeleteAction()
 		}
-	case "k":
-		if pos, ok := m.selectedPosition(); ok && m.ui.ConfirmDelete.Kind == ConfirmDeleteSelection && m.deletedChildren(pos) > 0 {
-			m.confirmDeleteKeepingChildren()
-		}
-	case "n", "esc":
-		switch m.ui.ConfirmDelete.Kind {
-		case ConfirmDeleteProject:
-			m.ui.ConfirmDelete.reset()
+	case confirmKeepChildren:
+		m.confirmDeleteKeepingChildren()
+	default:
+		project := m.ui.ConfirmDelete.Kind == ConfirmDeleteProject
+		m.ui.ConfirmDelete.reset()
+		if project {
 			m.ui.Modes.ToProjectPicker()
-		default:
-			m.ui.ConfirmDelete.reset()
+		} else {
 			m.ui.Modes.ToNormal()
 		}
 	}
 	return m
+}
+
+func confirmOutcome(act ui.ChoiceAction, i int, picks []confirmPick) (confirmPick, bool) {
+	switch act {
+	case ui.ChoicePicked:
+		return picks[i], true
+	case ui.ChoiceCancelled:
+		return confirmCancel, true
+	}
+	return 0, false
 }
 
 func (m model) handleOptionsKey(msg tea.KeyPressMsg) model {

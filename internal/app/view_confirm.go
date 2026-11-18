@@ -2,53 +2,76 @@ package app
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
-func (m model) confirmDeleteView() string {
+type confirmPick int
+
+const (
+	confirmCancel confirmPick = iota
+	confirmDelete
+	confirmKeepChildren
+)
+
+var (
+	deleteOption = ui.ChoiceOption{Label: "Delete", Key: "d", Aliases: []string{"y"}, Danger: true}
+	cancelOption = ui.ChoiceOption{Label: "Cancel", Key: "c", Aliases: []string{"n"}}
+)
+
+func (m model) confirmDeleteChoice() (ui.Choice, []confirmPick) {
+	c := ui.Choice{Selected: m.ui.ConfirmDelete.Pick, Options: []ui.ChoiceOption{deleteOption, cancelOption}}
+	picks := []confirmPick{confirmDelete, confirmCancel}
 	switch m.ui.ConfirmDelete.Kind {
 	case ConfirmDeleteProject:
-		return m.confirmDeleteProjectView()
+		// A project delete can't be undone, and d opened it: a doubled d must not delete.
+		c.Options[0].Key = ""
+		c.Title = m.confirmDeleteProjectTitle()
 	case ConfirmDeleteVisualRange:
-		return m.confirmDeleteVisualRangeView()
+		c.Title = m.confirmDeleteVisualRangeTitle()
+	default:
+		var keep string
+		c.Title, keep = m.confirmDeleteSelectionTitle()
+		if keep != "" {
+			c.Options = []ui.ChoiceOption{deleteOption, {Label: keep, Key: "s"}, cancelOption}
+			picks = []confirmPick{confirmDelete, confirmKeepChildren, confirmCancel}
+		}
 	}
+	return c, picks
+}
 
-	position, ok := m.selectedPosition()
-	if !ok || position.Kind == selection.FocusProject {
+func (m model) confirmDeleteView() string {
+	c, _ := m.confirmDeleteChoice()
+	if c.Title == "" {
 		return ""
 	}
-	var message string
-	hints := []ui.Hint{{Key: "y/enter", Label: "confirm"}, {Key: "n/esc", Label: "cancel"}}
+	return m.choiceView(c)
+}
+
+func (m model) confirmDeleteSelectionTitle() (title, keep string) {
+	position, ok := m.selectedPosition()
+	if !ok || position.Kind == selection.FocusProject {
+		return "", ""
+	}
 	children := m.deletedChildren(position)
 	if position.Kind == selection.FocusTask {
 		task := m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex]
-		message = fmt.Sprintf("Delete task %q?", truncateText(task.Title, 30))
 		if children > 0 {
-			message = fmt.Sprintf("Delete task %q and its %d subtask%s?", truncateText(task.Title, 30), children, plural(children, "", "s"))
-			hints = []ui.Hint{{Key: "y/enter", Label: "delete all"}, {Key: "k", Label: "keep the subtasks"}, {Key: "n/esc", Label: "cancel"}}
+			return fmt.Sprintf("Delete task %q and its %d subtask%s?", truncateText(task.Title, 30), children, plural(children, "", "s")), "Keep subtasks"
 		}
-	} else {
-		cat := m.project.Categories[position.CategoryIndex]
-		tasks := m.project.TreeTaskCount(position.CategoryIndex)
-		message = fmt.Sprintf("Delete category %q and %d tasks?", truncateText(cat.Name, 30), tasks)
-		if children > 0 {
-			message = fmt.Sprintf("Delete category %q, its %d sub-categor%s and %d tasks?", truncateText(cat.Name, 30), children, plural(children, "y", "ies"), tasks)
-			hints = []ui.Hint{{Key: "y/enter", Label: "delete all"}, {Key: "k", Label: "keep the sub-categories"}, {Key: "n/esc", Label: "cancel"}}
-		}
+		return fmt.Sprintf("Delete task %q?", truncateText(task.Title, 30)), ""
 	}
-	lines := []string{
-		message,
-		"",
-		ui.RenderHints(hints),
+	cat := m.project.Categories[position.CategoryIndex]
+	tasks := m.project.TreeTaskCount(position.CategoryIndex)
+	if children > 0 {
+		return fmt.Sprintf("Delete category %q, its %d sub-categor%s and %d tasks?", truncateText(cat.Name, 30), children, plural(children, "y", "ies"), tasks), "Keep sub-categories"
 	}
-	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
+	return fmt.Sprintf("Delete category %q and %d tasks?", truncateText(cat.Name, 30), tasks), ""
 }
 
-func (m model) confirmDeleteVisualRangeView() string {
+func (m model) confirmDeleteVisualRangeTitle() string {
 	var message string
 	if len(m.ui.ConfirmDelete.CategoryIDs) > 0 {
 		drop := make(map[string]bool)
@@ -95,12 +118,7 @@ func (m model) confirmDeleteVisualRangeView() string {
 			message = fmt.Sprintf("Delete %d task(s) and %d subtask(s)?", tasks, subtasks)
 		}
 	}
-	lines := []string{
-		message,
-		"",
-		ui.RenderHints([]ui.Hint{{Key: "y/enter", Label: "confirm"}, {Key: "n/esc", Label: "cancel"}}),
-	}
-	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
+	return message
 }
 
 // mergeLines tell what merging the edited category into the one whose name it took does.
@@ -133,7 +151,7 @@ func (m model) mergeLines() []string {
 	return append(lines, "then the category is deleted. u undoes it.")
 }
 
-func (m model) confirmDeleteProjectView() string {
+func (m model) confirmDeleteProjectTitle() string {
 	var projectName string
 	for _, p := range m.ui.Picker.projects {
 		if p.ID == m.ui.ConfirmDelete.ProjectID {
@@ -141,10 +159,5 @@ func (m model) confirmDeleteProjectView() string {
 			break
 		}
 	}
-	lines := []string{
-		fmt.Sprintf("Delete project %q?", truncateText(projectName, 30)),
-		"",
-		ui.RenderHints([]ui.Hint{{Key: "y/enter", Label: "confirm"}, {Key: "n/esc", Label: "cancel"}}),
-	}
-	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
+	return fmt.Sprintf("Delete project %q?", truncateText(projectName, 30))
 }

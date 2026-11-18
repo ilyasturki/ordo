@@ -411,6 +411,7 @@ type ConfirmDeleteState struct {
 	TaskIDs     []string
 	CategoryIDs []string
 	Cursor      int // visual range: position index the cursor lands on once the rows are gone
+	Pick        int
 }
 
 func (c *ConfirmDeleteState) reset() {
@@ -419,6 +420,7 @@ func (c *ConfirmDeleteState) reset() {
 	c.TaskIDs = nil
 	c.CategoryIDs = nil
 	c.Cursor = 0
+	c.Pick = 0
 }
 
 func (p *ProjectPickerState) isOnNewProject() bool {

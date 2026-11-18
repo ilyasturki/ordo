@@ -21,6 +21,10 @@ func (m model) dialogStyle() lipgloss.Style {
 	return ui.HelpDialogStyle.Width(m.dialogWidth() + ui.DialogChromeWidth)
 }
 
+func (m model) choiceView(c ui.Choice) string {
+	return m.dialogStyle().Render(c.View(m.dialogWidth(), m.ui.Screen.WindowFocused))
+}
+
 // filterPromptRow draws a type-to-filter prompt: "/<query>" with a live cursor
 // on the left and the match count (or "no matches") right-aligned to width.
 // query is what matches was counted for, so an all-whitespace one shows nothing.

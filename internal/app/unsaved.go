@@ -32,6 +32,7 @@ type ConfirmLeaveState struct {
 	status string
 	// Where the edits about to be dropped were kept, empty if they couldn't be.
 	kept string
+	pick int
 }
 
 func (s SaveState) edits() string {
@@ -96,8 +97,15 @@ func (m *model) quit() tea.Cmd {
 }
 
 func (m model) handleConfirmLeaveKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "y", "enter":
+	c := m.confirmLeaveChoice()
+	act, i := c.Handle(msg.String())
+	m.ui.ConfirmLeave.pick = c.Selected
+	pick, done := confirmOutcome(act, i, []confirmPick{confirmDelete, confirmCancel})
+	if !done {
+		return m, nil
+	}
+	switch pick {
+	case confirmDelete:
 		if m.ui.ConfirmLeave.Kind != leaveQuit {
 			m.deps.Store.DropUnsaved(m.project.ID)
 		}
@@ -112,19 +120,19 @@ func (m model) handleConfirmLeaveKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, tea.Quit
-	case "n", "esc":
+	default:
 		m.ui.Modes.Uncover()
 	}
 	return m, nil
 }
 
-func (m model) confirmLeaveView() string {
+func (m model) confirmLeaveChoice() ui.Choice {
 	save := m.ui.Save
 	question := fmt.Sprintf("Quit and drop %s?", save.edits())
-	confirm := "quit anyway"
+	confirm := "Quit anyway"
 	if m.ui.ConfirmLeave.Kind != leaveQuit {
 		question = fmt.Sprintf("Switch projects and drop %s?", save.edits())
-		confirm = "switch anyway"
+		confirm = "Switch anyway"
 	}
 	name := truncateText(m.project.Name, 30)
 	lost := plural(save.Unsaved, "it was", "they were")
@@ -137,13 +145,21 @@ func (m model) confirmLeaveView() string {
 	default:
 		why = "Saving failed: " + save.Err.Error()
 	}
-	lines := []string{question, why}
+	body := []string{why}
 	if kept := m.ui.ConfirmLeave.kept; kept != "" {
-		lines = append(lines, "A copy stays in "+filepath.Dir(kept))
+		body = append(body, "A copy stays in "+filepath.Dir(kept))
 	}
-	lines = append(lines,
-		"",
-		ui.RenderHints([]ui.Hint{{Key: "y/enter", Label: confirm}, {Key: "n/esc", Label: "cancel"}}),
-	)
-	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
+	return ui.Choice{
+		Title:    question,
+		Body:     body,
+		Selected: m.ui.ConfirmLeave.pick,
+		Options: []ui.ChoiceOption{
+			{Label: confirm, Key: "a", Aliases: []string{"y"}, Danger: true},
+			cancelOption,
+		},
+	}
+}
+
+func (m model) confirmLeaveView() string {
+	return m.choiceView(m.confirmLeaveChoice())
 }

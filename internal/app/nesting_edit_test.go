@@ -248,19 +248,19 @@ func TestDeleteHandlesChildren(t *testing.T) {
 		assert.Equal(t, []string{"sets"}, shapeOf(catByID(t, m, "ui")))
 		assert.Len(t, m.ui.Clipboard.Tasks, 3, "p puts the whole block back")
 	})
-	t.Run("k keeps the subtasks, top-level", func(t *testing.T) {
+	t.Run("s keeps the subtasks, top-level", func(t *testing.T) {
 		m := newNestedModel(t)
 		selectRow(t, m, selection.FocusTask, "timer")
 		m.deleteSelected()
-		m = press(m, "k")
+		m = press(m, "s")
 		assert.Equal(t, []string{"pick", "sound", "sets"}, shapeOf(catByID(t, m, "ui")))
 	})
-	t.Run("k keeps a parent category's areas", func(t *testing.T) {
+	t.Run("s keeps a parent category's areas", func(t *testing.T) {
 		m := newNestedModel(t)
 		selectRow(t, m, selection.FocusCategory, "v2")
 		m.deleteSelected()
 		assert.Contains(t, m.confirmDeleteView(), "2 sub-categories")
-		m = press(m, "k")
+		m = press(m, "s")
 		assert.Equal(t, []string{"ui", "api", "v1"}, categoryOrder(m.project))
 	})
 	t.Run("y takes the areas along", func(t *testing.T) {
