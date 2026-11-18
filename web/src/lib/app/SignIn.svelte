@@ -6,8 +6,7 @@
 	import Field from './Field.svelte';
 	import IconButton from './IconButton.svelte';
 
-	// The phone's sign-in: a pairing link, or the passphrase when the server takes one. The site build
-	// names the server first, which a pairing link fills in.
+	// The site build names its server; a pasted pairing link fills it in.
 	let { onBack }: { onBack?: () => void } = $props();
 
 	const sync = session.sync;

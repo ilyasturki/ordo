@@ -32,7 +32,7 @@ export const delays: Delays = {
 	graceBeforeTrouble: 3 * 60_000
 };
 
-/** Keeps a synced copy level with ordo serve, as the phone's SyncEngine does: one round at a time, the live stream while in sight. */
+/** The phone's SyncEngine: one round at a time, the live stream only while the page is in sight. */
 export class Sync {
 	session: Session = $state()!;
 	trouble: Trouble | undefined = $state();
@@ -65,7 +65,6 @@ export class Sync {
 		return !this.session.expired;
 	}
 
-	/** What hasn't reached the server, in words: "2 edits and 1 image". */
 	get waitingWords(): string {
 		const l = this.#local;
 		const count = (n: number, one: string, many: string) => (n === 0 ? undefined : n === 1 ? `1 ${one}` : `${n} ${many}`);
@@ -78,7 +77,6 @@ export class Sync {
 		return typeof document === 'undefined' || document.visibilityState === 'visible';
 	}
 
-	/** Syncs now, then while the page is in sight polls and keeps the live stream open. */
 	start(): void {
 		if (typeof document !== 'undefined') {
 			document.addEventListener('visibilitychange', this.#onVisibility);
@@ -270,14 +268,13 @@ export class Sync {
 		return this.#asDevice((api) => api.pairDevice(passphrase));
 	}
 
-	/** Signs that device out, with the ones it paired: this browser too when it is one of them. Answers whether it was. */
+	/** Answers whether this browser was among the devices it signed out. */
 	async revoke(id: string): Promise<boolean> {
 		const self = await this.#asDevice((api) => api.revoke(id));
 		if (self) await this.#forget();
 		return self;
 	}
 
-	/** Signs this browser out and drops its copy; the server keeps everything it got. */
 	async signOut(): Promise<void> {
 		this.stop();
 		if (this.signedIn) await this.api.logout().catch(() => {});

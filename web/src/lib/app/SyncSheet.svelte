@@ -7,7 +7,6 @@
 	import Sheet from './Sheet.svelte';
 	import TextButton from './TextButton.svelte';
 
-	// The phone's sync sheet, behind the mark the header shows while edits can't reach the server.
 	let { sync, local, onclose }: { sync: Sync; local: Local; onclose: () => void } = $props();
 
 	const words = $derived.by(() => {

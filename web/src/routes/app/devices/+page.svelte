@@ -10,7 +10,6 @@
 	import { restart, session } from '$lib/session.svelte';
 	import type { DeviceInfo, Devices, PairCode } from '$lib/sync/api';
 
-	// The phone's Devices: who syncs with the server, a code to pair one more, and the way out.
 	const sync = session.sync;
 	const local = session.local!;
 

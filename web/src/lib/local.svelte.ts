@@ -18,17 +18,12 @@ export type Outgoing = { ops: SyncOp[]; have: Record<string, string>; views: Rec
 type Options = {
 	/** A copy of a server's projects: every edit is queued for it. */
 	synced?: boolean;
-	/** Fetches an image this browser doesn't hold yet. */
 	fetchImage?: (name: string) => Promise<{ bytes: ArrayBuffer; type: string } | undefined>;
 };
 
 const emptyView: View = { folds: [], filter: noFilter };
 
-/**
- * The projects kept in this browser: every edit runs through the core, then the project goes back to
- * IndexedDB. A synced copy also queues each edit's replayable op for the server, and takes the
- * server's copy after each round with the ops queued since put back on top.
- */
+/** The projects kept in this browser: every edit runs through the core, then the project goes back to IndexedDB. */
 export class Local {
 	/** In the order the tabs show them: ranked once at start, new ones after. */
 	projects: Project[] = $state([]);
@@ -44,7 +39,6 @@ export class Local {
 	/** Projects whose file the server can't load, by ID: their copy here stays as it was. */
 	broken: Record<string, string> = $state({});
 	readonly synced: boolean;
-	/** Called when something new waits for the server. */
 	onWaiting: () => void = () => {};
 	readonly #core: Core;
 	readonly #db: DB;
@@ -399,12 +393,7 @@ export class Local {
 		return tx.done;
 	}
 
-	/**
-	 * Takes the server's view of each project, with the changes made since the request on top. A
-	 * project with no view file gets the one held here, unless it just went out: a server that can't
-	 * write the file would otherwise have it sent again every round. No views at all is a server
-	 * that doesn't sync them: what went out is dropped and the views here stay.
-	 */
+	/** docs/sync.md#views; a view that just went out isn't sent again, or a server that can't write it gets it every round. */
 	adoptViews(theirs: Record<string, ViewFile> | undefined, out: Outgoing): Promise<void> {
 		const edits: Record<string, ViewFile> = {};
 		for (const [pid, edit] of Object.entries(this.#viewEdits)) {

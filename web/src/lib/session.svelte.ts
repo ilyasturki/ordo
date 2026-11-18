@@ -5,10 +5,7 @@ import { openStore } from '$lib/store';
 import { readSession, syncedStore } from '$lib/sync/session';
 import { Sync } from '$lib/sync/sync.svelte';
 
-/**
- * What the app works on, set once the core and the store are open: the server's projects while this
- * browser is signed in to one, else the site build's own. The private build signs in first.
- */
+/** The server's copy once signed in, else the site build's own projects; the private build signs in first. */
 export const session: { local?: Local; sync?: Sync; signIn?: boolean; error?: string } = $state({});
 
 let opening: Promise<void> | undefined;
@@ -38,7 +35,6 @@ export function openSession(): Promise<void> {
 	return opening;
 }
 
-/** Starts the app again on what changed: a sign-in, a sign-out. */
 export function restart(to: string): void {
 	location.replace(to);
 }

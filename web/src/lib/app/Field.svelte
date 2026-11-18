@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
 
-	// An M3 outlined text field: its label above the box, the error under it.
 	let {
 		label,
 		value = $bindable(''),

@@ -4,10 +4,7 @@ import type { FilterFile } from '$lib/model/filter';
 /** web.Protocol: docs/sync.md says when it goes up. */
 export const protocol = 1;
 
-/**
- * Where this browser syncs. The private build signs in with the device cookie on its own origin,
- * server empty; the site build keeps a bearer token for the server it was given.
- */
+/** The private build: the cookie, on its own origin (server empty). The site build: a bearer token. */
 export type Session = {
 	server: string;
 	token: string;
@@ -26,7 +23,6 @@ export class ServerError extends Error {
 	}
 }
 
-/** The request never got an answer. */
 export class Offline extends Error {}
 
 export type SyncOp = Op & { id: string; project: string };
@@ -154,10 +150,7 @@ export class Api {
 		return this.#json('/api/logout', {});
 	}
 
-	/**
-	 * Reads /api/events with fetch, which carries the bearer token where EventSource can't: calls
-	 * changed with a project's ID each time its file changes, until the stream ends or signal aborts.
-	 */
+	/** Read with fetch, which carries the bearer token where EventSource can't. */
 	async listen(changed: (pid: string) => void, opened: () => void, signal: AbortSignal): Promise<void> {
 		const res = await this.#fetch('/api/events', { signal, headers: { Accept: 'text/event-stream' } }, 0);
 		const reader = res.body?.pipeThrough(new TextDecoderStream()).getReader();
@@ -180,7 +173,6 @@ export class Api {
 	}
 }
 
-/** The server and code of a pairing link, `https://host[/prefix]/pair/<code>`. */
 export function parsePairing(text: string): { server: string; code: string } | undefined {
 	let url: URL;
 	try {
@@ -197,7 +189,6 @@ export function parsePairing(text: string): { server: string; code: string } | u
 	}
 }
 
-/** The code a pairing link holds, or a bare code as `ordo serve pair` prints it. */
 export function pairingCode(text: string): string | undefined {
 	const raw = text.trim();
 	return parsePairing(raw)?.code ?? (/^[\w.~-]+$/.test(raw) ? raw : undefined);

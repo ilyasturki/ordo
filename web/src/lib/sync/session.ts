@@ -27,7 +27,6 @@ export function saveSession(s: Session | undefined): void {
 	}
 }
 
-/** The private build talks to the origin it was served from, with the cookie. */
 function sessionFor(server: string): Session {
 	return site ? { server, token: '', cookie: false } : { server: '', token: '', cookie: true };
 }
@@ -39,7 +38,6 @@ async function signedIn(next: Session): Promise<void> {
 	saveSession(next);
 }
 
-/** Pairs this browser with a code or a pairing link; answers why it failed, or undefined. */
 export async function pair(server: string, text: string): Promise<string | undefined> {
 	const code = pairingCode(text);
 	if (!code) return 'Paste the whole pairing link, or its code';
