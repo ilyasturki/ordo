@@ -265,6 +265,7 @@ describe('pairing links', () => {
 		expect(parseServer('ordo.example.com')).toBe('https://ordo.example.com');
 		expect(parseServer('http://localhost:7319/')).toBe('http://localhost:7319');
 		expect(parseServer('ordo')).toBeUndefined();
+		expect(parseServer('http://nas:7319')).toBe('http://nas:7319');
 		expect(parseServer('https://user:pw@ordo.example.com')).toBeUndefined();
 	});
 });

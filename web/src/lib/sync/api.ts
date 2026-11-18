@@ -51,6 +51,9 @@ export type Devices = { devices: DeviceInfo[]; has_passphrase: boolean };
 export type PairCode = { link: string; qr: string; minutes: number };
 
 const timeout = 20_000;
+const transfer = 120_000;
+// ordo serve pings the live stream every 25 seconds: one silent for longer is dead.
+const silentFor = 60_000;
 
 export class Api {
 	readonly #session: Session;
@@ -121,7 +124,7 @@ export class Api {
 	/** A stored image, undefined when the server has none by that name. */
 	async image(name: string): Promise<{ bytes: ArrayBuffer; type: string } | undefined> {
 		try {
-			const res = await this.#fetch(`/api/attachments/${encodeURIComponent(name)}`);
+			const res = await this.#fetch(`/api/attachments/${encodeURIComponent(name)}`, {}, transfer);
 			return { bytes: await res.arrayBuffer(), type: res.headers.get('Content-Type') ?? '' };
 		} catch (error) {
 			if (error instanceof ServerError && error.status === 404) return undefined;
@@ -130,7 +133,7 @@ export class Api {
 	}
 
 	async putImage(name: string, bytes: ArrayBuffer): Promise<void> {
-		await this.#fetch(`/api/attachments/${encodeURIComponent(name)}`, { method: 'PUT', body: bytes }, 120_000);
+		await this.#fetch(`/api/attachments/${encodeURIComponent(name)}`, { method: 'PUT', body: bytes }, transfer);
 	}
 
 	devices(): Promise<Devices> {
@@ -157,18 +160,25 @@ export class Api {
 		if (!reader) return;
 		opened();
 		let buffered = '';
-		for (;;) {
-			const { value, done } = await reader.read();
-			if (done) return;
-			buffered += value.replaceAll('\r\n', '\n');
-			const events = buffered.split('\n\n');
-			buffered = events.pop() ?? '';
-			for (const ev of events) {
-				const lines = ev.split('\n');
-				if (!lines.includes('event: change')) continue;
-				const data = lines.find((l) => l.startsWith('data:'));
-				if (data !== undefined) changed(data.slice('data:'.length).trim());
+		let silence: ReturnType<typeof setTimeout> | undefined;
+		try {
+			for (;;) {
+				clearTimeout(silence);
+				silence = setTimeout(() => void reader.cancel(), silentFor);
+				const { value, done } = await reader.read();
+				if (done) return;
+				buffered += value.replaceAll('\r\n', '\n');
+				const events = buffered.split('\n\n');
+				buffered = events.pop() ?? '';
+				for (const ev of events) {
+					const lines = ev.split('\n');
+					if (!lines.includes('event: change')) continue;
+					const data = lines.find((l) => l.startsWith('data:'));
+					if (data !== undefined) changed(data.slice('data:'.length).trim());
+				}
 			}
+		} finally {
+			clearTimeout(silence);
 		}
 	}
 }
@@ -200,14 +210,15 @@ export function parseServer(text: string): string | undefined {
 	if (raw === '') return undefined;
 	const pairing = parsePairing(raw);
 	if (pairing) return pairing.server;
+	const typed = raw.includes('://');
 	let url: URL;
 	try {
-		url = new URL(raw.includes('://') ? raw : `https://${raw}`);
+		url = new URL(typed ? raw : `https://${raw}`);
 	} catch {
 		return undefined;
 	}
 	if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
-	if (!url.hostname.includes('.') && url.hostname !== 'localhost' && !url.hostname.startsWith('[')) return undefined;
+	if (!typed && !url.hostname.includes('.') && url.hostname !== 'localhost' && !url.hostname.startsWith('[')) return undefined;
 	if (url.username || url.password || url.search || url.hash) return undefined;
 	return url.origin + url.pathname.replace(/\/+$/, '');
 }
