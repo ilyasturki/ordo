@@ -110,7 +110,7 @@ The TUI doesn't watch the file: once an edit from the app lands, the TUI's next 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/phone-dark.png">
-  <img alt="The Ordo app on a phone: the ferry project's tasks under the project tabs, a task with its description, status, priority, tag, estimate and subtasks, and the sheet adding a task" src="assets/phone-light.png">
+  <img alt="The Ordo app on a phone: the ferry project's tasks under the project tabs, a task with its description, status, priority, tag and subtasks, and the sheet adding a task" src="assets/phone-light.png">
 </picture>
 
 ```bash
