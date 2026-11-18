@@ -52,14 +52,12 @@ func (h *HistoryState) Reset() {
 
 func (h *HistoryState) seen() int { return h.dropped + len(h.changes) }
 
-// rebase carries each step's difference from mine onto merged, so undo never takes back what came
-// from the file. The carry waits until undo or redo pops the step.
+// rebase carries each step's difference from mine onto merged once undo or redo pops it, so undo never takes back what came from the file.
 func (h *HistoryState) rebase(mine, merged domain.Project) {
 	h.changes = append(h.changes, outsideChange{cloneProject(mine), cloneProject(merged)})
 	h.trim()
 }
 
-// carry brings e through the outside changes it hasn't been carried through yet.
 func (h *HistoryState) carry(e *historyEntry) {
 	for _, c := range h.changes[e.rebased-h.dropped:] {
 		e.project = merge.Three(c.mine, e.project, c.merged).Project
@@ -75,8 +73,7 @@ func (h *HistoryState) each(fn func(e *historyEntry)) {
 	}
 }
 
-// trim forgets the changes every entry went through, and past historyLimit carries the
-// entries that hold the oldest one through it.
+// trim forgets changes every entry went through; past historyLimit it carries the laggards through the oldest.
 func (h *HistoryState) trim() {
 	for {
 		low := h.seen()

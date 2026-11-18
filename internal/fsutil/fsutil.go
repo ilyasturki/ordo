@@ -17,10 +17,7 @@ func WriteAtomic(path string, data []byte, perm os.FileMode) error {
 	return err
 }
 
-// WriteAtomicIf is WriteAtomic with check run last before the rename, so a writer can refuse
-// to replace a file that changed while it wrote; a check that fails leaves path as it was. It
-// returns the version written, stat'ed before the rename that keeps it: a stat after could see
-// a file another writer renamed over it meanwhile. That version is nil when the stat fails.
+// WriteAtomicIf renames only if check passes; the version it returns is stat'ed before the rename, since another writer may rename over path right after.
 func WriteAtomicIf(path string, data []byte, perm os.FileMode, check func() error) (os.FileInfo, error) {
 	tmp := path + ".tmp"
 	if err := writeSync(tmp, data, perm); err != nil {
