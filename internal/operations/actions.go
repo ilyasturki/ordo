@@ -24,6 +24,7 @@ var Actions = []Action{
 	{"note.add", "Add note", Both},
 	{"task.title", "Edit title", Both},
 	{"task.description", "Edit description", Both},
+	{"task.split", "Move the rest of the title to the description", TUI},
 	{"task.attach", "Attach image", Both},
 	{"task.delete", "Delete", Both},
 	{"status.cycle", "Cycle status", Both},

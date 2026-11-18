@@ -4,6 +4,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- `shift+enter` in a task's title being edited keeps the text before the cursor as the title and moves what follows to the top of the description, as one undo step, then opens the description editor on it. At the end of the title, it saves the title and opens the description
+
 ### Changed
 
 - The app answers an edit as soon as it is made: the phone saves it right after, in order, instead of the buzz waiting on the disk. A sync that brings nothing new redraws nothing and leaves the saved queue alone, a cold start shows the project you were on before loading the others, and with the server out of reach the live stream retries every 5 seconds, then less often, up to once a minute

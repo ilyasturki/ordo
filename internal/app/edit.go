@@ -268,6 +268,8 @@ func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		m.cancelEditing()
 		return nil
+	case "shift+enter", "alt+enter":
+		return m.splitTitleIntoDescription()
 	case "up", "down":
 		// Not forwarded: bubbles' textinput binds up/down to suggestion history.
 		m.moveEditCursorRow(msg.String() == "down")
@@ -365,6 +367,60 @@ func (m *model) finishEditing() {
 	}
 	m.ui.Modes.ToNormal()
 	m.ui.Edit.reset()
+}
+
+// splitTitleIntoDescription keeps the title up to the cursor, puts what
+// follows at the top of the description as the same undo step, and opens the
+// description editor on the moved text.
+func (m *model) splitTitleIntoDescription() tea.Cmd {
+	pos, ok := m.selectedPosition()
+	if !ok || pos.Kind != selection.FocusTask || m.ui.Edit.itemType != selection.FocusTask {
+		m.ui.Screen.StatusMsg = "Only a task has a description"
+		return nil
+	}
+	runes := []rune(m.ui.Edit.input.Value())
+	at := min(m.ui.Edit.input.Position(), len(runes))
+	title, rest := string(runes[:at]), strings.TrimSpace(string(runes[at:]))
+	if strings.TrimSpace(title) == "" {
+		m.ui.Screen.StatusMsg = "Put the cursor where the title ends"
+		return nil
+	}
+	id := m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID
+	if rest == "" {
+		m.finishEditing()
+		if m.ui.Modes.IsEdit() {
+			return nil
+		}
+	} else {
+		adding := m.ui.Edit.isAdding
+		if !adding {
+			m.recordHistory()
+		}
+		if _, err := operations.SplitTitle(&m.project, id, title, rest); err != nil {
+			if !adding {
+				m.discardLastHistory()
+			}
+			m.ui.Screen.StatusMsg = fmt.Sprintf("Not moved: %v", err)
+			return nil
+		}
+		m.storeTaskUpdate()
+		m.ui.Modes.ToNormal()
+		m.ui.Edit.reset()
+		m.rebuildPositions()
+	}
+	m.selectTaskByID(id)
+	ci, ti, err := operations.LocateTask(&m.project, id)
+	if err != nil {
+		return nil
+	}
+	cmd := m.startDescriptionInlineEdit(ci, ti)
+	if ta := &m.ui.DescriptionEdit.textarea; rest != "" && strings.HasPrefix(ta.Value(), rest) {
+		after := strings.TrimPrefix(ta.Value(), rest)
+		ta.SetValue(after)
+		ta.MoveToBegin()
+		ta.InsertString(rest)
+	}
+	return cmd
 }
 
 // An edit the editor already refused (a taken name, a merge offer) is left behind, so a second ctrl+c quits.
