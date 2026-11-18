@@ -64,12 +64,7 @@ func (s *Store) writeSnapshot(id string, data []byte, l *lineage) error {
 		return err
 	}
 	defer f.Close()
-	fresh := func() error {
-		if _, err := os.Stat(s.projectPath(id)); errors.Is(err, fs.ErrNotExist) {
-			return ErrProjectNotFound
-		}
-		return s.checkFresh(id, l)
-	}
+	fresh := func() error { return s.checkFresh(id, l) }
 	if err := fresh(); err != nil {
 		return err
 	}
@@ -118,11 +113,9 @@ func (s *Store) WithProjectLocked(id string, fn func(*domain.Project) error) (do
 	return s.rewrite(id, fn)
 }
 
-// rewriteTries bounds the retries of a writer whose file keeps changing under it.
 const rewriteTries = 3
 
-// rewrite loads id, runs fn and saves, under the project flock the caller holds. Syncthing
-// takes no flock, so a file it replaced before the rename sends fn round again on the new one.
+// rewrite runs fn under the caller's project flock, again on a file Syncthing swapped in before the rename.
 func (s *Store) rewrite(id string, fn func(*domain.Project) error) (domain.Project, error) {
 	for try := 1; ; try++ {
 		// Read under the lock: another process may have deleted the project
@@ -136,18 +129,7 @@ func (s *Store) rewrite(id string, fn func(*domain.Project) error) (domain.Proje
 		if err := fn(&project); err != nil {
 			return project, err
 		}
-		fresh := func() error {
-			now, err := os.Stat(s.projectPath(id))
-			switch {
-			case errors.Is(err, fs.ErrNotExist):
-				return ErrProjectNotFound
-			case err != nil:
-				return err
-			case !sameVersion(now, info):
-				return ErrStaleProject
-			}
-			return nil
-		}
+		fresh := func() error { return s.stillAt(id, info) }
 		if !regroupedOnly(before, project) {
 			err = s.saveProjectAtomic(project, fresh)
 		} else {

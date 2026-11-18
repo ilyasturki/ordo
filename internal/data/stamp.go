@@ -3,6 +3,7 @@ package data
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 )
 
@@ -158,14 +159,18 @@ func (s *Store) checkFresh(id string, l *lineage) error {
 	s.mu.Lock()
 	want := l.version
 	s.mu.Unlock()
-	if want == nil {
-		return nil
-	}
+	return s.stillAt(id, want)
+}
+
+// stillAt with a nil want only checks that the file exists.
+func (s *Store) stillAt(id string, want os.FileInfo) error {
 	info, err := os.Stat(s.projectPath(id))
-	if err != nil {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return ErrProjectNotFound
+	case err != nil:
 		return err
-	}
-	if !sameVersion(info, want) {
+	case want != nil && !sameVersion(info, want):
 		return ErrStaleProject
 	}
 	return nil
