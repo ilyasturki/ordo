@@ -1,6 +1,7 @@
 package app
 
 import (
+	"math"
 	"strings"
 
 	"charm.land/bubbles/v2/textarea"
@@ -49,7 +50,6 @@ func (m *model) startDescriptionInlineEdit(catIdx, taskIdx int) tea.Cmd {
 	// other edit cursors (ui.SelectedStyle) instead of a washed-out gray box.
 	styles.Cursor.Color = nil
 	ta.SetStyles(styles)
-	ta.SetValue(task.Description)
 	ta.ShowLineNumbers = false
 	cursorRow := new(int)
 	// A 2-wide gutter on every line keeps text aligned; the cursor's row shows
@@ -61,9 +61,12 @@ func (m *model) startDescriptionInlineEdit(catIdx, taskIdx int) tea.Cmd {
 		return "  "
 	})
 	ta.CharLimit = 0
-	// SetWidth must follow SetPromptFunc so it reserves the gutter width.
-	ta.SetWidth(m.dialogWidth())
-	ta.SetHeight(descriptionEditorVisibleHeight(m.ui.Screen.Height))
+	ta.DynamicHeight = true
+	// Without it MaxHeight also caps the description at that many lines.
+	ta.MaxContentHeight = math.MaxInt32
+	// Sized after SetPromptFunc so the width reserves the gutter.
+	m.fitDescriptionEditor(&ta)
+	ta.SetValue(task.Description)
 	cmd := ta.Focus()
 	ta.CursorEnd()
 	*cursorRow = descriptionCursorDisplayRow(ta)
@@ -106,18 +109,31 @@ func wrappedRowCount(line string, width int) int {
 	return strings.Count(ansi.Wrap(line, width, ""), "\n") + 1
 }
 
-func descriptionEditorVisibleHeight(screenHeight int) int {
-	// Leave room for project line, headers, and surrounding context.
-	const chrome = 8
-	h := screenHeight - chrome
-	switch {
-	case h < 3:
-		return 3
-	case h > 12:
-		return 12
-	default:
-		return h
-	}
+// The dialog's rows besides the textarea: heading, task title, blank, blank, hints.
+const descriptionDialogOwnRows = 5
+
+const descriptionEditorMinHeight = 12
+
+// A row of the list stays visible above and below the tallest dialog.
+const descriptionDialogMargin = 1
+
+func descriptionEditorMaxHeight(screenHeight int) int {
+	return ui.DialogBodyHeight(screenHeight, descriptionDialogOwnRows+2*descriptionDialogMargin, 3)
+}
+
+// fitDescriptionEditor sizes the textarea to the screen: it grows with its
+// text from the usual height up to the screen's.
+func (m *model) fitDescriptionEditor(ta *textarea.Model) {
+	ta.MaxHeight = descriptionEditorMaxHeight(m.ui.Screen.Height)
+	ta.MinHeight = min(descriptionEditorMinHeight, ta.MaxHeight)
+	ta.SetWidth(m.dialogWidth())
+}
+
+// descriptionDialogTop pins the dialog's top where its tallest size would sit
+// centred, so it grows downward instead of creeping up as it grows.
+func (m model) descriptionDialogTop() int {
+	tallest := descriptionEditorMaxHeight(m.ui.Screen.Height) + descriptionDialogOwnRows + ui.DialogChromeHeight
+	return max(0, (m.ui.Screen.Height-tallest)/2)
 }
 
 func (m *model) handleDescriptionEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -245,6 +261,7 @@ func (m model) descriptionEditView() string {
 	body := state.textarea.View()
 	lines := []string{
 		ui.DialogTitleStyle.Render(title),
+		ui.MutedStyle.Render(ansi.Truncate(m.descriptionEditTaskTitle(), m.dialogWidth(), "…")),
 		"",
 		body,
 		"",
@@ -261,14 +278,24 @@ func (m model) descriptionEditView() string {
 	return m.dialogStyle().Render(content)
 }
 
-func (m *model) descriptionEditTaskID() string {
+func (m model) descriptionEditTask() (domain.Task, bool) {
 	s := m.ui.DescriptionEdit
 	if s.categoryIndex < 0 || s.categoryIndex >= len(m.project.Categories) {
-		return ""
+		return domain.Task{}, false
 	}
 	cat := m.project.Categories[s.categoryIndex]
 	if s.taskIndex < 0 || s.taskIndex >= len(cat.Tasks) {
-		return ""
+		return domain.Task{}, false
 	}
-	return cat.Tasks[s.taskIndex].ID
+	return cat.Tasks[s.taskIndex], true
+}
+
+func (m model) descriptionEditTaskTitle() string {
+	task, _ := m.descriptionEditTask()
+	return task.Title
+}
+
+func (m *model) descriptionEditTaskID() string {
+	task, _ := m.descriptionEditTask()
+	return task.ID
 }

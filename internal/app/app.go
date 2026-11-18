@@ -176,6 +176,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.ui.Modes.IsMovePicker() {
 			m.ui.MovePicker.ensureVisible(m.movePickerRows())
 		}
+		if m.ui.Modes.IsDescriptionEdit() {
+			m.fitDescriptionEditor(&m.ui.DescriptionEdit.textarea.Model)
+		}
 	case clipboardResultMsg:
 		m.handleClipboardResult(msg)
 	case clipboardLinesMsg:
@@ -852,7 +855,7 @@ func (m model) renderView() string {
 	case modes.ModeYankPicker:
 		return modal.Render(content, m.yankPickerView())
 	case modes.ModeDescriptionEdit:
-		return modal.Render(content, m.descriptionEditView())
+		return modal.RenderAt(content, m.descriptionEditView(), m.descriptionDialogTop())
 	case modes.ModeTagEdit:
 		return modal.Render(content, m.tagEditView())
 	case modes.ModePasteChooser:

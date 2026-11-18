@@ -32,6 +32,15 @@ func (m *Modal) Render(background, overlay string) string {
 	return placeOverlay(bgPlaced, overlay, m.width, m.height)
 }
 
+// RenderAt centres overlay across the screen with its top on row top.
+func (m *Modal) RenderAt(background, overlay string, top int) string {
+	if m.width <= 0 || m.height <= 0 {
+		return overlay
+	}
+	bgPlaced := lipgloss.Place(m.width, m.height, lipgloss.Left, lipgloss.Top, background)
+	return OverlayAt(bgPlaced, overlay, max(0, (m.width-lipgloss.Width(overlay))/2), top)
+}
+
 func placeOverlay(bg, fg string, width, height int) string {
 	fgW := lipgloss.Width(fg)
 	fgH := strings.Count(fg, "\n") + 1

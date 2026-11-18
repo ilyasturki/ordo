@@ -13,6 +13,7 @@ import (
 
 	"github.com/ilyasturki/ordo/internal/app/modes"
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/ui"
 )
 
 // descriptionMarkerRow renders the description textarea and returns the index of
@@ -297,4 +298,121 @@ func TestStartExternalEdit_FromDescriptionRow_EditsWholeTask(t *testing.T) {
 	if m.ui.ExternalEdit.TempFilePath != "" {
 		_ = os.Remove(m.ui.ExternalEdit.TempFilePath)
 	}
+}
+
+func descriptionScreen(m *model) []string {
+	return strings.Split(ansi.Strip(m.View().Content), "\n")
+}
+
+func rowContaining(rows []string, text string) int {
+	for i, r := range rows {
+		if strings.Contains(r, text) {
+			return i
+		}
+	}
+	return -1
+}
+
+func TestDescriptionEdit_ShowsTheTaskTitleUnderTheHeading(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	_ = m.startDescriptionInlineEdit(0, 1)
+
+	rows := strings.Split(ansi.Strip(m.descriptionEditView()), "\n")
+	heading := rowContaining(rows, "Add Description")
+	require.GreaterOrEqual(t, heading, 0)
+	assert.Contains(t, rows[heading+1], "Beta")
+}
+
+func TestDescriptionEdit_CutsALongTitleToOneRow(t *testing.T) {
+	p := sampleProject()
+	p.Categories[0].Tasks[0].Title = strings.Repeat("渡し船の時刻表 ", 20) + "END"
+	m := newTestModel(t, p)
+	m.ui.Screen.Width = 50
+	_ = m.startDescriptionInlineEdit(0, 0)
+
+	view := ansi.Strip(m.descriptionEditView())
+	rows := strings.Split(view, "\n")
+	heading := rowContaining(rows, "Add Description")
+	require.GreaterOrEqual(t, heading, 0)
+	assert.Contains(t, rows[heading+1], "…")
+	assert.NotContains(t, view, "END")
+	assert.Empty(t, strings.Trim(rows[heading+2], "│ "), "the title takes a single row")
+	for _, r := range rows {
+		assert.Equal(t, ansi.StringWidth(rows[0]), ansi.StringWidth(r), "a wide title keeps the box rectangular")
+	}
+}
+
+func TestDescriptionEdit_GrowsWithItsTextUpToTheScreen(t *testing.T) {
+	p := sampleProject()
+	p.Categories[0].Tasks[0].Description = "short"
+	p.Categories[0].Tasks[1].Description = numberedLines(100)
+	m := newTestModel(t, p)
+
+	_ = m.startDescriptionInlineEdit(0, 0)
+	assert.Equal(t, descriptionEditorMinHeight, m.ui.DescriptionEdit.textarea.Height(), "short text keeps the usual height")
+	shortTop := rowContaining(descriptionScreen(m), "Edit Description")
+	m.finishDescriptionEdit()
+
+	_ = m.startDescriptionInlineEdit(0, 1)
+	assert.Equal(t, descriptionEditorMaxHeight(40), m.ui.DescriptionEdit.textarea.Height(), "long text takes the screen")
+	rows := descriptionScreen(m)
+	assert.Equal(t, shortTop, rowContaining(rows, "Edit Description"), "the dialog's top stays put as it grows")
+	assert.Len(t, rows, 40)
+	assert.Equal(t, 3, rowContaining(rows, "Edit Description"), "a row of the list stays above the tallest dialog")
+	assert.Equal(t, 36, rowContaining(rows, "newline"), "and one below it")
+}
+
+func TestDescriptionEdit_GrowsAsLinesAreTyped(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	_ = m.startDescriptionInlineEdit(0, 0)
+	top := rowContaining(descriptionScreen(m), "Add Description")
+
+	for range 20 {
+		_, _ = m.handleDescriptionEditKey(tea.KeyPressMsg{Code: 'x', Text: "x"})
+		_, _ = m.handleDescriptionEditKey(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift})
+	}
+
+	assert.Equal(t, 21, m.ui.DescriptionEdit.textarea.Height())
+	assert.Equal(t, top, rowContaining(descriptionScreen(m), "Add Description"))
+}
+
+func TestDescriptionEdit_FollowsATerminalResize(t *testing.T) {
+	p := sampleProject()
+	p.Categories[0].Tasks[0].Description = numberedLines(100)
+	m := newTestModel(t, p)
+	_ = m.startDescriptionInlineEdit(0, 0)
+
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 50, Height: 24})
+	resized := asModel(next)
+
+	ta := resized.ui.DescriptionEdit.textarea
+	assert.Equal(t, descriptionEditorMaxHeight(24), ta.Height())
+	assert.Equal(t, ui.DialogContentWidth(50), ta.Width()+2, "the width follows, less the gutter")
+	assert.Len(t, descriptionScreen(&resized), 24)
+}
+
+func TestDescriptionEdit_KeepsALongDescriptionWhole(t *testing.T) {
+	p := sampleProject()
+	long := numberedLines(200)
+	p.Categories[0].Tasks[0].Description = long
+	m := newTestModel(t, p)
+	_ = m.startDescriptionInlineEdit(0, 0)
+
+	assert.Equal(t, long, m.ui.DescriptionEdit.textarea.Value())
+	_, _ = m.handleDescriptionEditKey(keyPress("esc"))
+	assert.Equal(t, long, m.project.Categories[0].Tasks[0].Description)
+	assert.Empty(t, m.ui.History.undo, "an untouched description records no undo step")
+}
+
+func TestDescriptionEdit_TakesANewlinePastTwoHundredLines(t *testing.T) {
+	p := sampleProject()
+	p.Categories[0].Tasks[0].Description = numberedLines(200)
+	m := newTestModel(t, p)
+	_ = m.startDescriptionInlineEdit(0, 0)
+
+	_, _ = m.handleDescriptionEditKey(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift})
+	_, _ = m.handleDescriptionEditKey(tea.KeyPressMsg{Code: 'z', Text: "z"})
+	_, _ = m.handleDescriptionEditKey(keyPress("enter"))
+
+	assert.Equal(t, numberedLines(200)+"\nz", m.project.Categories[0].Tasks[0].Description)
 }

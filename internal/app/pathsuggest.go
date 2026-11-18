@@ -274,9 +274,9 @@ func (m model) withTitlePathList(content string, editLine, skip int) string {
 	return painted
 }
 
-// The dialog's textarea starts on its third line, behind a 2-wide gutter.
+// The dialog's textarea starts on its fourth line, behind a 2-wide gutter.
 func descriptionPathList(content string, s *pathSuggest, ta textarea.Model) string {
-	row := 2 + descriptionCursorDisplayRow(ta) - ta.ScrollYOffset()
+	row := 3 + descriptionCursorDisplayRow(ta) - ta.ScrollYOffset()
 	x := 2 + max(0, ta.LineInfo().CharOffset-ansi.StringWidth(s.typed))
 	return placePathList(content, s, row, row, x, strings.Count(content, "\n")+1, lipgloss.Width(content))
 }

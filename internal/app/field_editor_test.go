@@ -135,7 +135,7 @@ func TestCtrlG_LongDescriptionShowsTheCursorAtTheEnd(t *testing.T) {
 
 	view := ansi.Strip(m.ui.DescriptionEdit.textarea.View())
 	assert.Contains(t, view, "line30", "the editor window follows the cursor to the last line")
-	assert.Equal(t, descriptionEditorVisibleHeight(24)-1, descriptionMarkerRow(t, m))
+	assert.Equal(t, descriptionEditorMaxHeight(24)-1, descriptionMarkerRow(t, m))
 }
 
 func TestCtrlG_DescriptionSavesWithEnter(t *testing.T) {
