@@ -11,6 +11,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - A web app, in two static builds from the flake: `web-site`, the public site with the app at `/app/` keeping projects in the browser, and `web-private`, the app alone for the host that proxies `ordo serve`. It runs edits through the same Go code as the TUI and the phone, and imports and exports a project's JSON file
 - `c` turns a task into a note and a note into a task, on the cursor's row or a visual range, in one undo step. A task loses its status, priority and estimate; one with a description, an image or subtasks, or a subtask, stays a task, and the status line says why. In the app, a task's ⋮ has Turn into note, and a note's Turn into task. A server from before this release refuses it
 - `o` adds a note below the cursor, like `_`, in one press on any keyboard layout
+- In the app, holding `+` opens a menu of what it can add to the focused category: a task, a note, a separator, a category or a project. A tap still adds a task, and in a project without categories the `+` adds the first one
 
 ### Changed
 
@@ -22,6 +23,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - The delete question's "keep the subtasks" (and sub-categories) is `s`, since `k` moves; `y` and `n` still answer every question. On a project, `d` no longer deletes from the question: `enter` or `y` does
 - `esc` in the conflict dialog keeps theirs for every conflict left, and `u` brings yours back; `a` and `h` (or `M` and `T`) take all mine or all theirs
 - `m` in the picker lists the groups in use, the project's current one marked, then No group and New group…: pick one with `enter`, a digit, `n` or `w`. New group… asks the name, and `esc` there saves it like `enter`. `tab` no longer cycles through the groups
+- The app's add sheet and name sheets ride the keyboard: they rise and leave with it in one motion, and back, a swipe down or a tap outside saves what you typed, with an Undo, instead of dropping it. An empty new task, category or note adds nothing, and a save the filter or a taken name refuses keeps the sheet up until you dismiss it again. The priority, colour, estimate and category menus no longer take the keyboard down, and the sheets keep their text when the phone rotates
+- On a task's page in the app, a subtask typed and left is added as you leave the field or the page, and a description rewritten on another device while you type keeps both texts, the other one first, instead of replacing yours
 
 ### Fixed
 
@@ -29,12 +32,6 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
 - Rows shown by `enter` on `(N hidden by the filter)` and moved into another category with `J`/`K`, one or a visual range, stay shown and selected until the cursor leaves them, instead of hiding and leaving visual mode on `0 tasks selected`. Visual mode now ends by itself when none of its rows shows, and its status line counts notes and separators too, as `2 tasks, 1 note selected`. `m` says when the filter hides the rows where they landed
 - `t` reaches every tag dot, those other tasks of the category wear included: it starts at a free one, steps through the rest and ends on none
-- In the app, holding `+` opens a menu of what it can add to the focused category: a task, a note, a separator, a category or a project. A tap still adds a task, and in a project without categories the `+` adds the first one
-
-### Changed
-
-- The app's add sheet and name sheets ride the keyboard: they rise and leave with it in one motion, and back, a swipe down or a tap outside saves what you typed, with an Undo, instead of dropping it. An empty new task, category or note adds nothing, and a save the filter or a taken name refuses keeps the sheet up until you dismiss it again. The priority, colour, estimate and category menus no longer take the keyboard down, and the sheets keep their text when the phone rotates
-- On a task's page in the app, a subtask typed and left is added as you leave the field or the page, and a description rewritten on another device while you type keeps both texts, the other one first, instead of replacing yours
 
 ## [0.14.3] - 2026-11-11
 
