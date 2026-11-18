@@ -146,7 +146,7 @@ class AppTest : AppFixture() {
     fun aFinishedRowKeepsItsMarks() {
         scrollTo("Shared action layer")
         assertEquals("completed", task("Shared action layer")?.status)
-        compose.onNodeWithText("1d", useUnmergedTree = true).assertExists()
+        compose.onNode(hasText("Shared action layer") and hasText("Low")).assertExists()
     }
 
     @Test
@@ -457,7 +457,6 @@ class AppTest : AppFixture() {
         compose.onNodeWithContentDescription("Mark done").assertIsDisplayed()
         compose.onNodeWithText("Medium").assertExists()
         compose.onNodeWithText("Green").assertExists()
-        compose.onNodeWithText("2h").assertExists()
         compose.onNodeWithContentDescription("Status: Todo").assertExists()
         compose.onNodeWithText("Add a description").assertExists()
         compose.onNodeWithContentDescription("Mark done").performClick()

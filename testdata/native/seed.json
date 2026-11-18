@@ -25,6 +25,7 @@
           "id": "aaaaaaaa-0000-4000-8000-000000000002",
           "title": "Shared action layer",
           "status": "completed",
+          "priority": "low",
           "created_at": "2026-10-12T09:00:00Z",
           "updated_at": "2026-10-12T09:00:00Z",
           "completion_date": "2026-10-15T18:20:00Z",
