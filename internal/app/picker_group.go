@@ -76,98 +76,105 @@ func projectGroups(projects []domain.Project) []string {
 	return out
 }
 
-func (m *model) startGrouping() {
+// startGroupChoice opens the choice of a group for the selected project, on its current one.
+func (m *model) startGroupChoice() {
 	p := &m.ui.Picker
 	if p.onNew || p.selected >= len(p.projects) {
 		return
 	}
-	p.grouping = true
+	p.choosingGroup = true
 	p.groupFor = p.projects[p.selected].ID
+	current := groupKey(p.projects[p.selected])
+	groups := projectGroups(p.projects)
+	p.groupPick = slices.IndexFunc(groups, func(g string) bool { return domain.NormalizeName(g) == current })
+	if p.groupPick < 0 {
+		p.groupPick = len(groups)
+	}
+}
+
+func (p *ProjectPickerState) groupProject() (domain.Project, bool) {
+	i := slices.IndexFunc(p.projects, func(pr domain.Project) bool { return pr.ID == p.groupFor })
+	if i < 0 {
+		return domain.Project{}, false
+	}
+	return p.projects[i], true
+}
+
+// groupChoice lists the groups in use, then "No group" and "New group…".
+func (m model) groupChoice() (ui.Choice, []string) {
+	p := m.ui.Picker
+	project, _ := p.groupProject()
+	groups := projectGroups(p.projects)
+	c := ui.Choice{Title: "Group of " + truncateText(project.Name, 40), Selected: p.groupPick, Numbered: true}
+	for _, g := range groups {
+		opt := ui.ChoiceOption{Label: g}
+		if domain.NormalizeName(g) == groupKey(project) {
+			opt.Detail = "current"
+		}
+		c.Options = append(c.Options, opt)
+	}
+	none := ui.ChoiceOption{Label: "No group", Key: "n"}
+	if groupKey(project) == "" {
+		none.Detail = "current"
+	}
+	c.Options = append(c.Options, none, ui.ChoiceOption{Label: "New group…", Key: "w"})
+	return c, groups
+}
+
+func (m model) handleGroupChoiceKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
+	c, groups := m.groupChoice()
+	act, i := c.Handle(msg.String())
+	p := &m.ui.Picker
+	p.groupPick = c.Selected
+	switch {
+	case act == ui.ChoiceCancelled:
+		p.cancelGrouping()
+	case act != ui.ChoicePicked:
+	case i < len(groups):
+		m.setProjectGroup(p.groupFor, groups[i])
+	case i == len(groups):
+		m.setProjectGroup(p.groupFor, "")
+	default:
+		return m, m.startNewGroup()
+	}
+	return m, nil
+}
+
+func (m *model) startNewGroup() tea.Cmd {
+	p := &m.ui.Picker
+	p.choosingGroup = false
+	p.grouping = true
 	p.input = newTextInput()
-	p.input.SetValue(p.projects[p.selected].Group)
-	p.input.CursorEnd()
-	p.input.Focus()
-	p.groupCycling = false
+	return p.input.Focus()
 }
 
 func (p *ProjectPickerState) cancelGrouping() {
+	p.choosingGroup = false
 	p.grouping = false
 	p.groupFor = ""
 	p.input = lineField{}
 }
 
-func (p *ProjectPickerState) groupsLike(stem string) []string {
-	var out []string
-	for _, g := range projectGroups(p.projects) {
-		if strings.HasPrefix(domain.NormalizeName(g), domain.NormalizeName(stem)) {
-			out = append(out, g)
-		}
-	}
-	return out
-}
-
-// completeGroup fills in a group that starts like what was typed, every group when it already
-// names one; tab again cycles on.
-func (p *ProjectPickerState) completeGroup() {
-	value := p.input.Value()
-	if !p.groupCycling {
-		p.groupCycling, p.groupStem, p.groupNext = true, value, 0
-		names := func(g string) bool { return domain.NormalizeName(g) == domain.NormalizeName(value) }
-		if slices.ContainsFunc(p.groupsLike(""), names) {
-			p.groupStem = ""
-		}
-		like := p.groupsLike(p.groupStem)
-		if i := slices.IndexFunc(like, names); i >= 0 {
-			p.groupNext = i
-			if like[i] == strings.TrimSpace(value) {
-				p.groupNext++
-			}
-		}
-	}
-	matches := p.groupsLike(p.groupStem)
-	if len(matches) == 0 {
-		return
-	}
-	p.input.SetValue(matches[p.groupNext%len(matches)])
-	p.input.CursorEnd()
-	p.groupNext++
-}
-
-// groupHint is the rest of the group tab would fill in, drawn after the cursor.
-func (p *ProjectPickerState) groupHint() string {
-	value := p.input.Value()
-	if p.groupCycling || p.input.Position() < len([]rune(value)) {
-		return ""
-	}
-	n := len([]rune(value))
-	for _, g := range projectGroups(p.projects) {
-		if r := []rune(g); len(r) > n && strings.EqualFold(string(r[:n]), value) {
-			return string(r[n:])
-		}
-	}
-	return ""
-}
-
+// A name field: esc saves like enter, and an empty name changes nothing.
 func (m model) handlePickerGroupKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	switch msg.String() {
-	case "enter":
-		m.setProjectGroup(m.ui.Picker.groupFor, m.ui.Picker.input.Value())
-		return m, nil
-	case "esc":
-		m.ui.Picker.cancelGrouping()
-		return m, nil
-	case "tab":
-		m.ui.Picker.completeGroup()
+	case "enter", "esc":
+		if name := strings.TrimSpace(m.ui.Picker.input.Value()); name != "" {
+			m.setProjectGroup(m.ui.Picker.groupFor, name)
+		} else {
+			m.ui.Picker.cancelGrouping()
+		}
 		return m, nil
 	}
 	var cmd tea.Cmd
-	before := m.ui.Picker.input.Value()
 	m.ui.Picker.input, cmd = m.ui.Picker.input.Update(msg)
 	sanitizeInput(&m.ui.Picker.input)
-	if m.ui.Picker.input.Value() != before {
-		m.ui.Picker.groupCycling = false
-	}
 	return m, cmd
+}
+
+func (m model) groupChoiceView() string {
+	c, _ := m.groupChoice()
+	return m.choiceView(c)
 }
 
 // setProjectGroup saves the group straight to the file, so the save keeps updated_at; the open
@@ -234,19 +241,10 @@ func (m *model) reloadPickerProjects(id string) {
 
 func (m model) renderPickerGroupLine() string {
 	p := m.ui.Picker
-	name := ""
-	if i := slices.IndexFunc(p.projects, func(pr domain.Project) bool { return pr.ID == p.groupFor }); i >= 0 {
-		name = p.projects[i].Name
-	}
+	project, _ := p.groupProject()
 	split := splitAtCursor(p.input.Value(), p.input.Position())
-	hint := p.groupHint()
-	cursorCh := split.cursorCh
-	if hint != "" && split.cursorCh == " " && split.right == "" {
-		r := []rune(hint)
-		cursorCh, hint = string(r[0]), string(r[1:])
-	}
-	return "  " + ui.MutedStyle.Render("Group of "+name+": ") + split.left +
-		ui.GetCursorStyle(m.ui.Screen.WindowFocused).Render(cursorCh) + split.right + ui.MutedStyle.Render(hint)
+	return "  " + ui.MutedStyle.Render("New group of "+project.Name+": ") + split.left +
+		ui.GetCursorStyle(m.ui.Screen.WindowFocused).Render(split.cursorCh) + split.right
 }
 
 func (m model) renderPickerSeparator(label string, width int) string {

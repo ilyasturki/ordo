@@ -774,6 +774,10 @@ func (m model) renderView() string {
 			return components.NewModal(m.ui.Screen.Width, m.ui.Screen.Height).
 				Render(m.projectPickerView(), m.confirmDeleteView())
 		}
+		if m.ui.Picker.choosingGroup {
+			return components.NewModal(m.ui.Screen.Width, m.ui.Screen.Height).
+				Render(m.projectPickerView(), m.groupChoiceView())
+		}
 		return m.projectPickerView()
 	}
 
@@ -850,6 +854,9 @@ func (m model) renderView() string {
 	case modes.ModeOptions:
 		return modal.Render(content, m.optionsView())
 	case modes.ModeProjectPicker:
+		if m.ui.Picker.choosingGroup {
+			return modal.Render(modal.Render(content, m.projectPickerView()), m.groupChoiceView())
+		}
 		return modal.Render(content, m.projectPickerView())
 	case modes.ModeFilter:
 		return modal.Render(content, m.filterView())

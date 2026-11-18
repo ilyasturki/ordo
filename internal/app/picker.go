@@ -85,6 +85,9 @@ func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	if m.ui.Picker.grouping {
 		return m.handlePickerGroupKey(msg)
 	}
+	if m.ui.Picker.choosingGroup {
+		return m.handleGroupChoiceKey(msg)
+	}
 	if m.ui.Picker.filtering {
 		return m.handlePickerFilterKey(msg)
 	}
@@ -127,7 +130,7 @@ func (m model) handleProjectPickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	case "d":
 		m.initiateProjectDelete()
 	case "m":
-		m.startGrouping()
+		m.startGroupChoice()
 	case "esc", "q":
 		if m.project.ID == "" {
 			return m, tea.Quit

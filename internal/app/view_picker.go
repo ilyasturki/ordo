@@ -55,7 +55,7 @@ func (m model) pickerHints() []ui.Hint {
 	case m.ui.Picker.isAdding:
 		return []ui.Hint{{Key: "⏎", Label: "create"}, {Key: "esc", Label: "cancel"}}
 	case m.ui.Picker.grouping:
-		return []ui.Hint{{Key: "⏎", Label: "set"}, {Key: "tab", Label: "complete"}, {Key: "esc", Label: "cancel"}}
+		return []ui.Hint{{Key: "⏎", Label: "set"}}
 	case m.ui.Picker.filtering:
 		return []ui.Hint{{Key: "⏎", Label: "select"}, {Key: "esc", Label: "clear"}}
 	}

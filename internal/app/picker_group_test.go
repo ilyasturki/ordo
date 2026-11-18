@@ -135,6 +135,7 @@ func TestGroupKeySetsAnotherProjectsGroupAndKeepsItsStamp(t *testing.T) {
 	m.ui.Picker.selected = indexOf(m.ui.Picker.projects, beta.ID)
 
 	pressPickerKey(t, m, "m")
+	pressPickerKey(t, m, "w")
 	require.True(t, m.ui.Picker.grouping)
 	typeIn(t, m, "Work")
 	hit(m, "enter")
@@ -154,6 +155,7 @@ func TestGroupOnTheOpenProjectSurvivesItsNextEdit(t *testing.T) {
 	m.ui.Picker.selected = indexOf(m.ui.Picker.projects, alpha.ID)
 
 	pressPickerKey(t, m, "m")
+	pressPickerKey(t, m, "w")
 	typeIn(t, m, "Perso")
 	hit(m, "enter")
 	assert.Equal(t, "Perso", m.project.Group)
@@ -181,6 +183,7 @@ func TestUndoAfterAGroupKeepsTheGroup(t *testing.T) {
 	m.openProjectPicker()
 	m.ui.Picker.selected = indexOf(m.ui.Picker.projects, alpha.ID)
 	pressPickerKey(t, m, "m")
+	pressPickerKey(t, m, "w")
 	typeIn(t, m, "Work")
 	hit(m, "enter")
 	require.Equal(t, "Work", m.project.Group)
@@ -192,61 +195,95 @@ func TestUndoAfterAGroupKeepsTheGroup(t *testing.T) {
 	assert.Equal(t, "Work", onDisk(t, store, alpha.ID).Group)
 }
 
-func TestGroupFieldCyclesFromAGroupTypedInAnotherCase(t *testing.T) {
-	m := newPickerModel(t, 0, 80, 40)
-	m.ui.Picker.projects = []domain.Project{
-		grouped("Ferry", "Work", ""), grouped("Garden", "Perso", ""), {ID: "loose", Name: "Loose"},
+func groupedStoreModel(t *testing.T) (*model, *data.Store, domain.Project, domain.Project) {
+	t.Helper()
+	m, store, alpha, beta := groupStoreModel(t)
+	for id, group := range map[string]string{alpha.ID: "Work", beta.ID: "Perso"} {
+		_, err := store.WithProjectLocked(id, func(p *domain.Project) error {
+			p.Group = group
+			return nil
+		})
+		require.NoError(t, err)
 	}
-	m.ui.Picker.selected = 2
-	pressPickerKey(t, m, "m")
-	typeIn(t, m, "work")
-	hit(m, "tab")
-	assert.Equal(t, "Work", m.ui.Picker.input.Value())
-	hit(m, "tab")
-	assert.Equal(t, "Perso", m.ui.Picker.input.Value())
-}
-
-func TestGroupFieldCompletesAndCyclesTheGroupsInUse(t *testing.T) {
-	m := newPickerModel(t, 0, 80, 40)
-	m.ui.Picker.projects = []domain.Project{
-		grouped("Ferry", "Work", ""), grouped("Garden", "Perso", ""), {ID: "loose", Name: "Loose"},
-	}
-	m.ui.Picker.selected = 2
-	pressPickerKey(t, m, "m")
-	p := &m.ui.Picker
-	assert.Equal(t, "Work", p.groupHint(), "an empty field offers the most recent group")
-
-	typeIn(t, m, "P")
-	assert.Equal(t, "erso", p.groupHint())
-	hit(m, "tab")
-	assert.Equal(t, "Perso", p.input.Value())
-
-	p.input.SetValue("Work")
-	p.groupCycling = false
-	hit(m, "tab")
-	assert.Equal(t, "Perso", p.input.Value(), "a field naming a group cycles to the next")
-	hit(m, "tab")
-	assert.Equal(t, "Work", p.input.Value())
-
-	hit(m, "esc")
-	assert.False(t, p.grouping)
-}
-
-func TestGroupFieldEmptiedClearsTheGroup(t *testing.T) {
-	m, store, alpha, _ := groupStoreModel(t)
-	_, err := store.WithProjectLocked(alpha.ID, func(p *domain.Project) error {
-		p.Group = "Work"
-		return nil
-	})
-	require.NoError(t, err)
 	m.openProjectPicker()
 	m.ui.Picker.selected = indexOf(m.ui.Picker.projects, alpha.ID)
+	return m, store, alpha, beta
+}
+
+func TestGroupChoiceListsTheGroupsAndStartsOnTheCurrentOne(t *testing.T) {
+	m, _, _, _ := groupedStoreModel(t)
+	pressPickerKey(t, m, "m")
+	require.True(t, m.ui.Picker.choosingGroup)
+
+	c, groups := m.groupChoice()
+	assert.ElementsMatch(t, []string{"Work", "Perso"}, groups)
+	assert.Equal(t, "Work", c.Options[c.Selected].Label, "the cursor starts on the current group")
+	assert.Equal(t, "current", c.Options[c.Selected].Detail)
+	labels := make([]string, len(c.Options))
+	for i, o := range c.Options {
+		labels[i] = o.Label
+	}
+	assert.Equal(t, []string{"No group", "New group…"}, labels[2:])
+	checkMnemonics(t, "group", c)
+
+	view := ansi.Strip(m.renderView())
+	assert.Contains(t, view, "Group of Alpha")
+	assert.Contains(t, view, "No group")
+
+	m.ui.Picker.fullscreen = true
+	assert.Contains(t, ansi.Strip(m.renderView()), "New group…", "the full-screen picker draws it too")
+}
+
+func TestGroupChoicePicksAnExistingGroupByArrowOrDigit(t *testing.T) {
+	m, store, alpha, _ := groupedStoreModel(t)
+	pressPickerKey(t, m, "m")
+	c, groups := m.groupChoice()
+	other := 1 - c.Selected
+
+	hit(m, "j", "k")
+	assert.True(t, m.ui.Picker.choosingGroup, "moving never picks")
+	pressPickerKey(t, m, string(rune('1'+other)))
+	assert.False(t, m.ui.Picker.choosingGroup)
+	assert.Equal(t, groups[other], onDisk(t, store, alpha.ID).Group)
+
+	m.ui.Picker.selected = indexOf(m.ui.Picker.projects, alpha.ID)
+	pressPickerKey(t, m, "m")
+	_, groups = m.groupChoice()
+	require.Equal(t, []string{"Perso"}, groups, "Work is no longer in use")
+	hit(m, "down", "enter")
+	assert.Empty(t, onDisk(t, store, alpha.ID).Group, "down from the current group is No group")
+}
+
+func TestGroupChoiceNoGroupClearsAndEscKeepsTheGroup(t *testing.T) {
+	m, store, alpha, _ := groupedStoreModel(t)
+	pressPickerKey(t, m, "m")
+	hit(m, "esc")
+	assert.False(t, m.ui.Picker.choosingGroup)
+	assert.True(t, m.ui.Modes.IsProjectPicker(), "esc goes back to the picker")
+	assert.Equal(t, "Work", onDisk(t, store, alpha.ID).Group)
 
 	pressPickerKey(t, m, "m")
-	assert.Equal(t, "Work", m.ui.Picker.input.Value(), "the field starts on the project's group")
-	hit(m, "ctrl+u", "enter")
+	pressPickerKey(t, m, "n")
 	assert.Empty(t, onDisk(t, store, alpha.ID).Group)
 	assert.Equal(t, "Group cleared", m.ui.Screen.StatusMsg)
+}
+
+func TestNewGroupFieldSavesOnEscAndAnEmptyNameChangesNothing(t *testing.T) {
+	m, store, alpha, _ := groupedStoreModel(t)
+	pressPickerKey(t, m, "m")
+	pressPickerKey(t, m, "w")
+	require.True(t, m.ui.Picker.grouping)
+	assert.Empty(t, m.ui.Picker.input.Value(), "a new group starts empty")
+	assert.Contains(t, ansi.Strip(m.renderView()), "New group of Alpha:")
+	hit(m, "esc")
+	assert.False(t, m.ui.Picker.grouping)
+	assert.Equal(t, "Work", onDisk(t, store, alpha.ID).Group, "an empty name changes nothing")
+
+	pressPickerKey(t, m, "m")
+	pressPickerKey(t, m, "w")
+	typeIn(t, m, "Garden")
+	hit(m, "esc")
+	assert.Equal(t, "Garden", onDisk(t, store, alpha.ID).Group, "esc saves like enter")
 }
 
 func indexOf(projects []domain.Project, id string) int {
