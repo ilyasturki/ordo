@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { importProject } from '$lib/app/actions';
+	import IconButton from '$lib/app/IconButton.svelte';
 	import Sheets from '$lib/app/Sheets.svelte';
 	import { ui } from '$lib/app/ui.svelte';
 	import { app, site } from '$lib/paths';
@@ -15,6 +16,11 @@
 </script>
 
 {#if local.projects.length === 0}
+	{#if session.sync?.trouble}
+		<div class="fixed top-[env(safe-area-inset-top)] right-2 flex h-16 items-center">
+			<IconButton icon="cloudOff" label="Not synced" tone="error" onclick={() => (ui.sheet = { kind: 'sync' })} />
+		</div>
+	{/if}
 	<main class="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
 		<img src="/icon.svg" alt="" width="48" height="48" />
 		<h1 class="text-headline-small">No projects yet</h1>

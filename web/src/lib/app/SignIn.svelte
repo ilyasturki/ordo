@@ -45,7 +45,7 @@
 		if (busy || link.trim() === '') return;
 		busy = 'pair';
 		error = undefined;
-		const failure = await pair(server, link);
+		const failure = await pair(server, link, sync);
 		if (!(await done(failure))) error = failure;
 	}
 
@@ -53,7 +53,7 @@
 		if (busy || passphrase === '') return;
 		busy = 'login';
 		passError = undefined;
-		const failure = await login(server, passphrase);
+		const failure = await login(server, passphrase, sync);
 		if (!(await done(failure))) passError = failure;
 	}
 </script>

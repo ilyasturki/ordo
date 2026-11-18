@@ -1,6 +1,7 @@
 import { site } from '$lib/paths';
 import { clearStore } from '$lib/store';
 import { Api, pairingCode, parsePairing, type Session } from './api';
+import type { Sync } from './sync.svelte';
 
 const key = 'ordo.session';
 
@@ -31,30 +32,31 @@ function sessionFor(server: string): Session {
 	return site ? { server, token: '', cookie: false } : { server: '', token: '', cookie: true };
 }
 
-/** Keeps the session a sign-in answered; a copy synced from another server goes first. */
-async function signedIn(next: Session): Promise<void> {
+/** Keeps the session a sign-in answered; a copy synced from another server goes first, signed out of it. */
+async function signedIn(next: Session, current: Sync | undefined): Promise<void> {
+	if (current && current.session.server !== next.server) await current.signOut();
 	const previous = readSession();
 	if (!previous || previous.server !== next.server) await clearStore(syncedStore);
 	saveSession(next);
 }
 
-export async function pair(server: string, text: string): Promise<string | undefined> {
+export async function pair(server: string, text: string, current?: Sync): Promise<string | undefined> {
 	const code = pairingCode(text);
 	if (!code) return 'Paste the whole pairing link, or its code';
 	const s = sessionFor(site ? server || (parsePairing(text)?.server ?? '') : '');
 	if (site && !s.server) return 'Type the address of your ordo serve';
 	try {
-		await signedIn({ ...s, token: await new Api(s).pair(code) });
+		await signedIn({ ...s, token: await new Api(s).pair(code) }, current);
 		return undefined;
 	} catch (error) {
 		return error instanceof Error ? error.message : "Can't pair";
 	}
 }
 
-export async function login(server: string, passphrase: string): Promise<string | undefined> {
+export async function login(server: string, passphrase: string, current?: Sync): Promise<string | undefined> {
 	const s = sessionFor(server);
 	try {
-		await signedIn({ ...s, token: await new Api(s).login(passphrase) });
+		await signedIn({ ...s, token: await new Api(s).login(passphrase) }, current);
 		return undefined;
 	} catch (error) {
 		return error instanceof Error ? error.message : "Can't sign in";

@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { Api } from '../src/lib/sync/api';
 import { expect, shoot, test } from './fixtures';
 import { ferry, pane, row, taskLink } from './ordo';
-import { passphrase, type Served } from './serve';
+import { passphrase, serve, type Served } from './serve';
 
 test.use({ signedIn: false });
 
@@ -211,4 +211,29 @@ test('the site build offers to connect from its empty page and the project menu'
 	await page.getByRole('button', { name: 'More options' }).click();
 	await expect(page.getByRole('menuitem', { name: 'Connect to ordo serve' })).toBeVisible();
 	await shoot(page, 'menu', info.project.name);
+});
+
+test('connecting to another server signs out of the first, and an empty copy still shows sync trouble', async ({ page, app, build, served, noise }) => {
+	test.skip(build !== 'site', 'the private build has one server');
+	noise(/401/);
+	served.add(ferry);
+	await signInWithPassphrase(page, app, build, served);
+	const second = await serve({ seeded: false });
+	try {
+		await page.goto(app('/signin'));
+		await page.getByLabel('Server address').fill(second.url);
+		await page.getByLabel('Passphrase').fill(passphrase);
+		await page.getByRole('button', { name: 'Sign in' }).click();
+		await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
+		expect((await (await other(served)).api.devices()).devices.map((d) => d.name)).toEqual(['Test client']);
+
+		const them = await other(second);
+		const browser = (await them.api.devices()).devices.find((d) => d.name !== 'Test client')!;
+		await them.api.revoke(browser.id);
+		await page.reload();
+		await page.getByRole('button', { name: 'Not synced' }).click();
+		await expect(page.getByRole('dialog', { name: 'Sync' })).toContainText('Sign in again');
+	} finally {
+		await second.close();
+	}
 });
