@@ -38,6 +38,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -260,7 +261,8 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
             return false
         }
         title = ""
-        val a = engine.edit(pid, Ops.insert(cat, after, text), quiet = quiet)
+        val shown = if (text.length > 40) text.take(39) + "…" else text
+        val a = engine.edit(pid, Ops.insert(cat, after, text), quiet = quiet, said = "Added “$shown”")
         if (!a.applied) {
             title = text
             feedback.reject()
@@ -348,6 +350,10 @@ fun AddBar(
     onSave: () -> Unit,
 ) {
     var menu by remember { mutableStateOf("") }
+    val leaving = LocalSheetLeaving.current
+    LaunchedEffect(leaving) { if (leaving) menu = "" }
+    val menus = LocalSheetMenus.current
+    SideEffect { menus?.shown(menu != "") }
     // A focusable menu would take the window's focus, and the keyboard with it.
     val keepsKeyboard = PopupProperties(focusable = false)
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {

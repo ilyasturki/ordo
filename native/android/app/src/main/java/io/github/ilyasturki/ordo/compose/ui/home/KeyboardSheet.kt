@@ -1,9 +1,13 @@
 package io.github.ilyasturki.ordo.compose.ui.home
 
+import android.content.res.Configuration
+import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
@@ -28,6 +32,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -43,6 +49,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -57,7 +64,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -66,6 +72,24 @@ import kotlin.math.max
 
 // What a keyboard sheet's content runs to finish: the sheet closes once the commit lands, and holds every other close until it has answered.
 typealias Finish = (commit: suspend () -> Boolean) -> Unit
+
+// True once the sheet is on its way out: a menu it opened closes rather than outlive it.
+val LocalSheetLeaving = compositionLocalOf { false }
+
+// A menu that keeps the keyboard doesn't take the window's touches: a tap outside it also lands on the scrim, which lets it only close the menu.
+class SheetMenus {
+    var open = false
+        private set
+    var closedAt = 0L
+        private set
+
+    fun shown(open: Boolean) {
+        if (this.open && !open) closedAt = SystemClock.uptimeMillis()
+        this.open = open
+    }
+}
+
+val LocalSheetMenus = compositionLocalOf<SheetMenus?> { null }
 
 // A sheet in the page's own window, placed by the keyboard alone: it rises and leaves on the keyboard's own frames, as one motion.
 // Every dismissal (back, a swipe down, a tap outside, the keyboard's own back) first runs onLeave; a refusal keeps the sheet up, resting on the bottom edge, and the next dismissal drops it.
@@ -91,6 +115,7 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
     var closing by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var refused by remember { mutableStateOf(false) }
+    val menus = remember { SheetMenus() }
     val leaving by rememberUpdatedState(onLeave)
     val gone by rememberUpdatedState(onGone)
 
@@ -144,18 +169,15 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
         }
     }
 
-    // A sheet that takes over from another finds the keyboard up, and the keyboard may blink as the focus moves across: it stays in place meanwhile.
-    var settled by remember { mutableStateOf(false) }
+    // A sheet that takes over from another finds the keyboard up: it shows in place.
     LaunchedEffect(Unit) {
         if (target.getBottom(density) > 0) rest.snapTo(1f)
-        delay(KEYBOARD_WAIT_MS)
-        settled = true
     }
     // The keyboard heading down is a dismissal only when this window let it go: a dialog over it or the app leaving takes it too.
     LaunchedEffect(Unit) {
         var wasUp = false
         snapshotFlow { target.getBottom(density) > 0 }.distinctUntilChanged().collect { up ->
-            if (wasUp && !up && !closing && settled) {
+            if (wasUp && !up && !closing) {
                 val ours = window.isWindowFocused && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
                 if (ours && !busy) leave() else stayUp()
             }
@@ -170,9 +192,10 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
             }
         }
     }
-    // Without a keyboard on its way, the sheet comes up on its own.
+    // Without a keyboard on its way, the sheet comes up on its own: at once beside a hardware keyboard, which keeps the software one down.
+    val hardware = LocalConfiguration.current.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO
     LaunchedEffect(Unit) {
-        val coming = withTimeoutOrNull(KEYBOARD_WAIT_MS) { snapshotFlow { target.getBottom(density) > 0 }.first { it } }
+        val coming = withTimeoutOrNull(if (hardware) 0L else NO_KEYBOARD_MS) { snapshotFlow { target.getBottom(density) > 0 }.first { it } }
         if (coming == null && !closing) rest.animateTo(1f, spatial)
     }
     LaunchedEffect(closing) {
@@ -188,7 +211,13 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
             Modifier
                 .fillMaxSize()
                 .drawBehind { drawRect(scrim, alpha = presence) }
-                .pointerInput(Unit) { detectTapGestures { leave() } }
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        val menu = menus.open
+                        if (waitForUpOrCancellation() != null && !menu && menus.closedAt < down.uptimeMillis) leave()
+                    }
+                }
                 .semantics {
                     contentDescription = "Close sheet"
                     onClick {
@@ -218,13 +247,15 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
             color = BottomSheetDefaults.ContainerColor,
             tonalElevation = BottomSheetDefaults.Elevation,
         ) {
-            Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))) { content(finish) }
+            CompositionLocalProvider(LocalSheetLeaving provides (closing || busy), LocalSheetMenus provides menus) {
+                Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))) { content(finish) }
+            }
         }
     }
 }
 
-// Long enough for a software keyboard asked for on open to start rising.
-private const val KEYBOARD_WAIT_MS = 500L
+// A software keyboard can take a second to start rising on a loaded phone.
+private const val NO_KEYBOARD_MS = 2000L
 
 // A keyboard that never goes down doesn't keep a closed sheet on screen.
 private const val GONE_WAIT_MS = 1500L

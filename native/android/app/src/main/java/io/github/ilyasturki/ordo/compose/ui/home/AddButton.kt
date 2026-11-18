@@ -3,6 +3,7 @@ package io.github.ilyasturki.ordo.compose.ui.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
@@ -26,6 +27,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.unit.dp
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
 
@@ -48,8 +50,10 @@ fun AddButton(name: String, kinds: List<AddKind>, open: Boolean, onOpen: (Boolea
         feedback.hold()
         onOpen(true)
     }
+    // The menu pads itself as a screen's corner would: the Scaffold's FAB slot already does.
     FloatingActionButtonMenu(
         expanded = open,
+        modifier = Modifier.offset(MENU_PADDING, MENU_PADDING),
         horizontalAlignment = Alignment.End,
         button = {
             ToggleFloatingActionButton(
@@ -87,6 +91,8 @@ fun AddButton(name: String, kinds: List<AddKind>, open: Boolean, onOpen: (Boolea
         }
     }
 }
+
+private val MENU_PADDING = 16.dp
 
 // A long press seen before the toggle sees it: the release that follows is swallowed, so it never reaches the toggle as a tap.
 private fun Modifier.held(onHold: () -> Unit): Modifier = pointerInput(Unit) {

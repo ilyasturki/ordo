@@ -72,10 +72,15 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Serializable
 sealed interface CategorySheet {
+    @Serializable
     data class Menu(val cat: String) : CategorySheet
+    @Serializable
     data class New(val parent: String) : CategorySheet
+    @Serializable
     data class NewSeparator(val cat: String) : CategorySheet
+    @Serializable
     data class NewNote(val cat: String) : CategorySheet
+    @Serializable
     data class Delete(val cat: String) : CategorySheet
 }
 

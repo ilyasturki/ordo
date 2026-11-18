@@ -97,12 +97,19 @@ import kotlin.math.max
 
 @Serializable
 private sealed interface HomeSheet {
+    @Serializable
     data class Add(val pid: String, val cat: String) : HomeSheet
+    @Serializable
     data class Filters(val pid: String) : HomeSheet
+    @Serializable
     data class ProjectMenu(val pid: String) : HomeSheet
+    @Serializable
     data class Group(val pid: String) : HomeSheet
+    @Serializable
     data class OfCategory(val pid: String, val sheet: CategorySheet) : HomeSheet
+    @Serializable
     data object NewProject : HomeSheet
+    @Serializable
     data object Sync : HomeSheet
 }
 
