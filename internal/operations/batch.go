@@ -150,6 +150,56 @@ func SetTags(p *domain.Project, ids []string, color string) (int, error) {
 	return changed, nil
 }
 
+// SetKinds turns every task among ids into a note (kind "note") or every note into a todo task
+// (kind ""), refusing them all when one task holds what a note can't; separators stay.
+func SetKinds(p *domain.Project, ids []string, kind string) (int, error) {
+	if kind != "" && kind != domain.KindNote {
+		return 0, ErrInvalidKind
+	}
+	var rows []*domain.Task
+	for _, t := range taggedRows(p, ids) {
+		if !t.IsSeparator() && t.Kind != kind {
+			rows = append(rows, t)
+		}
+	}
+	if len(rows) == 0 {
+		return 0, ErrNoChange
+	}
+	if kind == domain.KindNote {
+		for _, t := range rows {
+			if err := noteRefusal(p, *t); err != nil {
+				return 0, err
+			}
+		}
+	}
+	for _, t := range rows {
+		t.Kind, t.Status, t.Priority, t.EstimateMinutes, t.CompletionDate = kind, "", "", 0, ""
+		if kind == "" {
+			t.Status = domain.StatusTodo
+		}
+		t.UpdatedAt = domain.NowTimestamp()
+	}
+	return len(rows), nil
+}
+
+func noteRefusal(p *domain.Project, t domain.Task) error {
+	switch {
+	case t.ParentID != "":
+		return refuse("%s is a subtask, and a note doesn't nest: un-nest it first", quote(t.Title))
+	case strings.Contains(t.Description, "!["):
+		return refuse("%s has images, and a note holds one line of text", quote(t.Title))
+	case t.Description != "":
+		return refuse("%s has a description, and a note holds one line of text", quote(t.Title))
+	}
+	ci, _, _ := LocateTask(p, t.ID)
+	for _, c := range p.Categories[ci].Tasks {
+		if c.ParentID == t.ID {
+			return refuse("%s has subtasks, and a note doesn't nest", quote(t.Title))
+		}
+	}
+	return nil
+}
+
 // SetEstimates sets minutes on every task among ids and counts the ones it changed.
 func SetEstimates(p *domain.Project, ids []string, minutes int) (int, error) {
 	if minutes < 0 {

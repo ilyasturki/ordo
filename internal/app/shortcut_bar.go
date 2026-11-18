@@ -43,6 +43,7 @@ var visualShortcuts = []ui.Hint{
 	{Key: "Y", Label: "markdown"},
 	{Key: "x", Label: "cut"},
 	{Key: "d", Label: "delete"},
+	{Key: "c", Label: "task/note"},
 	{Key: "esc", Label: "exit"},
 }
 

@@ -68,6 +68,12 @@ var taskFields = []field[domain.Task]{
 	}, func(d *domain.Task, s domain.Task) { d.Priority = s.Priority }},
 	{"estimate", func(t domain.Task) string { return minutes(t.EstimateMinutes) }, func(d *domain.Task, s domain.Task) { d.EstimateMinutes = s.EstimateMinutes }},
 	{"mark", func(t domain.Task) string { return orNone(t.TagColor) }, func(d *domain.Task, s domain.Task) { d.TagColor = s.TagColor }},
+	{"kind", func(t domain.Task) string {
+		if t.Kind == "" {
+			return "task"
+		}
+		return t.Kind
+	}, func(d *domain.Task, s domain.Task) { d.Kind = s.Kind }},
 }
 
 var categoryFields = []field[domain.Category]{

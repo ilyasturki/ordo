@@ -67,6 +67,7 @@ var appliers = map[string]applier{
 	"status.set":       setStatus,
 	"priority.set":     setPriority,
 	"tag.set":          setTag,
+	"task.kind":        setKind,
 	"estimate.set":     setEstimate,
 	"task.nest":        nestRows(true),
 	"task.unnest":      nestRows(false),
@@ -408,6 +409,20 @@ func setTag(p *domain.Project, op Op) (Outcome, error) {
 		what = "Tag removed"
 	}
 	return Outcome{Msg: onMany(what, n)}, nil
+}
+
+func setKind(p *domain.Project, op Op) (Outcome, error) {
+	if err := present(p, op.IDs); err != nil {
+		return Outcome{}, err
+	}
+	n, err := SetKinds(p, op.IDs, op.Value)
+	if err != nil {
+		return Outcome{}, err
+	}
+	if op.Value == domain.KindNote {
+		return Outcome{Msg: plural(n, "Turned into a note", "Turned into %d notes")}, nil
+	}
+	return Outcome{Msg: plural(n, "Turned into a task", "Turned into %d tasks")}, nil
 }
 
 func setEstimate(p *domain.Project, op Op) (Outcome, error) {

@@ -22,6 +22,8 @@ func Undo(before, after domain.Project, op Op) []Op {
 		return undoText(before, after, op)
 	case "status.set", "priority.set", "tag.set", "estimate.set":
 		return undoValues(before, after, op)
+	case "task.kind":
+		return undoKind(before, after, op)
 	case "task.delete":
 		return undoDelete(before, after)
 	case "task.place", "task.move":
@@ -112,6 +114,36 @@ func undoValues(before, after domain.Project, op Op) []Op {
 			ops = append(ops, Op{Action: op.Action, Value: value})
 		}
 		ops[i].IDs = append(ops[i].IDs, id)
+	}
+	return ops
+}
+
+// undoKind turns each row back, then gives the former tasks back their status, priority and estimate.
+func undoKind(before, after domain.Project, op Op) []Op {
+	var ops []Op
+	at := make(map[string]int)
+	for _, id := range op.IDs {
+		old, ok := rowOf(&before, id)
+		now, _ := rowOf(&after, id)
+		if !ok || old.Kind == now.Kind {
+			continue
+		}
+		i, seen := at[old.Kind]
+		if !seen {
+			i, at[old.Kind] = len(ops), len(ops)
+			ops = append(ops, Op{Action: "task.kind", Value: old.Kind})
+		}
+		ops[i].IDs = append(ops[i].IDs, id)
+	}
+	if len(ops) == 0 {
+		return nil
+	}
+	turned := Clone(after)
+	for _, back := range ops {
+		_, _ = Apply(&turned, back)
+	}
+	for _, action := range []string{"status.set", "priority.set", "estimate.set"} {
+		ops = append(ops, undoValues(before, turned, Op{Action: action, IDs: op.IDs})...)
 	}
 	return ops
 }

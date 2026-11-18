@@ -279,6 +279,20 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
                     Box {
                         IconButton(onClick = { menu = "more" }) { Icon(Icons.More, "More") }
                         DropdownMenu(expanded = menu == "more", onDismissRequest = { menu = "" }) {
+                            if (!task.separator) {
+                                DropdownMenuItem(
+                                    text = { Text(if (task.note) "Turn into task" else "Turn into note") },
+                                    leadingIcon = { Icon(if (task.note) Icons.Todo else Icons.Note, null) },
+                                    onClick = {
+                                        menu = ""
+                                        scope.launch {
+                                            saveTitle()
+                                            saveDetails()
+                                            engine.edit(pid, Ops.kind(tid, !task.note))
+                                        }
+                                    },
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text("Delete") },
                                 leadingIcon = { Icon(Icons.Delete, null) },

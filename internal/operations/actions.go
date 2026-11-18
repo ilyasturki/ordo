@@ -34,6 +34,7 @@ var Actions = []Action{
 	{"tag.cycle", "Cycle tag", TUI},
 	{"tag.set", "Set tag", Both},
 	{"tag.paste", "Paste tag", TUI},
+	{"task.kind", "Turn a task into a note or back", Both},
 	{"estimate.set", "Set estimate", Both},
 	{"task.nest", "Nest under the task above", Both},
 	{"task.unnest", "Un-nest", Both},

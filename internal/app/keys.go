@@ -95,6 +95,8 @@ var normalBindings = []keyBinding{
 		action: void((*model).startAddingSeparator)},
 	{keys: []string{"o", "_"}, display: "o / _", desc: "add note", section: sectionTasks,
 		action: void((*model).startAddingNote)},
+	{keys: []string{"c"}, desc: "turn a task into a note, or back", section: sectionTasks,
+		action: void((*model).convertSelected)},
 	{keys: []string{"enter"}, desc: "edit", section: sectionTasks,
 		action: func(m *model) tea.Cmd {
 			if m.toggleHiddenTasks() {

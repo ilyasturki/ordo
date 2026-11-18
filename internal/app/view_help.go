@@ -106,6 +106,7 @@ var helpModeSections = []helpSection{
 			{keys: "> / <", desc: "nest / un-nest the selection"},
 			{keys: "o", desc: "swap which end moves"},
 			{keys: "space", desc: "cycle status of every row"},
+			{keys: "c", desc: "turn the tasks into notes, or the notes into tasks"},
 			{keys: "y / Y", desc: "copy / copy as markdown"},
 			{keys: "x", desc: "cut (p moves it, esc cancels)"},
 			{keys: "d", desc: "delete (asks first)"},

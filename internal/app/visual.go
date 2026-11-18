@@ -800,6 +800,9 @@ func (m model) handleVisualKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "T":
 		m.visualStartTagEdit()
 		return m, nil
+	case "c":
+		m.visualConvert()
+		return m, nil
 	case "p":
 		m.visualPasteTag()
 		return m, nil

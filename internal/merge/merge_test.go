@@ -48,6 +48,19 @@ func TestDifferentRowsAndFieldsMergeWithoutACollision(t *testing.T) {
 	assert.Equal(t, domain.StatusCompleted, res.Project.Categories[0].Tasks[0].Status)
 }
 
+func TestATaskTurnedIntoANoteMergesWithAnEditElsewhere(t *testing.T) {
+	base := project(row("a", "A"), row("b", "B"))
+	mine := edit(base, func(c *domain.Category) { c.Tasks[0].Kind, c.Tasks[0].Status = domain.KindNote, "" })
+	theirs := edit(base, func(c *domain.Category) { c.Tasks[1].Title = "B theirs" })
+
+	res := Three(base, mine, theirs)
+
+	assert.Empty(t, res.Collisions)
+	got := res.Project.Categories[0].Tasks[0]
+	assert.True(t, got.IsNote())
+	assert.Empty(t, got.Status)
+}
+
 func TestTheSameValueOnBothSidesIsNoCollision(t *testing.T) {
 	base := project(row("a", "A"))
 	both := edit(base, func(c *domain.Category) { c.Tasks[0].Title = "Same" })

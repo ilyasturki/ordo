@@ -401,6 +401,30 @@ class SyncEngineTest {
     }
 
     @Test
+    fun aTaskTurnedIntoANoteReachesTheServerAndUndoBringsItBack() = test {
+        val e = paired(engine())
+        val snacks = Collections.synchronizedList(mutableListOf<Snack>())
+        val collecting = launch { e.snacks.collect { snacks += it } }
+        assertTrue(e.edit(PID, Ops.kind(RECURRING, note = true)).applied)
+        assertTrue(e.task(RECURRING).note)
+        assertEquals(Round.OK, e.sync())
+        val note = serverTask(RECURRING)
+        assertTrue(note.note)
+        assertEquals("", note.priority)
+        val undo = withTimeout(5_000) {
+            while (snacks.none { it.action == "Undo" }) kotlinx.coroutines.delay(20)
+            snacks.first { it.action == "Undo" }
+        }
+        undo.run!!()
+        assertFalse(e.task(RECURRING).note)
+        assertEquals("trivial", e.task(RECURRING).priority)
+        assertEquals(Round.OK, e.sync())
+        assertEquals("todo", serverTask(RECURRING).status)
+        assertEquals("trivial", serverTask(RECURRING).priority)
+        collecting.cancel()
+    }
+
+    @Test
     fun undoBringsADeletedCategoryBackOnTheServerToo() = test {
         val e = paired(engine())
         val names = { p: Project -> p.categories.map { it.name } }

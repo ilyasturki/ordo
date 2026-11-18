@@ -78,6 +78,7 @@ An op names its rows by ID and says where they end up, never how far they moved,
 | `status.set` | `ids`, `value` | `todo`, `in_progress`, `completed` or `cancelled`. |
 | `priority.set` | `ids`, `value` | A priority, or empty for medium. `medium` from an older client lands as empty. |
 | `tag.set` | `ids`, `value` | A tag mark, or empty to clear it, on tasks, separators and notes. A `-diamond` name from an older client lands as its colour's dot. A server from before 0.14.3 leaves a separator or a note untagged and answers no change. |
+| `task.kind` | `ids`, `value` | `note` turns the tasks into notes, which keep their title and tag and drop their status, priority and estimate; empty turns the notes into `todo` tasks. Separators stay. A task with a description, an image or subtasks, or a subtask, can't become a note: the op is `refused` for every row. |
 | `estimate.set` | `ids`, `value` | Minutes, `0` to clear. |
 | `task.place` | `ids`, `cat`, `parent`, `before` | Moves the rows' blocks above `before` in `cat`, under `parent` when set, or last without `before`. |
 | `task.move` | `ids`, `cat` | Moves the rows' blocks last in `cat`. |

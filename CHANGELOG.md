@@ -25,6 +25,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - A save no longer overwrites a version Syncthing put in place while the save was writing: the TUI merges it with your edits, and the CLI and `ordo serve` redo their change on it. See [`docs/file-format.md`](docs/file-format.md#writing-a-file)
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
+- `c` turns a task into a note and a note into a task, on the cursor's row or a visual range, in one undo step. A task loses its status, priority and estimate; one with a description, an image or subtasks, or a subtask, stays a task, and the status line says why. In the app, a task's ⋮ has Turn into note, and a note's Turn into task. A server from before this release refuses it
 - `o` adds a note below the cursor, like `_`, in one press on any keyboard layout
 
 ### Fixed
