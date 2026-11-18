@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/domain"
@@ -169,25 +167,37 @@ func (m model) handleMovePickerKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
 	if p.filtering {
 		return m.handleMovePickerFilterKey(msg)
 	}
-	switch msg.String() {
-	case "q", "esc":
-		m.ui.Modes.ToNormal()
-	case "/":
+	if msg.String() == "/" {
 		p.startFiltering()
-	case "j", "down":
-		p.selected = min(p.selected+1, len(p.targets)-1)
-	case "k", "up":
-		p.selected = max(p.selected-1, 0)
-	case "g", "home":
-		p.selected = 0
-	case "G", "end":
-		p.selected = len(p.targets) - 1
-	case "enter":
+		p.ensureVisible(m.movePickerRows())
+		return m, nil
+	}
+	c := m.moveChoice()
+	act, _ := c.Handle(msg.String())
+	p.selected = c.Selected
+	switch act {
+	case ui.ChoiceCancelled:
+		m.ui.Modes.ToNormal()
+	case ui.ChoicePicked:
 		m.pickMoveTarget()
 		return m, nil
 	}
 	p.ensureVisible(m.movePickerRows())
 	return m, nil
+}
+
+// moveChoice numbers the targets while no filter is typed: digits go to the filter.
+func (m model) moveChoice() ui.Choice {
+	p := m.ui.MovePicker
+	c := ui.Choice{Title: p.title, Selected: p.selected, Numbered: !p.filtering}
+	for _, t := range p.targets {
+		opt := ui.ChoiceOption{Label: t.label}
+		if p.query != "" {
+			opt.Label, opt.Match = t.path, p.query
+		}
+		c.Options = append(c.Options, opt)
+	}
+	return c
 }
 
 func (m model) handleMovePickerFilterKey(msg tea.KeyPressMsg) (model, tea.Cmd) {
@@ -320,9 +330,9 @@ func (m *model) stayAnchor(moving map[string]bool) selection.Position {
 	return selection.Position{Kind: selection.FocusProject}
 }
 
-// movePickerRows leaves room for the dialog's border, padding, title, filter prompt and hints.
+// movePickerRows leaves room for the dialog's border, padding, title, filter prompt and the ↑↓ more rows.
 func (m model) movePickerRows() int {
-	rows := m.ui.Screen.Height - 12
+	rows := m.ui.Screen.Height - 10
 	if m.ui.MovePicker.filtering {
 		rows--
 	}
@@ -339,24 +349,11 @@ func (p *MovePickerState) ensureVisible(rows int) {
 	p.offset = max(0, min(p.offset, len(p.targets)-rows))
 }
 
-// movePickerWidth is measured over the whole list, so filtering never resizes the dialog.
-func (m model) movePickerWidth(hints []ui.Hint) int {
-	p := m.ui.MovePicker
-	width := max(ansi.StringWidth(p.title), lipgloss.Width(ui.RenderHints(hints)), 24)
-	for _, t := range p.all {
-		width = max(width, 2+ansi.StringWidth(t.label), 2+ansi.StringWidth(t.path))
-	}
-	return min(width, safeWidth(m.ui.Screen.Width, 12))
-}
-
 func (m model) movePickerView() string {
 	p := m.ui.MovePicker
-	hints := []ui.Hint{{Key: "enter", Label: "move"}, {Key: "/", Label: "filter"}, {Key: "esc", Label: "cancel"}}
-	width := m.movePickerWidth(hints)
-	if p.filtering {
-		hints = []ui.Hint{{Key: "enter", Label: "move"}, {Key: "esc", Label: "clear"}}
-	}
-	lines := []string{ui.DialogTitleStyle.Render(p.title), ""}
+	width := m.dialogWidth()
+	c := m.moveChoice()
+	lines := c.Head(width)
 	if p.filtering {
 		lines = append(lines, m.filterPromptRow(p.filter, p.query, len(p.targets), width))
 	}
@@ -365,23 +362,10 @@ func (m model) movePickerView() string {
 		lines = append(lines, ui.MutedStyle.Render(fmt.Sprintf("  ↑ %d more", p.offset)))
 	}
 	for i := p.offset; i < end; i++ {
-		label := p.targets[i].label
-		if p.query != "" {
-			label = p.targets[i].path
-		}
-		line := ansi.Truncate(label, width-2, ui.Ellipsis)
-		if i == p.selected {
-			lines = append(lines, ui.SelectedStyle.Render("> "+line))
-			continue
-		}
-		if p.query != "" {
-			line = ui.HighlightMatches(line, p.query, lipgloss.NewStyle(), ui.SearchMatchStyle)
-		}
-		lines = append(lines, "  "+line)
+		lines = append(lines, c.Row(i, width, m.ui.Screen.WindowFocused))
 	}
 	if end < len(p.targets) {
 		lines = append(lines, ui.MutedStyle.Render(fmt.Sprintf("  ↓ %d more", len(p.targets)-end)))
 	}
-	lines = append(lines, "", ui.RenderHints(hints))
-	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
+	return m.dialogStyle().Render(strings.Join(lines, "\n"))
 }

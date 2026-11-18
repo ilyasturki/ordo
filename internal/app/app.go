@@ -644,63 +644,58 @@ func scrollDialogKey(key string, offset *int, height, maxScroll int) bool {
 	return false
 }
 
+// listChoice is a picker over labels, picked by digit: their first letters repeat.
+func listChoice(title string, labels []string, selected int) ui.Choice {
+	c := ui.Choice{Title: title, Selected: selected, Numbered: true}
+	for _, l := range labels {
+		c.Options = append(c.Options, ui.ChoiceOption{Label: l})
+	}
+	return c
+}
+
+func (m *model) handleListKey(key string, c ui.Choice, selected *int) bool {
+	act, _ := c.Handle(key)
+	*selected = c.Selected
+	if act == ui.ChoicePicked || act == ui.ChoiceCancelled {
+		m.ui.Modes.ToNormal()
+	}
+	return act == ui.ChoicePicked
+}
+
 func (m model) handleEstimatePickerKey(msg tea.KeyPressMsg) model {
-	switch msg.String() {
-	case "q", "esc":
-		m.ui.Modes.ToNormal()
-	case "j", "down":
-		m.ui.EstimatePicker.MoveDown()
-	case "k", "up":
-		m.ui.EstimatePicker.MoveUp()
-	case "enter":
-		m.selectEstimate(m.ui.EstimatePicker.SelectedValue())
-		m.ui.Modes.ToNormal()
+	p := &m.ui.EstimatePicker
+	if m.handleListKey(msg.String(), listChoice("Time Estimate", estimatePresetLabels, p.Selected), &p.Selected) {
+		m.selectEstimate(p.SelectedValue())
 	}
 	return m
 }
 
 func (m model) handleURLPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "q", "esc":
-		m.ui.Modes.ToNormal()
+	p := &m.ui.URLPicker
+	if !m.handleListKey(msg.String(), listChoice("Open", p.Labels(), p.Selected), &p.Selected) {
 		return m, nil
-	case "j", "down":
-		m.ui.URLPicker.MoveDown()
-		return m, nil
-	case "k", "up":
-		m.ui.URLPicker.MoveUp()
-		return m, nil
-	case "enter":
-		link, ok := m.ui.URLPicker.SelectedLink()
-		m.ui.Modes.ToNormal()
-		if !ok {
-			return m, nil
-		}
-		return m, m.openLink(link)
 	}
-	return m, nil
+	link, ok := p.SelectedLink()
+	if !ok {
+		return m, nil
+	}
+	return m, m.openLink(link)
 }
 
 func (m model) handleYankPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "q", "esc":
-		m.ui.Modes.ToNormal()
-		return m, nil
-	case "j", "down":
-		m.ui.YankPicker.MoveDown()
-		return m, nil
-	case "k", "up":
-		m.ui.YankPicker.MoveUp()
-		return m, nil
-	case "enter", "y":
-		it, ok := m.ui.YankPicker.SelectedItem()
-		m.ui.Modes.ToNormal()
-		if !ok {
-			return m, nil
-		}
-		return m, m.copyYankItem(it)
+	p := &m.ui.YankPicker
+	key := msg.String()
+	if key == "y" {
+		key = "enter"
 	}
-	return m, nil
+	if !m.handleListKey(key, listChoice("Yank", p.Labels(), p.Selected), &p.Selected) {
+		return m, nil
+	}
+	it, ok := p.SelectedItem()
+	if !ok {
+		return m, nil
+	}
+	return m, m.copyYankItem(it)
 }
 
 func (m model) handleNormalKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {

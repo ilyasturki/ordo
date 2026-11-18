@@ -19,18 +19,6 @@ func NewEstimatePickerState(currentEstimate int) EstimatePickerState {
 	return EstimatePickerState{Selected: selected}
 }
 
-func (e *EstimatePickerState) MoveUp() {
-	if e.Selected > 0 {
-		e.Selected--
-	}
-}
-
-func (e *EstimatePickerState) MoveDown() {
-	if e.Selected < len(domain.EstimatePresets)-1 {
-		e.Selected++
-	}
-}
-
 func (e *EstimatePickerState) SelectedValue() int {
 	if e.Selected >= 0 && e.Selected < len(domain.EstimatePresets) {
 		return domain.EstimatePresets[e.Selected]

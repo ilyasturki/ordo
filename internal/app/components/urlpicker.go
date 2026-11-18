@@ -14,18 +14,6 @@ func NewURLPickerState(links []Link) URLPickerState {
 	return URLPickerState{Links: links, Selected: 0}
 }
 
-func (u *URLPickerState) MoveUp() {
-	if u.Selected > 0 {
-		u.Selected--
-	}
-}
-
-func (u *URLPickerState) MoveDown() {
-	if u.Selected < len(u.Links)-1 {
-		u.Selected++
-	}
-}
-
 func (u *URLPickerState) SelectedLink() (Link, bool) {
 	if u.Selected < 0 || u.Selected >= len(u.Links) {
 		return Link{}, false

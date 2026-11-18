@@ -184,7 +184,7 @@ func TestMovePickerFilter(t *testing.T) {
 	assert.Equal(t, "v91ui", selectedTarget(m))
 	view := ansi.Strip(m.movePickerView())
 	assert.Contains(t, view, "/ui")
-	assert.Contains(t, view, "> v0.9.1 / ui", "a filtered sub-category shows its path")
+	assert.Contains(t, view, "  v0.9.1 / ui", "a filtered sub-category shows its path")
 
 	m = movePickerKeys(m, "esc")
 	assert.False(t, m.ui.MovePicker.filtering)
@@ -284,10 +284,11 @@ func TestMovePickerScrollsALongList(t *testing.T) {
 	m.startMove()
 	m = movePickerKeys(m, "G")
 	view := ansi.Strip(m.movePickerView())
-	assert.Contains(t, view, "> cat 30")
-	assert.Contains(t, view, "↑ 22 more")
+	assert.Contains(t, view, "cat 30")
+	assert.Equal(t, "c30", selectedTarget(m))
+	assert.Contains(t, view, "↑ 20 more")
 	assert.NotContains(t, view, "cat 01")
 
 	m = sendMsg(m, tea.WindowSizeMsg{Width: m.ui.Screen.Width, Height: 16})
-	assert.Contains(t, ansi.Strip(m.movePickerView()), "> cat 30", "a shrink keeps the selection on screen")
+	assert.Contains(t, ansi.Strip(m.movePickerView()), "cat 30", "a shrink keeps the selection on screen")
 }

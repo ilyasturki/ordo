@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/ui"
 )
 
@@ -140,6 +141,62 @@ func TestClashChooser_JKMoveAndTheMergeNoteFollows(t *testing.T) {
 	hit(m, "n")
 	assert.True(t, m.ui.Modes.IsEdit(), "n goes back to the editor")
 	assert.Empty(t, m.ui.Edit.clash)
+}
+
+func TestMovePicker_DigitsPickWhileDigitsFilterOnceTyping(t *testing.T) {
+	m := newMoveModel(t)
+	require.True(t, m.selectItem(selection.FocusTask, "n2"))
+	m.startMove()
+	assert.Contains(t, ansi.Strip(m.movePickerView()), "  2  ", "rows lead with their digit")
+	want := m.ui.MovePicker.targets[1].categoryID
+	m = movePickerKeys(m, "2")
+	assert.False(t, m.ui.Modes.IsMovePicker())
+	ci, _ := m.findTaskByID("n2")
+	assert.Equal(t, want, m.project.Categories[ci].ID)
+
+	require.True(t, m.selectItem(selection.FocusTask, "n2"))
+	m.startMove()
+	m = movePickerKeys(m, "/", "1")
+	assert.True(t, m.ui.Modes.IsMovePicker(), "a digit is filter text")
+	assert.Equal(t, "1", m.ui.MovePicker.query)
+}
+
+func TestEstimatePicker_DigitsPickAndZeroIsTheTenth(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	require.True(t, m.selectTaskIdx(0, 0))
+	m.openEstimatePicker()
+	require.True(t, m.ui.Modes.IsEstimatePicker())
+	hit(m, "4")
+	assert.True(t, m.ui.Modes.IsNormal())
+	assert.Equal(t, 60, m.project.Categories[0].Tasks[0].EstimateMinutes, "4 is 1 hour")
+
+	m.openEstimatePicker()
+	hit(m, "0")
+	assert.Equal(t, 5*8*60, m.project.Categories[0].Tasks[0].EstimateMinutes, "0 is 5 days")
+
+	m.openEstimatePicker()
+	hit(m, "k", "esc")
+	assert.True(t, m.ui.Modes.IsNormal())
+	assert.Equal(t, 5*8*60, m.project.Categories[0].Tasks[0].EstimateMinutes, "esc changes nothing")
+}
+
+func TestTagPicker_DigitsPickAndSpaceStillTogglesTheBatch(t *testing.T) {
+	p := sampleProject()
+	p.Categories[0].Tasks[0].TagColor = domain.TagGreen
+	p.Categories[0].Tasks[1].TagColor = domain.TagGreen
+	m := newTestModel(t, p)
+	m.ui.Selection.SetSelected(2)
+
+	m.startTagEdit()
+	view := ansi.Strip(m.tagEditView())
+	assert.Contains(t, view, "None")
+	assert.Contains(t, view, "space: all 2")
+	m.handleTagEditKey(keyPress("space"))
+	require.True(t, m.ui.TagEdit.batch)
+	m.handleTagEditKey(keyPress("3"))
+	assert.True(t, m.ui.Modes.IsNormal())
+	assert.Equal(t, domain.TagBlue, m.project.Categories[0].Tasks[0].TagColor)
+	assert.Equal(t, domain.TagBlue, m.project.Categories[0].Tasks[1].TagColor, "the batch took it")
 }
 
 func TestEveryDialogKeepsItsMnemonicsFree(t *testing.T) {

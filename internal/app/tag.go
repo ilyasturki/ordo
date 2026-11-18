@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -93,21 +92,18 @@ func (m *model) beginTagEdit(taskIDs []string, color string) {
 
 func (m *model) handleTagEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	s := &m.ui.TagEdit
-	switch msg.String() {
-	case "esc", "q":
-		m.cancelTagEdit()
-	case "enter":
-		m.finishTagEdit()
-	case "down", "j":
-		if s.colorIdx < len(tagEditColors)-1 {
-			s.colorIdx++
-		}
-	case "up", "k":
-		if s.colorIdx > 0 {
-			s.colorIdx--
-		}
-	case "space":
+	if msg.String() == "space" {
 		s.batch = len(s.batchIDs) > 0 && !s.batch
+		return m, nil
+	}
+	c := m.tagChoice()
+	act, _ := c.Handle(msg.String())
+	s.colorIdx = c.Selected
+	switch act {
+	case ui.ChoiceCancelled:
+		m.cancelTagEdit()
+	case ui.ChoicePicked:
+		m.finishTagEdit()
 	}
 	return m, nil
 }
@@ -145,42 +141,48 @@ func (m *model) finishTagEdit() {
 	}
 }
 
-func (m model) tagEditView() string {
+func (m model) tagChoice() ui.Choice {
 	s := m.ui.TagEdit
 	title := "Edit Tag"
 	if n := len(s.taskIDs); n > 1 {
 		title = fmt.Sprintf("Edit Tag · %d %ss", n, rowsNoun(m.project, s.taskIDs))
 	}
-	lines := []string{ui.DialogTitleStyle.Render(title), ""}
-
-	for i, color := range tagEditColors {
-		marker := "  "
-		if i == s.colorIdx {
-			marker = "> "
+	c := ui.Choice{Title: title, Selected: s.colorIdx, Numbered: true}
+	for _, color := range tagEditColors {
+		opt := ui.ChoiceOption{Label: "None", LeadWidth: 2}
+		opt.Lead = func(selected bool) string {
+			if selected {
+				return ui.GetSelectedStyle(m.ui.Screen.WindowFocused).Render("○ ")
+			}
+			return ui.MutedStyle.Render("○") + " "
 		}
-		var swatch string
-		if color == "" {
-			swatch = ui.MutedStyle.Render("○ None (remove)")
-		} else {
-			style, _ := ui.TagDotStyle(color, false)
-			swatch = style.Render(ui.TagGlyph) + " " + tagColorName(color)
+		if color != "" {
+			opt.Label = tagColorName(color)
+			opt.Lead = func(selected bool) string {
+				if selected {
+					block, _ := ui.TagBlockStyle(color)
+					return block.Render(ui.TagGlyph) + ui.GetSelectedStyle(m.ui.Screen.WindowFocused).Render(" ")
+				}
+				dot, _ := ui.TagDotStyle(color, false)
+				return dot.Render(ui.TagGlyph) + " "
+			}
 		}
-		lines = append(lines, marker+swatch)
+		c.Options = append(c.Options, opt)
 	}
-
-	hints := []ui.Hint{{Key: "enter", Label: "save"}, {Key: "esc", Label: "cancel"}}
 	if n := len(s.batchIDs); n > 0 {
 		box := "[ ]"
 		if s.batch {
 			box = "[x]"
 		}
-		style, _ := ui.TagDotStyle(s.batchColor, false)
-		lines = append(lines, "", fmt.Sprintf("  %s all %d %ss marked %s in %s",
-			box, n, rowsNoun(m.project, s.batchIDs), style.Render(ui.TagGlyph), truncateText(s.batchCat, 30)))
-		hints = append([]ui.Hint{{Key: "space", Label: "whole batch"}}, hints...)
+		dot, _ := ui.TagDotStyle(s.batchColor, false)
+		c.Note = []string{fmt.Sprintf("%s space: all %d %ss marked %s in %s",
+			box, n, rowsNoun(m.project, s.batchIDs), dot.Render(ui.TagGlyph), truncateText(s.batchCat, 30))}
 	}
-	lines = append(lines, "", ui.RenderHints(hints))
-	return m.dialogStyle().Render(strings.Join(lines, "\n"))
+	return c
+}
+
+func (m model) tagEditView() string {
+	return m.choiceView(m.tagChoice())
 }
 
 // copyTagFromSelected grabs the focused task's tag into the tag clipboard so it

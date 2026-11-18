@@ -17,6 +17,8 @@ type ChoiceOption struct {
 	Detail   string
 	Danger   bool
 	Disabled bool
+	// Match highlights a filter's query in the label, in place of the mnemonic.
+	Match string
 	// Lead draws a styled mark before the label, given whether the row is
 	// selected; its plain width is LeadWidth.
 	Lead      func(selected bool) string
@@ -236,7 +238,11 @@ func (c Choice) Row(i, width int, focused bool) string {
 	if detail != "" {
 		room = width - used - ansi.StringWidth(detail)
 	}
-	b.WriteString(mnemonicLabel(o.Label, o.Key, max(room, 1), base, key))
+	if o.Match != "" && !selected {
+		b.WriteString(HighlightMatches(ansi.Truncate(o.Label, max(room, 1), Ellipsis), o.Match, base, SearchMatchStyle))
+	} else {
+		b.WriteString(mnemonicLabel(o.Label, o.Key, max(room, 1), base, key))
+	}
 
 	line := b.String()
 	if detail != "" {

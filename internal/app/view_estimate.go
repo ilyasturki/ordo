@@ -1,10 +1,5 @@
 package app
 
-import (
-	"github.com/ilyasturki/ordo/internal/app/components"
-	"github.com/ilyasturki/ordo/internal/ui"
-)
-
 var estimatePresetLabels = []string{
 	"None",
 	"15 minutes",
@@ -19,10 +14,5 @@ var estimatePresetLabels = []string{
 }
 
 func (m model) estimatePickerView() string {
-	return components.RenderListPicker(
-		"Time Estimate",
-		estimatePresetLabels,
-		m.ui.EstimatePicker.Selected,
-		[]ui.Hint{{Key: "enter", Label: "select"}, {Key: "esc", Label: "cancel"}},
-	)
+	return m.choiceView(listChoice("Time Estimate", estimatePresetLabels, m.ui.EstimatePicker.Selected))
 }

@@ -16,18 +16,6 @@ func NewYankPickerState(items []YankItem) YankPickerState {
 	return YankPickerState{Items: items, Selected: 0}
 }
 
-func (y *YankPickerState) MoveUp() {
-	if y.Selected > 0 {
-		y.Selected--
-	}
-}
-
-func (y *YankPickerState) MoveDown() {
-	if y.Selected < len(y.Items)-1 {
-		y.Selected++
-	}
-}
-
 func (y *YankPickerState) Labels() []string {
 	out := make([]string, len(y.Items))
 	for i, it := range y.Items {
