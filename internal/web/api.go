@@ -135,6 +135,9 @@ func (s *Server) apiPair(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
+	if !s.cookieAllowed(w, r, req.Cookie) {
+		return
+	}
 	token, err := s.auth.Pair(req.Token, requestedName(r, req.Name))
 	if err != nil {
 		s.limiter.fail("pair:" + clientIP(r))
@@ -152,6 +155,18 @@ func requestedName(r *http.Request, name string) string {
 		return name
 	}
 	return deviceName(r)
+}
+
+// cookieAllowed refuses a cookie sign-in from another origin, before it spends a code or a guess.
+func (s *Server) cookieAllowed(w http.ResponseWriter, r *http.Request, cookie bool) bool {
+	if !cookie {
+		return true
+	}
+	if err := s.csrf.Check(r); err != nil {
+		apiError(w, http.StatusForbidden, "Cross-origin request refused")
+		return false
+	}
+	return true
 }
 
 // signedIn answers a new device's token, or sets it as the device cookie when the client asked.
@@ -183,6 +198,9 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil {
 		apiError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	if !s.cookieAllowed(w, r, req.Cookie) {
 		return
 	}
 	token, status, msg := s.signIn(r, req.Passphrase, requestedName(r, req.Name))

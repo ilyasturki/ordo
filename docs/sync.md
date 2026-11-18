@@ -1,6 +1,6 @@
 # Sync API
 
-`ordo serve` answers the Android app under `/api`. The app keeps a copy of every project and a queue of the edits made on it, and edits the copy through `internal/operations`, bound with gomobile (`native/core`), so an edit made with no signal shows at once and reaches the files later. The server replays the queue through the same code, under the same lock as every other writer (see [file-format.md](file-format.md#locks)). Any path outside `/api` answers a short plain-text page saying what the server is; a pairing link opened in a browser says to scan or paste it in the app, and stays unspent.
+`ordo serve` answers the Android app and the web app under `/api`. The app keeps a copy of every project and a queue of the edits made on it, and edits the copy through `internal/operations`, bound with gomobile (`native/core`), so an edit made with no signal shows at once and reaches the files later. The server replays the queue through the same code, under the same lock as every other writer (see [file-format.md](file-format.md#locks)). Any path outside `/api` answers a short plain-text page saying what the server is; a pairing link opened in a browser says to scan or paste it in the app, and stays unspent.
 
 Every answer is JSON, and gzipped for a client that sends `Accept-Encoding: gzip`. An error answers `{"error": "<message for the user>", "protocol": 1}`.
 
@@ -8,7 +8,7 @@ Every answer is JSON, and gzipped for a client that sends `Accept-Encoding: gzip
 
 `GET /api/hello` needs no token. It answers `{"protocol": 1, "has_passphrase": true}`, so the sign-in screen knows whether to offer the passphrase.
 
-`POST /api/pair` takes `{"token": "<code>", "name": "<device name>"}`, where the code is the one `ordo serve pair` prints, or the link around it. It answers `{"token": "<device token>", "protocol": 1}`. The client sends that token on every later request as `Authorization: Bearer <device token>`, and the API answers it from any origin. With `"cookie": true` the server sets the token as an `HttpOnly` cookie and leaves it out of the answer, and a request carrying the cookie must come from the same origin.
+`POST /api/pair` takes `{"token": "<code>", "name": "<device name>"}`, where the code is the one `ordo serve pair` prints, or the link around it. It answers `{"token": "<device token>", "protocol": 1}`. The client sends that token on every later request as `Authorization: Bearer <device token>`, and the API answers it from any origin. With `"cookie": true` the server sets the token as an `HttpOnly` cookie and leaves it out of the answer; it answers 403 to such a request from another origin, without spending the code, and a request carrying the cookie must come from the same origin too.
 
 `POST /api/login` takes `{"passphrase": "<passphrase>", "name": "<device name>"}` and answers like `/api/pair`, `"cookie": true` included.
 

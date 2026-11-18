@@ -360,6 +360,25 @@ func TestAPIPairCanAnswerWithACookie(t *testing.T) {
 	}
 }
 
+func TestAPICookieSignInStaysOnItsOrigin(t *testing.T) {
+	f := newFixture(t)
+	if err := f.auth.SetPassphrase("correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	code, _ := f.auth.NewPairing()
+	cross := []string{"Origin", "https://elsewhere.example", "Sec-Fetch-Site", "cross-site"}
+	if rec := f.api(http.MethodPost, "/api/pair", "", pairRequest{Token: code, Cookie: true}, cross...); rec.Code != http.StatusForbidden || rec.Header().Get("Set-Cookie") != "" {
+		t.Fatalf("cross-site cookie pairing: %d %q", rec.Code, rec.Header().Get("Set-Cookie"))
+	}
+	if rec := f.api(http.MethodPost, "/api/login", "", loginRequest{Passphrase: "correct horse battery", Cookie: true}, cross...); rec.Code != http.StatusForbidden || rec.Header().Get("Set-Cookie") != "" {
+		t.Fatalf("cross-site cookie login: %d %q", rec.Code, rec.Header().Get("Set-Cookie"))
+	}
+	rec := f.api(http.MethodPost, "/api/pair", "", pairRequest{Token: code, Cookie: true}, "Sec-Fetch-Site", "same-origin")
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Header().Get("Set-Cookie"), deviceCookie+"=") {
+		t.Fatalf("the refused attempt spent the code: %d %s", rec.Code, rec.Body)
+	}
+}
+
 func TestAPIWantsADevice(t *testing.T) {
 	f := newFixture(t)
 	for _, bearer := range []string{"", "nobody.nothing"} {
