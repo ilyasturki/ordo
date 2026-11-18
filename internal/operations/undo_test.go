@@ -24,7 +24,6 @@ func undoBoard(t *testing.T) *domain.Project {
 		{Action: "status.set", IDs: []string{"c"}, Value: domain.StatusCompleted},
 		{Action: "priority.set", IDs: []string{"a"}, Value: domain.PriorityHigh},
 		{Action: "tag.set", IDs: []string{"a"}, Value: domain.TagBlue},
-		{Action: "estimate.set", IDs: []string{"b"}, Value: "60"},
 		{Action: "task.description", IDs: []string{"a"}, Text: "notes"},
 	} {
 		if _, err := operations.Apply(p, op); err != nil {
@@ -76,7 +75,6 @@ func TestUndoPutsBackWhatAnOpChanged(t *testing.T) {
 		{"status already held by some", operations.Op{Action: "status.set", IDs: ids("a", "c"), Value: domain.StatusCompleted}, 1},
 		{"priority", operations.Op{Action: "priority.set", IDs: ids("b", "a", "c"), Value: domain.PriorityLow}, 2},
 		{"tag", operations.Op{Action: "tag.set", IDs: ids("a", "d"), Value: domain.TagGreen}, 2},
-		{"estimate", operations.Op{Action: "estimate.set", IDs: ids("b", "c"), Value: "30"}, 2},
 		{"delete non-contiguous rows", operations.Op{Action: "task.delete", IDs: ids("a", "c")}, 2},
 		{"delete adjacent rows", operations.Op{Action: "task.delete", IDs: ids("a", "b")}, 2},
 		{"delete a parent", operations.Op{Action: "task.delete", IDs: ids("b")}, 1},

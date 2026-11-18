@@ -21,11 +21,10 @@ func benchProject(cats, tasksPer int) domain.Project {
 		cat := domain.Category{ID: fmt.Sprintf("c%d", c), Name: fmt.Sprintf("Category number %d", c)}
 		for t := 0; t < tasksPer; t++ {
 			task := domain.Task{
-				ID:              fmt.Sprintf("c%dt%d", c, t),
-				Title:           fmt.Sprintf("Task %d in category %d with a reasonably long title that may wrap", t, c),
-				Status:          statuses[t%len(statuses)],
-				Priority:        prios[t%len(prios)],
-				EstimateMinutes: (t % 5) * 30,
+				ID:       fmt.Sprintf("c%dt%d", c, t),
+				Title:    fmt.Sprintf("Task %d in category %d with a reasonably long title that may wrap", t, c),
+				Status:   statuses[t%len(statuses)],
+				Priority: prios[t%len(prios)],
 			}
 			if t%4 == 0 {
 				task.Description = "A multi-line description.\nWith a second paragraph long enough to wrap across the available width of the terminal."

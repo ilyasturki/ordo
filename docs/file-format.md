@@ -48,8 +48,7 @@ A file in `projects/` is a project only when its name is `<id>.json`, `<id>` is 
           "status": "in_progress",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-06-02T18:40:11Z",
-          "priority": "high",
-          "estimate_minutes": 480
+          "priority": "high"
         }
       ]
     }
@@ -80,7 +79,6 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | `parent_id` | string | Optional. Makes it a sub-category of that category, see [Nesting](#nesting). |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | Optional. |
-| `estimate_minutes` | integer | Optional. Set on the category itself, not summed from its tasks. |
 | `pinned` | boolean | Optional. A pinned category comes before its unpinned siblings, see [Pins](#pins). |
 | `tasks` | array | In display order, separators and notes included. |
 
@@ -96,9 +94,8 @@ Fields marked optional are left out of the file when empty or zero, and a reader
 | `updated_at` | timestamp | Restamped whenever the task changes. |
 | `priority` | string | Optional. `critical`, `high`, `low` or `trivial`; missing means medium. Older builds also wrote `medium`, and kept a missing one apart as no priority: a reader takes `medium` as missing, and ordo drops it on its next save. |
 | `completion_date` | timestamp | Optional. Set when the status becomes `completed`, cleared when it leaves it. |
-| `estimate_minutes` | integer | Optional. |
 | `description` | string | Optional. The one field that may hold newlines and tabs. |
-| `kind` | string | Optional. `separator` turns the row into a divider, `note` into a line of free text; missing means an ordinary task. Either kind keeps only its `title` and `tag_color`: no status, priority, estimate or description. |
+| `kind` | string | Optional. `separator` turns the row into a divider, `note` into a line of free text; missing means an ordinary task. Either kind keeps only its `title` and `tag_color`: no status, priority or description. |
 | `tag_color` | string | Optional. A mark, drawn as a dot, on a task, a separator or a note: `green`, `blue`, `magenta` or `cyan`. Older builds also wrote these names with `-diamond` appended; a reader takes such a name as its colour's dot, and ordo writes the plain name back on its next save. |
 
 Every string is valid UTF-8 with no control characters: nothing below U+0020, no U+007F, nothing from U+0080 to U+009F. `description` is the exception for newline and tab. Ordo strips control characters from any file it loads, since a terminal would run them as commands.
@@ -246,6 +243,8 @@ The number goes up when an older ordo would misread a file, or would lose data b
 ## Unknown fields are dropped
 
 Ordo decodes a project into fixed types and writes back only the fields listed above. A field another app adds survives until ordo next saves that project, then it is gone. Another client writes these fields and no others. A new field lands in ordo first.
+
+`estimate_minutes`, on categories and tasks, was written by builds up to 0.14: ordo reads past it and drops it on its next save. An older build still opens a newer file, and reads a missing estimate as none.
 
 ## Writing a file
 

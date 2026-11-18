@@ -30,11 +30,11 @@ class AddBarTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun bar(name: String, describing: Boolean = false, priority: String = "", tag: String = "", estimate: Int = 0) {
+    private fun bar(name: String, describing: Boolean = false, priority: String = "", tag: String = "") {
         compose.setContent {
             OrdoTheme(dark = false) {
                 Box(Modifier.width(360.dp)) {
-                    AddBar(listOf(Category("c", name)), "c", describing, priority, tag, estimate, true, {}, {}, {}, {}, {}, {})
+                    AddBar(listOf(Category("c", name)), "c", describing, priority, tag, true, {}, {}, {}, {}, {})
                 }
             }
         }
@@ -57,24 +57,24 @@ class AddBarTest {
     @Test
     fun nothingSetFitsOneLine() {
         bar("v1.3.0")
-        assertOneLine("v1.3.0", "Description", "Priority", "Colour", "Estimate")
+        assertOneLine("v1.3.0", "Description", "Priority", "Colour")
     }
 
     @Test
     fun everythingSetFitsOneLine() {
-        bar("v1.3.0", priority = "critical", tag = "magenta", estimate = 2400)
-        assertOneLine("v1.3.0", "Description", "Priority", "Colour", "Estimate")
+        bar("v1.3.0", priority = "critical", tag = "magenta")
+        assertOneLine("v1.3.0", "Description", "Priority", "Colour")
     }
 
     @Test
     fun everythingSetWithTheDescriptionOpenFitsOneLine() {
-        bar("v1.3.0", describing = true, priority = "critical", tag = "magenta", estimate = 2400)
-        assertOneLine("v1.3.0", "Priority", "Colour", "Estimate")
+        bar("v1.3.0", describing = true, priority = "critical", tag = "magenta")
+        assertOneLine("v1.3.0", "Priority", "Colour")
     }
 
     @Test
     fun aLongCategoryNameShortensInsteadOfPushingSaveOff() {
-        bar("Everything that waits for the next release", priority = "trivial", tag = "cyan", estimate = 30)
-        assertOneLine("Everything", "Description", "Priority", "Colour", "Estimate")
+        bar("Everything that waits for the next release", priority = "trivial", tag = "cyan")
+        assertOneLine("Everything", "Description", "Priority", "Colour")
     }
 }

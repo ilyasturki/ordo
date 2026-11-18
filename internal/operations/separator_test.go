@@ -196,11 +196,10 @@ func TestCreateTaskRejectsUnknownKind(t *testing.T) {
 }
 
 // The core of the guard: a separator must never absorb task fields, or the TUI
-// would render a divider that secretly carries a status and an estimate.
+// would render a divider that secretly carries a status and a priority.
 func TestUpdateTaskRejectsTaskFieldsOnSeparator(t *testing.T) {
 	status := domain.StatusCompleted
 	priority := domain.PriorityHigh
-	estimate := 30
 	description := "notes"
 
 	cases := []struct {
@@ -209,7 +208,6 @@ func TestUpdateTaskRejectsTaskFieldsOnSeparator(t *testing.T) {
 	}{
 		{"status", TaskUpdate{Status: &status}},
 		{"priority", TaskUpdate{Priority: &priority}},
-		{"estimate", TaskUpdate{Estimate: &estimate}},
 		{"description", TaskUpdate{Description: &description}},
 	}
 	for _, tc := range cases {
@@ -224,8 +222,7 @@ func TestUpdateTaskRejectsTaskFieldsOnSeparator(t *testing.T) {
 				t.Fatalf("want ErrSeparatorFieldNotAllowed, got %v", err)
 			}
 			stored := p.Categories[0].Tasks[0]
-			if stored.Status != "" || stored.Priority != "" ||
-				stored.EstimateMinutes != 0 || stored.Description != "" {
+			if stored.Status != "" || stored.Priority != "" || stored.Description != "" {
 				t.Fatalf("separator was mutated: %+v", stored)
 			}
 		})

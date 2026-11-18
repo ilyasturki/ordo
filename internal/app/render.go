@@ -99,7 +99,7 @@ func (m model) withEditError(rows string, overhead int) string {
 }
 
 func renderCategoryLine(h categoryHeader, selected bool, width, maxRows int, focused bool, visualMode bool, isCursor bool, searchQuery string, searchMatch lipgloss.Style) string {
-	name, estimateMinutes, aggregateStatus, cut := h.name, h.estimate, h.status, h.cut
+	name, aggregateStatus, cut := h.name, h.status, h.cut
 	prefix := "  " + strings.Repeat(" ", h.indent)
 	if selected {
 		prefix = "> " + strings.Repeat(" ", h.indent)
@@ -155,22 +155,6 @@ func renderCategoryLine(h categoryHeader, selected bool, width, maxRows int, foc
 		}
 	}
 
-	estimateBadge := ""
-	estimateBadgeText := ""
-	if estimateMinutes > 0 {
-		estimateBadgeText = " ~" + domain.FormatEstimate(estimateMinutes)
-		switch {
-		case selected && visualMode && isCursor:
-			estimateBadge = ui.GetVisualCursorStyle(focused).Render(estimateBadgeText)
-		case selected && visualMode:
-			estimateBadge = ui.GetVisualSelectedStyle(focused).Render(estimateBadgeText)
-		case selected:
-			estimateBadge = ui.GetSelectedStyle(focused).Render(estimateBadgeText)
-		default:
-			estimateBadge = ui.MutedStyle.Render(estimateBadgeText)
-		}
-	}
-
 	cutBadge := ""
 	cutBadgeText := ""
 	if cut {
@@ -196,7 +180,7 @@ func renderCategoryLine(h categoryHeader, selected bool, width, maxRows int, foc
 		}
 	}
 
-	suffix := pinBadge + cutBadge + statusBadge + progressBadge + estimateBadge
+	suffix := pinBadge + cutBadge + statusBadge + progressBadge
 
 	if width <= 0 {
 		return style.Render(prefix+foldIndicator) + ui.HighlightMatches(name, searchQuery, style, searchMatch) + suffix
@@ -233,9 +217,6 @@ func categoryNameWidth(width int, h categoryHeader) int {
 	}
 	if h.progress != "" {
 		badges += ansi.StringWidth(" " + h.progress)
-	}
-	if h.estimate > 0 {
-		badges += ansi.StringWidth(" ~" + domain.FormatEstimate(h.estimate))
 	}
 	if h.cut {
 		badges += ansi.StringWidth(ui.CutMark)

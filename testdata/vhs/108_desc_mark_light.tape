@@ -15,7 +15,7 @@ Show
 
 # Descriptions hidden: a bold blue ¶ after each described title, then the
 # description's first line faint in the room the row has left. The wrapped
-# title carries it on its last row, next to ▣ and the estimate.
+# title carries it on its last row, next to ▣.
 Type "g"
 Sleep 200ms
 Type "g"

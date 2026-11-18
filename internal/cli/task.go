@@ -57,14 +57,13 @@ func newTasksCmd() *cobra.Command {
 							continue
 						}
 						tasks = append(tasks, TaskListItem{
-							ID:              task.ID,
-							ParentID:        task.ParentID,
-							Title:           task.Title,
-							Status:          task.Status,
-							Priority:        priorityName(task.Priority),
-							Category:        cliPath(project, ci),
-							EstimateMinutes: task.EstimateMinutes,
-							TagColor:        task.TagColor,
+							ID:       task.ID,
+							ParentID: task.ParentID,
+							Title:    task.Title,
+							Status:   task.Status,
+							Priority: priorityName(task.Priority),
+							Category: cliPath(project, ci),
+							TagColor: task.TagColor,
 						})
 					}
 				}
@@ -136,7 +135,6 @@ func newTaskAddCmd() *cobra.Command {
 		categoryName string
 		parent       string
 		priority     string
-		estimate     string
 		description  string
 	)
 
@@ -154,11 +152,6 @@ func newTaskAddCmd() *cobra.Command {
 				return errors.New("title is required")
 			}
 
-			minutes, err := operations.ParseEstimate(estimate)
-			if err != nil {
-				return err
-			}
-
 			level, err := parsePriority(priority)
 			if err != nil {
 				return err
@@ -173,7 +166,6 @@ func newTaskAddCmd() *cobra.Command {
 				created, err = operations.CreateTask(project, catID, operations.TaskFields{
 					Title:       args[0],
 					Priority:    level,
-					Estimate:    minutes,
 					Description: description,
 					ParentID:    parentID,
 				})
@@ -193,7 +185,6 @@ func newTaskAddCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&categoryName, "category", "C", "", "category: name, parent/name or ID (required without --parent)")
 	cmd.Flags().StringVar(&parent, "parent", "", "add it as a subtask of this task: title or ID")
 	cmd.Flags().StringVar(&priority, "priority", "", "priority: critical|high|medium|low|trivial")
-	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "time estimate: 30, 2h, 1.5h, 2h30m, 2d (8h days)")
 	cmd.Flags().StringVar(&description, "description", "", "description, may span several lines")
 
 	_ = cmd.RegisterFlagCompletionFunc("category", completeCategories)
@@ -237,7 +228,6 @@ func newTaskEditCmd() *cobra.Command {
 	var (
 		title       string
 		priority    string
-		estimate    string
 		description string
 	)
 
@@ -267,13 +257,6 @@ func newTaskEditCmd() *cobra.Command {
 					}
 					u.Priority = &level
 				}
-				if estimate != "" {
-					minutes, err := operations.ParseEstimate(estimate)
-					if err != nil {
-						return err
-					}
-					u.Estimate = &minutes
-				}
 				if cmd.Flags().Changed("description") {
 					u.Description = &description
 				}
@@ -294,7 +277,6 @@ func newTaskEditCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&title, "title", "t", "", "new title")
 	cmd.Flags().StringVar(&priority, "priority", "", "priority: critical|high|medium|low|trivial")
-	cmd.Flags().StringVarP(&estimate, "estimate", "e", "", "time estimate: 30, 2h, 1.5h, 2h30m, 2d (8h days)")
 	cmd.Flags().StringVar(&description, "description", "", `new description, "" clears it`)
 
 	_ = cmd.RegisterFlagCompletionFunc("priority", completePriorities)

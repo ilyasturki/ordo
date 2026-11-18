@@ -96,12 +96,11 @@ func writeProjects(w io.Writer, projects []domain.Project) error {
 
 // CategoryListItem counts a parent's tasks with its sub-categories' ones.
 type CategoryListItem struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	ParentID        string `json:"parent_id,omitempty"`
-	Path            string `json:"path"`
-	TaskCount       int    `json:"task_count"`
-	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ParentID  string `json:"parent_id,omitempty"`
+	Path      string `json:"path"`
+	TaskCount int    `json:"task_count"`
 }
 
 type CategoriesOutput struct {
@@ -116,12 +115,11 @@ func writeCategories(w io.Writer, project domain.Project) error {
 		}
 		for i, c := range categories {
 			output.Categories = append(output.Categories, CategoryListItem{
-				ID:              c.ID,
-				Name:            c.Name,
-				ParentID:        c.ParentID,
-				Path:            cliPath(project, i),
-				TaskCount:       project.TreeTaskCount(i),
-				EstimateMinutes: c.EstimateMinutes,
+				ID:        c.ID,
+				Name:      c.Name,
+				ParentID:  c.ParentID,
+				Path:      cliPath(project, i),
+				TaskCount: project.TreeTaskCount(i),
 			})
 		}
 		return writeJSON(w, output)
@@ -136,9 +134,9 @@ func writeCategories(w io.Writer, project domain.Project) error {
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	if isLong() {
-		fmt.Fprintln(tw, "NAME\tID\tSTATUS\tTASKS\tESTIMATE")
+		fmt.Fprintln(tw, "NAME\tID\tSTATUS\tTASKS")
 	} else {
-		fmt.Fprintln(tw, "NAME\tSTATUS\tTASKS\tESTIMATE")
+		fmt.Fprintln(tw, "NAME\tSTATUS\tTASKS")
 	}
 	for i, c := range categories {
 		name := c.Name
@@ -148,9 +146,9 @@ func writeCategories(w io.Writer, project domain.Project) error {
 		status := formatAggregateStatus(project.TreeAggregateStatus(i))
 		tasks := project.TreeTaskCount(i)
 		if isLong() {
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\n", name, c.ID, status, tasks, formatEstimateCell(c.EstimateMinutes))
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%d\n", name, c.ID, status, tasks)
 		} else {
-			fmt.Fprintf(tw, "%s\t%s\t%d\t%s\n", name, status, tasks, formatEstimateCell(c.EstimateMinutes))
+			fmt.Fprintf(tw, "%s\t%s\t%d\n", name, status, tasks)
 		}
 	}
 	return tw.Flush()
@@ -163,23 +161,15 @@ func formatAggregateStatus(status string) string {
 	return status
 }
 
-func formatEstimateCell(minutes int) string {
-	if minutes <= 0 {
-		return "-"
-	}
-	return formatDuration(minutes)
-}
-
 // TaskListItem names its category by path, which -C resolves back.
 type TaskListItem struct {
-	ID              string `json:"id"`
-	ParentID        string `json:"parent_id,omitempty"`
-	Title           string `json:"title"`
-	Status          string `json:"status"`
-	Priority        string `json:"priority,omitempty"`
-	Category        string `json:"category"`
-	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
-	TagColor        string `json:"tag_color,omitempty"`
+	ID       string `json:"id"`
+	ParentID string `json:"parent_id,omitempty"`
+	Title    string `json:"title"`
+	Status   string `json:"status"`
+	Priority string `json:"priority,omitempty"`
+	Category string `json:"category"`
+	TagColor string `json:"tag_color,omitempty"`
 }
 
 func priorityName(priority string) string {
@@ -215,10 +205,10 @@ func writeTaskList(w io.Writer, tasks []TaskListItem) error {
 
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	if isLong() {
-		fmt.Fprintln(tw, "ID\tCATEGORY\tSTATUS\tPRIORITY\tESTIMATE\tTITLE")
+		fmt.Fprintln(tw, "ID\tCATEGORY\tSTATUS\tPRIORITY\tTITLE")
 		for _, t := range tasks {
 			priority := priorityName(t.Priority)
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", t.ID, t.Category, t.Status, priority, formatEstimateCell(t.EstimateMinutes), listTitle(t))
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", t.ID, t.Category, t.Status, priority, listTitle(t))
 		}
 	} else {
 		fmt.Fprintln(tw, "CATEGORY\tSTATUS\tPRIORITY\tTITLE")
@@ -235,19 +225,18 @@ type TaskDetailOutput struct {
 }
 
 type TaskDetail struct {
-	ID              string      `json:"id"`
-	ParentID        string      `json:"parent_id,omitempty"`
-	Title           string      `json:"title"`
-	Status          string      `json:"status"`
-	Priority        string      `json:"priority,omitempty"`
-	Category        string      `json:"category"`
-	EstimateMinutes int         `json:"estimate_minutes,omitempty"`
-	TagColor        string      `json:"tag_color,omitempty"`
-	CreatedAt       string      `json:"created_at"`
-	UpdatedAt       string      `json:"updated_at"`
-	CompletionDate  string      `json:"completion_date,omitempty"`
-	Description     string      `json:"description,omitempty"`
-	Images          []TaskImage `json:"images,omitempty"`
+	ID             string      `json:"id"`
+	ParentID       string      `json:"parent_id,omitempty"`
+	Title          string      `json:"title"`
+	Status         string      `json:"status"`
+	Priority       string      `json:"priority,omitempty"`
+	Category       string      `json:"category"`
+	TagColor       string      `json:"tag_color,omitempty"`
+	CreatedAt      string      `json:"created_at"`
+	UpdatedAt      string      `json:"updated_at"`
+	CompletionDate string      `json:"completion_date,omitempty"`
+	Description    string      `json:"description,omitempty"`
+	Images         []TaskImage `json:"images,omitempty"`
 }
 
 type TaskImage struct {
@@ -272,19 +261,18 @@ func writeTaskDetail(w io.Writer, project domain.Project, catIdx, taskIdx int, s
 	cat := project.Categories[catIdx]
 	task := cat.Tasks[taskIdx]
 	detail := TaskDetail{
-		ID:              task.ID,
-		ParentID:        task.ParentID,
-		Title:           task.Title,
-		Status:          task.Status,
-		Priority:        priorityName(task.Priority),
-		Category:        cliPath(project, catIdx),
-		EstimateMinutes: task.EstimateMinutes,
-		TagColor:        task.TagColor,
-		CreatedAt:       task.CreatedAt,
-		UpdatedAt:       task.UpdatedAt,
-		CompletionDate:  task.CompletionDate,
-		Description:     task.Description,
-		Images:          taskImages(store, task),
+		ID:             task.ID,
+		ParentID:       task.ParentID,
+		Title:          task.Title,
+		Status:         task.Status,
+		Priority:       priorityName(task.Priority),
+		Category:       cliPath(project, catIdx),
+		TagColor:       task.TagColor,
+		CreatedAt:      task.CreatedAt,
+		UpdatedAt:      task.UpdatedAt,
+		CompletionDate: task.CompletionDate,
+		Description:    task.Description,
+		Images:         taskImages(store, task),
 	}
 
 	if getOutputFormat() == FormatJSON {
@@ -305,9 +293,6 @@ func writeTaskDetail(w io.Writer, project domain.Project, catIdx, taskIdx int, s
 	fmt.Fprintf(w, "Priority: %s\n", detail.Priority)
 	if detail.TagColor != "" {
 		fmt.Fprintf(w, "Tag:      %s\n", detail.TagColor)
-	}
-	if detail.EstimateMinutes > 0 {
-		fmt.Fprintf(w, "Estimate: %s\n", formatDuration(detail.EstimateMinutes))
 	}
 	fmt.Fprintf(w, "Created:  %s\n", detail.CreatedAt)
 	fmt.Fprintf(w, "Updated:  %s\n", detail.UpdatedAt)
@@ -391,29 +376,27 @@ type CategoryDetailOutput struct {
 
 // CategoryDetail counts a parent's tasks with its sub-categories' ones.
 type CategoryDetail struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	ParentID        string `json:"parent_id,omitempty"`
-	Path            string `json:"path"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
-	TaskCount       int    `json:"task_count"`
-	SubCategories   int    `json:"sub_categories,omitempty"`
-	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	ParentID      string `json:"parent_id,omitempty"`
+	Path          string `json:"path"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+	TaskCount     int    `json:"task_count"`
+	SubCategories int    `json:"sub_categories,omitempty"`
 }
 
 func writeCategoryDetail(w io.Writer, project domain.Project, i int) error {
 	cat := project.Categories[i]
 	detail := CategoryDetail{
-		ID:              cat.ID,
-		Name:            cat.Name,
-		ParentID:        cat.ParentID,
-		Path:            cliPath(project, i),
-		CreatedAt:       cat.CreatedAt,
-		UpdatedAt:       cat.UpdatedAt,
-		TaskCount:       project.TreeTaskCount(i),
-		SubCategories:   domain.ChildCount(project.Categories, i),
-		EstimateMinutes: cat.EstimateMinutes,
+		ID:            cat.ID,
+		Name:          cat.Name,
+		ParentID:      cat.ParentID,
+		Path:          cliPath(project, i),
+		CreatedAt:     cat.CreatedAt,
+		UpdatedAt:     cat.UpdatedAt,
+		TaskCount:     project.TreeTaskCount(i),
+		SubCategories: domain.ChildCount(project.Categories, i),
 	}
 
 	if getOutputFormat() == FormatJSON {
@@ -430,9 +413,6 @@ func writeCategoryDetail(w io.Writer, project domain.Project, i int) error {
 		fmt.Fprintf(w, "Sub-categories: %d\n", detail.SubCategories)
 	}
 	fmt.Fprintf(w, "Tasks:   %d\n", detail.TaskCount)
-	if detail.EstimateMinutes > 0 {
-		fmt.Fprintf(w, "Estimate: %s\n", formatDuration(detail.EstimateMinutes))
-	}
 	fmt.Fprintf(w, "Created: %s\n", detail.CreatedAt)
 	if detail.UpdatedAt != "" {
 		fmt.Fprintf(w, "Updated: %s\n", detail.UpdatedAt)
@@ -444,18 +424,6 @@ func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
-}
-
-func formatDuration(minutes int) string {
-	if minutes < 60 {
-		return fmt.Sprintf("%dm", minutes)
-	}
-	hours := minutes / 60
-	mins := minutes % 60
-	if mins == 0 {
-		return fmt.Sprintf("%dh", hours)
-	}
-	return fmt.Sprintf("%dh%dm", hours, mins)
 }
 
 func writeSuccess(w io.Writer, message string) {

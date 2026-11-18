@@ -161,25 +161,6 @@ func TestMovePicker_DigitsPickWhileDigitsFilterOnceTyping(t *testing.T) {
 	assert.Equal(t, "1", m.ui.MovePicker.query)
 }
 
-func TestEstimatePicker_DigitsPickAndZeroIsTheTenth(t *testing.T) {
-	m := newTestModel(t, sampleProject())
-	require.True(t, m.selectTaskIdx(0, 0))
-	m.openEstimatePicker()
-	require.True(t, m.ui.Modes.IsEstimatePicker())
-	hit(m, "4")
-	assert.True(t, m.ui.Modes.IsNormal())
-	assert.Equal(t, 60, m.project.Categories[0].Tasks[0].EstimateMinutes, "4 is 1 hour")
-
-	m.openEstimatePicker()
-	hit(m, "0")
-	assert.Equal(t, 5*8*60, m.project.Categories[0].Tasks[0].EstimateMinutes, "0 is 5 days")
-
-	m.openEstimatePicker()
-	hit(m, "k", "esc")
-	assert.True(t, m.ui.Modes.IsNormal())
-	assert.Equal(t, 5*8*60, m.project.Categories[0].Tasks[0].EstimateMinutes, "esc changes nothing")
-}
-
 func TestTagPicker_DigitsPickAndSpaceStillTogglesTheBatch(t *testing.T) {
 	p := sampleProject()
 	p.Categories[0].Tasks[0].TagColor = domain.TagGreen

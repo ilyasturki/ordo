@@ -510,29 +510,28 @@ type sampleTask struct {
 	title    string
 	status   string
 	priority string
-	estimate int
 }
 
 var sampleTasksByCategory = map[string][]sampleTask{
 	"Feature": {
-		{"Build the main dashboard", domain.StatusInProgress, domain.PriorityHigh, 480},
-		{"Add user preferences panel", domain.StatusTodo, domain.PriorityMedium, 240},
+		{"Build the main dashboard", domain.StatusInProgress, domain.PriorityHigh},
+		{"Add user preferences panel", domain.StatusTodo, domain.PriorityMedium},
 	},
 	"Fix": {
-		{"Resolve login timeout issue", domain.StatusTodo, domain.PriorityHigh, 60},
-		{"Fix date formatting in reports", domain.StatusCompleted, domain.PriorityLow, 30},
+		{"Resolve login timeout issue", domain.StatusTodo, domain.PriorityHigh},
+		{"Fix date formatting in reports", domain.StatusCompleted, domain.PriorityLow},
 	},
 	"Ergonomy": {
-		{"Improve keyboard navigation", domain.StatusInProgress, domain.PriorityMedium, 120},
-		{"Add dark mode support", domain.StatusTodo, domain.PriorityLow, 240},
+		{"Improve keyboard navigation", domain.StatusInProgress, domain.PriorityMedium},
+		{"Add dark mode support", domain.StatusTodo, domain.PriorityLow},
 	},
 	"Documentation": {
-		{"Write getting started guide", domain.StatusTodo, domain.PriorityMedium, 120},
-		{"Document API endpoints", domain.StatusTodo, domain.PriorityLow, 480},
+		{"Write getting started guide", domain.StatusTodo, domain.PriorityMedium},
+		{"Document API endpoints", domain.StatusTodo, domain.PriorityLow},
 	},
 	"Research": {
-		{"Evaluate caching strategies", domain.StatusCompleted, domain.PriorityMedium, 240},
-		{"Investigate performance bottlenecks", domain.StatusTodo, domain.PriorityHigh, 120},
+		{"Evaluate caching strategies", domain.StatusCompleted, domain.PriorityMedium},
+		{"Investigate performance bottlenecks", domain.StatusTodo, domain.PriorityHigh},
 	},
 }
 
@@ -549,7 +548,6 @@ func populateSampleTasks(categories []domain.Category) []domain.Category {
 			}
 			_ = task.SetStatus(s.status)
 			_ = task.SetPriority(s.priority)
-			task.SetEstimate(s.estimate)
 			categories[i].AddTask(task)
 		}
 	}

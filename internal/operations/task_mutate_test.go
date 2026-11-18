@@ -91,24 +91,3 @@ func TestSetTaskPriority_Invalid(t *testing.T) {
 		t.Fatal("expected error for invalid priority")
 	}
 }
-
-func TestSetTaskEstimate(t *testing.T) {
-	p := projectWithTask()
-
-	got, err := operations.SetTaskEstimate(p, "c1", "t1", 120)
-	if err != nil {
-		t.Fatalf("SetTaskEstimate: %v", err)
-	}
-	if got.EstimateMinutes != 120 {
-		t.Fatalf("returned estimate = %d, want 120", got.EstimateMinutes)
-	}
-}
-
-func TestSetTaskEstimate_NegativeRejected(t *testing.T) {
-	p := projectWithTask()
-
-	_, err := operations.SetTaskEstimate(p, "c1", "t1", -5)
-	if !errors.Is(err, operations.ErrNegativeEstimate) {
-		t.Fatalf("err = %v, want ErrNegativeEstimate", err)
-	}
-}

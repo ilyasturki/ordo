@@ -126,7 +126,7 @@ func TestRestoreChecksANote(t *testing.T) {
 func TestTaskKindTurnsTasksIntoNotesAndBack(t *testing.T) {
 	p := outline(t, "cat:a", "x", "y", "--s")
 	x := &p.Categories[0].Tasks[0]
-	x.Status, x.Priority, x.EstimateMinutes, x.CompletionDate, x.TagColor = domain.StatusCompleted, domain.PriorityHigh, 30, "2026-11-18T00:00:00Z", domain.TagBlue
+	x.Status, x.Priority, x.CompletionDate, x.TagColor = domain.StatusCompleted, domain.PriorityHigh, "2026-11-18T00:00:00Z", domain.TagBlue
 
 	op := Op{Action: "task.kind", IDs: []string{"x", "y", "s"}, Value: domain.KindNote}
 	out, err := Apply(p, op)
@@ -134,7 +134,7 @@ func TestTaskKindTurnsTasksIntoNotesAndBack(t *testing.T) {
 		t.Fatalf("out = %+v, err = %v", out, err)
 	}
 	got := p.Categories[0].Tasks[0]
-	if !got.IsNote() || got.Status != "" || got.Priority != "" || got.EstimateMinutes != 0 || got.CompletionDate != "" || got.TagColor != domain.TagBlue {
+	if !got.IsNote() || got.Status != "" || got.Priority != "" || got.CompletionDate != "" || got.TagColor != domain.TagBlue {
 		t.Fatalf("a note keeps its title and tag alone: %+v", got)
 	}
 	if !p.Categories[0].Tasks[2].IsSeparator() {
@@ -176,7 +176,7 @@ func TestTaskKindRefusesWhatANoteCantHold(t *testing.T) {
 func TestTaskKindUndoBringsTheTaskBack(t *testing.T) {
 	p := outline(t, "cat:a", "x", "y")
 	x := &p.Categories[0].Tasks[0]
-	x.Status, x.Priority, x.EstimateMinutes = domain.StatusInProgress, domain.PriorityHigh, 30
+	x.Status, x.Priority = domain.StatusInProgress, domain.PriorityHigh
 	if _, err := Apply(p, Op{Action: "task.kind", IDs: []string{"y"}, Value: domain.KindNote}); err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +192,7 @@ func TestTaskKindUndoBringsTheTaskBack(t *testing.T) {
 		}
 	}
 	got := p.Categories[0].Tasks[0]
-	if !got.IsTask() || got.Status != domain.StatusInProgress || got.Priority != domain.PriorityHigh || got.EstimateMinutes != 30 {
+	if !got.IsTask() || got.Status != domain.StatusInProgress || got.Priority != domain.PriorityHigh {
 		t.Fatalf("undo left %+v", got)
 	}
 	if !p.Categories[0].Tasks[1].IsNote() {

@@ -51,7 +51,6 @@ func TestReplayingAnOpChangesNothingMore(t *testing.T) {
 		{Action: "status.set", IDs: []string{"a", "c"}, Value: domain.StatusCompleted},
 		{Action: "priority.set", IDs: []string{"a"}, Value: domain.PriorityHigh},
 		{Action: "tag.set", IDs: []string{"a"}, Value: domain.TagBlue},
-		{Action: "estimate.set", IDs: []string{"a"}, Value: "60"},
 		{Action: "task.place", IDs: []string{"c"}, Cat: "c1", Parent: "b", Before: ""},
 		{Action: "task.place", IDs: []string{"a"}, Cat: "c2", Before: "d"},
 		{Action: "task.move", IDs: []string{"b"}, Cat: "c2"},
@@ -162,7 +161,6 @@ func TestAnEditToRowsDeletedElsewhereIsGone(t *testing.T) {
 		{Action: "status.cycle", IDs: []string{"x"}},
 		{Action: "priority.set", IDs: []string{"x"}, Value: domain.PriorityHigh},
 		{Action: "tag.set", IDs: []string{"x"}, Value: domain.TagBlue},
-		{Action: "estimate.set", IDs: []string{"x"}, Value: "30"},
 		{Action: "task.title", IDs: []string{"x"}, Title: "y"},
 		{Action: "task.place", IDs: []string{"x"}, Cat: "c1"},
 		{Action: "task.move", IDs: []string{"x"}, Cat: "c2"},
@@ -268,6 +266,19 @@ func TestEveryAppActionApplies(t *testing.T) {
 	}
 	if _, err := operations.Apply(board(t), operations.Op{Action: "task.levitate"}); !errors.Is(err, operations.ErrUnknownAction) {
 		t.Fatalf("unknown action: %v", err)
+	}
+}
+
+// An app from before 0.15 still queues estimate.set; the server refuses it and leaves the project be.
+func TestAnOldAppsEstimateIsRefused(t *testing.T) {
+	p := board(t)
+	before := operations.Clone(*p)
+	_, err := operations.Apply(p, operations.Op{Action: "estimate.set", IDs: []string{"a"}, Value: "60"})
+	if operations.VerdictOf(err) != operations.Refused {
+		t.Fatalf("estimate.set: %v, want refused", err)
+	}
+	if !reflect.DeepEqual(*p, before) {
+		t.Fatal("a refused estimate.set changed the project")
 	}
 }
 

@@ -206,16 +206,6 @@ func TestUndo_RenameCategory(t *testing.T) {
 	assert.Equal(t, "Cat A", m.project.Categories[0].Name)
 }
 
-func TestUndo_EstimateChange(t *testing.T) {
-	m := newTestModel(t, sampleProject())
-	m.ui.Selection.MoveTo(2) // t1
-	m.selectEstimate(60)
-	require.Equal(t, 60, m.project.Categories[0].Tasks[0].EstimateMinutes)
-
-	m.undo()
-	assert.Equal(t, 0, m.project.Categories[0].Tasks[0].EstimateMinutes)
-}
-
 func TestUndo_ClearDescription(t *testing.T) {
 	p := sampleProject()
 	p.Categories[0].Tasks[0].Description = "Old desc"

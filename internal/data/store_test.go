@@ -325,6 +325,27 @@ func TestSchemaThreeFileLoadsAndDropsReleasedAt(t *testing.T) {
 	assert.Equal(t, 1, saved.Schema)
 }
 
+func TestLoadDropsEstimatesOnSave(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewStore(tmpDir)
+	require.NoError(t, store.Ensure())
+
+	old := `{"schema":4,"id":"est-1","name":"Old","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-01T00:00:00Z","categories":[
+	  {"id":"c1","name":"Work","created_at":"2024-01-01T00:00:00Z","estimate_minutes":480,"tasks":[
+	    {"id":"a","title":"A","status":"todo","created_at":"x","updated_at":"x","estimate_minutes":90}]}]}`
+	path := filepath.Join(tmpDir, "est-1.json")
+	require.NoError(t, os.WriteFile(path, []byte(old), 0o644))
+
+	project, err := store.LoadProjectByID("est-1")
+	require.NoError(t, err)
+	require.Equal(t, "A", project.Categories[0].Tasks[0].Title)
+	require.NoError(t, store.SaveProjectLocked(project))
+
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), "estimate_minutes")
+}
+
 // A half-upgraded machine sharing a data directory must refuse a file from a
 // newer binary instead of rewriting it through an older format.
 func TestSchemaTooNewRefused(t *testing.T) {

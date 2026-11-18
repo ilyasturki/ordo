@@ -7,7 +7,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/ilyasturki/ordo/internal/app/components"
 	"github.com/ilyasturki/ordo/internal/app/modes"
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/domain"
@@ -187,55 +186,6 @@ func (m *model) decreasePriority() {
 	if m.applied(operations.StepPriority(&m.project, id, false)) {
 		m.storeTaskUpdate()
 		m.holdFilteredOut([]string{id})
-	}
-}
-
-func (m *model) openEstimatePicker() {
-	if !m.ui.Modes.CanPerformAction(modes.ActionChangeEstimate) {
-		return
-	}
-	position, ok := m.selectedPosition()
-	if !ok || position.Kind == selection.FocusProject || position.Kind == selection.FocusSeparator || position.Kind == selection.FocusHidden {
-		return
-	}
-
-	var currentEstimate int
-	if position.Kind == selection.FocusTask {
-		currentEstimate = m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex].EstimateMinutes
-	} else {
-		currentEstimate = m.project.Categories[position.CategoryIndex].EstimateMinutes
-	}
-
-	m.ui.EstimatePicker = components.NewEstimatePickerState(currentEstimate)
-	m.ui.Modes.ToEstimatePicker()
-}
-
-func (m *model) selectEstimate(minutes int) {
-	position, ok := m.selectedPosition()
-	if !ok || position.Kind == selection.FocusProject || position.Kind == selection.FocusSeparator || position.Kind == selection.FocusHidden {
-		return
-	}
-
-	var prev int
-	if position.Kind == selection.FocusTask {
-		prev = m.project.Categories[position.CategoryIndex].Tasks[position.TaskIndex].EstimateMinutes
-	} else {
-		prev = m.project.Categories[position.CategoryIndex].EstimateMinutes
-	}
-	if prev == minutes {
-		return
-	}
-
-	m.recordHistory()
-	cat := m.project.Categories[position.CategoryIndex]
-	var err error
-	if position.Kind == selection.FocusTask {
-		_, err = operations.SetEstimates(&m.project, []string{cat.Tasks[position.TaskIndex].ID}, minutes)
-	} else {
-		err = operations.SetCategoryEstimate(&m.project, cat.ID, minutes)
-	}
-	if m.applied(err) {
-		m.storeTaskUpdate()
 	}
 }
 

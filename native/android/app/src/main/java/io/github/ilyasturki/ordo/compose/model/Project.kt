@@ -23,7 +23,6 @@ data class Task(
     val title: String = "",
     val status: String = Status.TODO,
     @Serializable(with = Priority.Legacy::class) val priority: String = "",
-    @SerialName("estimate_minutes") val estimateMinutes: Int = 0,
     val description: String = "",
     val kind: String = "",
     @SerialName("tag_color") val tagColor: String = "",
@@ -39,7 +38,6 @@ data class Category(
     val id: String,
     val name: String = "",
     @SerialName("parent_id") val parentId: String = "",
-    @SerialName("estimate_minutes") val estimateMinutes: Int = 0,
     val pinned: Boolean = false,
     val tasks: List<Task> = emptyList(),
 )
@@ -115,17 +113,6 @@ object Tags {
 
     fun label(color: String): String =
         if (color == "") "None" else dot(color).replaceFirstChar { it.uppercase() }
-}
-
-object Estimates {
-    val presets = listOf(15, 30, 60, 120, 240, 480, 960, 1440, 2400)
-
-    fun format(minutes: Int): String = when {
-        minutes <= 0 -> ""
-        minutes < 60 -> "${minutes}m"
-        minutes / 60 < 8 -> "${minutes / 60}h"
-        else -> "${minutes / 60 / 8}d"
-    }
 }
 
 private val versionPattern = Regex("""\bv?\d+\.\d+(?:\.\d+)?""")

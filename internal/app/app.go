@@ -348,8 +348,6 @@ func (m model) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handleInfoKey(msg), nil
 	case modes.ModeChangelog:
 		return m.handleChangelogKey(msg), nil
-	case modes.ModeEstimatePicker:
-		return m.handleEstimatePickerKey(msg), nil
 	case modes.ModeURLPicker:
 		return m.handleURLPickerKey(msg)
 	case modes.ModeYankPicker:
@@ -664,14 +662,6 @@ func (m *model) handleListKey(key string, c ui.Choice, selected *int) bool {
 	return act == ui.ChoicePicked
 }
 
-func (m model) handleEstimatePickerKey(msg tea.KeyPressMsg) model {
-	p := &m.ui.EstimatePicker
-	if m.handleListKey(msg.String(), listChoice("Time Estimate", estimatePresetLabels, p.Selected), &p.Selected) {
-		m.selectEstimate(p.SelectedValue())
-	}
-	return m
-}
-
 func (m model) handleURLPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	p := &m.ui.URLPicker
 	if !m.handleListKey(msg.String(), listChoice("Open", p.Labels(), p.Selected), &p.Selected) {
@@ -866,8 +856,6 @@ func (m model) renderView() string {
 		return modal.Render(content, m.infoView())
 	case modes.ModeChangelog:
 		return modal.Render(content, m.changelogView())
-	case modes.ModeEstimatePicker:
-		return modal.Render(content, m.estimatePickerView())
 	case modes.ModeURLPicker:
 		return modal.Render(content, m.urlPickerView())
 	case modes.ModeYankPicker:

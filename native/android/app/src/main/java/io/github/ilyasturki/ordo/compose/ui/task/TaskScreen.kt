@@ -66,7 +66,6 @@ import io.github.ilyasturki.ordo.compose.data.ImageRefused
 import io.github.ilyasturki.ordo.compose.data.Images
 import io.github.ilyasturki.ordo.compose.data.Kept
 import io.github.ilyasturki.ordo.compose.model.Description
-import io.github.ilyasturki.ordo.compose.model.Estimates
 import io.github.ilyasturki.ordo.compose.model.ImageRef
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.model.Priority
@@ -416,7 +415,6 @@ private fun Properties(
                 "status" -> Picker(menu == key, { setMenu("") }, Status.all, Status::label, { edit(Ops.status(id, it), false) }, leading = { Icon(Icons.status(it), null) })
                 "priority" -> Picker(menu == key, { setMenu("") }, Priority.all, Priority::label, { edit(Ops.priority(id, it), true) }, leading = { Icon(Icons.priority(it), null) })
                 "tag" -> Picker(menu == key, { setMenu("") }, Tags.all + "", Tags::label, { edit(Ops.tag(id, it), true) }, leading = { if (it != "") TagDot(it) })
-                else -> Picker(menu == key, { setMenu("") }, Estimates.presets + 0, { if (it == 0) "None" else Estimates.format(it) }, { edit(Ops.estimate(id, it), true) })
             }
         }
     }
@@ -434,9 +432,7 @@ private fun Properties(
             if (task.tagColor == "") MarkChip("Colour", icon = Icons.Palette, onClick = it) else MarkChip(Tags.label(task.tagColor), tag = task.tagColor, onClick = it)
         }
         if (line) return@FlowRow
-        if (task.estimateMinutes > 0) Field("estimate") { MarkChip(Estimates.format(task.estimateMinutes), icon = Icons.Schedule, onClick = it) }
         if (!statusSet) Field("status") { IconButton(onClick = it) { Icon(Icons.status(task.status), "Status: ${Status.label(task.status)}", tint = muted) } }
-        if (task.estimateMinutes == 0) Field("estimate") { IconButton(onClick = it) { Icon(Icons.Schedule, "Add an estimate", tint = muted) } }
     }
 }
 

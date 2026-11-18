@@ -128,8 +128,6 @@ var normalBindings = []keyBinding{
 		action: void((*model).cycleTag)},
 	{keys: []string{"T"}, section: sectionTasks,
 		action: void((*model).startTagEdit)},
-	{keys: []string{"ctrl+t"}, desc: "set time estimate", section: sectionTasks,
-		action: void((*model).openEstimatePicker)},
 	{keys: []string{"d"}, desc: "delete", section: sectionTasks,
 		action: void((*model).deleteSelected)},
 

@@ -393,9 +393,8 @@ func (r *TaskLineRenderer) renderUnselected(task domain.Task, prefix, priorityIc
 	tagStyled := r.tagSegment(task, finished, false)
 	leading := tagStyled + iconStyled
 	imageBadge := r.formatImageBadge(task, false)
-	estimate := r.formatEstimateBadge(task.EstimateMinutes, false)
 	cutBadge, _ := r.formatCutBadge(false)
-	suffix := cutBadge + r.formatProgressBadge(false) + imageBadge + estimate + r.formatFilteredOutBadge(false) + r.formatDescriptionBadge(task.Description, false)
+	suffix := cutBadge + r.formatProgressBadge(false) + imageBadge + r.formatFilteredOutBadge(false) + r.formatDescriptionBadge(task.Description, false)
 	titleStyle := r.muteFilteredOut(r.maybeCut(ui.TaskTitleStyle(task.Priority, task.Status, r.priorityColor)))
 	prefixPart := fmt.Sprintf("%s[%s] ", prefix, status)
 
@@ -446,9 +445,8 @@ func (r *TaskLineRenderer) renderSelected(task domain.Task, prefix, priorityIcon
 	leading := tagStyled + iconStyled
 
 	imageBadge := r.formatImageBadge(task, true)
-	estimate := r.formatEstimateBadge(task.EstimateMinutes, true)
 	cutBadge, _ := r.formatCutBadge(true)
-	suffix := cutBadge + r.formatProgressBadge(true) + imageBadge + estimate + r.formatFilteredOutBadge(true) + r.formatDescriptionBadge(task.Description, true)
+	suffix := cutBadge + r.formatProgressBadge(true) + imageBadge + r.formatFilteredOutBadge(true) + r.formatDescriptionBadge(task.Description, true)
 
 	prefixPart := selectedStyle.Render(prefix+"[") +
 		statusStyle.Render(statusText) +
@@ -469,7 +467,7 @@ func (r *TaskLineRenderer) titleWidth(task domain.Task) int {
 		lead += icon + " "
 	}
 	_, cutText := r.formatCutBadge(false)
-	badges := cutText + r.progressBadgeText() + imageBadgeText(task) + r.estimateBadgeText(task.EstimateMinutes) + r.filteredOutBadgeText() + r.descriptionBadgeText(task.Description)
+	badges := cutText + r.progressBadgeText() + imageBadgeText(task) + r.filteredOutBadgeText() + r.descriptionBadgeText(task.Description)
 	return safeWidth(r.width, ansi.StringWidth(lead+badges))
 }
 
@@ -575,24 +573,6 @@ func safeWidth(totalWidth, overhead int) int {
 	return available
 }
 
-func (r *TaskLineRenderer) formatEstimateBadge(minutes int, selected bool) string {
-	text := r.estimateBadgeText(minutes)
-	if text == "" {
-		return ""
-	}
-	if selected {
-		return r.selectedStyle().Render(text)
-	}
-	return ui.MutedStyle.Render(text)
-}
-
-func (r *TaskLineRenderer) estimateBadgeText(minutes int) string {
-	if minutes == 0 {
-		return ""
-	}
-	return " ~" + formatEstimateShort(minutes)
-}
-
 func (r *TaskLineRenderer) progressBadgeText() string {
 	if r.progress == "" {
 		return ""
@@ -683,16 +663,4 @@ func (r *TaskLineRenderer) formatCutBadge(selected bool) (string, string) {
 		return r.selectedStyle().Render(text), text
 	}
 	return ui.CutBadgeStyle.Render(text), text
-}
-
-func formatEstimateShort(minutes int) string {
-	if minutes < 60 {
-		return fmt.Sprintf("%dm", minutes)
-	}
-	hours := minutes / 60
-	if hours < 8 {
-		return fmt.Sprintf("%dh", hours)
-	}
-	days := hours / 8
-	return fmt.Sprintf("%dd", days)
 }

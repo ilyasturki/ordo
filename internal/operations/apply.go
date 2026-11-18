@@ -68,7 +68,6 @@ var appliers = map[string]applier{
 	"priority.set":     setPriority,
 	"tag.set":          setTag,
 	"task.kind":        setKind,
-	"estimate.set":     setEstimate,
 	"task.nest":        nestRows(true),
 	"task.unnest":      nestRows(false),
 	"task.shift":       shiftRows,
@@ -423,25 +422,6 @@ func setKind(p *domain.Project, op Op) (Outcome, error) {
 		return Outcome{Msg: plural(n, "Turned into a note", "Turned into %d notes")}, nil
 	}
 	return Outcome{Msg: plural(n, "Turned into a task", "Turned into %d tasks")}, nil
-}
-
-func setEstimate(p *domain.Project, op Op) (Outcome, error) {
-	if err := present(p, op.IDs); err != nil {
-		return Outcome{}, err
-	}
-	minutes, err := strconv.Atoi(op.Value)
-	if err != nil {
-		return Outcome{}, ErrNegativeEstimate
-	}
-	n, err := SetEstimates(p, op.IDs, minutes)
-	if err != nil {
-		return Outcome{}, err
-	}
-	what := "Estimate " + domain.FormatEstimate(minutes)
-	if minutes == 0 {
-		what = "Estimate cleared"
-	}
-	return Outcome{Msg: onMany(what, n)}, nil
 }
 
 func nestRows(in bool) applier {

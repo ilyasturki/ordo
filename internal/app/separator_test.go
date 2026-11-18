@@ -151,9 +151,6 @@ func TestSeparatorTaskActionsAreNoOps(t *testing.T) {
 	m.toggleSelectedTask()
 	assert.Equal(t, "", m.project.Categories[0].Tasks[1].Status)
 
-	// Estimate picker: does not open.
-	m.openEstimatePicker()
-	assert.False(t, m.ui.Modes.IsEstimatePicker())
 	assert.True(t, m.ui.Modes.Current() == modes.ModeNormal)
 }
 

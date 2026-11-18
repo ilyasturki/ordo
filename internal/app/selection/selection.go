@@ -9,7 +9,7 @@ const (
 	FocusDescription
 	// FocusSeparator is a separator or a note row living in a category's Tasks
 	// slice (any domain kind). It shares the (CategoryIndex, TaskIndex) addressing
-	// of a task but gates out task-only actions (status, priority, estimate…).
+	// of a task but gates out task-only actions (status, priority, tag…).
 	FocusSeparator
 	// FocusHidden is a category's "N hidden by the filter" row: CategoryIndex and ID are the category's, TaskIndex is -1.
 	FocusHidden

@@ -78,8 +78,7 @@ An op names its rows by ID and says where they end up, never how far they moved,
 | `status.set` | `ids`, `value` | `todo`, `in_progress`, `completed` or `cancelled`. |
 | `priority.set` | `ids`, `value` | A priority, or empty for medium. `medium` from an older client lands as empty. |
 | `tag.set` | `ids`, `value` | A tag mark, or empty to clear it, on tasks, separators and notes. A `-diamond` name from an older client lands as its colour's dot. A server from before 0.14.3 leaves a separator or a note untagged and answers no change. |
-| `task.kind` | `ids`, `value` | `note` turns the tasks into notes, which keep their title and tag and drop their status, priority and estimate; empty turns the notes into `todo` tasks. Separators stay. A task with a description, an image or subtasks, or a subtask, can't become a note: the op is `refused` for every row. |
-| `estimate.set` | `ids`, `value` | Minutes, `0` to clear. |
+| `task.kind` | `ids`, `value` | `note` turns the tasks into notes, which keep their title and tag and drop their status and priority; empty turns the notes into `todo` tasks. Separators stay. A task with a description, an image or subtasks, or a subtask, can't become a note: the op is `refused` for every row. |
 | `task.place` | `ids`, `cat`, `parent`, `before` | Moves the rows' blocks above `before` in `cat`, under `parent` when set, or last without `before`. |
 | `task.move` | `ids`, `cat` | Moves the rows' blocks last in `cat`. |
 | `task.restore` | `cat`, `parent`, `before`, `rows` | Puts back rows a delete removed, with their IDs and every field, above `before` in `cat`, under `parent` when set, or last without `before`. `rows` is one top-level row followed by its subtasks, or one row. |
@@ -130,4 +129,4 @@ The client names an image the way the store does: `<hash>.<ext>`, the first 32 h
 
 ## Protocol
 
-`protocol` goes up when an older client or server would misread the other: an op whose fields change meaning, or an answer shaped differently. A new action doesn't need it: a server that doesn't know an action refuses it with a message to update. Neither does a new field both sides can go without, like `views`: each skips a field it doesn't know.
+`protocol` goes up when an older client or server would misread the other: an op whose fields change meaning, or an answer shaped differently. A new action doesn't need it: a server that doesn't know an action refuses it with a message to update. Nor does a removed one: `estimate.set`, which an app before 0.15 still queues, is `refused`. Neither does a new field both sides can go without, like `views`: each skips a field it doesn't know.

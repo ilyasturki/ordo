@@ -97,7 +97,6 @@ func (m model) taskInfoLines(catIdx, taskIdx int) []string {
 		fmt.Sprintf("Status:   %s", formatStatusLabel(task.Status)),
 		fmt.Sprintf("Priority: %s", formatPriorityLabel(task.Priority)),
 		fmt.Sprintf("Tag:      %s", formatTagInfo(task)),
-		fmt.Sprintf("Estimate: %s", domain.EstimateLabel(task.EstimateMinutes)),
 		fmt.Sprintf("Category: %s", m.infoValue(m.project.CategoryPath(catIdx))),
 	)
 	if parent := domain.ParentIndex(category.Tasks, taskIdx); parent >= 0 {
@@ -229,7 +228,6 @@ func (m model) categoryInfoLines(catIdx int) []string {
 		lines = append(lines, fmt.Sprintf("Sub-categories: %d", subs))
 	}
 	lines = append(lines,
-		fmt.Sprintf("Estimate: %s", domain.EstimateLabel(category.EstimateMinutes)),
 		fmt.Sprintf("Created:  %s", FormatDateWithRelative(category.CreatedAt)),
 	)
 

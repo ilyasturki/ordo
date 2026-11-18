@@ -53,7 +53,6 @@ object Ops {
     fun priority(id: String, value: String) = op("priority.set", "ids" to listOf(id), "value" to value)
     fun tag(id: String, value: String) = op("tag.set", "ids" to listOf(id), "value" to value)
     fun kind(id: String, note: Boolean) = op("task.kind", "ids" to listOf(id), "value" to if (note) "note" else "")
-    fun estimate(id: String, minutes: Int) = op("estimate.set", "ids" to listOf(id), "value" to minutes.toString())
     fun title(id: String, title: String, base: String) =
         op("task.title", "ids" to listOf(id), "title" to title, "base" to base)
     fun description(id: String, text: String, base: String) =

@@ -11,18 +11,18 @@ import (
 )
 
 // badgedProject has a task and a category carrying every badge that eats title
-// width: a labeled tag, a priority icon, an estimate and a description marker.
+// width: a labeled tag, a priority icon and a description marker.
 func badgedProject(title string) domain.Project {
 	return domain.Project{
 		ID:   "p1",
 		Name: "Probe",
 		Categories: []domain.Category{{
 			ID:   "c1",
-			Name: title, EstimateMinutes: 120,
+			Name: title,
 			Tasks: []domain.Task{{
 				ID: "t1", Title: title, Status: domain.StatusInProgress,
 				Priority: domain.PriorityHigh, TagColor: domain.TagGreen,
-				EstimateMinutes: 90, Description: "body",
+				Description: "body",
 			}},
 		}},
 	}

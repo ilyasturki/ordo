@@ -19,7 +19,6 @@
           "updated_at": "2026-10-12T09:00:00Z",
           "priority": "high",
           "tag_color": "blue",
-          "estimate_minutes": 960,
           "description": "Reach Ordo from the phone without a terminal.\nMaterial look, shares the action layer with the TUI."
         },
         {
@@ -29,7 +28,6 @@
           "created_at": "2026-10-12T09:00:00Z",
           "updated_at": "2026-10-12T09:00:00Z",
           "completion_date": "2026-10-15T18:20:00Z",
-          "estimate_minutes": 480,
           "parent_id": "aaaaaaaa-0000-4000-8000-000000000001"
         },
         {
@@ -38,7 +36,6 @@
           "status": "in_progress",
           "created_at": "2026-10-12T09:00:00Z",
           "updated_at": "2026-10-12T09:00:00Z",
-          "estimate_minutes": 240,
           "parent_id": "aaaaaaaa-0000-4000-8000-000000000001"
         },
         {
@@ -47,7 +44,6 @@
           "status": "todo",
           "created_at": "2026-10-12T09:00:00Z",
           "updated_at": "2026-10-12T09:00:00Z",
-          "estimate_minutes": 120,
           "parent_id": "aaaaaaaa-0000-4000-8000-000000000001"
         },
         {
@@ -56,8 +52,7 @@
           "status": "todo",
           "created_at": "2026-10-12T09:00:00Z",
           "updated_at": "2026-10-12T09:00:00Z",
-          "priority": "low",
-          "estimate_minutes": 60
+          "priority": "low"
         },
         {
           "id": "bbbbbbbb-0000-4000-8000-000000000006",
@@ -91,7 +86,6 @@
           "updated_at": "2026-10-12T09:00:00Z",
           "priority": "critical",
           "tag_color": "magenta-diamond",
-          "estimate_minutes": 60,
           "description": "After Syncthing rewrites the file, the cursor lands on the first row instead of the task it was on.\nRepro: edit on the laptop, wait for sync, look at the desktop."
         },
         {
@@ -101,8 +95,7 @@
           "created_at": "2026-10-12T09:00:00Z",
           "updated_at": "2026-10-12T09:00:00Z",
           "completion_date": "2026-10-15T18:20:00Z",
-          "priority": "medium",
-          "estimate_minutes": 30
+          "priority": "medium"
         },
         {
           "id": "aaaaaaaa-0000-4000-8000-000000000011",
@@ -127,8 +120,7 @@
           "created_at": "2026-10-12T09:00:00Z",
           "updated_at": "2026-10-12T09:00:00Z",
           "priority": "medium",
-          "tag_color": "green",
-          "estimate_minutes": 120
+          "tag_color": "green"
         }
       ]
     },
@@ -167,8 +159,7 @@
           "title": "Explain the web app pairing",
           "status": "todo",
           "created_at": "2026-10-12T09:00:00Z",
-          "updated_at": "2026-10-12T09:00:00Z",
-          "estimate_minutes": 60
+          "updated_at": "2026-10-12T09:00:00Z"
         }
       ]
     },
@@ -184,8 +175,7 @@
           "status": "todo",
           "created_at": "2026-10-12T09:00:00Z",
           "updated_at": "2026-10-12T09:00:00Z",
-          "tag_color": "cyan",
-          "estimate_minutes": 30
+          "tag_color": "cyan"
         }
       ],
       "parent_id": "cccccccc-0000-4000-8000-000000000019"
@@ -201,8 +191,7 @@
           "title": "Compare htmx and plain fetch",
           "status": "todo",
           "created_at": "2026-10-12T09:00:00Z",
-          "updated_at": "2026-10-12T09:00:00Z",
-          "estimate_minutes": 120
+          "updated_at": "2026-10-12T09:00:00Z"
         },
         {
           "id": "aaaaaaaa-0000-4000-8000-000000000023",

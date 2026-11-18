@@ -20,7 +20,7 @@ func Undo(before, after domain.Project, op Op) []Op {
 		}
 	case "task.title", "task.description", "task.attach":
 		return undoText(before, after, op)
-	case "status.set", "priority.set", "tag.set", "estimate.set":
+	case "status.set", "priority.set", "tag.set":
 		return undoValues(before, after, op)
 	case "task.kind":
 		return undoKind(before, after, op)
@@ -118,7 +118,7 @@ func undoValues(before, after domain.Project, op Op) []Op {
 	return ops
 }
 
-// undoKind turns each row back, then gives the former tasks back their status, priority and estimate.
+// undoKind turns each row back, then gives the former tasks back their status and priority.
 func undoKind(before, after domain.Project, op Op) []Op {
 	var ops []Op
 	at := make(map[string]int)
@@ -142,7 +142,7 @@ func undoKind(before, after domain.Project, op Op) []Op {
 	for _, back := range ops {
 		_, _ = Apply(&turned, back)
 	}
-	for _, action := range []string{"status.set", "priority.set", "estimate.set"} {
+	for _, action := range []string{"status.set", "priority.set"} {
 		ops = append(ops, undoValues(before, turned, Op{Action: action, IDs: op.IDs})...)
 	}
 	return ops
@@ -154,10 +154,8 @@ func valueOf(action string, t domain.Task) string {
 		return t.Status
 	case "priority.set":
 		return t.Priority
-	case "tag.set":
-		return t.TagColor
 	}
-	return strconv.Itoa(t.EstimateMinutes)
+	return t.TagColor
 }
 
 // undoDelete restores each deleted block above the row that now follows its place. A parent deleted

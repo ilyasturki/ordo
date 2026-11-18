@@ -40,13 +40,6 @@ type field[T any] struct {
 	take  func(dst *T, src T)
 }
 
-func minutes(n int) string {
-	if n == 0 {
-		return "none"
-	}
-	return strconv.Itoa(n) + " min"
-}
-
 func orNone(s string) string {
 	if s == "" {
 		return "none"
@@ -66,7 +59,6 @@ var taskFields = []field[domain.Task]{
 		}
 		return t.Priority
 	}, func(d *domain.Task, s domain.Task) { d.Priority = s.Priority }},
-	{"estimate", func(t domain.Task) string { return minutes(t.EstimateMinutes) }, func(d *domain.Task, s domain.Task) { d.EstimateMinutes = s.EstimateMinutes }},
 	{"mark", func(t domain.Task) string { return orNone(t.TagColor) }, func(d *domain.Task, s domain.Task) { d.TagColor = s.TagColor }},
 	{"kind", func(t domain.Task) string {
 		if t.Kind == "" {
@@ -78,7 +70,6 @@ var taskFields = []field[domain.Task]{
 
 var categoryFields = []field[domain.Category]{
 	{"name", func(c domain.Category) string { return c.Name }, func(d *domain.Category, s domain.Category) { d.Name = s.Name }},
-	{"estimate", func(c domain.Category) string { return minutes(c.EstimateMinutes) }, func(d *domain.Category, s domain.Category) { d.EstimateMinutes = s.EstimateMinutes }},
 	{"pin", func(c domain.Category) string { return strconv.FormatBool(c.Pinned) }, func(d *domain.Category, s domain.Category) { d.Pinned = s.Pinned }},
 }
 
@@ -528,7 +519,7 @@ func Same(a, b domain.Project) bool {
 
 func sameCategory(a, b domain.Category) bool {
 	return a.ID == b.ID && a.ParentID == b.ParentID && a.Name == b.Name &&
-		a.EstimateMinutes == b.EstimateMinutes && a.Pinned == b.Pinned && a.CreatedAt == b.CreatedAt
+		a.Pinned == b.Pinned && a.CreatedAt == b.CreatedAt
 }
 
 // Holds compares whole rows, stamps included: two writers can reach one value alone, not one row.

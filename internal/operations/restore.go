@@ -153,11 +153,8 @@ func checkCategories(cats []domain.Category) error {
 		if i > 0 && (c.ParentID != cats[0].ID || cats[0].ParentID != "") {
 			return errBadCategories
 		}
-		switch {
-		case strings.TrimSpace(c.Name) == "":
+		if strings.TrimSpace(c.Name) == "" {
 			return ErrNameRequired
-		case c.EstimateMinutes < 0:
-			return ErrNegativeEstimate
 		}
 		for _, t := range c.Tasks {
 			if domain.ValidateID(t.ID) != nil || seenRows[t.ID] {
@@ -176,8 +173,6 @@ func checkRow(t domain.Task) error {
 	switch {
 	case !t.IsTask() && !t.IsSeparator() && !t.IsNote():
 		return ErrInvalidKind
-	case t.EstimateMinutes < 0:
-		return ErrNegativeEstimate
 	case !t.IsSeparator() && strings.TrimSpace(t.Title) == "":
 		return ErrTitleRequired
 	}

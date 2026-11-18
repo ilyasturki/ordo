@@ -14,7 +14,6 @@ type TaskFields struct {
 	Title       string
 	Status      string
 	Priority    string
-	Estimate    int
 	Description string
 	TagColor    string
 	// Kind selects the row to build: empty for an ordinary task,
@@ -33,9 +32,9 @@ type TaskFields struct {
 func (f TaskFields) isLineKind() bool { return f.Kind != "" }
 
 // validateLineFields rejects the fields a separator or a note does not have,
-// so a client can't smuggle a status or an estimate onto one.
+// so a client can't smuggle a status or a priority onto one.
 func validateLineFields(f TaskFields) error {
-	if f.Status != "" || f.Priority != "" || f.Estimate != 0 ||
+	if f.Status != "" || f.Priority != "" ||
 		f.Description != "" || f.TagColor != "" || f.ParentID != "" {
 		return ErrSeparatorFieldNotAllowed
 	}
@@ -97,9 +96,6 @@ func createTask(p *domain.Project, categoryID string, f TaskFields, afterTaskID 
 		if err := validateLineFields(f); err != nil {
 			return domain.Task{}, err
 		}
-	}
-	if f.Estimate < 0 {
-		return domain.Task{}, ErrNegativeEstimate
 	}
 	if f.ID != "" {
 		if err := domain.ValidateID(f.ID); err != nil {
@@ -175,7 +171,6 @@ func createTask(p *domain.Project, categoryID string, f TaskFields, afterTaskID 
 			return domain.Task{}, err
 		}
 	}
-	task.SetEstimate(f.Estimate)
 	task.Description = f.Description
 	task.ParentID = parentID
 	if f.TagColor != "" {
@@ -204,7 +199,7 @@ func findTask(p *domain.Project, categoryID, taskID string) (*domain.Task, error
 }
 
 // findRealTask is findTask restricted to ordinary tasks. The field setters go
-// through it so every door into a task's status/priority/estimate refuses a
+// through it so every door into a task's status/priority refuses a
 // separator, not just the partial-update path.
 func findRealTask(p *domain.Project, categoryID, taskID string) (*domain.Task, error) {
 	task, err := findTask(p, categoryID, taskID)
@@ -238,7 +233,6 @@ type TaskUpdate struct {
 	Title       *string
 	Status      *string
 	Priority    *string
-	Estimate    *int
 	Description *string
 }
 
@@ -246,7 +240,7 @@ type TaskUpdate struct {
 // through the domain setters where they exist so validation and the
 // UpdatedAt/CompletionDate bookkeeping hold. An update with no fields set
 // returns the task unchanged along with ErrNoChange, so an empty PATCH doesn't
-// bump the project's timestamp. Returns ErrTitleRequired, ErrNegativeEstimate,
+// bump the project's timestamp. Returns ErrTitleRequired,
 // an invalid status/priority error, domain.ErrCategoryNotFound, or
 // domain.ErrTaskNotFound.
 func UpdateTask(p *domain.Project, categoryID, taskID string, u TaskUpdate) (domain.Task, error) {
@@ -279,9 +273,6 @@ func UpdateTask(p *domain.Project, categoryID, taskID string, u TaskUpdate) (dom
 			return domain.Task{}, err
 		}
 	}
-	if u.Estimate != nil && *u.Estimate < 0 {
-		return domain.Task{}, ErrNegativeEstimate
-	}
 	if u.Status != nil {
 		if err := domain.ValidateStatus(*u.Status); err != nil {
 			return domain.Task{}, err
@@ -293,7 +284,7 @@ func UpdateTask(p *domain.Project, categoryID, taskID string, u TaskUpdate) (dom
 		}
 	}
 
-	if u.Title == nil && u.Status == nil && u.Priority == nil && u.Estimate == nil && u.Description == nil {
+	if u.Title == nil && u.Status == nil && u.Priority == nil && u.Description == nil {
 		return *task, ErrNoChange
 	}
 
@@ -316,9 +307,6 @@ func UpdateTask(p *domain.Project, categoryID, taskID string, u TaskUpdate) (dom
 			return domain.Task{}, err
 		}
 	}
-	if u.Estimate != nil {
-		task.SetEstimate(*u.Estimate)
-	}
 	return *task, nil
 }
 
@@ -326,7 +314,7 @@ func UpdateTask(p *domain.Project, categoryID, taskID string, u TaskUpdate) (dom
 // Any other field in u is rejected rather than ignored, so a client that
 // thinks it set a status finds out it didn't.
 func updateLine(sep *domain.Task, u TaskUpdate) (domain.Task, error) {
-	if u.Status != nil || u.Priority != nil || u.Estimate != nil || u.Description != nil {
+	if u.Status != nil || u.Priority != nil || u.Description != nil {
 		return domain.Task{}, ErrSeparatorFieldNotAllowed
 	}
 	if u.Title == nil {
@@ -375,19 +363,6 @@ func SetTaskPriority(p *domain.Project, categoryID, taskID, priority string) (do
 	if err := task.SetPriority(priority); err != nil {
 		return domain.Task{}, err
 	}
-	return *task, nil
-}
-
-// SetTaskEstimate sets the identified task's estimate in minutes.
-func SetTaskEstimate(p *domain.Project, categoryID, taskID string, minutes int) (domain.Task, error) {
-	if minutes < 0 {
-		return domain.Task{}, ErrNegativeEstimate
-	}
-	task, err := findRealTask(p, categoryID, taskID)
-	if err != nil {
-		return domain.Task{}, err
-	}
-	task.SetEstimate(minutes)
 	return *task, nil
 }
 

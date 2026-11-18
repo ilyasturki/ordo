@@ -27,7 +27,6 @@ func projectWithTask(t *testing.T, title string) (*domain.Project, string, strin
 }
 
 func strPtr(s string) *string { return &s }
-func intPtr(i int) *int       { return &i }
 
 func TestUpdateTaskAppliesSetFields(t *testing.T) {
 	p, cid, tid := projectWithTask(t, "Original")
@@ -36,7 +35,6 @@ func TestUpdateTaskAppliesSetFields(t *testing.T) {
 		Title:       strPtr("  Renamed  "),
 		Status:      strPtr(domain.StatusInProgress),
 		Priority:    strPtr(domain.PriorityHigh),
-		Estimate:    intPtr(45),
 		Description: strPtr("notes\n\n"),
 	})
 	if err != nil {
@@ -48,8 +46,7 @@ func TestUpdateTaskAppliesSetFields(t *testing.T) {
 	if got.Description != "notes" {
 		t.Fatalf("description: want trailing newlines trimmed, got %q", got.Description)
 	}
-	if got.Status != domain.StatusInProgress || got.Priority != domain.PriorityHigh ||
-		got.EstimateMinutes != 45 {
+	if got.Status != domain.StatusInProgress || got.Priority != domain.PriorityHigh {
 		t.Fatalf("fields not applied: %+v", got)
 	}
 }
@@ -99,7 +96,6 @@ func TestUpdateTaskRejectsInvalidFields(t *testing.T) {
 		want   error
 	}{
 		{"blank title", TaskUpdate{Title: strPtr("   ")}, ErrTitleRequired},
-		{"negative estimate", TaskUpdate{Estimate: intPtr(-1)}, ErrNegativeEstimate},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -130,11 +126,11 @@ func TestUpdateTaskRejectionLeavesTaskUntouched(t *testing.T) {
 	p, cid, tid := projectWithTask(t, "Original")
 
 	_, err := UpdateTask(p, cid, tid, TaskUpdate{
-		Title:    strPtr("Renamed"),
-		Estimate: intPtr(-5),
+		Title:  strPtr("Renamed"),
+		Status: strPtr("nope"),
 	})
-	if !errors.Is(err, ErrNegativeEstimate) {
-		t.Fatalf("want ErrNegativeEstimate, got %v", err)
+	if err == nil {
+		t.Fatal("want an error for an invalid status")
 	}
 	if got := p.Categories[0].Tasks[0]; got.Title != "Original" {
 		t.Fatalf("title was written before validation failed: %q", got.Title)

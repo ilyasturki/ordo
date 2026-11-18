@@ -46,7 +46,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import io.github.ilyasturki.ordo.compose.model.Estimates
 import io.github.ilyasturki.ordo.compose.model.Header
 import io.github.ilyasturki.ordo.compose.model.Hidden
 import io.github.ilyasturki.ordo.compose.model.Row
@@ -107,12 +106,8 @@ fun pinContent(tint: Color): Map<String, InlineTextContent> = mapOf(
 
 @Composable
 private fun FoldedMarks(header: Header) {
-    val est = Estimates.format(header.category.estimateMinutes)
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (header.status != "") {
-            MarkChip(if (header.total > 0) "${header.done}/${header.total}" else "", icon = Icons.status(header.status))
-        }
-        if (est != "") MarkChip(est, icon = Icons.Schedule)
+    if (header.status != "") {
+        MarkChip(if (header.total > 0) "${header.done}/${header.total}" else "", icon = Icons.status(header.status))
     }
 }
 
@@ -188,15 +183,13 @@ fun TaskRow(row: Row, child: Boolean, onCycle: () -> Unit, onOpen: () -> Unit, m
                 )
             }
             val pri = t.priority.takeIf { it != "" }
-            val est = Estimates.format(t.estimateMinutes)
-            if (pri != null || est != "" || row.childTotal > 0 || row.images > 0) {
+            if (pri != null || row.childTotal > 0 || row.images > 0) {
                 FlowRow(
                     Modifier.padding(top = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     if (pri != null) PriorityChip(pri, done)
-                    if (est != "") MarkChip(est, icon = Icons.Schedule)
                     if (row.childTotal > 0) MarkChip("${row.childDone}/${row.childTotal}", icon = Icons.Subtask)
                     if (row.images > 0) MarkChip(row.images.toString(), icon = Icons.Image)
                 }

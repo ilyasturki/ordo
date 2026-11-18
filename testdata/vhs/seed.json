@@ -17,7 +17,6 @@
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
           "priority": "high",
-          "estimate_minutes": 480,
           "description": "Top-level overview screen.\n\nShows status counts, recent activity, and the current focus task. Pulls from the existing project store; no new data sources.\n\nOpen questions:\n- refresh cadence\n- empty-state copy\n- how much history to keep"
         },
         {
@@ -26,8 +25,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "medium",
-          "estimate_minutes": 240
+          "priority": "medium"
         },
         {
           "id": "7b976e56-a104-9f6b-8153-86c6e5c4b046",
@@ -35,8 +33,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "high",
-          "estimate_minutes": 120
+          "priority": "high"
         },
         {
           "id": "037e68a2-f47f-b056-c190-09773836e22b",
@@ -44,8 +41,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "medium",
-          "estimate_minutes": 45
+          "priority": "medium"
         },
         {
           "id": "798b67ad-b1ac-06e0-c232-07698ceabb10",
@@ -69,8 +65,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "high",
-          "estimate_minutes": 60
+          "priority": "high"
         },
         {
           "id": "99280e58-5951-99dd-aacd-ffb3bd2e06b3",
@@ -80,7 +75,6 @@
           "updated_at": "2026-05-23T16:37:34Z",
           "priority": "low",
           "completion_date": "2026-05-23T16:37:34Z",
-          "estimate_minutes": 30,
           "description": "Dates rendered in the report footer used the locale default; pinned to ISO 8601."
         },
         {
@@ -89,8 +83,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "high",
-          "estimate_minutes": 60
+          "priority": "high"
         },
         {
           "id": "91c0ce80-df60-f8b6-6aaf-9382b097dd7a",
@@ -98,8 +91,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "medium",
-          "estimate_minutes": 30
+          "priority": "medium"
         }
       ]
     },
@@ -115,8 +107,7 @@
           "status": "in_progress",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "medium",
-          "estimate_minutes": 120
+          "priority": "medium"
         },
         {
           "id": "f54c50cb-f552-cfa6-d5e0-66d0c700b5df",
@@ -124,8 +115,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "low",
-          "estimate_minutes": 240
+          "priority": "low"
         }
       ]
     },
@@ -141,8 +131,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "medium",
-          "estimate_minutes": 120
+          "priority": "medium"
         },
         {
           "id": "4c0eb4cd-99e2-d86d-4f91-719587c8011a",
@@ -150,8 +139,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "low",
-          "estimate_minutes": 480
+          "priority": "low"
         }
       ]
     },
@@ -168,8 +156,7 @@
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
           "priority": "medium",
-          "completion_date": "2026-05-23T16:37:34Z",
-          "estimate_minutes": 240
+          "completion_date": "2026-05-23T16:37:34Z"
         },
         {
           "id": "738faebd-0b2c-8103-af22-716c434c3ae4",
@@ -177,8 +164,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "high",
-          "estimate_minutes": 120
+          "priority": "high"
         },
         {
           "id": "03d35a74-669a-e05c-1d70-c8ca7a269a77",
@@ -186,8 +172,7 @@
           "status": "todo",
           "created_at": "2026-05-23T16:37:34Z",
           "updated_at": "2026-05-23T16:37:34Z",
-          "priority": "low",
-          "estimate_minutes": 180
+          "priority": "low"
         }
       ]
     }

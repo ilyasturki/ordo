@@ -167,10 +167,8 @@ func TestTaskLineRenderer_DescriptionPreview(t *testing.T) {
 	})
 
 	t.Run("the mark sits after the other badges, right before the preview", func(t *testing.T) {
-		estimated := task
-		estimated.EstimateMinutes = 120
-		got := ansi.Strip(NewTaskLineRenderer(80, "text", "full", true).Render(estimated, false))
-		assert.Contains(t, got, "Test task ~2h ¶ First line here")
+		got := ansi.Strip(NewTaskLineRenderer(80, "text", "full", true).WithNesting(0, "1/3").Render(task, false))
+		assert.Contains(t, got, "Test task 1/3 ¶ First line here")
 	})
 
 	t.Run("shown descriptions show neither", func(t *testing.T) {

@@ -147,7 +147,6 @@ var helpMarksSection = helpSection{
 		{keys: "●", desc: "tag dot, green, blue, magenta or cyan: a batch"},
 		{keys: "¶", desc: "has a description, hidden: its first line follows"},
 		{keys: "▣ / ▣2", desc: "one image / two images attached"},
-		{keys: "~1h", desc: "estimate"},
 		{keys: "1/3", desc: "subtasks finished"},
 		{keys: "✂", desc: "cut, p puts it back"},
 		{keys: "━━", desc: "separator"},

@@ -27,7 +27,6 @@ func TestCreateTask_AppendsWithFields(t *testing.T) {
 		Title:       "Write docs",
 		Status:      domain.StatusInProgress,
 		Priority:    domain.PriorityHigh,
-		Estimate:    90,
 		Description: "the body",
 	})
 	if err != nil {
@@ -35,7 +34,7 @@ func TestCreateTask_AppendsWithFields(t *testing.T) {
 	}
 
 	if got.Title != "Write docs" || got.Status != domain.StatusInProgress ||
-		got.Priority != domain.PriorityHigh || got.EstimateMinutes != 90 ||
+		got.Priority != domain.PriorityHigh ||
 		got.Description != "the body" {
 		t.Fatalf("returned task has wrong fields: %+v", got)
 	}
@@ -106,20 +105,6 @@ func TestCreateTask_InvalidPriorityRejected(t *testing.T) {
 	}
 	if n := len(p.Categories[0].Tasks); n != 0 {
 		t.Fatalf("invalid create left %d tasks behind, want 0", n)
-	}
-}
-
-// The JSON API hands CreateTask a raw estimate int (no ParseEstimate), so the
-// verb must reject a negative itself.
-func TestCreateTask_NegativeEstimateRejected(t *testing.T) {
-	p := projectWithCategory("c1")
-
-	_, err := operations.CreateTask(p, "c1", operations.TaskFields{Title: "x", Estimate: -5})
-	if !errors.Is(err, operations.ErrNegativeEstimate) {
-		t.Fatalf("err = %v, want ErrNegativeEstimate", err)
-	}
-	if n := len(p.Categories[0].Tasks); n != 0 {
-		t.Fatalf("negative-estimate create left %d tasks behind, want 0", n)
 	}
 }
 

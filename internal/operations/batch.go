@@ -173,7 +173,7 @@ func SetKinds(p *domain.Project, ids []string, kind string) (int, error) {
 		}
 	}
 	for _, t := range rows {
-		t.Kind, t.Status, t.Priority, t.EstimateMinutes, t.CompletionDate = kind, "", "", 0, ""
+		t.Kind, t.Status, t.Priority, t.CompletionDate = kind, "", "", ""
 		if kind == "" {
 			t.Status = domain.StatusTodo
 		}
@@ -197,40 +197,6 @@ func noteRefusal(p *domain.Project, t domain.Task) error {
 			return refuse("%s has subtasks, and a note doesn't nest", quote(t.Title))
 		}
 	}
-	return nil
-}
-
-// SetEstimates sets minutes on every task among ids and counts the ones it changed.
-func SetEstimates(p *domain.Project, ids []string, minutes int) (int, error) {
-	if minutes < 0 {
-		return 0, ErrNegativeEstimate
-	}
-	changed := 0
-	for _, t := range realTasks(p, ids) {
-		if t.EstimateMinutes == minutes {
-			continue
-		}
-		t.SetEstimate(minutes)
-		changed++
-	}
-	if changed == 0 {
-		return 0, ErrNoChange
-	}
-	return changed, nil
-}
-
-func SetCategoryEstimate(p *domain.Project, categoryID string, minutes int) error {
-	if minutes < 0 {
-		return ErrNegativeEstimate
-	}
-	idx, err := p.FindCategoryByID(categoryID)
-	if err != nil {
-		return err
-	}
-	if p.Categories[idx].EstimateMinutes == minutes {
-		return ErrNoChange
-	}
-	p.Categories[idx].SetEstimate(minutes)
 	return nil
 }
 

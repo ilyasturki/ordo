@@ -102,29 +102,27 @@ func CheckSchema(p Project) error {
 }
 
 type Category struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	ParentID        string `json:"parent_id,omitempty"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at,omitempty"`
-	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
-	Pinned          bool   `json:"pinned,omitempty"`
-	Tasks           []Task `json:"tasks"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ParentID  string `json:"parent_id,omitempty"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at,omitempty"`
+	Pinned    bool   `json:"pinned,omitempty"`
+	Tasks     []Task `json:"tasks"`
 }
 
 type Task struct {
-	ID              string `json:"id"`
-	ParentID        string `json:"parent_id,omitempty"`
-	Title           string `json:"title"`
-	Status          string `json:"status"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
-	Priority        string `json:"priority,omitempty"`
-	CompletionDate  string `json:"completion_date,omitempty"`
-	EstimateMinutes int    `json:"estimate_minutes,omitempty"`
-	Description     string `json:"description,omitempty"`
-	Kind            string `json:"kind,omitempty"`
-	TagColor        string `json:"tag_color,omitempty"`
+	ID             string `json:"id"`
+	ParentID       string `json:"parent_id,omitempty"`
+	Title          string `json:"title"`
+	Status         string `json:"status"`
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
+	Priority       string `json:"priority,omitempty"`
+	CompletionDate string `json:"completion_date,omitempty"`
+	Description    string `json:"description,omitempty"`
+	Kind           string `json:"kind,omitempty"`
+	TagColor       string `json:"tag_color,omitempty"`
 }
 
 // IsSeparator reports whether this task is a separator row rather than a real
@@ -142,8 +140,6 @@ func (t Task) IsNote() bool {
 func (t Task) IsTask() bool {
 	return t.Kind == ""
 }
-
-var EstimatePresets = []int{0, 15, 30, 60, 120, 240, 480, 960, 1440, 2400}
 
 func NowTimestamp() string {
 	return time.Now().UTC().Format(time.RFC3339)
@@ -351,11 +347,6 @@ func (t *Task) DecreasePriority() bool {
 	t.Priority = newPriority
 	t.UpdatedAt = NowTimestamp()
 	return true
-}
-
-func (t *Task) SetEstimate(minutes int) {
-	t.EstimateMinutes = minutes
-	t.UpdatedAt = NowTimestamp()
 }
 
 // NextStatus returns the status one step along the cycle
@@ -609,11 +600,6 @@ func aggregateStatus(tasks iter.Seq[Task]) string {
 		return StatusInProgress
 	}
 	return StatusTodo
-}
-
-func (c *Category) SetEstimate(minutes int) {
-	c.EstimateMinutes = minutes
-	c.UpdatedAt = NowTimestamp()
 }
 
 func (c *Category) AddTask(task Task) {

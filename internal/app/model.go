@@ -108,26 +108,25 @@ type HelpState struct {
 }
 
 type UIState struct {
-	Selection      *selection.Manager
-	Modes          *modes.Machine
-	Screen         Screen
-	Edit           EditState
-	Picker         ProjectPickerState
-	ConfirmDelete  ConfirmDeleteState
-	ConfirmLeave   ConfirmLeaveState
-	Conflict       ConflictState
-	Save           SaveState
-	Options        OptionsState
-	Filter         FilterState
-	Fold           FoldState
-	ExternalEdit   ExternalEditState
-	EstimatePicker components.EstimatePickerState
-	URLPicker      components.URLPickerState
-	YankPicker     components.YankPickerState
-	Help           HelpState
-	Info           InfoState
-	Changelog      InfoState
-	Clipboard      ClipboardState
+	Selection     *selection.Manager
+	Modes         *modes.Machine
+	Screen        Screen
+	Edit          EditState
+	Picker        ProjectPickerState
+	ConfirmDelete ConfirmDeleteState
+	ConfirmLeave  ConfirmLeaveState
+	Conflict      ConflictState
+	Save          SaveState
+	Options       OptionsState
+	Filter        FilterState
+	Fold          FoldState
+	ExternalEdit  ExternalEditState
+	URLPicker     components.URLPickerState
+	YankPicker    components.YankPickerState
+	Help          HelpState
+	Info          InfoState
+	Changelog     InfoState
+	Clipboard     ClipboardState
 	// Writes of Clipboard.Text not yet answered: until they land, p trusts the copy unread.
 	ClipboardWrites int
 	LastWrite       clipboardWrite

@@ -55,8 +55,6 @@ func Explain(err error) (msg string, ok bool) {
 		return "A separator doesn't nest", true
 	case errors.Is(err, domain.ErrNestDepth):
 		return "A subtask can't have subtasks: nesting goes one level deep", true
-	case errors.Is(err, ErrNegativeEstimate):
-		return "Pick an estimate from the list", true
 	}
 	return "", false
 }

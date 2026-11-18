@@ -35,7 +35,6 @@ const foldedMark = "▸"
 
 type categoryHeader struct {
 	name     string
-	estimate int
 	status   string
 	progress string
 	indent   int
@@ -47,12 +46,11 @@ type categoryHeader struct {
 func headerOf(p *domain.Project, ci int, fold *FoldState, cut, showCounts bool) categoryHeader {
 	cat := p.Categories[ci]
 	h := categoryHeader{
-		name:     cat.Name,
-		estimate: cat.EstimateMinutes,
-		status:   cat.AggregateStatus(),
-		folded:   fold != nil && fold.IsFolded(cat.ID),
-		cut:      cut,
-		pinned:   cat.Pinned,
+		name:   cat.Name,
+		status: cat.AggregateStatus(),
+		folded: fold != nil && fold.IsFolded(cat.ID),
+		cut:    cut,
+		pinned: cat.Pinned,
 	}
 	if cat.ParentID != "" {
 		h.indent = nestIndent

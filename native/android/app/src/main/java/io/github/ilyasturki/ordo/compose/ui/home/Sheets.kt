@@ -40,7 +40,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -62,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import io.github.ilyasturki.ordo.compose.model.Category
 import io.github.ilyasturki.ordo.compose.model.Clash
-import io.github.ilyasturki.ordo.compose.model.Estimates
 import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.model.Priority
@@ -243,7 +241,6 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
     var cat by rememberSaveable { mutableStateOf(initialCat) }
     var priority by rememberSaveable { mutableStateOf("") }
     var tag by rememberSaveable { mutableStateOf("") }
-    var estimate by rememberSaveable { mutableIntStateOf(0) }
     var after by rememberSaveable { mutableStateOf("") }
     val pid = entry.id
     val hidden = categories.firstOrNull { it.id == cat }?.let { !filter.taskVisible(Task(id = "", priority = priority, tagColor = tag), it) } == true
@@ -274,7 +271,6 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
         details?.takeIf(String::isNotBlank)?.let { engine.edit(pid, Ops.description(row, it.trim(), ""), quiet = true) }
         if (priority != "") engine.edit(pid, Ops.priority(row, priority), quiet = true)
         if (tag != "") engine.edit(pid, Ops.tag(row, tag), quiet = true)
-        if (estimate > 0) engine.edit(pid, Ops.estimate(row, estimate), quiet = true)
         details = null
         onAdded(cat)
         return true
@@ -315,7 +311,7 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
                 )
             }
             AddBar(
-                categories, cat, details != null, priority, tag, estimate,
+                categories, cat, details != null, priority, tag,
                 canSave = title.isNotBlank() && !hidden,
                 onCategory = { c ->
                     if (c != cat) after = ""
@@ -324,7 +320,6 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
                 onDescription = { details = "" },
                 onPriority = { priority = it },
                 onTag = { tag = it },
-                onEstimate = { estimate = it },
                 onSave = save,
             )
         }
@@ -332,7 +327,7 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
     LaunchedEffect(Unit) { focus.requestFocus() }
 }
 
-// One line at 360dp whatever is set: an unset field is its icon, a set one its value in a compact chip (the priority's arrow, the colour's dot, the estimate).
+// One line at 360dp whatever is set: an unset field is its icon, a set one its value in a compact chip (the priority's arrow, the colour's dot).
 @Composable
 fun AddBar(
     categories: List<Category>,
@@ -340,13 +335,11 @@ fun AddBar(
     describing: Boolean,
     priority: String,
     tag: String,
-    estimate: Int,
     canSave: Boolean,
     onCategory: (String) -> Unit,
     onDescription: () -> Unit,
     onPriority: (String) -> Unit,
     onTag: (String) -> Unit,
-    onEstimate: (Int) -> Unit,
     onSave: () -> Unit,
 ) {
     var menu by remember { mutableStateOf("") }
@@ -380,14 +373,6 @@ fun AddBar(
                     MarkChip("", Modifier.padding(horizontal = 4.dp), tag = tag, name = "Colour", value = Tags.label(tag)) { menu = "tag" }
                 }
                 Picker(menu == "tag", { menu = "" }, listOf("") + Tags.all, Tags::label, onTag, leading = { if (it != "") TagDot(it) }, properties = keepsKeyboard)
-            }
-            Box {
-                if (estimate == 0) {
-                    BarIcon(Icons.Schedule, "Estimate") { menu = "estimate" }
-                } else {
-                    MarkChip(Estimates.format(estimate), Modifier.padding(horizontal = 4.dp), name = "Estimate") { menu = "estimate" }
-                }
-                Picker(menu == "estimate", { menu = "" }, listOf(0) + Estimates.presets, { if (it == 0) "None" else Estimates.format(it) }, onEstimate, properties = keepsKeyboard)
             }
         }
         TextButton(onClick = onSave, enabled = canSave) { Text("Save") }

@@ -13,13 +13,9 @@ var ErrTitleRequired = errors.New("title is required")
 // ErrNameRequired is returned when a category name is empty or whitespace.
 var ErrNameRequired = errors.New("name is required")
 
-// ErrNegativeEstimate is returned when an estimate is below zero. ParseEstimate
-// guards string input; the verbs guard raw ints passed in directly.
-var ErrNegativeEstimate = errors.New("estimate must be zero or greater")
-
 // ErrSeparatorFieldNotAllowed is returned when a write targets a field a
 // separator does not have. A separator is a divider: it carries a label (Title)
-// and nothing else, which is why the TUI blocks status, priority, estimate,
+// and nothing else, which is why the TUI blocks status, priority,
 // description and tags on one. The operations layer enforces the same rule so
 // no caller can turn a divider into a half-task.
 var ErrSeparatorFieldNotAllowed = errors.New("a separator only has a label")

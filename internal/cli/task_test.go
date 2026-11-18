@@ -60,15 +60,14 @@ func findTask(tasks []domain.Task, title string) (domain.Task, bool) {
 	return domain.Task{}, false
 }
 
-func TestTaskAdd_PersistsWithParsedEstimate(t *testing.T) {
+func TestTaskAdd_PersistsWithPriority(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := runCLI(t, dir, "init"); err != nil {
 		t.Fatalf("init: %v", err)
 	}
 
 	if _, err := runCLI(t, dir, "task", "add", "Write docs",
-		"--category", "Feature", "--priority", "high", "--estimate", "2h30m",
-		"--project", "Default"); err != nil {
+		"--category", "Feature", "--priority", "high", "--project", "Default"); err != nil {
 		t.Fatalf("task add: %v", err)
 	}
 
@@ -80,54 +79,30 @@ func TestTaskAdd_PersistsWithParsedEstimate(t *testing.T) {
 	if got.Priority != domain.PriorityHigh {
 		t.Errorf("priority = %q, want high", got.Priority)
 	}
-	if got.EstimateMinutes != 150 {
-		t.Errorf("estimate = %d, want 150 (2h30m)", got.EstimateMinutes)
-	}
 	if got.Status != domain.StatusTodo {
 		t.Errorf("status = %q, want todo", got.Status)
 	}
 }
 
-func TestTaskEdit_AcceptsDayEstimate(t *testing.T) {
+func TestTaskAddAndEdit_RefuseTheEstimateFlag(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := runCLI(t, dir, "init"); err != nil {
 		t.Fatalf("init: %v", err)
 	}
-	if _, err := runCLI(t, dir, "task", "add", "Write docs",
-		"--category", "Feature", "--project", "Default"); err != nil {
+	if _, err := runCLI(t, dir, "task", "add", "kept", "--category", "Feature", "--project", "Default"); err != nil {
 		t.Fatalf("task add: %v", err)
 	}
 
-	if _, err := runCLI(t, dir, "task", "edit", "Write docs",
-		"--estimate", "2d", "--project", "Default"); err != nil {
-		t.Fatalf("task edit -e 2d: %v", err)
+	for _, args := range [][]string{
+		{"task", "add", "bad", "--category", "Feature", "-e", "2h", "--project", "Default"},
+		{"task", "edit", "kept", "--estimate", "2h", "--project", "Default"},
+	} {
+		if _, err := runCLI(t, dir, args...); err == nil || !strings.Contains(err.Error(), "unknown") {
+			t.Errorf("%v: err = %v, want an unknown flag", args, err)
+		}
 	}
-
-	got, _ := findTask(firstCategoryTasks(t, loadDefault(t, dir), "Feature"), "Write docs")
-	if got.EstimateMinutes != 960 {
-		t.Errorf("estimate = %d, want 960 (2 days of 8h)", got.EstimateMinutes)
-	}
-	if shown := domain.FormatEstimate(got.EstimateMinutes); shown != "2d" {
-		t.Errorf("FormatEstimate = %q, want the 2d the edit took", shown)
-	}
-}
-
-// The pre-refactor CLI parsed "-5" as -5 minutes and stored it. The unified
-// parser must reject it — proving the bug fix at the CLI seam.
-func TestTaskAdd_RejectsNegativeEstimate(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := runCLI(t, dir, "init"); err != nil {
-		t.Fatalf("init: %v", err)
-	}
-
-	if _, err := runCLI(t, dir, "task", "add", "bad",
-		"--category", "Feature", "--estimate", "-5", "--project", "Default"); err == nil {
-		t.Fatal("expected task add to fail on negative estimate")
-	}
-
-	tasks := firstCategoryTasks(t, loadDefault(t, dir), "Feature")
-	if _, ok := findTask(tasks, "bad"); ok {
-		t.Fatal(`negative-estimate add persisted task "bad", want it rejected`)
+	if _, ok := findTask(firstCategoryTasks(t, loadDefault(t, dir), "Feature"), "bad"); ok {
+		t.Fatal(`task add with -e persisted "bad"`)
 	}
 }
 
