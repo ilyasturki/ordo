@@ -15,6 +15,7 @@
       ];
       version = nixpkgs.lib.fileContents ./VERSION;
       commit = self.shortRev or self.dirtyShortRev or "none";
+      vendorHash = "sha256-YcV3OAIbedLV/SivDJIxow4qJJxfv7Fgax7TzIjNEmQ=";
       buildDate = self.lastModifiedDate or "unknown";
     in
     {
@@ -29,9 +30,14 @@
             inherit version;
             src = pkgs.lib.fileset.toSource {
               root = ./.;
-              fileset = pkgs.lib.fileset.difference ./. ./native;
+              fileset = pkgs.lib.fileset.difference ./. (
+                pkgs.lib.fileset.unions [
+                  ./native
+                  ./web
+                ]
+              );
             };
-            vendorHash = "sha256-YcV3OAIbedLV/SivDJIxow4qJJxfv7Fgax7TzIjNEmQ=";
+            inherit vendorHash;
             subPackages = [ "cmd/ordo" ];
             ldflags = [
               "-s"
@@ -57,16 +63,38 @@
           };
           default = self.packages.${system}.ordo;
         }
+        // pkgs.callPackage ./nix/web.nix { inherit version vendorHash; }
         // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
           android-sdk = import ./nix/android-sdk.nix { inherit nixpkgs system; };
         }
       );
 
-      devShells.x86_64-linux.native = nixpkgs.legacyPackages.x86_64-linux.mkShellNoCC rec {
-        ANDROID_HOME = "${self.packages.x86_64-linux.android-sdk}/libexec/android-sdk";
-        # Gradle stops when ANDROID_SDK_ROOT names another SDK than ANDROID_HOME.
-        ANDROID_SDK_ROOT = ANDROID_HOME;
-      };
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          web = pkgs.mkShellNoCC {
+            packages = [
+              pkgs.bun
+              pkgs.nodejs
+              pkgs.go
+            ];
+            PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
+            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
+            # scripts/web.sh checks web/package.json pins the @playwright/test these browsers are for.
+            ORDO_PLAYWRIGHT = pkgs.playwright-driver.version;
+          };
+        }
+        // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          native = pkgs.mkShellNoCC rec {
+            ANDROID_HOME = "${self.packages.x86_64-linux.android-sdk}/libexec/android-sdk";
+            # Gradle stops when ANDROID_SDK_ROOT names another SDK than ANDROID_HOME.
+            ANDROID_SDK_ROOT = ANDROID_HOME;
+          };
+        }
+      );
 
       nixosModules.default = import ./nix/module.nix { inherit self; };
 
