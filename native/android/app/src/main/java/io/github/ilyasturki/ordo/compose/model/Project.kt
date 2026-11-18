@@ -54,6 +54,9 @@ data class Project(
 ) {
     fun category(id: String): Category? = categories.firstOrNull { it.id == id }
 
+    // Whether "Add next version" has a version to go from: the category's own name, else its parent's.
+    fun versioned(cat: Category): Boolean = hasVersion(cat.name) || (category(cat.parentId)?.let { hasVersion(it.name) } ?: false)
+
     fun find(taskId: String): Pair<Category, Task>? {
         for (cat in categories) {
             val task = cat.tasks.firstOrNull { it.id == taskId } ?: continue
@@ -123,4 +126,12 @@ object Estimates {
         minutes / 60 < 8 -> "${minutes / 60}h"
         else -> "${minutes / 60 / 8}d"
     }
+}
+
+private val versionPattern = Regex("""\bv?\d+\.\d+(?:\.\d+)?""")
+
+// The name holds a version as internal/domain does: v1.2 or 1.2.3, not the start of 1.2.3.4.
+fun hasVersion(name: String): Boolean = versionPattern.findAll(name).any { m ->
+    val rest = name.substring(m.range.last + 1)
+    !(rest.length >= 2 && rest[0] == '.' && rest[1] in '0'..'9')
 }

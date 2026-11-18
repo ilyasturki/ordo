@@ -1,6 +1,6 @@
 # <img src="assets/logo.svg" width="40" height="40" alt="" align="top"> Ordo
 
-A local-only project planner for the terminal, run entirely from the keyboard. Name a category after a version (`v1.3.0`) and `ctrl+a` or `gm` bumps it in place. It is a single binary that keeps each project in a plain JSON file. The terminal app never touches the network; `ordo serve` adds an opt-in [Android app](#on-the-phone).
+A local-only project planner for the terminal, run entirely from the keyboard. Name a category after a version (`v1.3.0`) and `ctrl+a` or `gm` bumps it in place, `gn` starts the next one. It is a single binary that keeps each project in a plain JSON file. The terminal app never touches the network; `ordo serve` adds an opt-in [Android app](#on-the-phone).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.gif">
@@ -79,7 +79,7 @@ The first run creates a `Default` project. In the TUI, `a` adds a task, `space` 
 
 ## Features
 
-- `ctrl+a` and `ctrl+x` add or take one from the patch of the version in a category's name (`v1.3.0`, `v1.3.0 - polish`), on one category or a visual range. `gm` and `gM` bump the minor or the major. Only the digits change, so a label or a suffix stays.
+- `ctrl+a` and `ctrl+x` add or take one from the patch of the version in a category's name (`v1.3.0`, `v1.3.0 - polish`), on one category or a visual range. `gm` and `gM` bump the minor or the major. Only the digits change, so a label or a suffix stays. `gn` adds the next version's category instead: `v1.3.0` gives `v1.4.0` on the newest side of the versions you have, with its name open in the editor.
 - `m` moves the focused task, or a whole visual range, to the end of any other category. `/` filters the list of categories.
 - Categories take one level of sub-categories and tasks one level of subtasks. `>` nests a row under the one above it and `<` takes it back out. `gA` adds a sub-category to the category under the cursor, and `J`/`K` carry a sub-category past its parent's edge into the next category.
 - `gp` pins a category: pinned ones come first among their siblings, everywhere categories are listed, marked `↑`. A name a sibling already has offers to number this one or the other, as in `Fix (2)`, or to merge them.

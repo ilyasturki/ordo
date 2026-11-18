@@ -41,6 +41,7 @@ var Actions = []Action{
 	{"task.place", "Drag to a position", Both},
 	{"task.paste", "Paste a copy", TUI},
 	{"version.bump", "Bump a version", TUI},
+	{"version.next", "Add the next version", Both},
 	{"category.add", "Add category", Both},
 	{"category.rename", "Rename category", Both},
 	{"category.merge", "Merge categories", TUI},

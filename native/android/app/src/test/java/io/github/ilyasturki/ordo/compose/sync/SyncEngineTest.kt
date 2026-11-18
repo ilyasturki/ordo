@@ -161,6 +161,21 @@ class SyncEngineTest {
     }
 
     @Test
+    fun theNextVersionReachesTheServerWhereTheCoreLandedIt() = test {
+        val e = paired(engine())
+        assertTrue(e.edit(PID, Ops.categoryRename(FEATURE, "v1.2.0"), quiet = true).applied)
+        assertTrue(e.edit(PID, Ops.categoryRename(FIX, "v1.1.0"), quiet = true).applied)
+        val a = e.edit(PID, Ops.versionNext(FEATURE))
+        assertTrue(a.applied)
+        assertEquals("Added “v1.3.0”", a.msg)
+        val names = { p: Project -> p.categories.filter { it.parentId == "" }.map { it.name } }
+        val held = names(e.state.value.project(PID)!!.project)
+        assertEquals("v1.3.0", held.first())
+        assertEquals(Round.OK, e.sync())
+        assertEquals(held, names(Project.parse(server.project(PID))))
+    }
+
+    @Test
     fun aTakenCategoryNameAnswersTheNamesThatFreeIt() = test {
         val e = paired(engine())
         val a = e.edit(PID, Ops.categoryAdd("feature"), quiet = true)

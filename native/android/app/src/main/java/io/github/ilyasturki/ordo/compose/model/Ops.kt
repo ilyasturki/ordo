@@ -72,6 +72,7 @@ object Ops {
         op("task.place", "ids" to listOf(id), "cat" to cat, "before" to before)
     fun categoryAdd(title: String, parent: String = "") =
         op("category.add", "title" to title, "parent" to parent)
+    fun versionNext(cat: String) = op("version.next", "cat" to cat)
     fun categoryRename(cat: String, title: String) = op("category.rename", "cat" to cat, "title" to title)
     fun categoryPlace(cat: String, before: String) = op("category.place", "cat" to cat, "before" to before)
     fun categoryPin(cat: String, pinned: Boolean) = op("category.pin", "cat" to cat, "value" to pinned.toString())

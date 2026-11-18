@@ -102,6 +102,13 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
                 name == cat.name || named(name) { Ops.categoryRename(cat.id, it) }
             }) {
                 SheetAction(Icons.NewFolder, "New sub-category") { onSheet(CategorySheet.New(cat.parentId.ifEmpty { cat.id })) }
+                if (entry.project.versioned(cat)) {
+                    SheetAction(Icons.Add, "Add next version") {
+                        onSheet(null)
+                        feedback.commit()
+                        scope.launch { engine.edit(pid, Ops.versionNext(cat.id)) }
+                    }
+                }
                 SheetAction(Icons.Separator, "Add a separator") {
                     if (!Board.addedLineShows(cat, filter, "separator")) {
                         onSheet(null)

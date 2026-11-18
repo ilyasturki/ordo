@@ -42,6 +42,22 @@ func HasVersion(name string) bool {
 	return versionSpans(name) != nil
 }
 
+// VersionNumbers are the major, minor and patch of the first version in name, patch 0 on a two-part one.
+func VersionNumbers(name string) (v [3]int, ok bool) {
+	spans := versionSpans(name)
+	if spans == nil {
+		return v, false
+	}
+	for i, s := range spans {
+		n, err := strconv.Atoi(name[s[0]:s[1]])
+		if err != nil {
+			return v, false
+		}
+		v[i] = n
+	}
+	return v, true
+}
+
 // BumpVersion adds delta to one part of the first version in name, zeroing the parts after it; only the digits change.
 func BumpVersion(name string, part VersionPart, delta int) (string, error) {
 	spans := versionSpans(name)

@@ -20,7 +20,7 @@ type Op struct {
 	New    string `json:"new,omitempty"`
 	Cat    string `json:"cat,omitempty"`
 	Parent string `json:"parent,omitempty"`
-	// Before is the row a placed run lands above; empty lands it last.
+	// Before is the row a placed run or a new category lands above; empty lands it last.
 	Before string `json:"before,omitempty"`
 	Value  string `json:"value,omitempty"`
 	Title  string `json:"title,omitempty"`
@@ -75,6 +75,7 @@ var appliers = map[string]applier{
 	"task.place":       placeRows,
 	"task.restore":     restoreRows,
 	"category.add":     addCategory,
+	"version.next":     nextVersion,
 	"category.rename":  renameCategory,
 	"category.place":   placeCategory,
 	"category.pin":     pinCategory,
@@ -83,7 +84,7 @@ var appliers = map[string]applier{
 	"project.group":    setGroup,
 }
 
-var gestures = map[string]bool{"status.cycle": true, "task.shift": true, "task.nest": true, "task.unnest": true}
+var gestures = map[string]bool{"version.next": true, "status.cycle": true, "task.shift": true, "task.nest": true, "task.unnest": true}
 
 // Replayable reports whether an op can wait in a queue and land later as it is. A gesture
 // steps from the state it was made on, so it travels as the op Perform returns instead.
@@ -114,7 +115,7 @@ func Apply(p *domain.Project, op Op) (Outcome, error) {
 // a nest, un-nest or shift as the place its rows landed.
 func Perform(p *domain.Project, op Op) (Outcome, Op, error) {
 	switch op.Action {
-	case "task.add", "task.insert", "separator.add", "note.add", "category.add":
+	case "task.add", "task.insert", "separator.add", "note.add", "category.add", "version.next":
 		if op.New == "" {
 			id, err := domain.NewID()
 			if err != nil {
@@ -128,6 +129,13 @@ func Perform(p *domain.Project, op Op) (Outcome, Op, error) {
 		return out, Op{}, err
 	}
 	switch op.Action {
+	case "version.next":
+		ci, err := p.FindCategoryByID(op.New)
+		if err != nil {
+			return out, Op{}, err
+		}
+		cat := p.Categories[ci]
+		return out, Op{Action: "category.add", New: cat.ID, Parent: cat.ParentID, Title: cat.Name, Before: nextCategory(p.Categories, ci)}, nil
 	case "status.cycle":
 		return out, Op{Action: "status.set", IDs: op.IDs, Value: realTasks(p, op.IDs)[0].Status}, nil
 	case "task.nest", "task.unnest", "task.shift":
@@ -525,6 +533,11 @@ func addCategory(p *domain.Project, op Op) (Outcome, error) {
 	cat, err := createCategory(p, op.New, parent, op.Title)
 	if err != nil {
 		return Outcome{}, err
+	}
+	if op.Before != "" {
+		if cat, err = PlaceCategory(p, cat.ID, op.Before); err != nil {
+			return Outcome{}, err
+		}
 	}
 	return Outcome{Msg: "Added " + quote(cat.Name), Row: cat.ID}, nil
 }
