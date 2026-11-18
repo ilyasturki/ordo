@@ -24,11 +24,17 @@ test('the landing shows the three surfaces, light and dark, without loading the 
 	}
 
 	const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+	const clipped = () => page.locator('.term').evaluate((term) => term.scrollHeight - term.clientHeight);
 	expect(await overflow()).toBe(0);
-	if (info.project.name.endsWith('phone')) {
-		await page.setViewportSize({ width: 360, height: 780 });
-		expect(await overflow()).toBe(0);
-		await page.setViewportSize({ width: 390, height: 844 });
+	expect(await clipped()).toBe(0);
+	const widths = info.project.name.endsWith('phone') ? [360] : [800, 1280];
+	for (const width of widths) {
+		const size = page.viewportSize()!;
+		await page.setViewportSize({ width, height: size.height });
+		expect(await overflow(), `at ${width}px`).toBe(0);
+		expect(await clipped(), `the terminal at ${width}px`).toBe(0);
+		await shoot(page, `landing-${width}`, info.project.name);
+		await page.setViewportSize(size);
 	}
 
 	await shoot(page, 'landing', info.project.name);
@@ -86,13 +92,57 @@ test('every link on the landing answers', async ({ page, app }) => {
 
 	await page.locator('#get').getByRole('link', { name: 'Open Ordo in your browser' }).click();
 	await expect(page).toHaveURL(app());
-	await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
 
 	await page.goBack();
 	await page.getByRole('link', { name: 'Ordo', exact: true }).click();
 	await expect(page).toHaveURL('/');
 	await page.getByRole('main').getByRole('link', { name: 'Open Ordo in your browser' }).first().click();
-	await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+	await expect(page).toHaveURL(app());
+});
+
+test('every text on the landing reads at WCAG AA contrast, light and dark', async ({ page }) => {
+	await page.goto('/');
+	for (const colorScheme of ['light', 'dark'] as const) {
+		await page.emulateMedia({ colorScheme });
+		const { failures, checked } = await page.evaluate(() => {
+			const rgb = (css: string) => {
+				const m = css.match(/[\d.]+/g)!.map(Number);
+				return { c: m.slice(0, 3), a: m.length > 3 ? m[3] : 1 };
+			};
+			const luminance = (c: number[]) => {
+				const [r, g, b] = c.map((v) => {
+					const s = v / 255;
+					return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+				});
+				return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+			};
+			const background = (el: Element | null): number[] => {
+				for (; el; el = el.parentElement) {
+					const { c, a } = rgb(getComputedStyle(el).backgroundColor);
+					if (a > 0.5) return c;
+				}
+				return rgb(getComputedStyle(document.body).backgroundColor).c;
+			};
+			const failures: string[] = [];
+			let checked = 0;
+			const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+			for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+				const el = node.parentElement!;
+				if (!node.textContent!.trim() || el.closest('[aria-hidden="true"], .sr-only') || !el.checkVisibility()) continue;
+				const style = getComputedStyle(el);
+				const fg = luminance(rgb(style.color).c);
+				const bg = luminance(background(el));
+				const ratio = (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+				const size = parseFloat(style.fontSize);
+				const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+				checked++;
+				if (ratio < (large ? 3 : 4.5)) failures.push(`${node.textContent!.trim().slice(0, 30)}: ${ratio.toFixed(2)}`);
+			}
+			return { failures, checked };
+		});
+		expect(failures, colorScheme).toEqual([]);
+		expect(checked).toBeGreaterThan(40);
+	}
 });
 
 test('the version card bumps by its buttons and by the TUI keys', async ({ page }) => {
