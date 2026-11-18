@@ -30,6 +30,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - `m` in the picker lists the groups in use, the project's current one marked, then No group and New group…: pick one with `enter`, a digit, `n` or `w`. New group… asks the name, and `esc` there saves it like `enter`. `tab` no longer cycles through the groups
 - The app's add sheet and name sheets ride the keyboard: they rise and leave with it in one motion, and back, a swipe down or a tap outside saves what you typed, with an Undo, instead of dropping it. An empty new task, category or note adds nothing, and a save the filter or a taken name refuses keeps the sheet up until you dismiss it again. The priority, colour and category menus no longer take the keyboard down, and the sheets keep their text when the phone rotates
 - On a task's page in the app, a subtask typed and left is added as you leave the field or the page, and a description rewritten on another device while you type keeps both texts, the other one first, instead of replacing yours
+- A new project starts empty, from the TUI, `ordo init` and `ordo project add` as from the app: no sample categories or tasks to delete first. An empty project says "No categories yet: A adds one, ? shows the keys", and `a` there opens the first category's name, as `A` does
 
 ### Fixed
 
@@ -41,9 +42,6 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - In the app under a filter, a row dropped just above a separator, or last in a category, stays in the section shown around it, instead of bringing up a separator the filter hides
 - In the app, a row dragged up into an empty category stays there instead of bouncing back under the next header, and an empty category keeps its "No tasks" line while a row passes through
 - In the app, a row flicked and let go at once lands where the finger left it, instead of a row or two short
-### Changed
-
-- A new project starts empty, from the TUI, `ordo init` and `ordo project add` as from the app: no sample categories or tasks to delete first. An empty project says "No categories yet: A adds one, ? shows the keys", and `a` there opens the first category's name, as `A` does
 
 ### Removed
 
