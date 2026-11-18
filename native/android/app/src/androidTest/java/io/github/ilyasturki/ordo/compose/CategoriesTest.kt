@@ -317,6 +317,18 @@ class CategoriesTest : AppFixture() {
         assertEquals("Research", order().first())
     }
 
+    @Test
+    fun aVersionCategoryAddsTheNextVersionAboveIt() {
+        val id = engine.state.value.project(PID)!!.project.categories.first { it.name == "Research" }.id
+        runBlocking { engine.edit(PID, Ops.categoryRename(id, "v2.0.0"), quiet = true) }
+        scrollTo("v2.0.0")
+        header("v2.0.0").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Add next version"), 20_000)
+        compose.onNodeWithText("Add next version").performClick()
+        compose.waitUntil(20_000) { order().contains("v2.1.0") }
+        assertEquals(order().indexOf("v2.0.0") - 1, order().indexOf("v2.1.0"))
+    }
+
     private fun renameResearchTo(name: String) {
         scrollTo("Research")
         research().performClick()
