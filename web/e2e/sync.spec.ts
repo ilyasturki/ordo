@@ -213,6 +213,20 @@ test('the site build offers to connect from its empty page and the project menu'
 	await shoot(page, 'menu', info.project.name);
 });
 
+test('a project the server can no longer open keeps its copy here and says so', async ({ page, app, build, served }, info) => {
+	served.add(ferry);
+	await signInWithPassphrase(page, app, build, served);
+	const [p] = await (await other(served)).projects();
+	served.corrupt(p.id);
+	await page.getByRole('button', { name: 'Not synced' }).click({ timeout: 10_000 });
+	const sheet = page.getByRole('dialog', { name: 'Sync' });
+	await expect(sheet).toContainText("A project can't sync");
+	await expect(sheet).toContainText('ferry:');
+	await shoot(page, 'broken', info.project.name);
+	await page.keyboard.press('Escape');
+	await expect(taskLink(page, 'Shell completions')).toBeVisible();
+});
+
 test('one tab syncs at a time, and another can take over', async ({ page, app, build, served }, info) => {
 	served.add(ferry);
 	await signInWithPassphrase(page, app, build, served);

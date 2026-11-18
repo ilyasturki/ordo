@@ -166,7 +166,7 @@
 						<h1 class="text-title-large min-w-0 flex-1 truncate" aria-live="polite">
 							<span class="sr-only">{project.name}: </span>{title}
 						</h1>
-						{#if session.sync?.trouble}
+						{#if session.sync?.trouble || local.broken[pid]}
 							<IconButton icon="cloudOff" label="Not synced" tone="error" onclick={() => (ui.sheet = { kind: 'sync' })} />
 						{/if}
 						<IconButton icon="search" label="Search" onclick={() => (ui.searching = true)} />

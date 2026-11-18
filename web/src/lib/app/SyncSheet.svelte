@@ -9,8 +9,15 @@
 
 	let { sync, local, onclose }: { sync: Sync; local: Local; onclose: () => void } = $props();
 
+	const broken = $derived(Object.entries(local.broken).map(([id, error]) => ({ id, name: local.project(id)?.name ?? id, error })));
+	const troubled = $derived(!!sync.trouble || broken.length > 0);
 	const words = $derived.by(() => {
 		const t = sync.trouble;
+		if (!t && broken.length > 0) {
+			return broken.length === 1
+				? ["A project can't sync", "Your server can't open its file, so this browser keeps its copy as it was. Fix the file on the server and it syncs again."]
+				: ["Some projects can't sync", "Your server can't open their files, so this browser keeps its copies as they were. Fix the files on the server and they sync again."];
+		}
 		switch (t?.kind) {
 			case 'failing':
 				return t.offline
@@ -44,10 +51,13 @@
 <Sheet open label="Sync" onclose={() => onclose()}>
 	<div class="flex flex-col gap-3 px-6 pt-6 pb-4">
 		<h2 class="text-title-large flex items-center gap-3">
-			<Icon name={sync.trouble ? 'cloudOff' : 'sync'} class={['size-6', sync.trouble ? 'text-error' : 'text-primary']} />
+			<Icon name={troubled ? 'cloudOff' : 'sync'} class={['size-6', troubled ? 'text-error' : 'text-primary']} />
 			{words[0]}
 		</h2>
 		<p class="text-body-medium">{words[1]}</p>
+		{#each broken as b (b.id)}
+			<p class="text-body-medium break-words"><span class="font-medium">{b.name}</span>: {b.error}</p>
+		{/each}
 		<p class="text-body-medium">{waiting}</p>
 		<p class="text-body-small text-on-surface-variant">
 			Last synced: {sync.lastSync === 0 ? 'not since the page opened' : ago(sync.lastSync)}<br />

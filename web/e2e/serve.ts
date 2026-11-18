@@ -1,5 +1,5 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -47,6 +47,7 @@ export type Served = {
 	stop(): Promise<void>;
 	start(): Promise<void>;
 	close(): Promise<void>;
+	corrupt(pid: string): void;
 };
 
 export async function serve({ seeded = true } = {}): Promise<Served> {
@@ -107,6 +108,9 @@ export async function serve({ seeded = true } = {}): Promise<Served> {
 		},
 		add(file) {
 			execFileSync(bin, ['import', file, '-q'], { env });
+		},
+		corrupt(pid) {
+			writeFileSync(join(dir, 'data', 'projects', `${pid}.json`), '{');
 		},
 		pairLink() {
 			const out = execFileSync(bin, ['serve', 'pair', '--base-url', url], { env }).toString();
