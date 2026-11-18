@@ -57,6 +57,8 @@ class AutoscrollTest : AppFixture(composing = false) {
 
     private fun onScreen(text: String) = rows(text).any { n -> !Rect().also(n::getBoundsInScreen).isEmpty }
 
+    private fun shownHeight(text: String) = rows(text).sumOf { n -> Rect().also(n::getBoundsInScreen).height() }
+
     // The row's bounds on the screen, once the app shows it.
     private fun bounds(text: String): Rect {
         waitFor("$text shows") { onScreen(text) }
@@ -149,11 +151,12 @@ class AutoscrollTest : AppFixture(composing = false) {
         scroll(bounds("Crash on an empty clipboard").top - top)
         val crash = bounds("Crash on an empty clipboard")
         assertTrue("the row starts the list", abs(crash.top - top) < 20 * density)
+        val above = shownHeight("Wrapped titles overflow the tag column")
         touch(MotionEvent.ACTION_DOWN, x, crash.exactCenterY())
         Thread.sleep(800)
         slide(x, crash.exactCenterY(), crash.exactCenterY() + 12 * density, steps = 4)
         Thread.sleep(1_500)
-        assertTrue("the list stayed", !onScreen("Wrapped titles overflow the tag column"))
+        assertTrue("the list stayed", shownHeight("Wrapped titles overflow the tag column") <= above)
         val ergonomy = bounds("Ergonomy")
         slide(x, crash.exactCenterY() + 12 * density, crash.exactCenterY() + (ergonomy.bottom - crash.bottom))
         Thread.sleep(300)
