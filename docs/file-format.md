@@ -290,7 +290,7 @@ A snapshot queued before a reload keeps the note of the load it came from, so it
 
 The TUI checks the note again just before each rename, so a file Syncthing swapped in while a snapshot was being written refuses that snapshot and merges like any other change.
 
-The CLI and `ordo serve` do each change as one read, change and write under the lock, so they always start from the current file. When the file was replaced between their read and their rename, they read it again and redo the change on it, up to three times, then fail. The app queues its edits and `ordo serve` replays them under the lock, see [sync.md](sync.md). A title or details edit carries the text it was typed over, and the server refuses it when the file holds other text: the app shows the file's text and offers Keep mine, which sends the edit again over it. Another client should do the same: re-read before writing, or check that the file is still the one it loaded.
+The CLI and `ordo serve` do each change as one read, change and write under the lock, so they always start from the current file. When the file was replaced between their read and their rename, they read it again and redo the change on it, for up to three tries in all, then fail. The app queues its edits and `ordo serve` replays them under the lock, see [sync.md](sync.md). A title or details edit carries the text it was typed over, and the server refuses it when the file holds other text: the app shows the file's text and offers Keep mine, which sends the edit again over it. Another client should do the same: re-read before writing, or check that the file is still the one it loaded.
 
 ## Conflict copies
 
