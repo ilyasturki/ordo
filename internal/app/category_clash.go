@@ -49,35 +49,43 @@ func (m model) clashOptions() []clashOption {
 		which = "the new one"
 	}
 	return []clashOption{
-		{"t", clashRenameThis, fmt.Sprintf("name %s “%s”", which, truncateText(this, 30))},
-		{"o", clashRenameOther, fmt.Sprintf("rename the other to “%s”", truncateText(other, 30))},
-		{"m", clashMerge, fmt.Sprintf("merge into “%s”", taken)},
+		{"t", clashRenameThis, fmt.Sprintf("Name %s “%s”", which, truncateText(this, 30))},
+		{"o", clashRenameOther, fmt.Sprintf("Rename the other to “%s”", truncateText(other, 30))},
+		{"m", clashMerge, fmt.Sprintf("Merge into “%s”", taken)},
 	}
 }
 
-func (m *model) handleClashKey(key string) {
+func (m model) clashChoice() (ui.Choice, []clashOption) {
+	_, dst, ok := m.mergeOffer()
+	if !ok {
+		return ui.Choice{}, nil
+	}
 	options := m.clashOptions()
-	switch key {
-	case "esc", "n":
-		m.ui.Edit.clash = ""
-		return
-	case "j", "down":
-		m.ui.Edit.clashPick = min(m.ui.Edit.clashPick+1, len(options)-1)
-		return
-	case "k", "up":
-		m.ui.Edit.clashPick = max(m.ui.Edit.clashPick-1, 0)
-		return
-	case "enter":
-		if m.ui.Edit.clashPick < len(options) {
-			m.resolveClash(options[m.ui.Edit.clashPick].choice)
-		}
-		return
+	c := ui.Choice{
+		Title:    fmt.Sprintf("“%s” is taken", truncateText(m.project.Categories[dst].Name, 30)),
+		Selected: m.ui.Edit.clashPick,
 	}
 	for _, o := range options {
-		if o.key == key {
-			m.resolveClash(o.choice)
-			return
-		}
+		c.Options = append(c.Options, ui.ChoiceOption{Label: o.label, Key: o.key})
+	}
+	if c.Selected < len(options) && options[c.Selected].choice == clashMerge {
+		c.Note = m.mergeLines()
+	}
+	return c, options
+}
+
+func (m *model) handleClashKey(key string) {
+	if key == "n" {
+		key = "esc"
+	}
+	c, options := m.clashChoice()
+	act, i := c.Handle(key)
+	m.ui.Edit.clashPick = c.Selected
+	switch act {
+	case ui.ChoiceCancelled:
+		m.ui.Edit.clash = ""
+	case ui.ChoicePicked:
+		m.resolveClash(options[i].choice)
 	}
 }
 
@@ -122,25 +130,9 @@ func (m *model) resolveClash(choice clashChoice) {
 }
 
 func (m model) clashChooserView() string {
-	_, dst, ok := m.mergeOffer()
-	if !ok {
+	c, _ := m.clashChoice()
+	if c.Title == "" {
 		return ""
 	}
-	lines := []string{ui.DialogTitleStyle.Render(fmt.Sprintf("“%s” is taken", truncateText(m.project.Categories[dst].Name, 30))), ""}
-	options := m.clashOptions()
-	for i, o := range options {
-		line := "  " + o.key + "  " + o.label
-		if i == m.ui.Edit.clashPick {
-			line = ui.SelectedStyle.Render("> " + o.key + "  " + o.label)
-		}
-		lines = append(lines, line)
-	}
-	if m.ui.Edit.clashPick < len(options) && options[m.ui.Edit.clashPick].choice == clashMerge {
-		lines = append(lines, "")
-		for _, l := range m.mergeLines() {
-			lines = append(lines, ui.MutedStyle.Render(l))
-		}
-	}
-	lines = append(lines, "", ui.RenderHints([]ui.Hint{{Key: "enter", Label: "choose"}, {Key: "esc", Label: "keep editing"}}))
-	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
+	return m.choiceView(c)
 }

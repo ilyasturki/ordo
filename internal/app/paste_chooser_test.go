@@ -148,7 +148,7 @@ func TestPasteChooser_AppendOnlyOnATask(t *testing.T) {
 	require.True(t, m.selectTaskIdx(0, 0))
 	m.pasteText(threeLines, false)
 	require.Len(t, m.ui.PasteChooser.options, 4)
-	assert.Equal(t, "append to the description of “Alpha”", m.ui.PasteChooser.options[3].label)
+	assert.Equal(t, "Append to the description of “Alpha”", m.ui.PasteChooser.options[3].label)
 }
 
 func TestPasteChooser_NavigatesWithJKAndEnter(t *testing.T) {

@@ -20,6 +20,7 @@ type ConflictState struct {
 	theirs domain.Project
 	picks  []merge.Pick
 	kept   string
+	pick   int
 }
 
 func (s ConflictState) current() merge.Collision { return s.result.Collisions[len(s.picks)] }
@@ -35,25 +36,65 @@ func (m *model) openConflict(res merge.Result, theirs domain.Project) {
 	m.ui.Screen.StatusMsg = ""
 }
 
+type conflictPick struct {
+	pick merge.Pick
+	all  bool
+}
+
+func (m model) conflictChoice() (ui.Choice, []conflictPick) {
+	c := m.ui.Conflict
+	col := c.current()
+	options := []ui.ChoiceOption{{Label: "Mine", Key: "m"}, {Label: "Theirs", Key: "t"}}
+	picks := []conflictPick{{pick: merge.PickMine}, {pick: merge.PickTheirs}}
+	if col.CanCopy() {
+		options = append(options, ui.ChoiceOption{Label: "Both", Key: "b", Detail: "theirs, then mine as a copy"})
+		picks = append(picks, conflictPick{pick: merge.PickBoth})
+	}
+	if c.left() > 1 {
+		options = append(options,
+			ui.ChoiceOption{Label: "All mine", Key: "a", Aliases: []string{"M"}},
+			ui.ChoiceOption{Label: "All theirs", Key: "h", Aliases: []string{"T"}})
+		picks = append(picks, conflictPick{pick: merge.PickMine, all: true}, conflictPick{pick: merge.PickTheirs, all: true})
+	}
+
+	title := "Changed on disk: 1 conflict"
+	if total := len(c.result.Collisions); total > 1 {
+		title = fmt.Sprintf("Changed on disk: %d of %d conflicts", len(c.picks)+1, total)
+	}
+	width := m.dialogWidth() - 10
+	body := []string{truncateText(col.Row, width) + ", " + col.Field, ""}
+	for _, side := range []struct{ label, value string }{{"mine  ", col.Mine}, {"theirs", col.Theirs}} {
+		for i, line := range conflictValue(side.value, width) {
+			if i == 0 {
+				body = append(body, "  "+ui.MutedStyle.Render(side.label)+"  "+line)
+			} else {
+				body = append(body, "          "+line)
+			}
+		}
+	}
+	choice := ui.Choice{Title: title, Body: body, Options: options, Selected: c.pick}
+	choice.Clamp()
+	return choice, picks
+}
+
+// Esc keeps theirs for every conflict left: the file stays as it is, and u brings mine back.
 func (m model) handleConflictKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	choice, picks := m.conflictChoice()
+	act, i := choice.Handle(msg.String())
 	c := &m.ui.Conflict
-	switch msg.String() {
-	case "m":
-		c.picks = append(c.picks, merge.PickMine)
-	case "t":
-		c.picks = append(c.picks, merge.PickTheirs)
-	case "b":
-		if c.current().CanCopy() {
-			c.picks = append(c.picks, merge.PickBoth)
-		}
-	case "M", "T":
-		pick := merge.PickTheirs
-		if msg.String() == "M" {
-			pick = merge.PickMine
-		}
-		for c.left() > 0 {
-			c.picks = append(c.picks, pick)
-		}
+	c.pick = choice.Selected
+	var picked conflictPick
+	switch act {
+	case ui.ChoicePicked:
+		picked = picks[i]
+	case ui.ChoiceCancelled:
+		picked = conflictPick{pick: merge.PickTheirs, all: true}
+	default:
+		return m, nil
+	}
+	c.picks = append(c.picks, picked.pick)
+	for picked.all && c.left() > 0 {
+		c.picks = append(c.picks, picked.pick)
 	}
 	if c.left() == 0 {
 		m.settleConflict()
@@ -116,33 +157,6 @@ func conflictValue(s string, width int) []string {
 }
 
 func (m model) conflictView() string {
-	c := m.ui.Conflict
-	col := c.current()
-	title := "Changed on disk: 1 conflict"
-	if total := len(c.result.Collisions); total > 1 {
-		title = fmt.Sprintf("Changed on disk: %d of %d conflicts", len(c.picks)+1, total)
-	}
-	width := max(20, min(60, m.ui.Screen.Width-20))
-	lines := []string{title, "", truncateText(col.Row, width) + ", " + col.Field, ""}
-	for _, side := range []struct{ label, value string }{{"mine  ", col.Mine}, {"theirs", col.Theirs}} {
-		for i, line := range conflictValue(side.value, width) {
-			if i == 0 {
-				lines = append(lines, "  "+side.label+"  "+line)
-			} else {
-				lines = append(lines, "          "+line)
-			}
-		}
-	}
-	hints := []ui.Hint{{Key: "m", Label: "mine"}, {Key: "t", Label: "theirs"}}
-	if col.CanCopy() {
-		hints = append(hints, ui.Hint{Key: "b", Label: "both"})
-	}
-	lines = append(lines, "", ui.RenderHints(hints))
-	if c.left() > 1 {
-		lines = append(lines, ui.RenderHints([]ui.Hint{{Key: "M", Label: "all mine"}, {Key: "T", Label: "all theirs"}}))
-	}
-	if col.CanCopy() {
-		lines = append(lines, "", "both keeps theirs and adds mine as a copy just below it")
-	}
-	return ui.HelpDialogStyle.Render(strings.Join(lines, "\n"))
+	c, _ := m.conflictChoice()
+	return m.choiceView(c)
 }

@@ -6,7 +6,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/ilyasturki/ordo/internal/app/components"
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/operations"
@@ -44,19 +43,19 @@ func pasteNeedsChooser(rows []pastedRow) bool {
 
 func (m *model) openPasteChooser(text string, rows []pastedRow, retiresCopy bool) {
 	fromEdit := m.ui.Modes.IsEdit()
-	oneLine := "one task, every line joined into the title"
+	oneLine := "One task, every line joined into the title"
 	if fromEdit {
-		oneLine = "every line joined, at the cursor"
+		oneLine = "Every line joined, at the cursor"
 	}
 	options := []pasteOption{
-		{key: "t", mode: pasteAsRows, label: "one task per line"},
-		{key: "d", mode: pasteAsDescription, label: "one task, the rest as its description"},
+		{key: "t", mode: pasteAsRows, label: "One task per line"},
+		{key: "d", mode: pasteAsDescription, label: "One task, the rest as its description"},
 		{key: "o", mode: pasteAsOneLine, label: oneLine},
 	}
 	if title, ok := m.appendTarget(fromEdit); ok {
-		label := "append to this task's description"
+		label := "Append to this task's description"
 		if title != "" {
-			label = fmt.Sprintf("append to the description of “%s”", truncateText(title, 30))
+			label = fmt.Sprintf("Append to the description of “%s”", truncateText(title, 30))
 		}
 		options = append(options, pasteOption{key: "a", mode: pasteAppend, label: label})
 	}
@@ -78,30 +77,26 @@ func (m *model) appendTarget(fromEdit bool) (string, bool) {
 }
 
 func (m model) handlePasteChooserKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	st := &m.ui.PasteChooser
-	switch key := msg.String(); key {
-	case "esc", "q":
+	c := m.pasteChoice()
+	act, i := c.Handle(msg.String())
+	m.ui.PasteChooser.selected = c.Selected
+	switch act {
+	case ui.ChoiceCancelled:
 		m.closePasteChooser()
 		m.ui.Screen.StatusMsg = "Paste cancelled"
-	case "j", "down":
-		if st.selected < len(st.options)-1 {
-			st.selected++
-		}
-	case "k", "up":
-		if st.selected > 0 {
-			st.selected--
-		}
-	case "enter":
-		m.applyPaste(st.options[st.selected].mode)
-	default:
-		for _, o := range st.options {
-			if o.key == key {
-				m.applyPaste(o.mode)
-				break
-			}
-		}
+	case ui.ChoicePicked:
+		m.applyPaste(m.ui.PasteChooser.options[i].mode)
 	}
 	return m, nil
+}
+
+func (m model) pasteChoice() ui.Choice {
+	st := m.ui.PasteChooser
+	c := ui.Choice{Title: "Paste: " + describeRows(st.rows, true), Selected: st.selected}
+	for _, o := range st.options {
+		c.Options = append(c.Options, ui.ChoiceOption{Label: o.label, Key: o.key})
+	}
+	return c
 }
 
 func (m *model) closePasteChooser() {
@@ -283,15 +278,5 @@ func flattenPaste(text string) string {
 }
 
 func (m model) pasteChooserView() string {
-	st := m.ui.PasteChooser
-	labels := make([]string, len(st.options))
-	for i, o := range st.options {
-		labels[i] = o.key + "  " + o.label
-	}
-	return components.RenderListPicker(
-		"Paste: "+describeRows(st.rows, true),
-		labels,
-		st.selected,
-		[]ui.Hint{{Key: "enter", Label: "paste"}, {Key: "esc", Label: "cancel"}},
-	)
+	return m.choiceView(m.pasteChoice())
 }

@@ -125,6 +125,23 @@ func TestLeaveConfirm_AnywayCancelAndArrows(t *testing.T) {
 	assert.True(t, quits(hit(m, "q", "a")))
 }
 
+func TestClashChooser_JKMoveAndTheMergeNoteFollows(t *testing.T) {
+	m := newTestModel(t, sampleProject())
+	addCategoryNamed(t, m, "cat b")
+	assert.NotContains(t, ansi.Strip(m.clashChooserView()), "is dropped", "the note is about the merge row")
+	hit(m, "j", "j")
+	assert.Equal(t, 2, m.ui.Edit.clashPick)
+	assert.Contains(t, ansi.Strip(m.clashChooserView()), "is dropped")
+	hit(m, "k")
+	assert.Equal(t, 1, m.ui.Edit.clashPick)
+	c, _ := m.clashChoice()
+	checkMnemonics(t, "clash", c)
+
+	hit(m, "n")
+	assert.True(t, m.ui.Modes.IsEdit(), "n goes back to the editor")
+	assert.Empty(t, m.ui.Edit.clash)
+}
+
 func TestEveryDialogKeepsItsMnemonicsFree(t *testing.T) {
 	m := confirmingParentDelete(t)
 	c, _ := m.confirmDeleteChoice()
@@ -132,6 +149,14 @@ func TestEveryDialogKeepsItsMnemonicsFree(t *testing.T) {
 	m.ui.Save.Unsaved = 1
 	m.ui.Save.Err = assert.AnError
 	checkMnemonics(t, "leave", m.confirmLeaveChoice())
+
+	p := newTestModel(t, sampleProject())
+	require.True(t, p.selectTaskIdx(0, 0))
+	p.pasteText(threeLines, false)
+	require.True(t, p.ui.Modes.IsPasteChooser())
+	checkMnemonics(t, "paste", p.pasteChoice())
+	hit(p, "a")
+	assert.Contains(t, p.project.Categories[0].Tasks[0].Description, "milk", "a appends at once")
 }
 
 func checkMnemonics(t *testing.T, name string, c ui.Choice) {

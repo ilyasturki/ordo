@@ -6,12 +6,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/ui"
 )
 
 // collide leaves the dialog open: the user commits "Typed" over a title the web changed meanwhile.
@@ -127,6 +130,11 @@ func TestACapitalSettlesTheRest(t *testing.T) {
 	require.True(t, m.ui.Modes.IsConflict())
 	assert.Contains(t, m.renderView(), "1 of 2 conflicts")
 
+	view := ansi.Strip(m.renderView())
+	assert.Contains(t, view, "All mine")
+	assert.Contains(t, view, "All theirs")
+	checkMnemonics(t, "conflict", func() ui.Choice { c, _ := m.conflictChoice(); return c }())
+
 	hit(m, "M")
 
 	assert.True(t, m.ui.Modes.IsNormal())
@@ -134,11 +142,33 @@ func TestACapitalSettlesTheRest(t *testing.T) {
 	assert.Equal(t, "Mine B", titleOnDisk(t, web, p, picked[1].ID))
 }
 
-func TestOtherKeysLeaveTheDialogOpen(t *testing.T) {
+func TestMovingLeavesTheDialogOpen(t *testing.T) {
 	m, web, p := sharedModel(t)
 	collide(t, m, web, p, tasksIn(p, 1)[0])
-	hit(m, "esc", "q", "j")
+	hit(m, "j", "down", "k", "x")
 	assert.True(t, m.ui.Modes.IsConflict())
+}
+
+func TestArrowsAndEnterPickARow(t *testing.T) {
+	m, web, p := sharedModel(t)
+	task := tasksIn(p, 1)[0]
+	collide(t, m, web, p, task)
+	hit(m, "down", "enter")
+	assert.True(t, m.ui.Modes.IsNormal())
+	assert.Equal(t, "Web title", titleOnDisk(t, web, p, task.ID), "the second row is Theirs")
+}
+
+func TestEscKeepsTheirsAndUndoGivesMineBack(t *testing.T) {
+	m, web, p := sharedModel(t)
+	task := tasksIn(p, 1)[0]
+	collide(t, m, web, p, task)
+
+	assert.False(t, quits(hit(m, "esc")), "esc settles the dialog, not ordo")
+	assert.True(t, m.ui.Modes.IsNormal())
+	assert.Equal(t, "Web title", titleOnDisk(t, web, p, task.ID))
+
+	hit(m, "u")
+	assert.Equal(t, "Typed", titleOnDisk(t, web, p, task.ID))
 }
 
 func TestBothSidesAreKeptBeforeTheDialogAsks(t *testing.T) {

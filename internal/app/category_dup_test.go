@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -89,7 +90,7 @@ func TestAddCategory_DuplicateKeepsTheEditorAndOffersMerge(t *testing.T) {
 	assert.Equal(t, " cat b", m.ui.Edit.input.Value(), "the typed name survives")
 	assert.Contains(t, m.ui.Edit.err, `"Cat B" already exists`)
 	assert.Equal(t, "c2", m.ui.Edit.clash)
-	assert.Contains(t, m.View().Content, "merge into “Cat B”")
+	assert.Contains(t, ansi.Strip(m.View().Content), "Merge into “Cat B”")
 
 	// Declining the merge returns to the editor with the error still shown.
 	pressKey(m, tea.KeyEscape)

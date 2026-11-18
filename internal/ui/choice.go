@@ -31,6 +31,8 @@ type Choice struct {
 	Options  []ChoiceOption
 	Selected int
 	Numbered bool
+	// Note is muted text under the rows, about the selected one.
+	Note []string
 }
 
 type ChoiceAction int
@@ -147,6 +149,12 @@ func (c Choice) View(width int, focused bool) string {
 	lines := c.Head(width)
 	for i := range c.Options {
 		lines = append(lines, c.Row(i, width, focused))
+	}
+	if len(c.Note) > 0 {
+		lines = append(lines, "")
+		for _, n := range c.Note {
+			lines = append(lines, MutedStyle.Render(wrapTo(n, width)))
+		}
 	}
 	return strings.Join(lines, "\n")
 }
