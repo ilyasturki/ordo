@@ -99,7 +99,34 @@ func TestCtrlG_EditorFailureLeavesTheFieldAsItWas(t *testing.T) {
 	assert.True(t, m.ui.Modes.IsEdit())
 	assert.Equal(t, "draft title", m.ui.Edit.input.Value())
 	assert.Contains(t, m.ui.Screen.StatusMsg, "Editor error")
-	assert.NoFileExists(t, path)
+	assert.Contains(t, m.ui.Screen.StatusMsg, path, "the status names the file the editor wrote")
+	content, err := os.ReadFile(path)
+	require.NoError(t, err, "a failed editor's file stays")
+	assert.Equal(t, "changed", string(content))
+	_ = os.Remove(path)
+}
+
+func TestExternalEdit_FailureKeepsTheEditorsFile(t *testing.T) {
+	useFakeEditor(t, "Alpha\n\nwritten before the crash", "1")
+	m := newTestModel(t, sampleProject())
+	selectFirstTask(m)
+	next, cmd := m.Update(keyPress("e"))
+	am := asModel(next)
+	require.NotNil(t, cmd)
+	path := am.ui.ExternalEdit.TempFilePath
+	require.FileExists(t, path)
+	err := exec.Command(getEditorCmd(), path).Run()
+
+	next, _ = am.Update(editorFinishedMsg{err: err, tempFile: path})
+	am = asModel(next)
+
+	assert.True(t, am.ui.Modes.IsNormal())
+	assert.Empty(t, am.project.Categories[0].Tasks[0].Description, "a failed editor applies nothing")
+	assert.Contains(t, am.ui.Screen.StatusMsg, path)
+	content, readErr := os.ReadFile(path)
+	require.NoError(t, readErr)
+	assert.Contains(t, string(content), "written before the crash")
+	_ = os.Remove(path)
 }
 
 func TestCtrlG_DescriptionTakesTheEditorTextAndEscSavesIt(t *testing.T) {

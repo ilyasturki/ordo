@@ -171,11 +171,13 @@ func (m *model) startFieldExternalEdit() tea.Cmd {
 func (m *model) finishFieldExternalEdit(msg editorFinishedMsg) {
 	m.distrustClipboardWrites()
 	defer func() {
-		os.Remove(msg.tempFile)
+		if msg.err == nil {
+			os.Remove(msg.tempFile)
+		}
 		m.ui.ExternalEdit.reset()
 	}()
 	if msg.err != nil {
-		m.ui.Screen.StatusMsg = fmt.Sprintf("Editor error: %v", msg.err)
+		m.ui.Screen.StatusMsg = editorFailed(msg)
 		return
 	}
 	content, err := os.ReadFile(msg.tempFile)
@@ -195,6 +197,14 @@ func (m *model) finishFieldExternalEdit(msg editorFinishedMsg) {
 	}
 }
 
+// editorFailed keeps the editor's file: a crashed editor may have written work there.
+func editorFailed(msg editorFinishedMsg) string {
+	if msg.tempFile == "" {
+		return fmt.Sprintf("Editor error: %v", msg.err)
+	}
+	return fmt.Sprintf("Editor error: %v; its text stays in %s", msg.err, msg.tempFile)
+}
+
 func (m *model) handleEditorFinished(msg editorFinishedMsg) {
 	if m.ui.ExternalEdit.IntoField {
 		m.finishFieldExternalEdit(msg)
@@ -203,13 +213,15 @@ func (m *model) handleEditorFinished(msg editorFinishedMsg) {
 	// The editor owned the terminal, so a copy made in it or a focus loss sent no BlurMsg.
 	m.distrustClipboardWrites()
 	defer func() {
-		os.Remove(msg.tempFile)
+		if msg.err == nil {
+			os.Remove(msg.tempFile)
+		}
 		m.ui.ExternalEdit.reset()
 		m.ui.Modes.ToNormal()
 	}()
 
 	if msg.err != nil {
-		m.ui.Screen.StatusMsg = fmt.Sprintf("Editor error: %v", msg.err)
+		m.ui.Screen.StatusMsg = editorFailed(msg)
 		return
 	}
 
