@@ -342,6 +342,9 @@ func (s *Store) RenameProject(id, newName string) (domain.Project, error) {
 	if err := domain.ValidateLine(newName); err != nil {
 		return domain.Project{}, err
 	}
+	if err := domain.ValidateID(id); err != nil {
+		return domain.Project{}, ErrProjectNotFound
+	}
 	g, err := s.acquireGlobalLock()
 	if err != nil {
 		return domain.Project{}, err
