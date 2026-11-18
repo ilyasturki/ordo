@@ -25,7 +25,7 @@ private const val HOME = "cccccccc-0000-4000-8000-000000000031"
 private const val SHAPES = "cccccccc-0000-4000-8000-000000000010"
 
 // Every drop of every row onto every slot of the seed and of drag.json, as the list shows it, run through the
-// real core: the list the edit leaves is the one shown at the release.
+// real core: the list the edit leaves is the one shown at the release, and the one the release lays out.
 class DropLandsAsShownTest {
     private val core = PipeCore()
 
@@ -61,25 +61,35 @@ class DropLandsAsShownTest {
 
     private fun shape(lines: List<Line>) = lines.filter { it is Header || it is Block }.map { it.key }
 
+    private fun names(lines: List<Line>) = lines.map {
+        when (it) {
+            is Header -> "[${it.category.name}]"
+            is Block -> it.row.task.title
+            else -> it.key.take(1)
+        }
+    }
+
     @Test
     fun everyDropLandsWhereItWasShown() {
         val failures = ArrayList<String>()
         var drops = 0
         for ((file, views) in fixtures) {
             val raw = File(System.getProperty("ordo.repo")!!, "testdata/native/$file").readText()
+            val project = Project.parse(raw)
             for (v in views) {
-                val lines = Board.lines(Project.parse(raw), v.filter, v.peek, folds = v.folds)
+                val lines = Board.lines(project, v.filter, v.peek, folds = v.folds)
                 for (block in lines.filterIsInstance<Block>()) {
                     for ((t, over) in lines.withIndex()) {
                         if (over.key == block.key || !swappable(over, t)) continue
                         val what = "$file ${v.name}: ${block.row.task.title} onto ${over.key}"
                         val order = moved(lines, block.key, over.key)!!
-                        val op = dropOp(order, block, lines)
+                        val drop = dropPlace(order, block, lines)
+                        val op = drop?.op
                         if (shape(order) == shape(lines)) {
                             if (op != null) failures += "$what: sends $op for an order it didn't change"
                             continue
                         }
-                        if (op == null) {
+                        if (drop == null || op == null) {
                             failures += "$what: sends nothing"
                             continue
                         }
@@ -90,16 +100,29 @@ class DropLandsAsShownTest {
                             failures += "$what: $op answered ${answer.status}"
                             continue
                         }
-                        val into = headerAbove(order, block)!!
-                        val folds = if (into.folded) v.folds - into.category.id else v.folds
+                        val folds = if (drop.unfold) v.folds - drop.cat else v.folds
                         val held = if (v.filter.active) setOf(block.row.task.id) else emptySet()
-                        val after = shape(Board.lines(Project.parse(core.project(PID)), v.filter, v.peek, held, folds))
+                        val edited = Board.lines(Project.parse(core.project(PID)), v.filter, v.peek, held, folds)
+                        val laid = Board.lines(project.placed(drop), v.filter, v.peek, held, folds)
+                        if (names(laid) != names(edited)) failures += "$what: the release lays out ${names(laid)}, the edit leaves ${names(edited)}"
+                        // A separator dragged off hands its rows to the section above, whose lines show with them.
+                        val left = project.categories.first { c -> c.tasks.any { it.id == block.row.task.id } }.tasks
+                        val k = left.indexOfFirst { it.id == block.row.task.id }
+                        val joined = if (!block.row.task.separator) emptySet() else left.subList(maxOf(0, left.subList(0, k).indexOfLast { it.separator }), k).filter { it.line }.map { "t:${it.id}" }.toSet()
+                        // A note shows with the section the row lands in, wherever the row goes in it.
+                        val into = Project.parse(core.project(PID)).categories.first { it.id == drop.cat }.tasks
+                        val x = into.indexOfFirst { it.id == block.row.task.id }
+                        val start = maxOf(0, into.subList(0, x).indexOfLast { it.separator })
+                        val end = into.subList(x + 1, into.size).indexOfFirst { it.separator }.let { if (it < 0) into.size else x + 1 + it }
+                        val notes = into.subList(start, end).filter { it.note }.map { "t:${it.id}" }.toSet()
+                        val after = shape(edited).filter { (it !in joined && it !in notes) || it in shape(order) }
                         // A separator or a note whose section the drop emptied hides with it.
                         val emptied = order.filterIsInstance<Block>().filter { it.row.task.line && it.key != block.key && it.key !in after }.map { it.key }
                         val shown = shape(order) - emptied.toSet()
-                        val landed = if (into.folded) after.filter { it in shown } else after
+                        val landed = if (drop.unfold) after.filter { it in shown } else after
                         val above = { s: List<String> -> s.getOrNull(s.indexOf(block.key) - 1) }
-                        if (landed != shown || above(after) != above(shown)) failures += "$what: shown $shown, landed $after"
+                        val title = { s: List<String> -> s.map { k -> lines.first { it.key == k }.let { names(listOf(it)).single() } } }
+                        if (landed != shown || above(after) != above(shown)) failures += "$what: shown ${title(shown)}, landed ${names(edited.filter { it is Header || it is Block })}"
                     }
                 }
             }

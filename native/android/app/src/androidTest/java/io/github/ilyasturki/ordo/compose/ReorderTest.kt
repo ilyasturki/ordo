@@ -222,7 +222,7 @@ class ReorderTest : AppFixture(listOf("Ordo", "Spare")) {
         compose.waitUntilAtLeastOneExists(hasText("3 hidden by the filter"), 20_000)
         featureTop()
         dragOnto(RECURRING, span(header("Fix"))!!)
-        waitFor(listOf(CURSOR, WRAPPED, CRASH, RECURRING)) { rows("Fix") }
+        waitFor(listOf(RECURRING, CURSOR, WRAPPED, CRASH)) { rows("Fix") }
         compose.waitForIdle()
         assertTrue(span(row(RECURRING))!!.start > span(header("Fix"))!!.start)
     }

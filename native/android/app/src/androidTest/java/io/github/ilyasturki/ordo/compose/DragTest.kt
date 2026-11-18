@@ -68,11 +68,11 @@ class DragTest : AppFixture(composing = false, seed = "drag.json") {
 
     private var downAt = 0L
 
-    private fun touch(action: Int, x: Float, y: Float) {
+    private fun touch(action: Int, x: Float, y: Float, wait: Boolean = true) {
         val now = SystemClock.uptimeMillis()
         if (action == MotionEvent.ACTION_DOWN) downAt = now
         val event = MotionEvent.obtain(downAt, now, action, x, y, 0).apply { source = InputDevice.SOURCE_TOUCHSCREEN }
-        ins.uiAutomation.injectInputEvent(event, true)
+        ins.uiAutomation.injectInputEvent(event, wait)
         event.recycle()
     }
 
@@ -83,27 +83,37 @@ class DragTest : AppFixture(composing = false, seed = "drag.json") {
         }
     }
 
-    // A long press on the row, a move of dy, then a hold of the finger, trembling or still, before the release.
-    private fun drag(title: String, dy: Float, steps: Int = 20, pause: Long = 30, hold: Long = 600, tremble: Boolean = true) {
+    // A long press on the row, a slow move of dy, then a hold of the trembling finger before the release.
+    private fun drag(title: String, dy: Float, hold: Long = 600) {
         val at = bounds(title)
         val x = at.exactCenterX()
         val from = at.exactCenterY()
         touch(MotionEvent.ACTION_DOWN, x, from)
         Thread.sleep(800)
-        slide(x, from, from + dy, steps, pause)
+        slide(x, from, from + dy, steps = 20, pause = 30)
         val until = SystemClock.uptimeMillis() + hold
         var i = 0
         while (SystemClock.uptimeMillis() < until) {
-            if (tremble) touch(MotionEvent.ACTION_MOVE, x, from + dy + if (i++ % 2 == 0) 1f else -1f)
+            touch(MotionEvent.ACTION_MOVE, x, from + dy + if (i++ % 2 == 0) 1f else -1f)
             Thread.sleep(50)
         }
         touch(MotionEvent.ACTION_UP, x, from + dy)
     }
 
-    // A long press, a few big moves that bring the row's centre onto the line's, and the finger lifted at once.
+    // A long press, then moves at a touchscreen's pace that bring the row's centre onto the line's, and the
+    // finger lifted at once: none waits for the app, so the last moves reach it with the release.
     private fun flick(title: String, onto: String) {
         val at = bounds(title)
-        drag(title, bounds(onto).exactCenterY() - at.exactCenterY(), steps = 4, pause = 8, hold = 0, tremble = false)
+        val x = at.exactCenterX()
+        val from = at.exactCenterY()
+        val to = bounds(onto).exactCenterY()
+        touch(MotionEvent.ACTION_DOWN, x, from)
+        Thread.sleep(800)
+        for (i in 1..4) {
+            touch(MotionEvent.ACTION_MOVE, x, from + (to - from) * i / 4, wait = false)
+            Thread.sleep(8)
+        }
+        touch(MotionEvent.ACTION_UP, x, to, wait = false)
     }
 
     private fun filter(filter: Filter) {

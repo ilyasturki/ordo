@@ -18,6 +18,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DropOpTest {
+    private fun dropOp(order: List<Line>, block: Block, lifted: List<Line>) = dropPlace(order, block, lifted)?.op
+
     private fun task(id: String, status: String = Status.TODO, parent: String = "", kind: String = "") =
         Task(id = id, parentId = parent, title = id, status = status, kind = kind)
 
@@ -91,21 +93,82 @@ class DropOpTest {
         val lines = lines(Filter(statuses = setOf(Status.TODO)))
         val down = lines.drag("e", header("empty"))
         assertEquals(Ops.place("e", "empty", ""), dropOp(down, down.block("e"), lines))
-        assertEquals(listOf(header("fix"), "h:fix", header("empty"), row("e"), header("docs")), down.slice(down.indexOf(down.first { it.key == header("fix") }) until down.indexOfFirst { it.key == header("docs") } + 1).map { it.key })
+        assertEquals("No tasks keeps its height under the row", listOf(header("fix"), "h:fix", header("empty"), row("e"), "n:empty", header("docs")), down.slice(down.indexOf(down.first { it.key == header("fix") }) until down.indexOfFirst { it.key == header("docs") } + 1).map { it.key })
+        assertEquals(setOf("n:empty"), entered(down))
         val up = down.drag("e", header("empty"))
         assertEquals("the row back above the line counting what the filter hides", listOf(header("fix"), row("e"), "h:fix", header("empty")), up.slice(up.indexOfFirst { it.key == header("fix") } until up.indexOfFirst { it.key == header("empty") } + 1).map { it.key })
         assertNull(dropOp(up, up.block("e"), lines))
+        assertEquals(emptySet<String>(), entered(up))
         val last = lines.drag("h", header("docs"))
         assertEquals(Ops.place("h", "empty", ""), dropOp(last, last.block("h"), lines))
-        assertEquals("h:docs", last.last().key)
+        assertEquals(listOf(header("empty"), row("h"), "n:empty", header("docs"), "h:docs"), last.takeLast(5).map { it.key })
+    }
+
+    @Test
+    fun theSameAskFromALayoutAFrameBehindLeavesTheOrder() {
+        val lines = lines(Filter(statuses = setOf(Status.TODO)))
+        val up = moved(lines, row("e"), header("fix"), up = true)!!
+        assertEquals(up.map { it.key }, moved(up, row("e"), header("fix"), up = true)!!.map { it.key })
+        val down = moved(lines, row("a"), row("b"), up = false)!!
+        assertEquals(listOf(row("b"), row("a")), down.filter { it.key == row("a") || it.key == row("b") }.map { it.key })
+        assertEquals(down.map { it.key }, moved(down, row("a"), row("b"), up = false)!!.map { it.key })
+    }
+
+    @Test
+    fun aLiftedBlockNeverAddsNorDropsALine() {
+        for (filter in listOf(Filter.NONE, Filter(statuses = setOf(Status.TODO)))) {
+            val lines = lines(filter)
+            for ((t, over) in lines.withIndex()) {
+                if (!swappable(over, t)) continue
+                for (block in lines.filterIsInstance<Block>()) {
+                    if (block.key == over.key) continue
+                    val order = lines.drag(block.row.task.id, over.key)
+                    assertEquals("${block.key} onto ${over.key}", lines.map { it.key }.sorted(), order.map { it.key }.sorted())
+                }
+            }
+        }
+    }
+
+    // Inbox [p, —done, b done, k done, —next, c, r], Work [w, v, —later, o done], Home [f], Loose [a, x done, y, z].
+    private val sections = Project(
+        id = "s",
+        categories = listOf(
+            Category("inbox", "Inbox", tasks = listOf(task("p"), task("done", kind = "separator"), task("b", Status.COMPLETED), task("k", Status.COMPLETED), task("next", kind = "separator"), task("c"), task("r"))),
+            Category("work", "Work", tasks = listOf(task("w"), task("v"), task("later", kind = "separator"), task("o", Status.COMPLETED))),
+            Category("home", "Home", tasks = listOf(task("f"))),
+            Category("loose", "Loose", tasks = listOf(task("a"), task("x", Status.COMPLETED), task("y"), task("z"))),
+        ),
+    )
+
+    @Test
+    fun underAFilterADropStaysInTheSectionItShowsIn() {
+        val lines = Board.lines(sections, Filter(statuses = setOf(Status.TODO)))
+        assertTrue(lines.none { it.key == row("done") || it.key == row("later") })
+        for ((name, drag, want) in listOf(
+            Triple("up onto a separator: above the section hidden whole", Pair("c", row("next")), Ops.place("c", "inbox", "done")),
+            Triple("down to the last row: above the hidden tail", Pair("w", row("v")), Ops.place("w", "work", "later")),
+            Triple("up past a header: above the hidden tail", Pair("f", header("home")), Ops.place("f", "work", "later")),
+            Triple("up past hidden rows: as K, right above the next row", Pair("z", row("y")), Ops.place("z", "loose", "y")),
+            Triple("down past hidden rows: as J, right below the last row", Pair("a", row("y")), Ops.place("a", "loose", "z")),
+            Triple("first under its header", Pair("r", row("p")), Ops.place("r", "inbox", "p")),
+        )) {
+            assertEquals(name, want, drop(lines, drag.first, drag.second))
+        }
+    }
+
+    @Test
+    fun theProjectAsADropLeavesIt() {
+        val placed = project.placed(Drop("b", "fix", "f", false))
+        assertEquals(listOf("a", "sep", "c"), placed.categories.first { it.id == "feat" }.tasks.map { it.id })
+        assertEquals(listOf("e", "b", "b1", "f"), placed.categories.first { it.id == "fix" }.tasks.map { it.id })
+        assertEquals(listOf("g", "h", "a"), project.placed(Drop("a", "docs", "", false)).categories.first { it.id == "docs" }.tasks.map { it.id })
     }
 
     @Test
     fun belowAFoldedHeaderARowLandsFirstThere() {
         val lines = lines(folds = setOf("fix"))
         val down = lines.drag("c", header("fix"))
-        assertEquals(Ops.place("c", "fix", "e"), dropOp(down, down.block("c"), lines))
-        assertEquals(true, headerAbove(down, down.block("c"))?.folded)
+        assertEquals(Drop("c", "fix", "e", unfold = true), dropPlace(down, down.block("c"), lines))
         val up = lines.drag("h", header("empty"))
         assertEquals(Ops.place("h", "fix", "e"), dropOp(up, up.block("h"), lines))
     }

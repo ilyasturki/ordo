@@ -42,6 +42,11 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Removed
 
 - **Breaking:** time estimates, everywhere. The TUI drops `ctrl+t`, the `~1h` marks and the Estimate line in `gi`; the app drops the Estimate chip and picker. `ordo task add` and `ordo task edit` no longer take `-e`/`--estimate`, `ordo tasks -l` and `ordo categories` lose the ESTIMATE column, and their JSON loses `estimate_minutes`. A project file keeps its `estimate_minutes` until ordo next saves it, then drops the key. An app not yet updated gets its estimate edits refused by an updated `ordo serve`
+### Fixed
+
+- In the app under a filter, a row dropped just above a separator, or last in a category, stays in the section shown around it, instead of bringing up a separator the filter hides
+- In the app, a row dragged up into an empty category stays there instead of bouncing back under the next header, and an empty category keeps its "No tasks" line while a row passes through
+- In the app, a row flicked and let go at once lands where the finger left it, instead of a row or two short
 
 ## [0.14.3] - 2026-11-11
 
