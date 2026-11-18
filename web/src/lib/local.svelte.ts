@@ -162,7 +162,7 @@ export class Local {
 		}
 		const step = this.#record(target, answer);
 		if (answer.status === 'conflict' && answer.theirs !== undefined) {
-			this.offer(answer.msg || 'Changed on another device', 'Keep mine', () => void this.perform(pid, { ...op, base: answer.theirs }));
+			this.offerMine(pid, op, answer.theirs, answer.msg);
 		} else if (!quiet) {
 			this.say(answer.msg || said, step);
 		}
@@ -182,8 +182,9 @@ export class Local {
 		this.snack = { id: ++this.#snacks, msg, action: step && { label: 'Undo', run: () => void this.#takeBack(step) } };
 	}
 
-	offer(msg: string, label: string, run: () => void): void {
-		this.snack = { id: ++this.#snacks, msg, action: { label, run } };
+	offerMine(pid: string, op: Op, theirs: string, msg?: string): void {
+		const run = () => void this.perform(pid, { ...op, base: theirs });
+		this.snack = { id: ++this.#snacks, msg: msg || 'Changed on another device', action: { label: 'Keep mine', run } };
 	}
 
 	get canUndo(): boolean {

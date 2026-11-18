@@ -201,7 +201,7 @@ export class Sync {
 			if (!q || r.status === 'applied' || r.status === 'unchanged') continue;
 			const theirs = r.theirs;
 			if (r.status === 'conflict' && theirs !== undefined) {
-				this.#local.offer(r.msg || 'Changed on another device', 'Keep mine', () => void this.#local.perform(q.project, { ...q.op, base: theirs }));
+				this.#local.offerMine(q.project, q.op, theirs, r.msg);
 			} else if (r.msg) {
 				this.#local.say(r.msg);
 			}
