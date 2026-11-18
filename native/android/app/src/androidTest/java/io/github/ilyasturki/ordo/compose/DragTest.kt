@@ -46,14 +46,14 @@ class DragTest : AppFixture(composing = false, seed = "drag.json") {
     }
 
     // The rows, headers and lines holding the text, read afresh: the cached tree lags a swap behind. The top
-    // bar's name of the category isn't one.
-    private fun rows(text: String): List<AccessibilityNodeInfo> {
+    // bar's name of the category isn't one, but for a line nothing can tap.
+    private fun rows(text: String, untappable: Boolean = false): List<AccessibilityNodeInfo> {
         val found = ArrayList<AccessibilityNodeInfo>()
         val next = ArrayDeque(listOfNotNull(ins.uiAutomation.rootInActiveWindow))
         while (next.isNotEmpty()) {
             val n = next.removeFirst()
             if (!n.refresh()) continue
-            if (n.text?.toString() == text) (if (n.isClickable) n else n.parent?.takeIf { it.refresh() && it.isClickable })?.let(found::add)
+            if (n.text?.toString() == text) (if (untappable || n.isClickable) n else n.parent?.takeIf { it.refresh() && it.isClickable })?.let(found::add)
             for (i in 0 until n.childCount) n.getChild(i)?.let(next::add)
         }
         return found
@@ -84,7 +84,7 @@ class DragTest : AppFixture(composing = false, seed = "drag.json") {
     }
 
     // A long press on the row, a slow move of dy, then a hold of the trembling finger before the release.
-    private fun drag(title: String, dy: Float, hold: Long = 600) {
+    private fun drag(title: String, dy: Float, hold: Long = 600, held: () -> Unit = {}) {
         val at = bounds(title)
         val x = at.exactCenterX()
         val from = at.exactCenterY()
@@ -97,7 +97,11 @@ class DragTest : AppFixture(composing = false, seed = "drag.json") {
             touch(MotionEvent.ACTION_MOVE, x, from + dy + if (i++ % 2 == 0) 1f else -1f)
             Thread.sleep(50)
         }
-        touch(MotionEvent.ACTION_UP, x, from + dy)
+        try {
+            held()
+        } finally {
+            touch(MotionEvent.ACTION_UP, x, from + dy)
+        }
     }
 
     // A long press, then moves at a touchscreen's pace that bring the row's centre onto the line's, and the
@@ -195,6 +199,20 @@ class DragTest : AppFixture(composing = false, seed = "drag.json") {
         val row = bounds("Fix the sink")
         drag("Fix the sink", bounds("Home").exactCenterY() - row.top - row.height() * 0.15f, hold = 1_500)
         waitFor("Empty", listOf("Fix the sink"))
+    }
+
+    @Test
+    fun underAFilterARowDraggedUpThroughAnEmptyCategoryLeavesItsNoTasksLine() {
+        filter(OPEN)
+        val row = bounds("Fix the sink")
+        drag("Fix the sink", bounds("Empty").exactCenterY() - row.top - row.height() * 0.15f, hold = 1_500) {
+            val empty = bounds("Empty")
+            val below = rows("No tasks", untappable = true).map { n -> Rect().also(n::getBoundsInScreen) }.filter { !it.isEmpty && it.top >= empty.bottom }
+            assertTrue("Empty keeps its No tasks line", below.any { it.top < empty.bottom + empty.height() })
+        }
+        waitFor("Work", listOf("Write the report", "Review the slides", "Fix the sink", "Later", "Old ticket", "Older ticket"))
+        Thread.sleep(500)
+        assertFalse("no separator appears", onScreen("Later"))
     }
 
     @Test
