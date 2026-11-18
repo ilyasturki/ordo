@@ -133,6 +133,10 @@ services.ordo-web = { enable = true; user = "alice"; baseUrl = "https://ordo.exa
 
 Ordo also runs in the browser, built from `web/`. Edits go through the same Go code as the TUI and the app, compiled to WebAssembly. Two builds come out of it: `nix build .#web-site` is the public site, with the app at `/app/` keeping its projects in the browser, and `nix build .#web-private` is the app alone, served at `/` on the same host as `ordo serve`, whose `/api` your reverse proxy forwards. Both are static files, so `ordo serve` and `nix build` stay free of node. A project moves in and out as its JSON file. `just web-dev` runs it locally, and `just web-check` tests it in Chromium, Firefox and WebKit.
 
+It looks like the phone app and follows the system's light or dark theme. On a phone it is the app's one list under the project tabs: a task opens as a page, and `+` opens the sheet to add one. On a wider screen the projects are a list on the left and the open task sits beside its list. Statuses, priorities, tags, subtasks, notes, separators, folds, search, the filter and images work as they do on the phone, and every edit offers Undo. The project menu renames, groups, exports or deletes the project, adds and orders categories, and imports a project file. The projects and their images stay in the browser's storage.
+
+On a keyboard the web app takes the TUI's keys: `j`/`k` or the arrows move, `gg` and `G` jump to the ends, `za` folds, `enter` or `e` opens and edits, `a` adds a task, `o` or `_` a note, `-` a separator and `A` a category. `x` or `space` steps the status, `h`/`l` the priority, `t` the tag, `J`/`K` move a task, `>`/`<` nest it, `m` moves it to a category and `d` deletes it. `u` and `ctrl+r` undo and redo, `/` searches, `f` opens the filter and `F` turns it off and on, `esc` goes back to the list and `?` lists the keys.
+
 ## CLI
 
 Most of what the TUI does has a command, for scripts and quick edits. Every command takes `-j` for JSON output.
