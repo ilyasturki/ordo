@@ -30,7 +30,7 @@ Enter
 Sleep 600ms
 Screenshot "/tmp/ordo-vt/vhs-out/106_title_saved.png"
 
-# A description: the editor's lines stay lines, and esc still cancels.
+# A description: the editor's lines stay lines, and esc saves them.
 Type "zd"
 Sleep 400ms
 Type "j"

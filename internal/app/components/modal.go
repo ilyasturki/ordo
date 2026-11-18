@@ -32,7 +32,6 @@ func (m *Modal) Render(background, overlay string) string {
 	return placeOverlay(bgPlaced, overlay, m.width, m.height)
 }
 
-// RenderAt centres overlay across the screen with its top on row top.
 func (m *Modal) RenderAt(background, overlay string, top int) string {
 	if m.width <= 0 || m.height <= 0 {
 		return overlay

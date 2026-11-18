@@ -197,7 +197,6 @@ func (m *model) finishFieldExternalEdit(msg editorFinishedMsg) {
 	}
 }
 
-// editorFailed keeps the editor's file: a crashed editor may have written work there.
 func editorFailed(msg editorFinishedMsg) string {
 	if msg.tempFile == "" {
 		return fmt.Sprintf("Editor error: %v", msg.err)

@@ -196,7 +196,6 @@ func JoinDescription(existing, text string) string {
 	return existing + "\n" + text
 }
 
-// PrependDescription puts text as the first paragraph of a description.
 func PrependDescription(existing, text string) string {
 	existing = strings.Trim(existing, "\n")
 	if existing == "" || text == "" {
@@ -205,8 +204,6 @@ func PrependDescription(existing, text string) string {
 	return text + "\n\n" + existing
 }
 
-// SplitTitle gives the task title as its title and puts rest at the top of
-// its description, the text a title grew past the point it should end.
 func SplitTitle(p *domain.Project, id, title, rest string) (domain.Task, error) {
 	tasks := realTasks(p, []string{id})
 	if len(tasks) == 0 {

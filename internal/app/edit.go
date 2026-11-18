@@ -365,8 +365,6 @@ func (m *model) finishEditing() {
 	m.ui.Edit.reset()
 }
 
-// leaveEditing is esc: it saves as enter does, so u is the way back, and drops
-// the edit only once a save was refused.
 func (m *model) leaveEditing() {
 	if m.ui.Edit.err != "" {
 		m.cancelEditing()
@@ -378,9 +376,6 @@ func (m *model) leaveEditing() {
 	}
 }
 
-// splitTitleIntoDescription keeps the title up to the cursor, puts what
-// follows at the top of the description as the same undo step, and opens the
-// description editor on the moved text.
 func (m *model) splitTitleIntoDescription() tea.Cmd {
 	pos, ok := m.selectedPosition()
 	if !ok || pos.Kind != selection.FocusTask || m.ui.Edit.itemType != selection.FocusTask {

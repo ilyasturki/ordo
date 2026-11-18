@@ -121,16 +121,13 @@ func descriptionEditorMaxHeight(screenHeight int) int {
 	return ui.DialogBodyHeight(screenHeight, descriptionDialogOwnRows+2*descriptionDialogMargin, 3)
 }
 
-// fitDescriptionEditor sizes the textarea to the screen: it grows with its
-// text from the usual height up to the screen's.
 func (m *model) fitDescriptionEditor(ta *textarea.Model) {
 	ta.MaxHeight = descriptionEditorMaxHeight(m.ui.Screen.Height)
 	ta.MinHeight = min(descriptionEditorMinHeight, ta.MaxHeight)
 	ta.SetWidth(m.dialogWidth())
 }
 
-// descriptionDialogTop pins the dialog's top where its tallest size would sit
-// centred, so it grows downward instead of creeping up as it grows.
+// The tallest box's centred top, so the box grows downward from it.
 func (m model) descriptionDialogTop() int {
 	tallest := descriptionEditorMaxHeight(m.ui.Screen.Height) + descriptionDialogOwnRows + ui.DialogChromeHeight
 	return max(0, (m.ui.Screen.Height-tallest)/2)
