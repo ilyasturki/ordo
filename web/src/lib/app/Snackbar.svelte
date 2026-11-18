@@ -24,16 +24,16 @@
 			>
 				<span class="flex-1 py-2">{snack.msg}</span>
 				{#if snack.action}
-					{@const action = snack.action}
 					<button
 						type="button"
 						class="text-label-large h-10 cursor-pointer rounded-full px-3 text-inverse-primary hover:bg-inverse-primary/8"
 						onclick={() => {
+							const run = snack.action?.run;
 							local.snack = undefined;
-							action.run();
+							run?.();
 						}}
 					>
-						{action.label}
+						{snack.action.label}
 					</button>
 				{/if}
 			</div>

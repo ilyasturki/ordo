@@ -64,6 +64,7 @@ export class Api {
 	}
 
 	async #fetch(path: string, init: RequestInit = {}, wait = timeout): Promise<Response> {
+		if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Offline("Can't reach ordo serve");
 		const s = this.#session;
 		const headers = new Headers(init.headers);
 		if (!s.cookie && s.token !== '') headers.set('Authorization', `Bearer ${s.token}`);

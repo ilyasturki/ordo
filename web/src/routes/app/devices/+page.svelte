@@ -105,8 +105,8 @@
 				<li class="flex items-center gap-5 py-3.5 pr-3 pl-6">
 					<Icon name="devices" class="size-6 text-on-surface-variant" />
 					<div class="min-w-0 flex-1">
-						<p class="text-body-large truncate">
-							{d.name}{#if d.self}<span class="text-primary"> · this device</span>{/if}
+						<p class="text-body-large break-words">
+							{d.name}{#if d.self}<span class="text-primary">{' · this device'}</span>{/if}
 						</p>
 						<p class="text-body-medium text-on-surface-variant">
 							Paired {dayOf(d.created_at)}{d.from ? ` by ${d.from}` : ''} · seen {dayOf(d.last_seen)}

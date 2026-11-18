@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { app, site } from '$lib/paths';
 	import { restart } from '$lib/session.svelte';
@@ -12,7 +11,7 @@
 	let busy = $state(false);
 
 	onMount(() => {
-		replaceState(app('/signin'), {});
+		history.replaceState(history.state, '', app('/signin'));
 		if (site) restart(app('/signin'));
 	});
 
