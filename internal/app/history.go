@@ -1,6 +1,8 @@
 package app
 
 import (
+	"slices"
+
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/merge"
@@ -12,7 +14,10 @@ type historyEntry struct {
 	project   domain.Project
 	clipboard ClipboardState
 	cursor    data.Cursor
+	rebased   int // outside changes carried onto project, counted from the session's first
 }
+
+type outsideChange struct{ mine, merged domain.Project }
 
 type HistoryState struct {
 	undo []historyEntry
@@ -22,6 +27,9 @@ type HistoryState struct {
 	// cancelled or a no-op), the redo stack is restored from here so the
 	// cancelled action does not silently destroy redoable history.
 	pendingRedo []historyEntry
+	// changes waits to be carried onto each entry as it is popped; changes[0] is outside change number dropped.
+	changes []outsideChange
+	dropped int
 }
 
 func NewHistoryState() HistoryState {
@@ -38,14 +46,55 @@ func (h *HistoryState) Reset() {
 	h.undo = nil
 	h.redo = nil
 	h.pendingRedo = nil
+	h.changes = nil
+	h.dropped = 0
 }
 
-// rebase carries each step's difference from mine onto merged, so undo never takes back what came from the file.
+func (h *HistoryState) seen() int { return h.dropped + len(h.changes) }
+
+// rebase carries each step's difference from mine onto merged, so undo never takes back what came
+// from the file. The carry waits until undo or redo pops the step.
 func (h *HistoryState) rebase(mine, merged domain.Project) {
+	h.changes = append(h.changes, outsideChange{cloneProject(mine), cloneProject(merged)})
+	h.trim()
+}
+
+// carry brings e through the outside changes it hasn't been carried through yet.
+func (h *HistoryState) carry(e *historyEntry) {
+	for _, c := range h.changes[e.rebased-h.dropped:] {
+		e.project = merge.Three(c.mine, e.project, c.merged).Project
+	}
+	e.rebased = h.seen()
+}
+
+func (h *HistoryState) each(fn func(e *historyEntry)) {
 	for _, stack := range [][]historyEntry{h.undo, h.redo, h.pendingRedo} {
 		for i := range stack {
-			stack[i].project = merge.Three(mine, stack[i].project, merged).Project
+			fn(&stack[i])
 		}
+	}
+}
+
+// trim forgets the changes every entry went through, and past historyLimit carries the
+// entries that hold the oldest one through it.
+func (h *HistoryState) trim() {
+	for {
+		low := h.seen()
+		h.each(func(e *historyEntry) { low = min(low, e.rebased) })
+		if low > h.dropped {
+			h.changes = slices.Clone(h.changes[low-h.dropped:])
+			h.dropped = low
+		}
+		if len(h.changes) <= historyLimit {
+			return
+		}
+		oldest := h.changes[0]
+		h.each(func(e *historyEntry) {
+			if e.rebased == h.dropped {
+				e.project = merge.Three(oldest.mine, e.project, oldest.merged).Project
+				e.rebased++
+			}
+		})
 	}
 }
 
@@ -95,6 +144,7 @@ func (m *model) snapshotEntry() historyEntry {
 		project:   cloneProject(m.project),
 		clipboard: cloneClipboard(m.ui.Clipboard),
 		cursor:    cursor,
+		rebased:   m.ui.History.seen(),
 	}
 }
 
@@ -140,6 +190,8 @@ func (m *model) undo() {
 	m.ui.History.undo = m.ui.History.undo[:n]
 	m.ui.History.redo = append(m.ui.History.redo, current)
 	m.ui.History.pendingRedo = nil
+	m.ui.History.carry(&entry)
+	m.ui.History.trim()
 	m.applyHistoryEntry(entry)
 	// storeTaskUpdate may have set "Save failed: …"; keep that user-visible
 	// instead of overwriting it with the optimistic "Undid change" message.
@@ -159,6 +211,8 @@ func (m *model) redo() {
 	m.ui.History.redo = m.ui.History.redo[:n]
 	m.ui.History.undo = append(m.ui.History.undo, current)
 	m.ui.History.pendingRedo = nil
+	m.ui.History.carry(&entry)
+	m.ui.History.trim()
 	m.applyHistoryEntry(entry)
 	if m.ui.Screen.StatusMsg == "" {
 		m.ui.Screen.StatusMsg = "Redid change"
