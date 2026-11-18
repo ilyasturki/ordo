@@ -35,6 +35,9 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - Rows shown by `enter` on `(N hidden by the filter)` and moved into another category with `J`/`K`, one or a visual range, stay shown and selected until the cursor leaves them, instead of hiding and leaving visual mode on `0 tasks selected`. Visual mode now ends by itself when none of its rows shows, and its status line counts notes and separators too, as `2 tasks, 1 note selected`. `m` says when the filter hides the rows where they landed
 - `K` on a row, or a visual range, just under a section the filter hides whole now lands it above that section, where it shows, instead of inside it with the hidden separator popping up beside it
 - `t` reaches every tag dot, those other tasks of the category wear included: it starts at a free one, steps through the rest and ends on none
+- In the app under a filter, a row dropped just above a separator, or last in a category, stays in the section shown around it, instead of bringing up a separator the filter hides
+- In the app, a row dragged up into an empty category stays there instead of bouncing back under the next header, and an empty category keeps its "No tasks" line while a row passes through
+- In the app, a row flicked and let go at once lands where the finger left it, instead of a row or two short
 ### Changed
 
 - A new project starts empty, from the TUI, `ordo init` and `ordo project add` as from the app: no sample categories or tasks to delete first. An empty project says "No categories yet: A adds one, ? shows the keys", and `a` there opens the first category's name, as `A` does
@@ -42,11 +45,6 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Removed
 
 - **Breaking:** time estimates, everywhere. The TUI drops `ctrl+t`, the `~1h` marks and the Estimate line in `gi`; the app drops the Estimate chip and picker. `ordo task add` and `ordo task edit` no longer take `-e`/`--estimate`, `ordo tasks -l` and `ordo categories` lose the ESTIMATE column, and their JSON loses `estimate_minutes`. A project file keeps its `estimate_minutes` until ordo next saves it, then drops the key. An app not yet updated gets its estimate edits refused by an updated `ordo serve`
-### Fixed
-
-- In the app under a filter, a row dropped just above a separator, or last in a category, stays in the section shown around it, instead of bringing up a separator the filter hides
-- In the app, a row dragged up into an empty category stays there instead of bouncing back under the next header, and an empty category keeps its "No tasks" line while a row passes through
-- In the app, a row flicked and let go at once lands where the finger left it, instead of a row or two short
 
 ## [0.14.3] - 2026-11-11
 
