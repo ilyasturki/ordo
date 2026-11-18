@@ -351,14 +351,14 @@
 	.row.sub {
 		padding-left: 46px;
 	}
-	:global(.st) {
+	.surfaces :global(.st) {
 		width: 22px;
 		height: 22px;
 		flex: none;
 		color: var(--color-on-surface-variant);
 		margin-top: 1px;
 	}
-	:global(.st.on) {
+	.surfaces :global(.st.on) {
 		color: var(--color-primary);
 	}
 	.body {
@@ -554,10 +554,19 @@
 			height: 516px;
 		}
 		.term {
-			font-size: clamp(10px, 1.4vw, 13px);
+			font-size: clamp(10px, 1.4vw, 11.25px);
 		}
 		.browser {
 			height: 560px;
+		}
+	}
+	@media (min-width: 1024px) and (max-width: 1399px) {
+		.term,
+		.phone {
+			height: 600px;
+		}
+		.term {
+			font-size: 13px;
 		}
 	}
 	@media (max-width: 719px) {

@@ -329,6 +329,10 @@
 		margin-top: 16px;
 		color: var(--color-on-surface-variant);
 	}
+	.copy a {
+		text-decoration: underline;
+		text-underline-offset: 0.15em;
+	}
 	.copy strong {
 		color: var(--color-on-surface);
 		font-weight: 500;
