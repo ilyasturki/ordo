@@ -15,6 +15,9 @@ test('the site build opens on the landing, which leads to the app without loadin
 	await expect(page).toHaveURL('/app');
 	await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
 	expect(wasm).toHaveLength(1);
+
+	await page.goto('/app/');
+	await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
 });
 
 test('the private build opens on the app', async ({ page, build }) => {
