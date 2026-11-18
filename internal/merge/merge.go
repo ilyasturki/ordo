@@ -115,7 +115,11 @@ type placedTask struct {
 }
 
 func tasksOf(p domain.Project) map[string]placedTask {
-	out := make(map[string]placedTask)
+	n := 0
+	for _, c := range p.Categories {
+		n += len(c.Tasks)
+	}
+	out := make(map[string]placedTask, n)
 	for _, c := range p.Categories {
 		for _, t := range c.Tasks {
 			out[t.ID] = placedTask{t, c.ID}
@@ -164,12 +168,20 @@ func Three(base, mine, theirs domain.Project) Result {
 	for id := range cats {
 		keepCats[id] = true
 	}
+	keepRows := make(map[string]map[string]bool)
+	for id, row := range tasks {
+		if keepRows[row.cat] == nil {
+			keepRows[row.cat] = make(map[string]bool)
+		}
+		keepRows[row.cat][id] = true
+	}
+	baseRows, mineRows, theirRows := rowsByCategory(base), rowsByCategory(mine), rowsByCategory(theirs)
 	merged.Categories = make([]domain.Category, 0, len(cats))
 	for _, id := range mergeOrder(
 		idsOf(base.Categories, categoryID), idsOf(mine.Categories, categoryID), idsOf(theirs.Categories, categoryID), keepCats,
 	) {
 		cat := cats[id]
-		cat.Tasks = placeTasks(id, base, mine, theirs, tasks)
+		cat.Tasks = placeTasks(keepRows[id], baseRows[id], mineRows[id], theirRows[id], tasks)
 		merged.Categories = append(merged.Categories, cat)
 	}
 	domain.NormalizeNesting(&merged)
@@ -323,27 +335,29 @@ func foldTwinCategories(cats map[string]domain.Category, base, mine, theirs doma
 	}
 }
 
-func placeTasks(cat string, base, mine, theirs domain.Project, tasks map[string]placedTask) []domain.Task {
-	keep := make(map[string]bool)
-	for id, row := range tasks {
-		if row.cat == cat {
-			keep[id] = true
+// rowsByCategory takes the first category of an ID, as a lookup by ID would.
+func rowsByCategory(p domain.Project) map[string][]string {
+	out := make(map[string][]string, len(p.Categories))
+	for _, c := range p.Categories {
+		if _, ok := out[c.ID]; !ok {
+			out[c.ID] = idsOf(c.Tasks, taskID)
 		}
 	}
-	rowsIn := func(p domain.Project) []string {
-		i := slices.IndexFunc(p.Categories, func(c domain.Category) bool { return c.ID == cat })
-		if i < 0 {
-			return nil
-		}
-		return idsOf(p.Categories[i].Tasks, taskID)
+	return out
+}
+
+func placeTasks(keep map[string]bool, baseRows, mineRows, theirRows []string, tasks map[string]placedTask) []domain.Task {
+	listed := setOf(mineRows)
+	for _, id := range theirRows {
+		listed[id] = true
 	}
-	mineRows, theirRows := rowsIn(mine), rowsIn(theirs)
+	mineRows = slices.Clip(mineRows)
 	for _, id := range slices.Sorted(maps.Keys(keep)) {
-		if !slices.Contains(mineRows, id) && !slices.Contains(theirRows, id) {
+		if !listed[id] {
 			mineRows = append(mineRows, id)
 		}
 	}
-	order := mergeOrder(rowsIn(base), mineRows, theirRows, keep)
+	order := mergeOrder(baseRows, mineRows, theirRows, keep)
 	out := make([]domain.Task, 0, len(order))
 	for _, id := range order {
 		out = append(out, tasks[id].task)
@@ -351,8 +365,27 @@ func placeTasks(cat string, base, mine, theirs domain.Project, tasks map[string]
 	return out
 }
 
-func before(list []string, id string) string {
-	if i := slices.Index(list, id); i > 0 {
+func setOf(list []string) map[string]bool {
+	out := make(map[string]bool, len(list))
+	for _, id := range list {
+		out[id] = true
+	}
+	return out
+}
+
+// firstIndex maps each ID to its first position, as slices.Index finds it.
+func firstIndex(list []string) map[string]int {
+	out := make(map[string]int, len(list))
+	for i, id := range list {
+		if _, ok := out[id]; !ok {
+			out[id] = i
+		}
+	}
+	return out
+}
+
+func before(list []string, at map[string]int, id string) string {
+	if i, ok := at[id]; ok && i > 0 {
 		return list[i-1]
 	}
 	return ""
@@ -366,35 +399,49 @@ func mergeOrder(base, mine, theirs []string, keep map[string]bool) []string {
 			out = append(out, id)
 		}
 	}
+	inBase, inMine, inTheirs := setOf(base), setOf(mine), setOf(theirs)
 	shared := func(list []string) []string {
 		return slices.DeleteFunc(slices.Clone(list), func(id string) bool {
-			return !slices.Contains(base, id) || !slices.Contains(mine, id) || !slices.Contains(theirs, id)
+			return !inBase[id] || !inMine[id] || !inTheirs[id]
 		})
 	}
 	sharedBase, sharedMine, sharedTheirs := shared(base), shared(mine), shared(theirs)
+	atBase, atMine, atTheirs := firstIndex(sharedBase), firstIndex(sharedMine), firstIndex(sharedTheirs)
+	var atOut map[string]int
+	indexOut := func(id string) int {
+		if atOut == nil {
+			atOut = firstIndex(out)
+		}
+		if k, ok := atOut[id]; ok {
+			return k
+		}
+		return -1
+	}
 	for i, id := range mine {
 		if !keep[id] {
 			continue
 		}
-		if slices.Contains(sharedMine, id) {
-			was := before(sharedBase, id)
-			if before(sharedMine, id) == was || before(sharedTheirs, id) != was {
+		if _, isShared := atMine[id]; isShared {
+			was := before(sharedBase, atBase, id)
+			if before(sharedMine, atMine, id) == was || before(sharedTheirs, atTheirs, id) != was {
 				continue
 			}
-		} else if slices.Contains(theirs, id) {
+		} else if inTheirs[id] {
 			continue
 		}
-		if at := slices.Index(out, id); at >= 0 {
+		if at := indexOut(id); at >= 0 {
 			out = slices.Delete(out, at, at+1)
+			atOut = nil
 		}
 		at := 0
 		for j := i - 1; j >= 0; j-- {
-			if k := slices.Index(out, mine[j]); k >= 0 {
+			if k := indexOut(mine[j]); k >= 0 {
 				at = k + 1
 				break
 			}
 		}
 		out = slices.Insert(out, at, id)
+		atOut = nil
 	}
 	return out
 }
