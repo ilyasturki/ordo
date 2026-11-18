@@ -28,7 +28,6 @@ func (m *model) startNextVersion() {
 	m.selectItem(selection.FocusCategory, created.ID)
 	m.ui.Modes.ToEdit()
 	m.ui.Edit = newEditState(created.Name, true, created.ID, selection.FocusCategory)
-	m.ui.Edit.escSaves = true
 	m.ensureVisible()
 }
 

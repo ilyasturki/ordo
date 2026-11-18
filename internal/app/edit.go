@@ -262,11 +262,7 @@ func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.finishEditing()
 		return nil
 	case "esc":
-		if m.ui.Edit.escSaves {
-			m.finishEditing()
-			return nil
-		}
-		m.cancelEditing()
+		m.leaveEditing()
 		return nil
 	case "shift+enter", "alt+enter":
 		return m.splitTitleIntoDescription()
@@ -367,6 +363,19 @@ func (m *model) finishEditing() {
 	}
 	m.ui.Modes.ToNormal()
 	m.ui.Edit.reset()
+}
+
+// leaveEditing is esc: it saves as enter does, so u is the way back, and drops
+// the edit only once a save was refused.
+func (m *model) leaveEditing() {
+	if m.ui.Edit.err != "" {
+		m.cancelEditing()
+		return
+	}
+	m.finishEditing()
+	if m.ui.Modes.IsEdit() && m.ui.Edit.clash == "" {
+		m.ui.Screen.StatusMsg = "Not saved: esc again drops it"
+	}
 }
 
 // splitTitleIntoDescription keeps the title up to the cursor, puts what

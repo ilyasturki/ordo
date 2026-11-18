@@ -19,6 +19,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Added
 
 - `gn` on a category named after a version, or any row in it, adds the next version's category: `v1.3.0 - polish` gives `v1.4.0`, in the same format and without the label, on the newest side of the versions you have, newest first or last as the project runs them. Its name opens in the editor to tweak, `esc` saves it like `enter`, and it is one undo step. With no version in the name, the status line says so. The app's category menu has Add next version
+- `esc` in a title, name, note, separator label or description being edited saves it, as `enter` does, instead of throwing the text away: `u` takes it back. A new row left empty still goes away, and a name already taken keeps the editor open until a second `esc` drops the edit. Search, the filters, a command's prompt and the pickers keep `esc` as cancel
 - The description editor names its task under its heading, the title cut to one row, and grows with the text up to the screen's height, its top staying put. It follows a terminal resize, and a description past 99 lines takes a new line again
 
 ## [0.14.3] - 2026-11-11

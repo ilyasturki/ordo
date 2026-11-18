@@ -102,7 +102,7 @@ func TestCtrlG_EditorFailureLeavesTheFieldAsItWas(t *testing.T) {
 	assert.NoFileExists(t, path)
 }
 
-func TestCtrlG_DescriptionTakesTheEditorTextAndEscStillCancels(t *testing.T) {
+func TestCtrlG_DescriptionTakesTheEditorTextAndEscSavesIt(t *testing.T) {
 	ed := useFakeEditor(t, "one\n\ntwo\n", "0")
 	p := sampleProject()
 	p.Categories[0].Tasks[0].Description = "saved"
@@ -121,8 +121,8 @@ func TestCtrlG_DescriptionTakesTheEditorTextAndEscStillCancels(t *testing.T) {
 	assert.Equal(t, 3, ta.Column())
 
 	next, _ := m.Update(keyPress("esc"))
-	cancelled := asModel(next)
-	assert.Equal(t, "saved", cancelled.project.Categories[0].Tasks[0].Description)
+	saved := asModel(next)
+	assert.Equal(t, "one\n\ntwo", saved.project.Categories[0].Tasks[0].Description)
 }
 
 func TestCtrlG_LongDescriptionShowsTheCursorAtTheEnd(t *testing.T) {

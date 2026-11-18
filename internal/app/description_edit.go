@@ -141,10 +141,7 @@ func (m *model) handleDescriptionEditKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		return m, nil
 	}
 	switch msg.String() {
-	case "esc":
-		m.cancelDescriptionEdit()
-		return m, nil
-	case "enter", "ctrl+s", "ctrl+enter":
+	case "enter", "esc", "ctrl+s", "ctrl+enter":
 		m.finishDescriptionEdit()
 		return m, nil
 	case "ctrl+v":
@@ -266,9 +263,8 @@ func (m model) descriptionEditView() string {
 		body,
 		"",
 		ui.RenderHints([]ui.Hint{
-			{Key: "enter", Label: "save"},
+			{Key: "enter/esc", Label: "save"},
 			{Key: "shift+enter", Label: "newline"},
-			{Key: "esc", Label: "cancel"},
 		}),
 	}
 	content := strings.Join(lines, "\n")

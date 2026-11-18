@@ -174,15 +174,29 @@ func TestCancelDescriptionEdit_DiscardsChanges(t *testing.T) {
 		"cancel must not persist the typed value")
 }
 
-func TestHandleDescriptionEditKey_EscCancels(t *testing.T) {
+func TestHandleDescriptionEditKey_EscSaves(t *testing.T) {
 	m := newTestModel(t, sampleProject())
 	_ = m.startDescriptionInlineEdit(0, 0)
-	m.ui.DescriptionEdit.textarea.SetValue("typed but not saved")
+	m.ui.DescriptionEdit.textarea.SetValue("ten minutes of typing")
 
 	_, _ = m.handleDescriptionEditKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 
 	assert.True(t, m.ui.Modes.IsNormal())
-	assert.Equal(t, "", m.project.Categories[0].Tasks[0].Description)
+	assert.Equal(t, "ten minutes of typing", m.project.Categories[0].Tasks[0].Description)
+	assert.Equal(t, "Description added", m.ui.Screen.StatusMsg)
+}
+
+func TestDescriptionEsc_UndoTakesItBack(t *testing.T) {
+	p := sampleProject()
+	p.Categories[0].Tasks[0].Description = "before"
+	m := newTestModel(t, p)
+	selectFirstTask(m)
+	_ = m.startDescriptionInlineEdit(0, 0)
+	m.ui.DescriptionEdit.textarea.SetValue("after")
+
+	m = pressAll(m, "esc", "u")
+
+	assert.Equal(t, "before", m.project.Categories[0].Tasks[0].Description)
 }
 
 func TestHandleDescriptionEditKey_EnterSaves(t *testing.T) {

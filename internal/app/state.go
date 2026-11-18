@@ -559,10 +559,8 @@ func (f *FoldState) HasFolded() bool {
 }
 
 type EditState struct {
-	input    lineField
-	isAdding bool
-	// escSaves makes esc save the name like enter: a version gn pre-filled.
-	escSaves  bool
+	input     lineField
+	isAdding  bool
 	newItemID string
 	itemType  selection.FocusKind
 	wrap      editWrapCache
@@ -594,7 +592,6 @@ func (e *EditState) wrapFor(value string, available int) []ui.LineSpan {
 func (e *EditState) reset() {
 	e.input = newTextInput()
 	e.isAdding = false
-	e.escSaves = false
 	e.newItemID = ""
 	e.itemType = selection.FocusProject
 	e.wrap = editWrapCache{}

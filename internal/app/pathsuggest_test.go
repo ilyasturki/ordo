@@ -195,7 +195,7 @@ func TestPathSuggest_HomeAndWorkingDirectory(t *testing.T) {
 	assert.Equal(t, []string{"linked/"}, pathNames(m.ui.Edit.paths))
 }
 
-func TestPathSuggest_EscClosesThenCancels(t *testing.T) {
+func TestPathSuggest_EscClosesThenSaves(t *testing.T) {
 	dir := pathTree(t)
 	m := sendField(t, editingTask(t, "keep"), " "+dir+"/al")
 	require.True(t, m.ui.Edit.paths.open())
@@ -209,8 +209,8 @@ func TestPathSuggest_EscClosesThenCancels(t *testing.T) {
 	assert.False(t, m.ui.Edit.paths.open())
 
 	m = sendField(t, m, "esc")
-	assert.True(t, m.ui.Modes.IsNormal(), "the second esc cancels the edit")
-	assert.Equal(t, "keep", m.project.Categories[0].Tasks[0].Title)
+	assert.True(t, m.ui.Modes.IsNormal(), "the second esc saves the edit")
+	assert.Equal(t, "keep "+dir+"/alp", m.project.Categories[0].Tasks[0].Title)
 }
 
 func TestPathSuggest_ReadsOffTheKeyPath(t *testing.T) {
@@ -255,9 +255,10 @@ func TestPathSuggest_InTheDescription(t *testing.T) {
 	assert.Equal(t, "see "+dir+"/beta", m.ui.DescriptionEdit.textarea.Value())
 
 	m = sendField(t, m, "backspace", "esc")
-	assert.True(t, m.ui.Modes.IsDescriptionEdit())
+	assert.True(t, m.ui.Modes.IsDescriptionEdit(), "the first esc only closes the list")
 	m = sendField(t, m, "esc")
 	assert.True(t, m.ui.Modes.IsNormal())
+	assert.Equal(t, "see "+dir+"/bet", m.project.Categories[0].Tasks[0].Description, "the second esc saves")
 }
 
 func TestPathSuggest_ListShiftsNoRow(t *testing.T) {

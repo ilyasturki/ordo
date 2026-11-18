@@ -76,7 +76,8 @@ var helpModeSections = []helpSection{
 		title: "While editing text",
 		entries: []helpEntry{
 			{keys: "enter", desc: "save"},
-			{keys: "esc", desc: "cancel"},
+			{keys: "esc", desc: "save too; u takes it back"},
+			{keys: "esc", desc: "in search, a filter or a prompt: cancel"},
 			{keys: "← / →", desc: "move the cursor"},
 			{keys: "ctrl+a / ctrl+e", desc: "start / end of line"},
 			{keys: "alt+< / alt+>", desc: "start / end of the text"},
@@ -94,7 +95,7 @@ var helpModeSections = []helpSection{
 			{keys: "shift+enter", desc: "in a title: what follows goes to the description"},
 			{keys: "tab", desc: "complete the path picked in the list"},
 			{keys: "↑ / ↓, ctrl+p / ctrl+n", desc: "pick in the path list"},
-			{keys: "esc", desc: "close the path list, a second esc cancels"},
+			{keys: "esc", desc: "close the path list, a second esc saves"},
 		},
 	},
 	{

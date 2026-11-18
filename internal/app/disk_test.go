@@ -191,22 +191,25 @@ func TestOutsideChangeLeavesTheEditFieldAlone(t *testing.T) {
 		return m, task
 	}
 
-	t.Run("cancelled, it reloads", func(t *testing.T) {
+	t.Run("emptied, it reloads", func(t *testing.T) {
 		m, task := open(t)
+		m.ui.Edit.input.SetValue("")
 		hit(m, "esc")
 		assert.True(t, m.ui.Modes.IsNormal())
 		assert.Equal(t, "Elsewhere", m.project.Name)
 		assert.Equal(t, changedMessage, m.ui.Screen.StatusMsg)
 		assert.Equal(t, "task:"+task.ID, cursorItem(t, m))
 	})
-	t.Run("committed, the edit merges with the file", func(t *testing.T) {
-		m, task := open(t)
-		hit(m, "enter")
-		assert.Empty(t, m.ui.Save.mark())
-		assert.Equal(t, "Elsewhere", m.project.Name)
-		got, _ := findTask(m.project, task.ID)
-		assert.Equal(t, task.Title+"!", got.Title)
-	})
+	for _, leave := range []string{"enter", "esc"} {
+		t.Run("committed with "+leave+", the edit merges with the file", func(t *testing.T) {
+			m, task := open(t)
+			hit(m, leave)
+			assert.Empty(t, m.ui.Save.mark())
+			assert.Equal(t, "Elsewhere", m.project.Name)
+			got, _ := findTask(m.project, task.ID)
+			assert.Equal(t, task.Title+"!", got.Title)
+		})
+	}
 }
 
 func TestOutsideChangeKeepsThePeekAndTheCursorOnItsRow(t *testing.T) {
