@@ -42,7 +42,7 @@ Sleep 1000ms
 Screenshot "/tmp/ordo-vt/vhs-out/106_description_back_from_editor.png"
 Escape
 Sleep 600ms
-Screenshot "/tmp/ordo-vt/vhs-out/106_description_cancelled.png"
+Screenshot "/tmp/ordo-vt/vhs-out/106_description_saved_on_esc.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 

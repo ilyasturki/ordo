@@ -44,7 +44,7 @@ Sleep 400ms
 Screenshot "/tmp/ordo-vt/vhs-out/109_hidden.png"
 Sleep 200ms
 
-# esc closes the list and keeps the edit; a second esc cancels it.
+# esc closes the list and keeps the edit; a second esc saves it.
 Escape
 Sleep 300ms
 Screenshot "/tmp/ordo-vt/vhs-out/109_dismissed.png"

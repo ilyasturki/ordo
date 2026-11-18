@@ -19,7 +19,7 @@ Type "j"
 Sleep 300ms
 Enter
 Sleep 500ms
-# Footer should now read: enter save · shift+enter newline · esc cancel
+# Footer should now read: enter/esc save · shift+enter newline
 Screenshot "/tmp/ordo-vt/vhs-out/27_editor_open_hints.png"
 
 # Shift+Enter (delivered as Alt+Enter / ESC+CR by kitty & ghostty) inserts a
