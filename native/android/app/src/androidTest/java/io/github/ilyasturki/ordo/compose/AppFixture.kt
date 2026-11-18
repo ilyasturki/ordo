@@ -39,7 +39,7 @@ const val PID = "0rd0-web-fixture"
 
 // The app on the seed project under each name, signed in to a server that never answers, so nothing leaves the phone.
 @OptIn(ExperimentalTestApi::class)
-abstract class AppFixture(private val names: List<String> = listOf("Ordo"), composing: Boolean = true) {
+abstract class AppFixture(private val names: List<String> = listOf("Ordo"), composing: Boolean = true, private val seed: String = "seed.json") {
     // v2: effects resume on the main thread as on a phone; v1 resumed them off it, racing a new window's first composition.
     val compose = createEmptyComposeRule()
 
@@ -59,7 +59,7 @@ abstract class AppFixture(private val names: List<String> = listOf("Ordo"), comp
     @Before
     fun setUp() {
         val ins = InstrumentationRegistry.getInstrumentation()
-        val raw = ins.context.assets.open("seed.json").bufferedReader().use { it.readText() }
+        val raw = ins.context.assets.open(seed).bufferedReader().use { it.readText() }
         ins.targetContext.cacheDir.listFiles { f -> f.name.startsWith("ui-") }?.forEach { it.deleteRecursively() }
         val store = Store(File(ins.targetContext.cacheDir, "ui-${System.nanoTime()}"))
         store.saveSession(Session("http://127.0.0.1:9", "token"))
