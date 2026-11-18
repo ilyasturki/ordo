@@ -129,6 +129,10 @@ imports = [ inputs.ordo.nixosModules.default ];
 services.ordo-web = { enable = true; user = "alice"; baseUrl = "https://ordo.example.com"; };
 ```
 
+## Web
+
+Ordo also runs in the browser, built from `web/`. Edits go through the same Go code as the TUI and the app, compiled to WebAssembly. Two builds come out of it: `nix build .#web-site` is the public site, with the app at `/app/` keeping its projects in the browser, and `nix build .#web-private` is the app alone, served at `/` on the same host as `ordo serve`, whose `/api` your reverse proxy forwards. Both are static files, so `ordo serve` and `nix build` stay free of node. A project moves in and out as its JSON file. `just web-dev` runs it locally, and `just web-check` tests it in Chromium, Firefox and WebKit.
+
 ## CLI
 
 Most of what the TUI does has a command, for scripts and quick edits. Every command takes `-j` for JSON output.

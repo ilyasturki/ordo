@@ -31,7 +31,8 @@ and gets an entry in `operations.Actions` marked `TUI`, `App` or `Both`. The TUI
 handlers call it and keep only their cursor, modes, undo history and status line
 around the call. An `App` action is an `operations.Op` run by `operations.Apply`:
 the Android app runs it on its own copy through `internal/core`, bound with
-gomobile in `native/core`, and `ordo serve` replays the app's queue through it.
+gomobile in `native/core`, the web app through the same core compiled to wasm in
+`cmd/ordo-wasm`, and `ordo serve` replays the app's queue through it.
 `TestEveryAppActionApplies` goes red when an `App` action has no applier, and
 `operations.Undo` gives each op the ops that take it back.
 
@@ -77,3 +78,21 @@ Run after a change to the app:
 
 `just native` installs the `phone` build, R8-optimized and signed with the debug
 key, on the connected phone.
+
+# The web app
+
+`web/` is a SvelteKit static app (Svelte 5, Tailwind 4, bun) in two builds,
+picked by `ORDO_WEB`: `site`, the public landing at `/` with the app at `/app`,
+and `private`, the app at `/` beside `ordo serve`'s `/api`. The app's routes live
+once under `src/routes/app`; `src/hooks.ts` reroutes the private build onto them,
+and links go through `app()` in `$lib/paths`. Edits run in the wasm core
+(`$lib/core`), never in TypeScript, so an op change reaches the web at the next
+`just wasm`. Colours come from `bun run theme`, never by hand in `colors.css`.
+
+`just web-check` (typecheck, Vitest, Playwright on both builds in three engines,
+phone and desktop) runs in `nix develop .#web`, whose browsers are the flake's
+`playwright-driver`: `@playwright/test` is pinned to its version, so a
+`flake.lock` update that moves it moves the pin. A behaviour only a browser shows
+gets a spec in `web/e2e`; `just web-e2e <spec> [--project …]` runs one. A change
+to `web/bun.lock` needs `just web-deps-hash`. `nix build .#ordo` stays node-free:
+the web lives only in `packages.web-site` and `web-private`.

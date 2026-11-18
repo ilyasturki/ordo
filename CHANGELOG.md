@@ -24,6 +24,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - A save no longer overwrites a version Syncthing put in place while the save was writing: the TUI merges it with your edits, and the CLI and `ordo serve` redo their change on it. See [`docs/file-format.md`](docs/file-format.md#writing-a-file)
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
+- A web app, in two static builds from the flake: `web-site`, the public site with the app at `/app/` keeping projects in the browser, and `web-private`, the app alone for the host that proxies `ordo serve`. It runs edits through the same Go code as the TUI and the phone, and imports and exports a project's JSON file
 
 ## [0.14.3] - 2026-11-11
 
