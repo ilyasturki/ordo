@@ -8,6 +8,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - `shift+enter` in a task's title being edited keeps the text before the cursor as the title and moves what follows to the top of the description, as one undo step, then opens the description editor on it. At the end of the title, it saves the title and opens the description
 - `gn` on a category named after a version, or any row in it, adds the next version's category: `v1.3.0 - polish` gives `v1.4.0`, in the same format and without the label, on the newest side of the versions you have, newest first or last as the project runs them. Its name opens in the editor to tweak, `esc` saves it like `enter`, and it is one undo step. With no version in the name, the status line says so. The app's category menu has Add next version
+- A web app, in two static builds from the flake: `web-site`, the public site with the app at `/app/` keeping projects in the browser, and `web-private`, the app alone for the host that proxies `ordo serve`. It runs edits through the same Go code as the TUI and the phone, and imports and exports a project's JSON file
 
 ### Changed
 
@@ -24,7 +25,6 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - A save no longer overwrites a version Syncthing put in place while the save was writing: the TUI merges it with your edits, and the CLI and `ordo serve` redo their change on it. See [`docs/file-format.md`](docs/file-format.md#writing-a-file)
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
-- A web app, in two static builds from the flake: `web-site`, the public site with the app at `/app/` keeping projects in the browser, and `web-private`, the app alone for the host that proxies `ordo serve`. It runs edits through the same Go code as the TUI and the phone, and imports and exports a project's JSON file
 
 ## [0.14.3] - 2026-11-11
 
