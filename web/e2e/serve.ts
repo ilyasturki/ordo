@@ -12,8 +12,9 @@ export const passphrase = 'throwaway-web-passphrase';
 
 let binary: string | undefined;
 
-/** This checkout's ordo, built once per process. */
+/** This checkout's ordo: the one global-setup built, else built once in this process. */
 export function ordo(): string {
+	binary ??= process.env.ORDO_E2E_BIN;
 	if (!binary) {
 		const dir = mkdtempSync(join(tmpdir(), 'ordo-web-bin-'));
 		binary = join(dir, 'ordo');
@@ -48,30 +49,36 @@ export type Served = {
 	close(): Promise<void>;
 };
 
-/** A throwaway ordo serve on its own data, with a passphrase set, and the seed's project when asked. */
 export async function serve({ seeded = true } = {}): Promise<Served> {
 	const bin = ordo();
 	const dir = mkdtempSync(join(tmpdir(), 'ordo-web-serve-'));
 	const env = { PATH: process.env.PATH ?? '', HOME: dir, ORDO_DATA_PATH: join(dir, 'data'), ORDO_CONFIG_PATH: join(dir, 'config') };
 	if (seeded) execFileSync(bin, ['import', seed, '-q'], { env });
 	execFileSync(bin, ['serve', 'passphrase'], { env, input: passphrase + '\n' });
-	const port = await freePort();
-	const url = `http://127.0.0.1:${port}`;
+	let port = 0;
+	let url = '';
 	let child: ChildProcess | undefined;
 	const kill = () => child?.kill();
 	process.once('exit', kill);
 
-	async function start() {
-		child = spawn(bin, ['serve', '--listen', `127.0.0.1:${port}`], { env, stdio: 'ignore' });
-		for (let i = 0; i < 100; i++) {
+	/** False when this server never came up: its port was taken meanwhile, or it failed. */
+	async function started(): Promise<boolean> {
+		const c = spawn(bin, ['serve', '--listen', `127.0.0.1:${port}`], { env, stdio: 'ignore' });
+		child = c;
+		for (let i = 0; i < 100 && c.exitCode === null; i++) {
 			try {
-				if ((await fetch(url + '/api/hello')).ok) return;
+				if ((await fetch(url + '/api/hello')).ok) return c.exitCode === null;
 			} catch {
 				// Not listening yet.
 			}
 			await new Promise((r) => setTimeout(r, 50));
 		}
-		throw new Error(`ordo serve didn't start on ${url}`);
+		c.kill();
+		return false;
+	}
+
+	async function start() {
+		if (!(await started())) throw new Error(`ordo serve didn't start again on ${url}`);
 	}
 
 	async function stop() {
@@ -84,7 +91,12 @@ export async function serve({ seeded = true } = {}): Promise<Served> {
 		});
 	}
 
-	await start();
+	for (let attempt = 0; ; attempt++) {
+		port = await freePort();
+		url = `http://127.0.0.1:${port}`;
+		if (await started()) break;
+		if (attempt === 2) throw new Error("ordo serve didn't start");
+	}
 	return {
 		url,
 		start,

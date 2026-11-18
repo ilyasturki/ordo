@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { nodeCore } from '$lib/core/node';
 import type { Project } from '$lib/core/types';
 import { Local } from '$lib/local.svelte';
 import { openStore } from '$lib/store';
-import { serve, type Served } from '../../../e2e/serve';
+import { ordo, serve, type Served } from '../../../e2e/serve';
 import { Api, parsePairing, parseServer, pairingCode, type Session } from './api';
 import { delays, Sync } from './sync.svelte';
 
@@ -16,6 +16,8 @@ const fast = { ...delays, sync: 20, poll: 60_000, firstBackoff: 50, maxBackoff: 
 let stores = 0;
 const open: { local: Local; sync: Sync }[] = [];
 const served: Served[] = [];
+
+beforeAll(() => void ordo(), 300_000);
 
 afterEach(async () => {
 	const core = await nodeCore();
@@ -91,6 +93,36 @@ describe('sync', () => {
 		const [theirs] = await onServer(s);
 		expect(theirs.name).toBe('Ordo offline');
 		expect(titles(theirs)).toContain('Offline one');
+	});
+
+	it('sends an undo, and a redo, as the edits that take it back', async () => {
+		const s = await server();
+		const { local, sync } = await browser(s);
+		await sync.sync();
+		const p = local.projects[0];
+		const task = p.categories[0].tasks[0];
+		await local.perform(p.id, { action: 'task.delete', ids: [task.id] });
+		await sync.sync();
+		expect(titles((await onServer(s))[0])).not.toContain(task.title);
+		await local.undo();
+		await sync.sync();
+		expect(titles((await onServer(s))[0])[0]).toBe(task.title);
+		await local.redo();
+		await sync.sync();
+		expect(titles((await onServer(s))[0])).not.toContain(task.title);
+	});
+
+	it('takes back a created project on the server too', async () => {
+		const s = await server();
+		const { local, sync } = await browser(s);
+		await sync.sync();
+		const pid = (await local.perform('', { action: 'project.create', title: 'Fresh' })).row!;
+		await sync.sync();
+		expect((await onServer(s)).map((p) => p.id)).toContain(pid);
+		await local.undo();
+		await sync.sync();
+		expect((await onServer(s)).map((p) => p.id)).not.toContain(pid);
+		expect(local.project(pid)).toBeUndefined();
 	});
 
 	it('keeps the queue through a reload', async () => {

@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { Api } from '../src/lib/sync/api';
 import { expect, shoot, test } from './fixtures';
-import { ferry, row, taskLink } from './ordo';
+import { ferry, pane, row, taskLink } from './ordo';
 import { passphrase, type Served } from './serve';
 
 test.use({ signedIn: false });
@@ -53,7 +53,7 @@ test('signs in with the passphrase and works on the server’s projects', async 
 	await expect(row(page, 'Shell completions').getByRole('button', { name: 'In Progress, change status' })).toBeVisible();
 });
 
-test('a wrong passphrase says so', async ({ page, app, build, served, noise }) => {
+test('a wrong passphrase says so', async ({ page, app, build, served, noise }, info) => {
 	served.add(ferry);
 	noise(/403/);
 	await page.goto(app(build === 'site' ? '/signin' : '/'));
@@ -61,9 +61,10 @@ test('a wrong passphrase says so', async ({ page, app, build, served, noise }) =
 	await page.getByLabel('Passphrase').fill('not the passphrase');
 	await page.getByRole('button', { name: 'Sign in' }).click();
 	await expect(page.getByText('Wrong passphrase')).toBeVisible();
+	await shoot(page, 'sign-in-error', info.project.name);
 });
 
-test('pairs with a pairing link', async ({ page, app, build, served, noise }) => {
+test('pairs with a pairing link', async ({ page, app, build, served, noise }, info) => {
 	served.add(ferry);
 	const link = served.pairLink();
 	const code = link.slice(link.lastIndexOf('/') + 1);
@@ -71,6 +72,7 @@ test('pairs with a pairing link', async ({ page, app, build, served, noise }) =>
 		await page.goto(app(`/pair/${code}`));
 		await expect(page.getByRole('heading', { name: 'Pair this browser?' })).toBeVisible();
 		await expect(page).not.toHaveURL(new RegExp(code));
+		await shoot(page, 'pair', info.project.name);
 		await page.getByRole('button', { name: 'Pair' }).click();
 	} else {
 		await page.goto(app('/signin'));
@@ -147,7 +149,7 @@ test('signing this browser out drops its copy', async ({ page, app, build, serve
 	expect((await (await other(served)).api.devices()).devices.map((d) => d.name)).toEqual(['Test client']);
 });
 
-test('a browser the server signed out asks to sign in again, and keeps its edits', async ({ page, app, build, served, noise }) => {
+test('a browser the server signed out asks to sign in again, and keeps its edits', async ({ page, app, build, served, noise }, info) => {
 	served.add(ferry);
 	await signInWithPassphrase(page, app, build, served);
 	const them = await other(served);
@@ -157,10 +159,56 @@ test('a browser the server signed out asks to sign in again, and keeps its edits
 	await row(page, 'Shell completions').getByRole('button', { name: 'Todo, change status' }).click();
 	await page.getByRole('button', { name: 'Not synced' }).click();
 	await expect(page.getByRole('dialog', { name: 'Sync' })).toContainText('1 edit waits safely in this browser');
+	await shoot(page, 'sync-sheet', info.project.name);
 	await page.getByRole('button', { name: 'Sign in again' }).click();
 	if (build === 'site') await expect(page.getByLabel('Server address')).toHaveValue(served.url);
 	await page.getByLabel('Passphrase').fill(passphrase);
 	await page.getByRole('button', { name: 'Sign in' }).click();
 	await expect(page.getByRole('list', { name: 'ferry' })).toBeVisible();
 	await expect.poll(() => shellStatus(them), { timeout: 10_000 }).toBe('in_progress');
+});
+
+test('an open task follows other clients: a rename, a clash with what is typed, a delete', async ({ page, app, build, served }) => {
+	served.add(ferry);
+	await signInWithPassphrase(page, app, build, served);
+	const them = await other(served);
+	const [p] = await them.projects();
+	const task = p.categories[0].tasks[0];
+	await taskLink(page, 'Shell completions').click();
+	const title = pane(page).getByRole('textbox', { name: 'Title' });
+	await expect(title).toHaveValue(task.title);
+
+	await them.send(p.id, { action: 'task.title', ids: [task.id], title: 'Fish completions', base: task.title });
+	await expect(title).toHaveValue('Fish completions');
+
+	await title.fill('Mine');
+	await them.send(p.id, { action: 'task.title', ids: [task.id], title: 'Theirs', base: 'Fish completions' });
+	await title.press('Escape');
+	const keep = page.getByRole('status').getByRole('button', { name: 'Keep mine' });
+	await expect(keep).toBeVisible({ timeout: 5000 });
+	await expect(title).toHaveValue('Theirs');
+	await keep.click();
+	await expect(title).toHaveValue('Mine');
+	await expect.poll(async () => (await them.projects())[0].categories[0].tasks[0].title, { timeout: 5000 }).toBe('Mine');
+
+	await them.send(p.id, { action: 'task.delete', ids: [task.id] });
+	await expect(title).toBeHidden({ timeout: 5000 });
+	await expect(page.getByRole('list', { name: 'ferry' })).toBeVisible();
+	await expect(taskLink(page, 'Mine')).toHaveCount(0);
+});
+
+test('the site build offers to connect from its empty page and the project menu', async ({ page, app, build }, info) => {
+	test.skip(build !== 'site', 'the private build signs in first');
+	await page.goto(app());
+	await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
+	await shoot(page, 'empty', info.project.name);
+	await page.getByRole('link', { name: 'Connect to ordo serve' }).click();
+	await expect(page.getByRole('heading', { name: 'Connect to ordo serve' })).toBeVisible();
+	await page.getByRole('button', { name: 'Back' }).click();
+	await page.getByRole('button', { name: 'New project' }).click();
+	await page.getByRole('textbox', { name: 'New project' }).fill('Local');
+	await page.keyboard.press('Enter');
+	await page.getByRole('button', { name: 'More options' }).click();
+	await expect(page.getByRole('menuitem', { name: 'Connect to ordo serve' })).toBeVisible();
+	await shoot(page, 'menu', info.project.name);
 });

@@ -2,7 +2,6 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, request, type Server } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { freePort } from './serve';
 
 const root = fileURLToPath(new URL('../build/private', import.meta.url));
 
@@ -59,10 +58,9 @@ export async function front(api: string): Promise<{ url: string; close(): Promis
 		res.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream', 'Content-Security-Policy': csp() });
 		createReadStream(file).pipe(res);
 	});
-	const port = await freePort();
-	await new Promise<void>((r) => server.listen(port, '127.0.0.1', r));
+	await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
 	return {
-		url: `http://127.0.0.1:${port}`,
+		url: `http://127.0.0.1:${(server.address() as { port: number }).port}`,
 		close: () =>
 			new Promise((r) => {
 				server.closeAllConnections();

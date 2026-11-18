@@ -70,9 +70,10 @@ export const test = base.extend<Fixtures & Options>({
 			});
 			page.on('pageerror', (error) => errors.push(error.message));
 			page.on('requestfailed', (request) => {
-				// A page leaving drops its live stream.
-				if (request.url().endsWith('/api/events')) return;
-				errors.push(`${request.url()}: ${request.failure()?.errorText}`);
+				const failure = request.failure()?.errorText ?? '';
+				// A page leaving drops its live stream, and a round it was sending.
+				if (request.url().includes('/api/') && (request.url().endsWith('/api/events') || /ABORTED|cancelled/i.test(failure))) return;
+				errors.push(`${request.url()}: ${failure}`);
 			});
 			await use();
 			expect(errors.filter((e) => !stack.ignored.some((p) => p.test(e)))).toEqual([]);
