@@ -25,6 +25,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 - A save no longer overwrites a version Syncthing put in place while the save was writing: the TUI merges it with your edits, and the CLI and `ordo serve` redo their change on it. See [`docs/file-format.md`](docs/file-format.md#writing-a-file)
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
+- `o` adds a note below the cursor, like `_`, in one press on any keyboard layout
+
 ### Fixed
 
 - Rows shown by `enter` on `(N hidden by the filter)` and moved into another category with `J`/`K`, one or a visual range, stay shown and selected until the cursor leaves them, instead of hiding and leaving visual mode on `0 tasks selected`. Visual mode now ends by itself when none of its rows shows, and its status line counts notes and separators too, as `2 tasks, 1 note selected`. `m` says when the filter hides the rows where they landed

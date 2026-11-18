@@ -93,7 +93,7 @@ var normalBindings = []keyBinding{
 		action: void((*model).startAddingSubCategory)},
 	{keys: []string{"-"}, desc: "add separator", section: sectionTasks,
 		action: void((*model).startAddingSeparator)},
-	{keys: []string{"_"}, desc: "add note", section: sectionTasks,
+	{keys: []string{"o", "_"}, display: "o / _", desc: "add note", section: sectionTasks,
 		action: void((*model).startAddingNote)},
 	{keys: []string{"enter"}, desc: "edit", section: sectionTasks,
 		action: func(m *model) tea.Cmd {

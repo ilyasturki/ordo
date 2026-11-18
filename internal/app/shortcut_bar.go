@@ -20,6 +20,7 @@ var normalShortcuts = []ui.Hint{
 	{Key: "f", Label: "filter"},
 	{Key: "/", Label: "search"},
 	{Key: "v", Label: "visual"},
+	{Key: "o", Label: "note"},
 	{Key: "y/x/p", Label: "copy/cut/paste"},
 	{Key: "u/^r", Label: "undo/redo"},
 	{Key: ",", Label: "options"},

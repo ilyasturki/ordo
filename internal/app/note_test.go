@@ -67,6 +67,20 @@ func TestAddNoteBelowTheBlock(t *testing.T) {
 	assert.Len(t, m.project.Categories[0].Tasks, 4)
 }
 
+func TestOAddsANoteLikeUnderscore(t *testing.T) {
+	m := newTestModel(t, noteProject())
+	require.True(t, m.selectRow("t1a"))
+
+	m, _ = pressKeys(m, "o")
+	require.True(t, m.ui.Modes.IsEdit())
+	m, _ = pressKeys(m, "h", "i", "enter")
+
+	tasks := m.project.Categories[0].Tasks
+	require.Len(t, tasks, 5)
+	assert.True(t, tasks[2].IsNote())
+	assert.Equal(t, "hi", tasks[2].Title)
+}
+
 func TestAddNoteLeftEmptyIsDropped(t *testing.T) {
 	for _, key := range []string{"esc", "enter"} {
 		t.Run(key, func(t *testing.T) {
