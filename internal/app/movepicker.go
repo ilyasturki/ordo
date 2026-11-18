@@ -317,7 +317,7 @@ func (m *model) moveToCategory(categoryID string) {
 	status := strings.TrimSuffix(pastedRowsStatus(rows, true), "!") + " to " + m.project.CategoryPath(dst)
 	if m.ui.Fold.IsFolded(categoryID) {
 		status += " (folded)"
-	} else if !m.anyRowShown(rowIDsOf(rows)) {
+	} else if m.ui.Filter.HasActiveFilter() && !m.anyRowShown(rowIDsOf(rows)) {
 		status += " (hidden by the filter)"
 	}
 	m.ui.Screen.StatusMsg = status
