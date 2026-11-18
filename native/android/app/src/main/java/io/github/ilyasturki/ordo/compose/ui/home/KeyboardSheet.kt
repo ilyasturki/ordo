@@ -1,7 +1,10 @@
 package io.github.ilyasturki.ordo.compose.ui.home
 
 import android.content.res.Configuration
+import android.os.Build
 import android.os.SystemClock
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.gestures.Orientation
@@ -33,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -53,6 +57,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -64,6 +69,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -115,6 +121,7 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
     var closing by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var refused by remember { mutableStateOf(false) }
+    var starting by remember { mutableStateOf(true) }
     val menus = remember { SheetMenus() }
     val leaving by rememberUpdatedState(onLeave)
     val gone by rememberUpdatedState(onGone)
@@ -174,14 +181,23 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
         if (target.getBottom(density) > 0) rest.snapTo(1f)
     }
     // The keyboard heading down is a dismissal only when this window let it go: a dialog over it or the app leaving takes it too.
+    // A busy main thread can merge the keyboard's rise into its fall, so a keyboard first seen on its way down counts as well.
     LaunchedEffect(Unit) {
-        var wasUp = false
-        snapshotFlow { target.getBottom(density) > 0 }.distinctUntilChanged().collect { up ->
-            if (wasUp && !up && !closing) {
+        var was: Keyboard? = null
+        snapshotFlow {
+            when {
+                target.getBottom(density) > 0 -> Keyboard.UP
+                ime.getBottom(density) > 0 -> Keyboard.FALLING
+                else -> Keyboard.DOWN
+            }
+        }.distinctUntilChanged().collect { now ->
+            if (now != Keyboard.DOWN) starting = false
+            val dismissed = was == Keyboard.UP || (was == Keyboard.DOWN && now == Keyboard.FALLING)
+            if (dismissed && now != Keyboard.UP && !closing) {
                 val ours = window.isWindowFocused && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
                 if (ours && !busy) leave() else stayUp()
             }
-            wasUp = up
+            was = now
         }
     }
     LaunchedEffect(Unit) {
@@ -204,6 +220,22 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
         gone()
     }
     BackHandler(!closing) { leave() }
+    // A keyboard still starting takes a back to cancel itself, unseen by the insets: until it shows, the sheet takes back first.
+    LaunchedEffect(Unit) {
+        delay(NO_KEYBOARD_MS)
+        starting = false
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val view = LocalView.current
+        val early = starting && !closing
+        DisposableEffect(early) {
+            val dispatcher = view.findOnBackInvokedDispatcher()
+            if (!early || dispatcher == null) return@DisposableEffect onDispose {}
+            val callback = OnBackInvokedCallback { leave() }
+            dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_OVERLAY, callback)
+            onDispose { dispatcher.unregisterOnBackInvokedCallback(callback) }
+        }
+    }
 
     val scrim = BottomSheetDefaults.ScrimColor
     Box(Modifier.fillMaxSize()) {
@@ -253,6 +285,8 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
         }
     }
 }
+
+private enum class Keyboard { UP, FALLING, DOWN }
 
 // A software keyboard can take a second to start rising on a loaded phone.
 private const val NO_KEYBOARD_MS = 2000L
