@@ -10,19 +10,9 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -45,21 +35,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.SheetState
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -71,8 +57,8 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import io.github.ilyasturki.ordo.compose.model.Category
 import io.github.ilyasturki.ordo.compose.model.Clash
 import io.github.ilyasturki.ordo.compose.model.Estimates
@@ -87,9 +73,11 @@ import io.github.ilyasturki.ordo.compose.sync.Entry
 import io.github.ilyasturki.ordo.compose.sync.SyncState
 import io.github.ilyasturki.ordo.compose.sync.Trouble
 import io.github.ilyasturki.ordo.compose.ui.Icons
+import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
 import io.github.ilyasturki.ordo.compose.ui.LocalEngine
 import io.github.ilyasturki.ordo.compose.ui.marks
 import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 private val space = Regex("\\s+")
@@ -103,51 +91,29 @@ fun plainFieldColors() = TextFieldDefaults.colors(
     unfocusedIndicatorColor = Color.Transparent,
 )
 
-// A height that grew with the keyboard would move the Expanded anchor on each keyboard frame, and each move restarts the sheet's spring, which then only runs once the keyboard has stopped.
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun KeyboardSheet(sheet: SheetState, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        modifier = Modifier.risesWithKeyboard(),
-        sheetState = sheet,
-        dragHandle = null,
-        contentWindowInsets = { WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Vertical) },
-        content = content,
-    )
-}
-
-// Composed so that the insets are the sheet's window's, the only one the keyboard animates. The sheet keeps its navigation bar padding, which the IME inset already counts.
-private fun Modifier.risesWithKeyboard(): Modifier = composed {
-    val lift = WindowInsets.ime.exclude(WindowInsets.navigationBars)
-    offset { IntOffset(0, -lift.getBottom(this)) }
-}
-
-// A sheet around one name, docked to the keyboard.
-@OptIn(ExperimentalMaterial3Api::class)
+// A sheet around one name, docked to the keyboard. onDone's quiet is false for a save the user didn't ask for by name (a dismissal, another action), which then offers its Undo.
+// A dismissal saves a changed name; an emptied one keeps the old, and a new row left empty adds nothing.
 @Composable
 fun NameSheet(
     initial: String,
     placeholder: String,
     action: String,
     onDismiss: () -> Unit,
-    onDone: suspend (String) -> Boolean,
+    onDone: suspend (name: String, quiet: Boolean) -> Boolean,
     blankAllowed: Boolean = false,
-    extra: @Composable ColumnScope.() -> Unit = {},
+    extra: @Composable ColumnScope.(leave: (then: () -> Unit) -> Unit) -> Unit = {},
 ) {
-    val scope = rememberCoroutineScope()
+    val appScope = LocalAppScope.current
     val focus = remember { FocusRequester() }
-    var text by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
-    val sheet = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
-    val done: () -> Unit = {
-        scope.launch {
-            if ((blankAllowed || text.text.isNotBlank()) && onDone(text.text.trim())) {
-                sheet.hide()
-                onDismiss()
-            }
-        }
+    var text by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
+    suspend fun saveOnLeave(): Boolean {
+        val name = text.text.trim()
+        if (name == initial.trim() || (name.isEmpty() && (!blankAllowed || initial.isBlank()))) return true
+        return onDone(name, false)
     }
-    KeyboardSheet(sheet, onDismiss) {
+    val leave: (() -> Unit) -> Unit = { then -> appScope.launch(Dispatchers.Main) { if (saveOnLeave()) then() } }
+    KeyboardSheet(onLeave = ::saveOnLeave, onGone = onDismiss) { finish ->
+        val done = { finish { (blankAllowed || text.text.isNotBlank()) && onDone(text.text.trim(), true) } }
         Column(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextField(
@@ -163,7 +129,7 @@ fun NameSheet(
                 )
                 TextButton(onClick = done, enabled = blankAllowed || text.text.isNotBlank(), modifier = Modifier.padding(end = 8.dp)) { Text(action) }
             }
-            extra()
+            extra(leave)
         }
     }
     LaunchedEffect(Unit) { focus.requestFocus() }
@@ -247,8 +213,9 @@ fun <T> Picker(
     label: (T) -> String,
     onPick: (T) -> Unit,
     leading: (@Composable (T) -> Unit)? = null,
+    properties: PopupProperties = PopupProperties(focusable = true),
 ) {
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss, properties = properties) {
         for (o in options) {
             DropdownMenuItem(
                 text = { Text(label(o)) },
@@ -262,53 +229,57 @@ fun <T> Picker(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Save keeps the sheet open for the next task; a dismissal saves what is typed, with its Undo, and a refused save keeps the sheet up once.
 @Composable
 fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> Unit, onAdded: (String) -> Unit) {
     val engine = LocalEngine.current
-    val scope = rememberCoroutineScope()
+    val appScope = LocalAppScope.current
     val feedback = rememberFeedback()
     val focus = remember { FocusRequester() }
-    val sheet = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
     val categories = entry.project.categories
-    var title by remember { mutableStateOf("") }
-    var details by remember { mutableStateOf<String?>(null) }
-    var cat by remember { mutableStateOf(initialCat) }
-    var priority by remember { mutableStateOf("") }
-    var tag by remember { mutableStateOf("") }
-    var estimate by remember { mutableIntStateOf(0) }
-    var after by remember { mutableStateOf("") }
+    var title by rememberSaveable { mutableStateOf("") }
+    var details by rememberSaveable { mutableStateOf<String?>(null) }
+    var cat by rememberSaveable { mutableStateOf(initialCat) }
+    var priority by rememberSaveable { mutableStateOf("") }
+    var tag by rememberSaveable { mutableStateOf("") }
+    var estimate by rememberSaveable { mutableIntStateOf(0) }
+    var after by rememberSaveable { mutableStateOf("") }
     val pid = entry.id
     val hidden = categories.firstOrNull { it.id == cat }?.let { !filter.taskVisible(Task(id = "", priority = priority, tagColor = tag), it) } == true
 
-    val save: () -> Unit = save@{
+    // Runs on the app's scope: the edits after the insert land even when the sheet has gone.
+    suspend fun commit(quiet: Boolean): Boolean {
         val text = title.replace(space, " ").trim()
-        if (text.isEmpty() || cat.isEmpty()) return@save
+        if (text.isEmpty() || cat.isEmpty()) {
+            if (details.isNullOrBlank()) return true
+            feedback.reject()
+            return false
+        }
         if (hidden) {
             feedback.reject()
-            return@save
+            return false
         }
         title = ""
-        scope.launch {
-            val a = engine.edit(pid, Ops.insert(cat, after, text), quiet = true)
-            if (!a.applied) {
-                title = text
-                feedback.reject()
-                return@launch
-            }
-            feedback.commit()
-            val row = a.row
-            after = row
-            details?.takeIf(String::isNotBlank)?.let { engine.edit(pid, Ops.description(row, it.trim(), ""), quiet = true) }
-            if (priority != "") engine.edit(pid, Ops.priority(row, priority), quiet = true)
-            if (tag != "") engine.edit(pid, Ops.tag(row, tag), quiet = true)
-            if (estimate > 0) engine.edit(pid, Ops.estimate(row, estimate), quiet = true)
-            details = null
-            onAdded(cat)
+        val a = engine.edit(pid, Ops.insert(cat, after, text), quiet = quiet)
+        if (!a.applied) {
+            title = text
+            feedback.reject()
+            return false
         }
+        feedback.commit()
+        val row = a.row
+        after = row
+        details?.takeIf(String::isNotBlank)?.let { engine.edit(pid, Ops.description(row, it.trim(), ""), quiet = true) }
+        if (priority != "") engine.edit(pid, Ops.priority(row, priority), quiet = true)
+        if (tag != "") engine.edit(pid, Ops.tag(row, tag), quiet = true)
+        if (estimate > 0) engine.edit(pid, Ops.estimate(row, estimate), quiet = true)
+        details = null
+        onAdded(cat)
+        return true
     }
+    val save: () -> Unit = { appScope.launch(Dispatchers.Main) { commit(quiet = true) } }
 
-    KeyboardSheet(sheet, onDismiss) {
+    KeyboardSheet(onLeave = { commit(quiet = false) }, onGone = onDismiss) {
         Column(Modifier.padding(top = 8.dp, bottom = 4.dp)) {
             TextField(
                 title,
@@ -377,13 +348,15 @@ fun AddBar(
     onSave: () -> Unit,
 ) {
     var menu by remember { mutableStateOf("") }
+    // A focusable menu would take the window's focus, and the keyboard with it.
+    val keepsKeyboard = PopupProperties(focusable = false)
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f, fill = false).padding(end = 4.dp)) {
                 MarkChip(categories.firstOrNull { it.id == cat }?.name ?: "Category", Modifier.padding(start = 8.dp), trailing = Icons.ExpandMore) { menu = "cat" }
                 Picker(menu == "cat", { menu = "" }, categories, { c ->
                     categories.firstOrNull { it.id == c.parentId }?.let { "${it.name} › ${c.name}" } ?: c.name
-                }, { onCategory(it.id) })
+                }, { onCategory(it.id) }, properties = keepsKeyboard)
             }
             if (!describing) BarIcon(Icons.Notes, "Description", onDescription)
             Box {
@@ -392,7 +365,7 @@ fun AddBar(
                 } else {
                     PriorityChip(priority, compact = true, onClick = { menu = "priority" }, modifier = Modifier.padding(horizontal = 4.dp))
                 }
-                Picker(menu == "priority", { menu = "" }, Priority.all, Priority::label, onPriority, leading = { Icon(Icons.priority(it), null) })
+                Picker(menu == "priority", { menu = "" }, Priority.all, Priority::label, onPriority, leading = { Icon(Icons.priority(it), null) }, properties = keepsKeyboard)
             }
             Box {
                 if (tag == "") {
@@ -400,7 +373,7 @@ fun AddBar(
                 } else {
                     MarkChip("", Modifier.padding(horizontal = 4.dp), tag = tag, name = "Colour", value = Tags.label(tag)) { menu = "tag" }
                 }
-                Picker(menu == "tag", { menu = "" }, listOf("") + Tags.all, Tags::label, onTag, leading = { if (it != "") TagDot(it) })
+                Picker(menu == "tag", { menu = "" }, listOf("") + Tags.all, Tags::label, onTag, leading = { if (it != "") TagDot(it) }, properties = keepsKeyboard)
             }
             Box {
                 if (estimate == 0) {
@@ -408,7 +381,7 @@ fun AddBar(
                 } else {
                     MarkChip(Estimates.format(estimate), Modifier.padding(horizontal = 4.dp), name = "Estimate") { menu = "estimate" }
                 }
-                Picker(menu == "estimate", { menu = "" }, listOf(0) + Estimates.presets, { if (it == 0) "None" else Estimates.format(it) }, onEstimate)
+                Picker(menu == "estimate", { menu = "" }, listOf(0) + Estimates.presets, { if (it == 0) "None" else Estimates.format(it) }, onEstimate, properties = keepsKeyboard)
             }
         }
         TextButton(onClick = onSave, enabled = canSave) { Text("Save") }

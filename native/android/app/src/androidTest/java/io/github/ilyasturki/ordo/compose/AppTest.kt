@@ -382,35 +382,30 @@ class AppTest : AppFixture() {
         return top
     }
 
-    // A sheet whose height follows the keyboard moves its own anchor on every keyboard frame, and slides up only once the keyboard has stopped.
-    private fun assertTheSheetKeepsItsSizeOnTheKeyboard() {
+    // The sheet sits on the keyboard, and the back that takes the keyboard down takes the sheet with it.
+    private fun assertTheSheetRidesTheKeyboard() {
         val pane = SemanticsMatcher.keyIsDefined(SemanticsProperties.PaneTitle) and hasAnyDescendant(hasSetTextAction())
-        // Under instrumentation the sheet's window takes focus too late for the focus request to raise the keyboard.
-        compose.onNode(hasSetTextAction()).performClick()
         compose.waitUntil(30_000) { keyboardTop() != null }
         compose.waitUntil(30_000) {
             compose.onNode(hasSetTextAction()).getUnclippedBoundsInRoot().bottom.value <= keyboardTop()!!
         }
-        val up = compose.onNode(pane).getUnclippedBoundsInRoot()
         back()
         compose.waitUntil(30_000) { keyboardTop() == null }
-        compose.waitForIdle()
-        val down = compose.onNode(pane).getUnclippedBoundsInRoot()
-        assertEquals(down.height.value, up.height.value, 1f)
+        compose.waitUntil(30_000) { compose.onAllNodes(pane).fetchSemanticsNodes().isEmpty() }
     }
 
     @Test
-    fun theNameSheetKeepsItsSizeOnTheKeyboard() {
+    fun theNameSheetRidesTheKeyboard() {
         scrollTo("Tap a row to focus it")
         compose.onNodeWithText("Ordo").performClick()
-        assertTheSheetKeepsItsSizeOnTheKeyboard()
+        assertTheSheetRidesTheKeyboard()
     }
 
     @Test
-    fun theAddSheetKeepsItsSizeOnTheKeyboard() {
+    fun theAddSheetRidesTheKeyboard() {
         scrollTo("Tap a row to focus it")
         compose.onNodeWithContentDescription("Add a task").performClick()
-        assertTheSheetKeepsItsSizeOnTheKeyboard()
+        assertTheSheetRidesTheKeyboard()
     }
 
     @Test

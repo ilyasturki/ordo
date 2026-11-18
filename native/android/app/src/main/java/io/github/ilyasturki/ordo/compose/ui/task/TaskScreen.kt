@@ -154,12 +154,23 @@ fun TaskScreen(pid: String, tid: String, open: (NavKey) -> Unit, back: () -> Uni
     suspend fun saveDetails() {
         if (details == detailsBase) return
         val current = engine.state.value.project(pid)?.project?.find(tid)?.second ?: return
-        val text = Description.join(details, Description.fields(current.description).second)
-        val base = descBase
+        val (theirs, lines) = Description.fields(current.description)
+        // Rewritten on another device while this one was typing: both texts stay, theirs first, for the user to settle.
+        if (current.description != descBase && theirs != detailsBase && theirs.isNotBlank()) {
+            details = Description.keepBoth(theirs, details)
+            engine.say("Changed on another device: both texts kept")
+        }
+        val text = Description.join(details, lines)
+        val base = current.description
+        val savedBase = descBase
+        val savedDetails = detailsBase
         detailsBase = details
         descBase = text
         val a = engine.edit(pid, Ops.description(tid, text, base), quiet = true)
-        if (!a.applied && a.status != "unchanged") descBase = base
+        if (!a.applied && a.status != "unchanged") {
+            descBase = savedBase
+            detailsBase = savedDetails
+        }
     }
 
     LaunchedEffect(title) {
@@ -458,8 +469,24 @@ private fun ImageButton(open: Boolean, setOpen: (Boolean) -> Unit, onPick: () ->
 private fun Subtasks(pid: String, cat: String, task: Task, children: List<Task>, open: (NavKey) -> Unit) {
     val engine = LocalEngine.current
     val scope = rememberCoroutineScope()
+    val appScope = LocalAppScope.current
     val feedback = rememberFeedback()
-    var text by remember { mutableStateOf("") }
+    var text by rememberSaveable { mutableStateOf("") }
+    // Leaving the field or the page adds what it holds, with its Undo; a refused add gives the text back.
+    fun add(quiet: Boolean) {
+        val t = text.replace(space, " ").trim()
+        if (t.isEmpty()) return
+        text = ""
+        appScope.launch(Dispatchers.Main) {
+            if (engine.edit(pid, Ops.add(cat, t, parent = task.id), quiet = quiet).applied) {
+                feedback.commit()
+            } else {
+                if (text.isEmpty()) text = t
+                feedback.reject()
+            }
+        }
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { add(quiet = false) }
     Column(Modifier.padding(top = 8.dp)) {
         for (c in children) {
             Row(
@@ -488,7 +515,7 @@ private fun Subtasks(pid: String, cat: String, task: Task, children: List<Task>,
             BasicTextField(
                 text,
                 { text = it.replace("\n", " ") },
-                modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+                modifier = Modifier.weight(1f).padding(vertical = 12.dp).onFocusChanged { if (!it.isFocused) add(quiet = false) },
                 textStyle = style,
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 decorationBox = { field ->
@@ -499,15 +526,7 @@ private fun Subtasks(pid: String, cat: String, task: Task, children: List<Task>,
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    val t = text.replace(space, " ").trim()
-                    if (t.isNotEmpty()) {
-                        text = ""
-                        scope.launch {
-                            if (engine.edit(pid, Ops.add(cat, t, parent = task.id), quiet = true).applied) feedback.commit()
-                        }
-                    }
-                }),
+                keyboardActions = KeyboardActions(onDone = { add(quiet = true) }),
             )
         }
     }

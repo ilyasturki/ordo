@@ -24,7 +24,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,12 +47,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -86,9 +90,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlin.math.abs
 import kotlin.math.max
 
+@Serializable
 private sealed interface HomeSheet {
     data class Add(val pid: String, val cat: String) : HomeSheet
     data class Filters(val pid: String) : HomeSheet
@@ -98,6 +105,12 @@ private sealed interface HomeSheet {
     data object NewProject : HomeSheet
     data object Sync : HomeSheet
 }
+
+// Saved as JSON: a sheet and what it holds come back after a rotation.
+private val sheetSaver = Saver<HomeSheet?, String>(
+    save = { it?.let { s -> Json.encodeToString(HomeSheet.serializer(), s) } },
+    restore = { Json.decodeFromString(HomeSheet.serializer(), it) },
+)
 
 private sealed interface Confirm {
     data class DeleteProject(val pid: String) : Confirm
@@ -111,7 +124,8 @@ fun HomeScreen(open: (NavKey) -> Unit) {
     val projects = state.projects
     val scope = rememberCoroutineScope()
     val feedback = rememberFeedback()
-    var sheet by remember { mutableStateOf<HomeSheet?>(null) }
+    var sheet by rememberSaveable(stateSaver = sheetSaver) { mutableStateOf<HomeSheet?>(null) }
+    var adding by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     // Saved: a task opened from the results comes back to them.
     var searching by rememberSaveable { mutableStateOf(false) }
@@ -145,6 +159,46 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                 feedback.tick()
                 engine.setCurrent(id)
             }
+        }
+    }
+
+    // Each kind in the focused category, refused as the header's sheet refuses a row the filter would hide.
+    fun sheetFor(e: Entry, kind: AddKind): HomeSheet? {
+        val cat = targetOf(e)
+        fun line(kind: String, open: (String) -> CategorySheet): HomeSheet? {
+            if (cat == null) return null
+            if (!Board.addedLineShows(cat, filterOf(e), kind)) {
+                feedback.reject()
+                engine.say("Clear the filter to add a $kind here")
+                return null
+            }
+            return HomeSheet.OfCategory(e.id, open(cat.id))
+        }
+        return when (kind) {
+            AddKind.TASK -> cat?.let { HomeSheet.Add(e.id, it.id) }
+            AddKind.NOTE -> line("note") { CategorySheet.NewNote(it) }
+            AddKind.SEPARATOR -> line("separator") { CategorySheet.NewSeparator(it) }
+            AddKind.CATEGORY -> HomeSheet.OfCategory(e.id, CategorySheet.New(""))
+            AddKind.PROJECT -> HomeSheet.NewProject
+        }
+    }
+
+    // As the TUI's add does: what just went into a folded category stays in sight.
+    suspend fun reveal(e: Entry, cat: String) {
+        engine.setFolded(e.id, cat, false)
+        e.project.category(cat)?.parentId?.takeIf { it != "" }?.let { engine.setFolded(e.id, it, false) }
+    }
+
+    // Held while the page is on top, and taken as the list comes back.
+    LaunchedEffect(jumps) {
+        jumps.filterNotNull().collect { j ->
+            jumps.value = null
+            val e = latest.firstOrNull { it.id == j.pid } ?: return@collect
+            closeSearch()
+            if (j.pid != engine.state.value.prefs.current) engine.setCurrent(j.pid)
+            reveal(e, j.cat)
+            focus[j.pid] = j.cat
+            landing[j.pid] = j.cat
         }
     }
 
@@ -233,8 +287,16 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             }
         },
         floatingActionButton = {
-            if (!searching && current != null && current.project.categories.isNotEmpty()) {
-                FloatingActionButton(onClick = { sheet = HomeSheet.Add(current.id, targetOf(current)?.id.orEmpty()) }) { Icon(Icons.Add, "Add a task") }
+            if (!searching && current != null) {
+                val empty = current.project.categories.isEmpty()
+                AddButton(
+                    if (empty) "New category" else "Add a task",
+                    if (empty) listOf(AddKind.CATEGORY, AddKind.PROJECT) else AddKind.entries.reversed(),
+                    adding,
+                    onOpen = { adding = it },
+                    onTap = { sheet = if (empty) HomeSheet.OfCategory(current.id, CategorySheet.New("")) else HomeSheet.Add(current.id, targetOf(current)?.id.orEmpty()) },
+                    onPick = { kind -> sheet = sheetFor(current, kind) },
+                )
             }
         },
     ) { pad ->
@@ -272,28 +334,20 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                 )
             }
         }
+        // A touch anywhere on the list closes the + menu, and only that.
+        if (adding) {
+            Box(
+                Modifier.fillMaxSize().pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(pass = PointerEventPass.Initial).consume()
+                        adding = false
+                    }
+                },
+            )
+        }
     }
 
     fun entry(pid: String): Entry? = projects.firstOrNull { it.id == pid }
-
-    // As the TUI's add does: what just went into a folded category stays in sight.
-    suspend fun reveal(e: Entry, cat: String) {
-        engine.setFolded(e.id, cat, false)
-        e.project.category(cat)?.parentId?.takeIf { it != "" }?.let { engine.setFolded(e.id, it, false) }
-    }
-
-    // Held while the page is on top, and taken as the list comes back.
-    LaunchedEffect(jumps) {
-        jumps.filterNotNull().collect { j ->
-            jumps.value = null
-            val e = latest.firstOrNull { it.id == j.pid } ?: return@collect
-            closeSearch()
-            if (j.pid != engine.state.value.prefs.current) engine.setCurrent(j.pid)
-            reveal(e, j.cat)
-            focus[j.pid] = j.cat
-            landing[j.pid] = j.cat
-        }
-    }
 
     when (val s = sheet) {
         null -> {}
@@ -307,11 +361,11 @@ fun HomeScreen(open: (NavKey) -> Unit) {
             }, onDismiss = { sheet = null })
         }
         is HomeSheet.ProjectMenu -> entry(s.pid)?.let { e ->
-            NameSheet(e.name, "Project name", "Rename", onDismiss = { sheet = null }, onDone = { name ->
-                name == e.name || engine.edit(e.id, Ops.projectRename(name), quiet = true).applied
-            }) {
-                SheetAction(Icons.Group, "Group") { sheet = HomeSheet.Group(e.id) }
-                SheetAction(Icons.NewFolder, "New category") { sheet = HomeSheet.OfCategory(e.id, CategorySheet.New("")) }
+            NameSheet(e.name, "Project name", "Rename", onDismiss = { sheet = null }, onDone = { name, quiet ->
+                name == e.name || engine.edit(e.id, Ops.projectRename(name), quiet = quiet).applied
+            }) { leave ->
+                SheetAction(Icons.Group, "Group") { leave { sheet = HomeSheet.Group(e.id) } }
+                SheetAction(Icons.NewFolder, "New category") { leave { sheet = HomeSheet.OfCategory(e.id, CategorySheet.New("")) } }
                 SheetAction(Icons.Delete, "Delete project", danger = true) {
                     sheet = null
                     confirm = Confirm.DeleteProject(e.id)
@@ -320,7 +374,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
         }
         is HomeSheet.Group -> entry(s.pid)?.let { e ->
             val group = e.project.group
-            NameSheet(group, "Group", "Set", onDismiss = { sheet = null }, blankAllowed = true, onDone = { name ->
+            NameSheet(group, "Group", "Set", onDismiss = { sheet = null }, blankAllowed = true, onDone = { name, _ ->
                 name == group || engine.edit(e.id, Ops.projectGroup(name)).applied
             }) {
                 GroupChoices(projectGroups(projects), group) { pick ->
@@ -332,7 +386,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
         is HomeSheet.OfCategory -> entry(s.pid)?.let { e ->
             CategorySheets(e, filterOf(e), s.sheet) { next -> sheet = next?.let { HomeSheet.OfCategory(e.id, it) } }
         }
-        HomeSheet.NewProject -> NameSheet("", "New project", "Add", onDismiss = { sheet = null }, onDone = { name ->
+        HomeSheet.NewProject -> NameSheet("", "New project", "Add", onDismiss = { sheet = null }, onDone = { name, _ ->
             val pid = engine.createProject(name)
             if (pid != null) {
                 feedback.commit()

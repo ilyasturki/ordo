@@ -84,6 +84,11 @@ abstract class AppFixture(private val names: List<String> = listOf("Ordo"), comp
         runBlocking { scope.coroutineContext.job.cancelAndJoin() }
     }
 
+    // A rotation: the activity goes and comes back with what it saved.
+    protected fun recreate() {
+        scenario.recreate()
+    }
+
     protected fun task(title: String): Task? =
         engine.state.value.project(PID)?.project?.categories?.flatMap { it.tasks }?.firstOrNull { it.title == title }
 

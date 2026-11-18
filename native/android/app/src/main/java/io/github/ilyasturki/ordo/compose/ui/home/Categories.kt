@@ -36,6 +36,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,11 +63,14 @@ import io.github.ilyasturki.ordo.compose.ui.rememberFeedback
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import sh.calvin.reorderable.ReorderableColumn
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
+@Serializable
 sealed interface CategorySheet {
     data class Menu(val cat: String) : CategorySheet
     data class New(val parent: String) : CategorySheet
@@ -73,6 +78,11 @@ sealed interface CategorySheet {
     data class NewNote(val cat: String) : CategorySheet
     data class Delete(val cat: String) : CategorySheet
 }
+
+private val categorySheetSaver = Saver<CategorySheet?, String>(
+    save = { it?.let { s -> Json.encodeToString(CategorySheet.serializer(), s) } },
+    restore = { Json.decodeFromString(CategorySheet.serializer(), it) },
+)
 
 @Composable
 fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: (CategorySheet?) -> Unit) {
@@ -83,71 +93,79 @@ fun CategorySheets(entry: Entry, filter: Filter, sheet: CategorySheet, onSheet: 
     val dismiss = { onSheet(null) }
     var clash by remember { mutableStateOf<Pair<Clash, CompletableDeferred<ClashPick?>>?>(null) }
     // A taken name asks what frees it, and the sheet stays open until a pick lands or is cancelled.
-    suspend fun named(name: String, edit: (String) -> JsonObject): Boolean {
-        val a = engine.edit(pid, edit(name), quiet = true)
+    suspend fun named(name: String, quiet: Boolean, edit: (String) -> JsonObject): Boolean {
+        val a = engine.edit(pid, edit(name), quiet = quiet)
         val taken = a.clash ?: return a.applied
         val pick = CompletableDeferred<ClashPick?>()
         clash = taken to pick
         return when (pick.await()) {
-            ClashPick.MINE -> engine.edit(pid, edit(taken.mine), quiet = true).applied
+            ClashPick.MINE -> engine.edit(pid, edit(taken.mine), quiet = quiet).applied
             ClashPick.OTHER -> engine.edit(pid, Ops.categoryRename(taken.taken, taken.other), quiet = true).applied &&
-                engine.edit(pid, edit(name), quiet = true).applied
+                engine.edit(pid, edit(name), quiet = quiet).applied
             null -> false
         }
     }
     when (sheet) {
         is CategorySheet.Menu -> {
             val cat = entry.project.category(sheet.cat) ?: return
-            NameSheet(cat.name, "Category name", "Rename", onDismiss = dismiss, onDone = { name ->
-                name == cat.name || named(name) { Ops.categoryRename(cat.id, it) }
-            }) {
-                SheetAction(Icons.NewFolder, "New sub-category") { onSheet(CategorySheet.New(cat.parentId.ifEmpty { cat.id })) }
+            NameSheet(cat.name, "Category name", "Rename", onDismiss = dismiss, onDone = { name, quiet ->
+                name == cat.name || named(name, quiet) { Ops.categoryRename(cat.id, it) }
+            }) { leave ->
+                SheetAction(Icons.NewFolder, "New sub-category") { leave { onSheet(CategorySheet.New(cat.parentId.ifEmpty { cat.id })) } }
                 if (entry.project.versioned(cat)) {
                     SheetAction(Icons.Add, "Add next version") {
-                        onSheet(null)
-                        feedback.commit()
-                        scope.launch { engine.edit(pid, Ops.versionNext(cat.id)) }
+                        leave {
+                            onSheet(null)
+                            feedback.commit()
+                            scope.launch { engine.edit(pid, Ops.versionNext(cat.id)) }
+                        }
                     }
                 }
                 SheetAction(Icons.Separator, "Add a separator") {
-                    if (!Board.addedLineShows(cat, filter, "separator")) {
-                        onSheet(null)
-                        feedback.reject()
-                        engine.say("Clear the filter to add a separator here")
-                    } else {
-                        onSheet(CategorySheet.NewSeparator(cat.id))
+                    leave {
+                        if (!Board.addedLineShows(cat, filter, "separator")) {
+                            onSheet(null)
+                            feedback.reject()
+                            engine.say("Clear the filter to add a separator here")
+                        } else {
+                            onSheet(CategorySheet.NewSeparator(cat.id))
+                        }
                     }
                 }
                 SheetAction(Icons.Note, "Add a note") {
-                    if (!Board.addedLineShows(cat, filter, "note")) {
-                        onSheet(null)
-                        feedback.reject()
-                        engine.say("Clear the filter to add a note here")
-                    } else {
-                        onSheet(CategorySheet.NewNote(cat.id))
+                    leave {
+                        if (!Board.addedLineShows(cat, filter, "note")) {
+                            onSheet(null)
+                            feedback.reject()
+                            engine.say("Clear the filter to add a note here")
+                        } else {
+                            onSheet(CategorySheet.NewNote(cat.id))
+                        }
                     }
                 }
                 SheetAction(Icons.Pin, if (cat.pinned) "Unpin" else "Pin") {
-                    onSheet(null)
-                    feedback.commit()
-                    scope.launch { engine.edit(pid, Ops.categoryPin(cat.id, !cat.pinned)) }
+                    leave {
+                        onSheet(null)
+                        feedback.commit()
+                        scope.launch { engine.edit(pid, Ops.categoryPin(cat.id, !cat.pinned)) }
+                    }
                 }
                 SheetAction(Icons.Delete, "Delete category", danger = true) { onSheet(CategorySheet.Delete(cat.id)) }
             }
         }
-        is CategorySheet.New -> NameSheet("", if (sheet.parent == "") "New category" else "New sub-category", "Add", onDismiss = dismiss, onDone = { name ->
-            named(name) { Ops.categoryAdd(it, sheet.parent) }.also {
+        is CategorySheet.New -> NameSheet("", if (sheet.parent == "") "New category" else "New sub-category", "Add", onDismiss = dismiss, onDone = { name, quiet ->
+            named(name, quiet) { Ops.categoryAdd(it, sheet.parent) }.also {
                 if (it) feedback.commit()
                 if (it && sheet.parent != "") scope.launch { engine.setFolded(pid, sheet.parent, false) }
             }
         })
-        is CategorySheet.NewSeparator -> NameSheet("", "Separator label", "Add", blankAllowed = true, onDismiss = dismiss, onDone = { label ->
-            engine.edit(pid, Ops.separator(sheet.cat, "", label), quiet = true).applied.also {
+        is CategorySheet.NewSeparator -> NameSheet("", "Separator label", "Add", blankAllowed = true, onDismiss = dismiss, onDone = { label, quiet ->
+            engine.edit(pid, Ops.separator(sheet.cat, "", label), quiet = quiet).applied.also {
                 if (it) scope.launch { engine.setFolded(pid, sheet.cat, false) }
             }
         })
-        is CategorySheet.NewNote -> NameSheet("", "Note", "Add", onDismiss = dismiss, onDone = { text ->
-            engine.edit(pid, Ops.note(sheet.cat, "", text), quiet = true).applied.also {
+        is CategorySheet.NewNote -> NameSheet("", "Note", "Add", onDismiss = dismiss, onDone = { text, quiet ->
+            engine.edit(pid, Ops.note(sheet.cat, "", text), quiet = quiet).applied.also {
                 if (it) scope.launch { engine.setFolded(pid, sheet.cat, false) }
             }
         })
@@ -176,7 +194,7 @@ fun CategoriesScreen(pid: String, back: () -> Unit) {
         LaunchedEffect(Unit) { back() }
         return
     }
-    var sheet by remember { mutableStateOf<CategorySheet?>(null) }
+    var sheet by rememberSaveable(stateSaver = categorySheetSaver) { mutableStateOf<CategorySheet?>(null) }
     val jump = LocalJump.current
     val feedback = rememberFeedback()
     val filter = (state.views[pid]?.filter ?: Filter.NONE).pruned(entry.project)

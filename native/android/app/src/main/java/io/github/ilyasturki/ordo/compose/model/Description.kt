@@ -55,6 +55,13 @@ object Description {
         return (parts + images).joinToString("\n")
     }
 
+    // Two versions of the details, the other device's first; a version the other already holds isn't repeated.
+    fun keepBoth(theirs: String, mine: String): String = when {
+        mine.isBlank() || theirs.contains(mine.trim()) -> theirs
+        mine.contains(theirs.trim()) -> mine
+        else -> theirs.trimEnd() + "\n\n" + mine.trimStart()
+    }
+
     // The details field and the image lines under it, or the whole description when splitting would lose something.
     fun fields(description: String): Pair<String, List<String>> {
         val lines = description.split("\n")
