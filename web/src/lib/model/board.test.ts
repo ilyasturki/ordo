@@ -3,7 +3,7 @@ import type { Category, Project, Status, Task } from '$lib/core/types';
 import { addedLineShows, lines, search, shownRows, target, type Header, type Line } from './board';
 import { fields, join, preview, refs } from './description';
 import { active, categoryVisible, fromFile, hasValues, noFilter, pruned, toFile, type Filter } from './filter';
-import { hasVersion, priorityLabel, priorities, rankProjects } from './project';
+import { hasVersion, nextTag, priorityLabel, priorities, rankProjects } from './project';
 
 function task(id: string, o: { status?: Status; parent?: string; priority?: string; tag?: string; kind?: Task['kind']; title?: string; description?: string } = {}): Task {
 	return {
@@ -230,5 +230,29 @@ describe('project', () => {
 			{ h: Date.parse('2026-02-01T00:00:00Z') }
 		);
 		expect(ranked.map((x) => x.id)).toEqual(['h', 'w2', 'w1', 'a']);
+	});
+});
+
+describe('nextTag', () => {
+	const round = (others: Task[]) => {
+		const row = task('r');
+		const c = cat('c', 'C', [row, ...others]);
+		const got: string[] = [];
+		for (let i = 0; i <= 4; i++) {
+			row.tag_color = nextTag(c, row);
+			got.push(row.tag_color);
+		}
+		return got;
+	};
+
+	it('starts at the first dot no other open task wears, and reaches every dot', () => {
+		expect(round([])).toEqual(['green', 'blue', 'magenta', 'cyan', '']);
+		expect(round([task('a', { tag: 'green' }), task('b', { tag: 'blue-diamond' })])).toEqual(['magenta', 'cyan', 'green', 'blue', '']);
+	});
+
+	it('leaves out finished tasks and lines, and takes the least worn when all are', () => {
+		expect(round([task('a', { tag: 'green', status: 'completed' }), task('n', { tag: 'green', kind: 'note' })])[0]).toBe('green');
+		const worn = ['green', 'green', 'blue', 'magenta', 'cyan', 'cyan'].map((tag, i) => task('t' + i, { tag }));
+		expect(round(worn)[0]).toBe('blue');
 	});
 });

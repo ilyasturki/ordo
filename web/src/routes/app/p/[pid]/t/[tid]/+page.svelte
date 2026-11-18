@@ -226,6 +226,19 @@
 					<MenuItem icon="indent" label="Nest under the row above" keys=">" onclick={() => edit({ action: 'task.nest', ids: [tid] }, false)} />
 				{/if}
 			{/if}
+			{#if !isSeparator(task)}
+				<MenuItem
+					icon={isNote(task) ? 'todo' : 'note'}
+					label={isNote(task) ? 'Turn into task' : 'Turn into note'}
+					keys="c"
+					onclick={async () => {
+						const value = isNote(task) ? '' : 'note';
+						await saveTitle();
+						await saveDetails();
+						edit({ action: 'task.kind', ids: [tid], value }, false);
+					}}
+				/>
+			{/if}
 			<MenuItem icon="move" label="Move to a category" keys="m" onclick={() => (ui.sheet = { kind: 'move', pid, tid })} />
 			<MenuItem icon="delete" label="Delete" keys="d" onclick={() => edit({ action: 'task.delete', ids: [tid] }, false)} />
 		</Menu>

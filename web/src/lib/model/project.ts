@@ -41,6 +41,29 @@ export function tagLabel(color: string): string {
 	return dot === '' ? 'None' : dot[0].toUpperCase() + dot.slice(1);
 }
 
+/** What `t` gives the row, as the TUI's tag.cycle does: a round starting at the first dot no other open task of the category wears, ending on none. */
+export function nextTag(cat: Category, row: Task): string {
+	const open = new Map<string, number>();
+	for (const t of cat.tasks) {
+		if (t.id === row.id || isLine(t) || !t.tag_color || finished(t)) continue;
+		open.set(tagDot(t.tag_color), (open.get(tagDot(t.tag_color)) ?? 0) + 1);
+	}
+	let free = tags[0];
+	for (const c of tags) {
+		if ((open.get(c) ?? 0) < (open.get(free) ?? 0)) free = c;
+		if (!open.get(c)) {
+			free = c;
+			break;
+		}
+	}
+	const now = tagDot(row.tag_color);
+	if (now === '') return free;
+	const at = tags.indexOf(now);
+	if (at < 0) return '';
+	const next = tags[(at + 1) % tags.length];
+	return next === free ? '' : next;
+}
+
 export const isLine = (t: Task) => (t.kind ?? '') !== '';
 export const isNote = (t: Task) => t.kind === 'note';
 export const isSeparator = (t: Task) => t.kind === 'separator';

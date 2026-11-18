@@ -3,7 +3,7 @@ import type { Project } from '$lib/core/types';
 import type { Local } from '$lib/local.svelte';
 import { stops, target, type Line } from '$lib/model/board';
 import { active } from '$lib/model/filter';
-import { find, isLine, nextStatus, priorities, priorityOf, tagDot, tags } from '$lib/model/project';
+import { find, isLine, isNote, isSeparator, nextStatus, nextTag, priorities, priorityOf } from '$lib/model/project';
 import { app } from '$lib/paths';
 import { hold, openTask, ui, wide } from './ui.svelte';
 
@@ -144,11 +144,13 @@ function run(key: string, ctx: KeyContext): boolean {
 		}
 		case 't': {
 			if (!task) return false;
-			const order = ['', ...tags];
-			const next = order[(order.indexOf(tagDot(task.task.tag_color)) + 1) % order.length];
-			edit({ action: 'tag.set', ids: [task.task.id], value: next });
+			edit({ action: 'tag.set', ids: [task.task.id], value: nextTag(task.cat, task.task) });
 			return true;
 		}
+		case 'c':
+			if (!task || isSeparator(task.task)) return false;
+			edit({ action: 'task.kind', ids: [task.task.id], value: isNote(task.task) ? '' : 'note' }, false);
+			return true;
 		case 'J':
 		case 'K':
 			if (!task) return false;

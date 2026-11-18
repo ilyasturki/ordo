@@ -119,6 +119,23 @@ test('J and K move, > and < nest, h and l change the priority, m moves to a cate
 	await expect.poll(async () => (await titles(page))[0]).toMatch(/^Shell completions/);
 });
 
+test('c turns a task into a note and back, and refuses one with subtasks', async ({ page, app }) => {
+	await withFerry(page, app());
+	await page.keyboard.press('j');
+	await page.keyboard.press('j');
+	await page.keyboard.press('c');
+	await expect(row(page, 'Shell completions').getByRole('button', { name: /change status/ })).toHaveCount(0);
+	await expect(page.getByRole('status')).toBeVisible();
+	await page.keyboard.press('c');
+	await expect(row(page, 'Shell completions').getByRole('button', { name: 'Todo, change status' })).toBeVisible();
+
+	await taskLink(page, 'Encrypt secrets with age').click();
+	await page.keyboard.press('Escape');
+	await page.keyboard.press('c');
+	await expect(page.getByRole('status')).toContainText(/subtask/i);
+	await expect(row(page, 'Encrypt secrets with age').getByRole('button', { name: /change status/ })).toBeVisible();
+});
+
 test('/ searches and f filters from the keys', async ({ page, app }) => {
 	await withFerry(page, app());
 	await page.keyboard.press('/');
