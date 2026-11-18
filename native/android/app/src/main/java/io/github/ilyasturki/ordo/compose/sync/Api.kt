@@ -99,6 +99,9 @@ class Api(val server: String, private val token: String, private val http: OkHtt
     // An image takes longer than an answer on a slow line, though a stall still fails.
     private val transfers: OkHttpClient by lazy { http.newBuilder().callTimeout(120, TimeUnit.SECONDS).build() }
 
+    // The stream sends a comment every 25 seconds: a minute of silence is a dead connection.
+    private val events: OkHttpClient by lazy { http.newBuilder().callTimeout(0, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).build() }
+
     private fun request(path: String): Request.Builder {
         val b = Request.Builder().url(server.trimEnd('/') + path)
         if (token != "") b.header("Authorization", "Bearer $token")
@@ -189,10 +192,12 @@ class Api(val server: String, private val token: String, private val http: OkHtt
     }
 
     // Calls changed with a project's ID each time ordo serve sees its file or view file change, until cancelled.
-    fun listen(changed: (String) -> Unit, closed: () -> Unit): EventSource =
+    fun listen(changed: (String) -> Unit, closed: () -> Unit, opened: () -> Unit = {}): EventSource =
         EventSources.createFactory(events).newEventSource(
             request("/api/events").header("Accept", "text/event-stream").build(),
             object : EventSourceListener() {
+                override fun onOpen(eventSource: EventSource, response: Response) = opened()
+
                 override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
                     if (type == "change") changed(data)
                 }
@@ -206,12 +211,6 @@ class Api(val server: String, private val token: String, private val http: OkHtt
     companion object {
         val client: OkHttpClient = OkHttpClient.Builder()
             .callTimeout(20, TimeUnit.SECONDS)
-            .build()
-
-        // The stream sends a comment every 25 seconds: a minute of silence is a dead connection.
-        private val events: OkHttpClient = client.newBuilder()
-            .callTimeout(0, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
             .build()
     }
 }

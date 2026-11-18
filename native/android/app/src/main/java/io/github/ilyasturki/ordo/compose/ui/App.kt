@@ -55,10 +55,10 @@ val LocalSnackbar = staticCompositionLocalOf<SnackbarHostState> { error("no snac
 val LocalAppScope = staticCompositionLocalOf<CoroutineScope> { error("no app scope") }
 
 @Composable
-fun App(app: OrdoApp, signedOut: @Composable () -> Unit, signedIn: @Composable () -> Unit) {
+fun App(app: OrdoApp, wholeCopy: Boolean = false, signedOut: @Composable () -> Unit, signedIn: @Composable () -> Unit) {
     val state by app.engine.state.collectAsStateWithLifecycle()
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        if (!state.booted) return@Box
+        if (!state.booted || (wholeCopy && !state.complete)) return@Box
         CompositionLocalProvider(LocalEngine provides app.engine, LocalSnackbar provides app.snackbar, LocalAppScope provides app.scope, LocalJump provides app.jump) {
             if (state.session == null) signedOut() else signedIn()
         }

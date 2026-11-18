@@ -58,6 +58,8 @@ sealed interface Trouble {
 
 data class SyncState(
     val booted: Boolean = false,
+    // False for the turn of a cold start that shows the current project alone: a page that names another one waits.
+    val complete: Boolean = false,
     val session: Session? = null,
     val projects: List<Entry> = emptyList(),
     val prefs: Prefs = Prefs(),
@@ -67,7 +69,6 @@ data class SyncState(
     val uploads: Int = 0,
     // Projects whose folds or filter the server hasn't had yet.
     val viewsWaiting: Int = 0,
-    val syncing: Boolean = false,
     val lastSync: Long = 0,
     val trouble: Trouble? = null,
     // Why the last round failed, empty once one gets through.
@@ -109,6 +110,7 @@ data class Delays(
     val firstBackoff: Long = 2_000,
     val maxBackoff: Long = 60_000,
     val reconnect: Long = 5_000,
+    val maxReconnect: Long = 60_000,
     val failuresBeforeTrouble: Int = 3,
     val graceBeforeTrouble: Long = 3 * 60_000,
 )
@@ -157,6 +159,8 @@ class SyncEngine(
     @Volatile
     private var wanted = false
     private var stream: EventSource? = null
+    // The wait before the stream's next try: doubles from delays.reconnect while it fails, back to zero once one opens.
+    private var reconnectIn = 0L
     private var streamGen = 0
 
     // The tabs' order, frozen while the app stays in front: boot and a return to the front rank it again, and
@@ -171,30 +175,34 @@ class SyncEngine(
         if (booted.isCompleted) return@withContext
         core = newCore()
         val session = store.session()
-        val entries = store.projects().mapNotNull { (meta, raw) ->
-            runCatching { Entry(meta.id, meta.name, meta.stamp, raw, Project.parse(raw), meta.error) }.getOrNull()
-        }
+        val stored = store.projects()
         queue = store.queue()
         seq = queue.lastOrNull()?.seq ?: 0
         val prefs = store.prefs()
-        order = rankProjects(entries, prefs.opened).map(Entry::id)
         images.sweep()
         unsent = images.waiting()
         val views = withOldFilters(store.views(), prefs)
         viewEdits = views.unsent
-        publish {
-            copy(
-                booted = true,
-                session = session,
-                projects = arranged(entries),
-                prefs = prefs.copy(filters = emptyMap()),
-                views = views.held,
-                pending = queue.size,
-                uploads = unsent.size,
-                viewsWaiting = viewEdits.size,
-                trouble = if (session?.expired == true) Trouble.Expired else null,
-            )
-        }
+        fun load(meta: StoredProject, raw: String) =
+            runCatching { Entry(meta.id, meta.name, meta.stamp, raw, Project.parse(raw), meta.error) }.getOrNull()
+        // The project on screen is parsed and shown first: the others follow in the same lane turn, so no round sees a partial list.
+        val shown = stored.firstOrNull { it.first.id == prefs.current }?.let { (meta, raw) -> load(meta, raw) }
+        fun booted(at: SyncState, projects: List<Entry>, complete: Boolean) = at.copy(
+            booted = true,
+            complete = complete,
+            session = session,
+            projects = projects,
+            prefs = prefs.copy(filters = emptyMap()),
+            views = views.held,
+            pending = queue.size,
+            uploads = unsent.size,
+            viewsWaiting = viewEdits.size,
+            trouble = if (session?.expired == true) Trouble.Expired else null,
+        )
+        if (shown != null) publish { booted(this, listOf(shown), false) }
+        val entries = stored.mapNotNull { (meta, raw) -> if (meta.id == shown?.id) shown else load(meta, raw) }
+        order = rankProjects(entries, prefs.opened).map(Entry::id)
+        publish { booted(this, arranged(entries), true) }
         booted.complete(Unit)
         if (session?.expired == false) scope.launch { sync() }
     }
@@ -346,7 +354,6 @@ class SyncEngine(
         val s = session
         if (s == null || s.expired) return Round.STOP
         timer?.cancel()
-        publish { copy(syncing = true) }
         try {
             if (!upload(s)) return Round.STOP
             val sent = queue
@@ -371,8 +378,6 @@ class SyncEngine(
             throw e
         } catch (e: Exception) {
             return if (session == s) failed(e) else Round.STOP
-        } finally {
-            publish { copy(syncing = false) }
         }
     }
 
@@ -424,6 +429,7 @@ class SyncEngine(
 
     // Takes the server's copy of each project, with the edits queued since the request put back on top.
     private fun adopt(states: List<ProjectState>, last: Long) {
+        val sent = queue.size
         queue = queue.filter { it.seq > last }
         val later = queue
         val onServer = states.mapTo(HashSet()) { it.id }
@@ -435,9 +441,13 @@ class SyncEngine(
             val raw = st.raw()
             if (raw == null) {
                 if (held != null) {
-                    val e = held.copy(error = st.error)
-                    next += e
-                    if (st.error != held.error) saves += e
+                    if (st.error == held.error) {
+                        next += held
+                    } else {
+                        val e = held.copy(error = st.error)
+                        next += e
+                        saves += e
+                    }
                 }
                 continue
             }
@@ -469,8 +479,11 @@ class SyncEngine(
             opened -= p.id
             gone += p.id
         }
-        publish { copy(projects = arranged(next), pending = queue.size, prefs = gone.fold(prefs) { p, id -> p.forgetting(id) }) }
-        store.saveQueue(queue)
+        val arranged = arranged(next)
+        if (arranged != mine || queue.size != _state.value.pending || gone.isNotEmpty()) {
+            publish { copy(projects = arranged, pending = queue.size, prefs = gone.fold(prefs) { p, id -> p.forgetting(id) }) }
+        }
+        if (queue.size != sent) store.saveQueue(queue)
         if (gone.isNotEmpty()) store.savePrefs(_state.value.prefs)
         for (e in saves) store.saveProject(StoredProject(e.id, e.name, e.stamp, e.error), e.raw)
         for (id in gone) store.deleteProject(id)
@@ -530,7 +543,10 @@ class SyncEngine(
         awaitBoot()
         val front = withContext(lane) {
             foreground = wanted
-            if (foreground) reorder()
+            if (foreground) {
+                reorder()
+                reconnectIn = 0
+            }
             listen(foreground)
             if (!foreground) {
                 if (!waiting) {
@@ -548,7 +564,14 @@ class SyncEngine(
     // The network came back.
     suspend fun online() {
         awaitBoot()
-        if (withContext(lane) { foreground }) sync()
+        val front = withContext(lane) {
+            if (foreground) {
+                reconnectIn = 0
+                listen(true)
+            }
+            foreground
+        }
+        if (front) sync()
     }
 
     private fun listen(on: Boolean) {
@@ -561,10 +584,17 @@ class SyncEngine(
             changed = { scope.launch(lane) { if (gen == streamGen) schedule(delays.sync) } },
             closed = {
                 scope.launch {
-                    delay(delays.reconnect)
+                    val wait = withContext(lane) {
+                        if (gen != streamGen) return@withContext -1L
+                        reconnectIn = minOf(delays.maxReconnect, if (reconnectIn == 0L) delays.reconnect else reconnectIn * 2)
+                        reconnectIn
+                    }
+                    if (wait < 0) return@launch
+                    delay(wait)
                     withContext(lane) { if (gen == streamGen && foreground) listen(true) }
                 }
             },
+            opened = { scope.launch(lane) { if (gen == streamGen) reconnectIn = 0 } },
         )
     }
 
@@ -630,7 +660,10 @@ class SyncEngine(
             failures = 0
             failingSince = 0
             publish { copy(session = next, trouble = null) }
-            if (foreground) listen(true)
+            if (foreground) {
+                reconnectIn = 0
+                listen(true)
+            }
             scope.launch { sync() }
         }
         first.join()

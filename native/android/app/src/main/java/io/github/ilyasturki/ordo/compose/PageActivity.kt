@@ -42,7 +42,7 @@ class PageActivity : ComponentActivity() {
         val key = json.decodeFromString(NavKey.serializer(), intent.getStringExtra(KEY).orEmpty())
         setContent {
             OrdoTheme {
-                App(application as OrdoApp, signedOut = { LaunchedEffect(Unit) { finish() } }) {
+                App(application as OrdoApp, wholeCopy = true, signedOut = { LaunchedEffect(Unit) { finish() } }) {
                     when (key) {
                         is TaskKey -> TaskScreen(key.pid, key.tid, open = ::openPage, back = ::finish)
                         is ViewerKey -> ViewerScreen(key.pid, key.tid, key.start, back = ::finish)

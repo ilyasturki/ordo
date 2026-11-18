@@ -63,6 +63,9 @@ import sh.calvin.reorderable.rememberScroller
 // them though the filter no longer matches. Both end when the project or the filter changes.
 data class ListUi(val peek: String? = null, val held: Set<String> = emptySet())
 
+// One instance for every page without a state: a fresh one on each recomposition would never compare equal.
+val NoUi = ListUi()
+
 @Composable
 fun ProjectList(
     entry: Entry,

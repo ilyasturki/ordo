@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -23,6 +24,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -32,6 +34,7 @@ import java.io.File
 import java.nio.file.Files
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 private const val PID = "0rd0-web-fixture"
@@ -93,9 +96,10 @@ class SyncEngineTest {
         http: OkHttpClient = Api.client,
         clock: () -> Long = System::currentTimeMillis,
         delays: Delays = quiet,
+        store: Store = Store(dir),
     ): SyncEngine {
         val core = PipeCore().also(cores::add)
-        return SyncEngine(Store(dir), { core }, scope, "test phone", delays, clock, { Api(it.server, it.token, http) })
+        return SyncEngine(store, { core }, scope, "test phone", delays, clock, { Api(it.server, it.token, http) })
     }
 
     private fun <T> test(block: suspend CoroutineScope.() -> T): T = runBlocking { withTimeout(60_000) { block() } }
@@ -773,5 +777,105 @@ class SyncEngineTest {
         assertTrue(e.state.value.views.isEmpty())
         assertEquals(0, e.state.value.viewsWaiting)
         assertTrue(Store(dir).views().held.isEmpty())
+    }
+
+    @Test
+    fun anEditReturnsBeforeItsWritesLandAndTheyLandInOrder() = test {
+        val disk = Executors.newSingleThreadExecutor()
+        val store = Store(dir, writer = disk)
+        val e = paired(engine(store = store))
+        e.sync()
+        store.queue()
+        val held = CountDownLatch(1)
+        disk.execute { held.await() }
+        assertTrue(e.edit(PID, Ops.cycle(EXPORT)).applied)
+        assertTrue(e.edit(PID, Ops.title(RECURRING, "Recurring tasks, weekly", "Recurring tasks")).applied)
+        assertEquals(2, e.state.value.pending)
+        assertFalse("the edits answered while the disk was held", File(dir, "queue.json").exists())
+        held.countDown()
+        assertEquals(2, store.queue().size)
+        val stored = Project.parse(store.projects().single().second)
+        assertEquals("in_progress", stored.find(EXPORT)!!.second.status)
+        assertEquals("Recurring tasks, weekly", stored.find(RECURRING)!!.second.title)
+        disk.shutdown()
+    }
+
+    @Test
+    fun aSecondStoreReadsWhatTheFirstQueued() = test {
+        val e = paired(engine())
+        e.edit(PID, Ops.cycle(EXPORT))
+        assertEquals(1, Store(dir).queue().size)
+        e.signOut()
+        val after = Store(dir)
+        assertNull(after.session())
+        assertTrue(after.queue().isEmpty())
+        assertTrue(after.projects().isEmpty())
+    }
+
+    @Test
+    fun anIdleRoundChangesNoProjectAndWritesNoQueue() = test {
+        val e = paired(engine())
+        e.sync()
+        Store(dir).queue()
+        File(dir, "queue.json").delete()
+        val before = e.state.value
+        val seen = Collections.synchronizedList(mutableListOf<SyncState>())
+        val watching = launch(Dispatchers.Unconfined) { e.state.collect { seen += it } }
+        assertEquals(Round.OK, e.sync())
+        watching.cancel()
+        assertTrue("only the clock moved: ${seen.size} states", seen.size <= 2)
+        assertTrue(seen.all { it.projects === before.projects && it.pending == 0 })
+        Store(dir).queue()
+        assertFalse("an idle poll leaves queue.json alone", File(dir, "queue.json").exists())
+        e.edit(PID, Ops.cycle(EXPORT))
+        assertEquals(Round.OK, e.sync())
+        assertTrue("a round that sent an op writes the queue it left", Store(dir).queue().isEmpty())
+        assertTrue(File(dir, "queue.json").exists())
+    }
+
+    @Test
+    fun theStreamReconnectsSlowerWhileItFailsAndStartsOverOnceItOpens() = test {
+        val tries = Collections.synchronizedList(mutableListOf<Long>())
+        val flaky = Interceptor { chain ->
+            if (chain.request().url.encodedPath != "/api/events") return@Interceptor chain.proceed(chain.request())
+            tries += System.nanoTime() / 1_000_000
+            when (tries.size) {
+                4 -> Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("".toResponseBody("text/event-stream".toMediaType()))
+                    .build()
+                else -> throw java.io.IOException("unreachable")
+            }
+        }
+        val e = paired(engine(Api.client.newBuilder().addInterceptor(flaky).build(), delays = quiet.copy(reconnect = 250, maxReconnect = 1_000)))
+        e.foreground(true)
+        withTimeout(20_000) { while (tries.size < 8) delay(20) }
+        e.foreground(false)
+        val gaps = tries.zipWithNext { a, b -> b - a }
+        assertTrue("it backs off: $gaps", gaps[1] > gaps[0] * 3 / 2 && gaps[2] > gaps[1] * 3 / 2)
+        assertTrue("an open stream starts it over: $gaps", gaps[3] < gaps[2] / 2)
+        assertTrue("it stops at the cap: $gaps", gaps.drop(4).all { it < 1_000 + 400 } && gaps[6] > gaps[4] * 3 / 2)
+    }
+
+    @Test
+    fun coldStartShowsTheCurrentProjectBeforeTheOthers() = test {
+        val first = paired(engine())
+        val other = first.createProject("Second")!!
+        first.sync()
+        first.setCurrent(other)
+        Store(dir).queue()
+
+        val e = engine()
+        val seen = Collections.synchronizedList(mutableListOf<Pair<List<String>, Boolean>>())
+        val watching = launch(Dispatchers.Unconfined) { e.state.collect { if (it.booted) seen += it.projects.map(Entry::id) to it.complete } }
+        e.boot()
+        watching.cancel()
+        assertEquals(listOf(other) to false, seen.first())
+        assertEquals(setOf(PID, other), seen.last().first.toSet())
+        assertTrue(seen.last().second)
+        assertEquals(other, e.state.value.prefs.current)
     }
 }

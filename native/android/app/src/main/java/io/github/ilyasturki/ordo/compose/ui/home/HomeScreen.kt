@@ -258,7 +258,7 @@ fun HomeScreen(open: (NavKey) -> Unit) {
                     entry = entry,
                     filter = filterOf(entry),
                     folds = state.views[entry.id]?.folds.orEmpty(),
-                    ui = uis[entry.id] ?: ListUi(),
+                    ui = uis[entry.id] ?: NoUi,
                     onUi = { uis[entry.id] = it },
                     onOpen = { open(TaskKey(entry.id, it)) },
                     onHeader = { sheet = HomeSheet.OfCategory(entry.id, CategorySheet.Menu(it.id)) },
