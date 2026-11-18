@@ -74,3 +74,8 @@ body {
 	font-family: var(--font-sans);
 	-webkit-font-smoothing: antialiased;
 }
+
+/* Where the web app turns from the phone's one list to the list beside the open task. */
+@theme {
+	--breakpoint-wide: 52.5rem;
+}

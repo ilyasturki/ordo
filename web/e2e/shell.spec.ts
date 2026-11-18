@@ -13,22 +13,22 @@ test('the site build opens on the landing, which leads to the app without loadin
 
 	await page.getByRole('link', { name: 'Open in the browser' }).click();
 	await expect(page).toHaveURL('/app');
-	await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
 	expect(wasm).toHaveLength(1);
 
 	await page.goto('/app/');
-	await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
 });
 
 test('the private build opens on the app', async ({ page, build }) => {
 	test.skip(build !== 'private', 'the private build has no landing');
 	await page.goto('/');
-	await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
 });
 
 test('the theme follows the system, in Google Sans Flex', async ({ page, app }) => {
 	await page.goto(app());
-	await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
 	const look = () =>
 		page.evaluate(async () => {
 			await document.fonts.ready;

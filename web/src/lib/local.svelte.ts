@@ -29,6 +29,7 @@ export class Local {
 	#history: Step[] = [];
 	#future: Step[] = [];
 	#snacks = 0;
+	#viewing = Promise.resolve();
 	readonly #urls = new Map<string, string>();
 
 	private constructor(core: Core, db: DB) {
@@ -60,6 +61,12 @@ export class Local {
 		return this.projects.find((p) => p.id === pid);
 	}
 
+	/** The project as the core holds it this instant, ahead of the copy on screen while an edit is being kept. */
+	held(pid: string): Project | undefined {
+		const raw = this.#core.project(pid);
+		return raw === null ? undefined : (JSON.parse(raw) as Project);
+	}
+
 	view(pid: string): View {
 		const v = this.views[pid] ?? emptyView;
 		const p = this.project(pid);
@@ -69,25 +76,32 @@ export class Local {
 	/** The project on screen, which the next start opens on. */
 	async setCurrent(pid: string): Promise<void> {
 		if (pid === this.current) return;
-		this.current = pid;
 		this.#opened = { ...this.#opened, [pid]: Date.now() };
 		await this.#db.put('meta', pid, 'current');
-		await this.#db.put('meta', $state.snapshot(this.#opened), 'opened');
+		await this.#db.put('meta', this.#opened, 'opened');
+		this.current = pid;
 	}
 
-	async setFolded(pid: string, id: string, folded: boolean): Promise<void> {
-		const { folds } = this.view(pid);
-		if (folds.includes(id) === folded) return;
-		await this.#setView(pid, { ...this.view(pid), folds: folded ? [...folds, id] : folds.filter((f) => f !== id) });
+	setFolded(pid: string, id: string, folded: boolean): Promise<void> {
+		return this.#setView(pid, (v) =>
+			v.folds.includes(id) === folded ? undefined : { ...v, folds: folded ? [...v.folds, id] : v.folds.filter((f) => f !== id) }
+		);
 	}
 
-	async setFilter(pid: string, filter: Filter): Promise<void> {
-		await this.#setView(pid, { ...this.view(pid), filter });
+	setFilter(pid: string, filter: Filter): Promise<void> {
+		return this.#setView(pid, (v) => ({ ...v, filter }));
 	}
 
-	async #setView(pid: string, view: View): Promise<void> {
-		this.views[pid] = view;
-		await this.#db.put('views', { id: pid, folds: [...view.folds].sort(), filter: toFile(view.filter) });
+	/** One change at a time, each written before it shows, so a reload never loses one already on screen. */
+	#setView(pid: string, change: (view: View) => View | undefined): Promise<void> {
+		const run = this.#viewing.then(async () => {
+			const view = change(this.view(pid));
+			if (!view) return;
+			await this.#db.put('views', { id: pid, folds: [...view.folds].sort(), filter: toFile(view.filter) });
+			this.views[pid] = view;
+		});
+		this.#viewing = run.catch(() => {});
+		return run;
 	}
 
 	/**
@@ -186,13 +200,17 @@ export class Local {
 		const lines: string[] = [];
 		for (const file of files) {
 			if (file.size > maxImage) return 'Images over 25 MB can’t be attached';
-			const bytes = new Uint8Array(await file.arrayBuffer());
-			const ext = extension(bytes);
+			const bytes = await file.arrayBuffer();
+			const ext = extension(new Uint8Array(bytes));
 			if (!ext) return 'Only png, jpeg, gif and webp images can be attached';
 			const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
 			const name = [...digest.slice(0, 16)].map((b) => b.toString(16).padStart(2, '0')).join('') + '.' + ext;
-			if (!(await this.#db.get('images', name))) {
-				await this.#db.put('images', { name, blob: new Blob([bytes], { type: file.type || 'image/' + ext }), pending: false });
+			try {
+				if (!(await this.#db.get('images', name))) {
+					await this.#db.put('images', { name, bytes, type: { jpg: 'image/jpeg' }[ext] ?? 'image/' + ext, pending: false });
+				}
+			} catch {
+				return 'This browser can’t keep that image';
 			}
 			lines.push(`![${altOf(file.name)}](attachments/${name})`);
 		}
@@ -205,7 +223,7 @@ export class Local {
 		if (known) return known;
 		const image = await this.#db.get('images', name);
 		if (!image) return undefined;
-		const url = URL.createObjectURL(image.blob);
+		const url = URL.createObjectURL(new Blob([image.bytes], { type: image.type }));
 		this.#urls.set(name, url);
 		return url;
 	}

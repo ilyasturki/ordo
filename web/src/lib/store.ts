@@ -21,7 +21,9 @@ export type Queued = {
 
 export type StoredImage = {
 	name: string;
-	blob: Blob;
+	/** The file's bytes: WebKit can refuse a Blob in IndexedDB. */
+	bytes: ArrayBuffer;
+	type: string;
 	/** Not on the server yet: sync uploads it before the ops that reference it. */
 	pending: boolean;
 };
