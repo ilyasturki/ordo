@@ -6,6 +6,9 @@ import { passphrase, type Served } from './serve';
 
 test.use({ signedIn: false });
 
+// Signing in or out starts the page again, which drops whatever it was still loading.
+test.beforeEach(({ noise }) => noise(/NS_BINDING_ABORTED|net::ERR_ABORTED|cancelled/));
+
 type Project = { id: string; name: string; categories: { id: string; tasks: { id: string; title: string; status: string }[] }[] };
 
 /** Another client of the same server, as the phone or the TUI. */
