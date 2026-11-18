@@ -91,10 +91,14 @@ func (m model) renderShortcutBar() string {
 }
 
 func (m model) normalHints() []ui.Hint {
-	if !m.ui.Filter.HasValues() {
-		return normalShortcuts
-	}
 	hints := slices.Clone(normalShortcuts)
+	if m.onVersion() {
+		a := slices.IndexFunc(hints, func(h ui.Hint) bool { return h.Key == "A/gA" })
+		hints = slices.Insert(hints, a+1, ui.Hint{Key: "gn", Label: "next version"})
+	}
+	if !m.ui.Filter.HasValues() {
+		return hints
+	}
 	f := slices.IndexFunc(hints, func(h ui.Hint) bool { return h.Key == "f" })
 	if m.ui.Filter.IsOff() {
 		return slices.Insert(hints, f+1, ui.Hint{Key: "F", Label: "filter on"})

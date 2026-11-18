@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -118,6 +119,41 @@ func TestGNOnTheProjectRowAsksForACategory(t *testing.T) {
 
 	assert.False(t, m.ui.Modes.IsEdit())
 	assert.Equal(t, "Put the cursor on a category to add its next version", m.ui.Screen.StatusMsg)
+}
+
+func TestEscInTheGNEditorSavesTheName(t *testing.T) {
+	m := newTestModel(t, versionProject("v1.3.0", "v1.2.0"))
+	require.True(t, m.selectItem(selection.FocusCategory, "v1.3.0"))
+	m = pressSweep(m, "g", "n")
+	typeText(m, " - plan")
+
+	pressKey(m, tea.KeyEscape)
+
+	require.False(t, m.ui.Modes.IsEdit())
+	assert.Equal(t, []string{"v1.4.0 - plan", "v1.3.0", "v1.2.0"}, categoryNames(m))
+	m = pressSweep(m, "u")
+	assert.Equal(t, []string{"v1.3.0", "v1.2.0"}, categoryNames(m))
+}
+
+func TestEscStillCancelsAnOrdinaryNewCategory(t *testing.T) {
+	m := newTestModel(t, versionProject("v1.3.0"))
+	require.True(t, m.selectItem(selection.FocusCategory, "v1.3.0"))
+	m.startAddingCategory()
+	typeText(m, "draft")
+
+	pressKey(m, tea.KeyEscape)
+
+	assert.Equal(t, []string{"v1.3.0"}, categoryNames(m))
+}
+
+func TestTheShortcutBarOffersGNOnAVersionOnly(t *testing.T) {
+	m := newBumpModel(t)
+	require.True(t, m.selectItem(selection.FocusCategory, "v012"))
+	assert.Contains(t, ansi.Strip(m.renderShortcutBar()), "gn next version")
+	require.True(t, m.selectTaskByID("u"))
+	assert.Contains(t, ansi.Strip(m.renderShortcutBar()), "gn next version")
+	require.True(t, m.selectItem(selection.FocusCategory, "mkt"))
+	assert.NotContains(t, ansi.Strip(m.renderShortcutBar()), "gn next version")
 }
 
 func categoryNames(m *model) []string {

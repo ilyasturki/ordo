@@ -14,7 +14,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - A save no longer overwrites a version Syncthing put in place while the save was writing: the TUI merges it with your edits, and the CLI and `ordo serve` redo their change on it. See [`docs/file-format.md`](docs/file-format.md#writing-a-file)
 ### Added
 
-- `gn` on a category named after a version, or any row in it, adds the next version's category: `v1.3.0` gives `v1.4.0`, in the same format, on the newest side of the versions you have, newest first or last as the project runs them. Its name opens in the editor to tweak, and it is one undo step. With no version in the name, the status line says so. The app's category menu has Add next version
+- `gn` on a category named after a version, or any row in it, adds the next version's category: `v1.3.0 - polish` gives `v1.4.0`, in the same format and without the label, on the newest side of the versions you have, newest first or last as the project runs them. Its name opens in the editor to tweak, `esc` saves it like `enter`, and it is one undo step. With no version in the name, the status line says so. The app's category menu has Add next version
 
 ## [0.14.3] - 2026-11-11
 

@@ -2,14 +2,13 @@ package operations
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/ilyasturki/ordo/internal/domain"
 )
 
-// nextVersion adds the category of the minor version after the one in categoryID's name (its parent's,
-// for a sub-category without one), beside the siblings that hold a version on their newest side: above
-// the first when they run newest first, below the last when oldest first, and above when one or none
-// tells. A name a sibling holds is stepped past. The op's Title overrides the name.
+// nextVersion adds the category of the next minor version of categoryID's name, or its parent's for a
+// sub-category without one, on the newest side of its siblings that hold a version.
 func nextVersion(p *domain.Project, op Op) (Outcome, error) {
 	ci, err := p.FindCategoryByID(op.Cat)
 	if err != nil {
@@ -24,7 +23,7 @@ func nextVersion(p *domain.Project, op Op) (Outcome, error) {
 	name := cats[ci].Name
 	parent := cats[ci].ParentID
 	for range 1000 {
-		next, err := domain.BumpVersion(name, domain.MinorPart, 1)
+		next, err := domain.NextMinorVersion(name)
 		if err != nil {
 			if errors.Is(err, domain.ErrNoVersion) {
 				return Outcome{}, refuse("No version in this name")
@@ -32,11 +31,19 @@ func nextVersion(p *domain.Project, op Op) (Outcome, error) {
 			return Outcome{}, err
 		}
 		name = next
-		if domain.CategoryNameConflict(cats, parent, name, -1) < 0 {
+		if !versionTaken(cats, parent, name) {
 			break
 		}
 	}
 	return addCategory(p, Op{New: op.New, Parent: parent, Title: name, Before: newestSide(cats, parent)})
+}
+
+func versionTaken(cats []domain.Category, parent, name string) bool {
+	want, _ := domain.VersionNumbers(name)
+	return slices.ContainsFunc(cats, func(c domain.Category) bool {
+		v, ok := domain.VersionNumbers(c.Name)
+		return ok && c.ParentID == parent && v == want
+	})
 }
 
 // newestSide is the sibling a new version lands above, empty for last.

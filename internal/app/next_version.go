@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/ilyasturki/ordo/internal/app/selection"
+	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/operations"
 )
 
@@ -27,5 +28,21 @@ func (m *model) startNextVersion() {
 	m.selectItem(selection.FocusCategory, created.ID)
 	m.ui.Modes.ToEdit()
 	m.ui.Edit = newEditState(created.Name, true, created.ID, selection.FocusCategory)
+	m.ui.Edit.escSaves = true
 	m.ensureVisible()
+}
+
+// onVersion tells whether the cursor's category, or its parent, holds a version gn can go from.
+func (m model) onVersion() bool {
+	pos, ok := m.selectedPosition()
+	if !ok || pos.Kind == selection.FocusProject {
+		return false
+	}
+	cats := m.project.Categories
+	ci := pos.CategoryIndex
+	if domain.HasVersion(cats[ci].Name) {
+		return true
+	}
+	parent := domain.ParentIndex(cats, ci)
+	return parent >= 0 && domain.HasVersion(cats[parent].Name)
 }

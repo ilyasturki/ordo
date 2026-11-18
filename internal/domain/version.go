@@ -58,6 +58,16 @@ func VersionNumbers(name string) (v [3]int, ok bool) {
 	return v, true
 }
 
+// NextMinorVersion is the name of the next minor version: the prefix and format of name's version, without what follows it.
+func NextMinorVersion(name string) (string, error) {
+	bumped, err := BumpVersion(name, MinorPart, 1)
+	if err != nil {
+		return "", err
+	}
+	spans := versionSpans(bumped)
+	return strings.TrimRight(bumped[:spans[len(spans)-1][1]], " "), nil
+}
+
 // BumpVersion adds delta to one part of the first version in name, zeroing the parts after it; only the digits change.
 func BumpVersion(name string, part VersionPart, delta int) (string, error) {
 	spans := versionSpans(name)

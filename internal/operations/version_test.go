@@ -30,7 +30,8 @@ func TestNextVersionLandsOnTheNewestSide(t *testing.T) {
 		{"from an older version it steps past the taken ones", []string{"v1.3.0", "v1.2.0", "v1.1.0"}, "v1.1.0", []string{"v1.4.0", "v1.3.0", "v1.2.0", "v1.1.0"}},
 		{"one version reads as newest first", []string{"Inbox", "v1.3.0"}, "v1.3.0", []string{"Inbox", "v1.4.0", "v1.3.0"}},
 		{"oldest first leaves what follows the versions", []string{"v1.1.0", "v1.2.0", "Later"}, "v1.1.0", []string{"v1.1.0", "v1.2.0", "v1.3.0", "Later"}},
-		{"keeps the format and the label", []string{"Release v0.9 - polish"}, "Release v0.9 - polish", []string{"Release v0.10 - polish", "Release v0.9 - polish"}},
+		{"keeps the prefix and format, drops the label", []string{"Release v0.9 - polish"}, "Release v0.9 - polish", []string{"Release v0.10", "Release v0.9 - polish"}},
+		{"a labelled version holds its number", []string{"v0.10.0 - plan", "v0.9.1 - polish"}, "v0.9.1 - polish", []string{"v0.11.0", "v0.10.0 - plan", "v0.9.1 - polish"}},
 		{"a bump resets the patch", []string{"1.2.7"}, "1.2.7", []string{"1.3.0", "1.2.7"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -262,6 +262,10 @@ func (m *model) handleEditKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.finishEditing()
 		return nil
 	case "esc":
+		if m.ui.Edit.escSaves {
+			m.finishEditing()
+			return nil
+		}
 		m.cancelEditing()
 		return nil
 	case "up", "down":
