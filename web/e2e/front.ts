@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../build/private', import.meta.url));
 
-/** The policy owed/web-sync.md hands the deploy, with connect-src for the server the site build may reach. */
+/** The deploy's policy, with connect-src for the server the site build may reach. */
 export function csp(connect = ''): string {
 	return [
 		"default-src 'self'",

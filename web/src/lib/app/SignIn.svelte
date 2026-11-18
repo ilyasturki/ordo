@@ -6,7 +6,6 @@
 	import Field from './Field.svelte';
 	import IconButton from './IconButton.svelte';
 
-	// The site build names its server; a pasted pairing link fills it in.
 	let { onBack }: { onBack?: () => void } = $props();
 
 	const sync = session.sync;
