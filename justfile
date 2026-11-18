@@ -52,6 +52,14 @@ native-ui SERIAL *ARGS:
 dev-phone *ARGS:
     ./scripts/dev.sh {{ARGS}}
 
+# Build internal/core to wasm for the web app, in web/src/lib/core/wasm.
+wasm:
+    scripts/wasm.sh build
+
+# Run the Go tests of what the web app's wasm compiles, under js/wasm (needs node).
+wasm-test:
+    scripts/wasm.sh test
+
 # Run every test, then the nix build.
 test:
     go test ./...

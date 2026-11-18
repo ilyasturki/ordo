@@ -27,6 +27,9 @@ jobs:
             - name: Test
               run: go test ./...
 
+            - name: Test under js/wasm
+              run: scripts/wasm.sh test
+
             - name: Build
               run: go build -o ordo ./cmd/ordo
 

@@ -1,10 +1,11 @@
-// Package core holds the projects the Android app opened and runs their edits
+// Package core holds the projects the Android and web apps opened and runs their edits
 // through operations, the code `ordo serve` replays them with.
 package core
 
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/ilyasturki/ordo/internal/domain"
 	"github.com/ilyasturki/ordo/internal/operations"
@@ -47,6 +48,44 @@ func (s *Session) Project(pid string) []byte {
 	}
 	raw, _ := json.Marshal(p)
 	return raw
+}
+
+// Export is the held project as ordo writes its file, nil when it isn't open.
+func (s *Session) Export(pid string) []byte {
+	p, ok := s.projects[pid]
+	if !ok {
+		return nil
+	}
+	raw, _ := domain.FileBytes(*p)
+	return raw
+}
+
+// Import holds a project file as a new project, the way `ordo import` adds one, and returns its
+// ID: a bad or held ID is replaced, a name a held project goes by is refused.
+func (s *Session) Import(raw []byte) (string, error) {
+	p, err := domain.ParseImport(raw)
+	if err != nil {
+		return "", err
+	}
+	if err := domain.ValidateProjectText(p); err != nil {
+		return "", fmt.Errorf("importing project: %w", err)
+	}
+	domain.NormalizeTags(&p)
+	for _, other := range s.projects {
+		if domain.NormalizeName(other.Name) == domain.NormalizeName(p.Name) {
+			return "", operations.ErrProjectNameTaken
+		}
+	}
+	if _, held := s.projects[p.ID]; held || domain.ValidateID(p.ID) != nil {
+		if p.ID, err = domain.NewID(); err != nil {
+			return "", err
+		}
+	}
+	if p.CreatedAt == "" {
+		p.CreatedAt = domain.NowTimestamp()
+	}
+	s.projects[p.ID] = &p
+	return p.ID, nil
 }
 
 type Answer struct {
