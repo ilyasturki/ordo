@@ -15,17 +15,15 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - A change from Syncthing or the phone no longer freezes the TUI for a moment after a long session of edits: undo history catches up with it only when `u` or `ctrl+r` reaches a step, and merging is faster on big projects
 - `esc` in a title, name, note, separator label or description being edited saves it, as `enter` does, instead of throwing the text away: `u` takes it back. A new row left empty still goes away, and a name already taken keeps the editor open until a second `esc` drops the edit. Search, the filters, a command's prompt and the pickers keep `esc` as cancel
 - The description editor names its task under its heading, the title cut to one row, and grows with the text up to the screen's height, its top staying put. It follows a terminal resize, and a description past 99 lines takes a new line again
+- Every dialog is one list, the same width each time: `↑`/`↓` or `j`/`k` move a full-width highlight, `enter` picks, `esc` cancels, and the underlined letter or the leading digit picks a row at once. It covers the delete and quit questions, the conflict, name-clash and paste choices, and the tag, estimate, link, copy and move pickers; the key hints under them are gone. Delete reads red
+- The delete question's "keep the subtasks" (and sub-categories) is `s`, since `k` moves; `y` and `n` still answer every question. On a project, `d` no longer deletes from the question: `enter` or `y` does
+- `esc` in the conflict dialog keeps theirs for every conflict left, and `u` brings yours back; `a` and `h` (or `M` and `T`) take all mine or all theirs
+- `m` in the picker lists the groups in use, the project's current one marked, then No group and New group…: pick one with `enter`, a digit, `n` or `w`. New group… asks the name, and `esc` there saves it like `enter`. `tab` no longer cycles through the groups
 
 ### Fixed
 
 - A save no longer overwrites a version Syncthing put in place while the save was writing: the TUI merges it with your edits, and the CLI and `ordo serve` redo their change on it. See [`docs/file-format.md`](docs/file-format.md#writing-a-file)
 - An `$EDITOR` that exits with an error leaves its file in place, named in the status line, instead of deleting what it wrote
-### Changed
-
-- Every dialog is one list, the same width each time: `↑`/`↓` or `j`/`k` move a full-width highlight, `enter` picks, `esc` cancels, and the underlined letter or the leading digit picks a row at once. It covers the delete and quit questions, the conflict, name-clash and paste choices, and the tag, estimate, link, copy and move pickers; the key hints under them are gone. Delete reads red
-- The delete question's "keep the subtasks" (and sub-categories) is `s`, since `k` moves; `y` and `n` still answer every question. On a project, `d` no longer deletes from the question: `enter` or `y` does
-- `esc` in the conflict dialog keeps theirs for every conflict left, and `u` brings yours back; `a` and `h` (or `M` and `T`) take all mine or all theirs
-- `m` in the picker lists the groups in use, the project's current one marked, then No group and New group…: pick one with `enter`, a digit, `n` or `w`. New group… asks the name, and `esc` there saves it like `enter`. `tab` no longer cycles through the groups
 
 ## [0.14.3] - 2026-11-11
 
