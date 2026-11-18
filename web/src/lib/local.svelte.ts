@@ -378,6 +378,9 @@ export class Local {
 			delete this.#viewEdits[id];
 		}
 		this.#counted();
+		if (saves.length === 0 && gone.length === 0) {
+			return out.sent.length ? this.#db.delete('queue', IDBKeyRange.upperBound(out.last)) : Promise.resolve();
+		}
 		this.#show([...keep, ...[...createdSince].filter((id) => !keep.includes(id))]);
 		const tx = this.#db.transaction(['projects', 'queue', 'views', 'meta'], 'readwrite');
 		void tx.objectStore('queue').delete(IDBKeyRange.upperBound(out.last));
@@ -395,8 +398,9 @@ export class Local {
 
 	/** docs/sync.md#views; a view that just went out isn't sent again, or a server that can't write it gets it every round. */
 	adoptViews(theirs: Record<string, ViewFile> | undefined, out: Outgoing): Promise<void> {
+		const before = this.#viewEdits;
 		const edits: Record<string, ViewFile> = {};
-		for (const [pid, edit] of Object.entries(this.#viewEdits)) {
+		for (const [pid, edit] of Object.entries(before)) {
 			if (out.views[pid] !== edit) edits[pid] = edit;
 		}
 		const changed: string[] = [];
@@ -406,8 +410,11 @@ export class Local {
 				const mine = this.views[p.id];
 				if (view) {
 					const next = { ...view, ...edits[p.id] };
-					this.views[p.id] = { folds: next.folds ?? [], filter: fromFile(next.filter) };
-					changed.push(p.id);
+					const shown: View = { folds: next.folds ?? [], filter: fromFile(next.filter) };
+					if (!mine || !sameView(mine, shown)) {
+						this.views[p.id] = shown;
+						changed.push(p.id);
+					}
 				} else if (mine && (mine.folds.length > 0 || Object.keys(toFile(mine.filter)).length > 0) && !edits[p.id] && !out.views[p.id]) {
 					edits[p.id] = { folds: [...mine.folds].sort(), filter: toFile(mine.filter) };
 				}
@@ -415,13 +422,14 @@ export class Local {
 		}
 		this.#viewEdits = edits;
 		this.#counted();
+		const keys = Object.keys(edits);
+		if (changed.length === 0 && keys.length === Object.keys(before).length && keys.every((k) => before[k] === edits[k])) return Promise.resolve();
 		const tx = this.#db.transaction(['views', 'meta'], 'readwrite');
 		for (const id of changed) {
 			const v = this.views[id];
 			void tx.objectStore('views').put({ id, folds: [...v.folds].sort(), filter: toFile(v.filter) });
 		}
 		void tx.objectStore('meta').put($state.snapshot(this.#viewEdits), 'viewEdits');
-		if (changed.length || Object.keys(edits).length) this.onWaiting();
 		return tx.done;
 	}
 
@@ -475,6 +483,11 @@ export class Local {
 		const at = new Map(this.#order.map((id, i) => [id, i]));
 		this.projects = held.sort((a, b) => at.get(a.id)! - at.get(b.id)!);
 	}
+}
+
+function sameView(a: View, b: View): boolean {
+	const key = (v: View) => JSON.stringify([[...v.folds].sort(), toFile(v.filter)]);
+	return key(a) === key(b);
 }
 
 /** The ops that build an imported project on the server: no op imports a file. */
