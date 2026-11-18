@@ -1,6 +1,7 @@
 import { createServer } from 'node:net';
 import { defineConfig, devices, type PlaywrightTestOptions, type Project } from '@playwright/test';
 import type { Options } from './e2e/fixtures';
+import { csp } from './e2e/front';
 
 function freePort(): Promise<number> {
 	return new Promise((resolve, reject) => {
@@ -15,9 +16,9 @@ function freePort(): Promise<number> {
 
 // Workers load this file again: the runner picks the ports once and hands them down in the environment.
 process.env.ORDO_E2E_SITE ??= String(await freePort());
-process.env.ORDO_E2E_PRIVATE ??= String(await freePort());
 
-const builds = { site: Number(process.env.ORDO_E2E_SITE), private: Number(process.env.ORDO_E2E_PRIVATE) };
+// The private build runs behind a front of each test's own, with its ordo serve: see e2e/front.ts.
+const builds = { site: Number(process.env.ORDO_E2E_SITE), private: 0 };
 const engines = { chromium: devices['Desktop Chrome'], firefox: devices['Desktop Firefox'], webkit: devices['Desktop Safari'] };
 const viewports = { phone: { width: 390, height: 844 }, desktop: { width: 1440, height: 900 } };
 
@@ -39,10 +40,10 @@ export default defineConfig<Options>({
 	retries: process.env.CI ? 1 : 0,
 	reporter: process.env.CI ? 'github' : 'list',
 	projects,
-	webServer: Object.entries(builds).map(([build, port]) => ({
-		command: `bunx vite preview --host 127.0.0.1 --port ${port} --strictPort`,
-		env: { ORDO_WEB: build },
-		url: `http://127.0.0.1:${port}`,
+	webServer: {
+		command: `bunx vite preview --host 127.0.0.1 --port ${builds.site} --strictPort`,
+		env: { ORDO_WEB: 'site', ORDO_CSP: csp('http://127.0.0.1:*') },
+		url: `http://127.0.0.1:${builds.site}`,
 		reuseExistingServer: false
-	}))
+	}
 });

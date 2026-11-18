@@ -38,6 +38,8 @@ export type Served = {
 	url: string;
 	/** A device token signed in with the passphrase, for a client of the test's own. */
 	token(): Promise<string>;
+	/** Adds a project file, as `ordo import` on the server does. */
+	add(file: string): void;
 	/** A pairing link as `ordo serve pair` prints it. */
 	pairLink(): string;
 	/** Stops the server; start brings it back on the same port and data. */
@@ -90,6 +92,9 @@ export async function serve({ seeded = true } = {}): Promise<Served> {
 		async token() {
 			const res = await fetch(url + '/api/login', { method: 'POST', body: JSON.stringify({ passphrase, name: 'Test client' }) });
 			return ((await res.json()) as { token: string }).token;
+		},
+		add(file) {
+			execFileSync(bin, ['import', file, '-q'], { env });
 		},
 		pairLink() {
 			const out = execFileSync(bin, ['serve', 'pair', '--base-url', url], { env }).toString();

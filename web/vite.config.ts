@@ -11,5 +11,8 @@ export default defineConfig({
 			'/api': process.env.ORDO_SERVE ?? 'http://127.0.0.1:7319'
 		}
 	},
+	preview: {
+		headers: process.env.ORDO_CSP ? { 'Content-Security-Policy': process.env.ORDO_CSP } : {}
+	},
 	plugins: [tailwindcss(), sveltekit()]
 });
