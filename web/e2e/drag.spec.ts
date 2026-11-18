@@ -150,20 +150,26 @@ test('under a filter a row moved last in a category leaves its hidden tail hidde
 	await expect(row(page, 'Later'), 'no separator appears').toHaveCount(0);
 });
 
-test('under a filter a row dragged up across a header stays above the hidden line', async ({ page, app }, info) => {
-	await withDrag(page, app());
-	await filter(page, ...open);
-	const at = await box(row(page, 'Write the report'));
-	await drag(page, info, 'Write the report', middle(await box(header(page, 'Work'))) - at.y - at.height * 0.15, undefined, () =>
-		shoot(page, 'drag-lifted', info.project.name)
-	);
-	await expect
-		.poll(() => titles(page, 'Inbox'))
-		.toEqual(['Plan the trip', 'Done', 'Book the ferry', 'Pack the bags', 'Next', 'Call the bank', 'Renew passport', 'Write the report']);
-	const hidden = page.getByText('2 hidden by the filter').first();
-	expect((await box(row(page, 'Write the report'))).y + at.height).toBeLessThanOrEqual((await box(hidden)).y + 1);
-	await shoot(page, 'drag-across-header', info.project.name);
-});
+for (const [name, chips] of [
+	['', []],
+	['under a filter ', open]
+] as const) {
+	test(`${name}a row dragged up across a header lands last above it`, async ({ page, app }, info) => {
+		await withDrag(page, app());
+		if (chips.length) await filter(page, ...chips);
+		const at = await box(row(page, 'Write the report'));
+		await drag(page, info, 'Write the report', middle(await box(header(page, 'Work'))) - at.y - at.height * 0.15, undefined, () =>
+			chips.length ? shoot(page, 'drag-lifted', info.project.name) : Promise.resolve()
+		);
+		await expect
+			.poll(() => titles(page, 'Inbox'))
+			.toEqual(['Plan the trip', 'Done', 'Book the ferry', 'Pack the bags', 'Next', 'Call the bank', 'Renew passport', 'Write the report']);
+		if (!chips.length) return;
+		const hidden = page.getByText('2 hidden by the filter').first();
+		expect((await box(row(page, 'Write the report'))).y + at.height, 'above the hidden line').toBeLessThanOrEqual((await box(hidden)).y + 1);
+		await shoot(page, 'drag-across-header', info.project.name);
+	});
+}
 
 for (const [name, chips] of [
 	['', []],
@@ -255,6 +261,27 @@ test('a category drags among its siblings with its sub-categories', async ({ pag
 	await expect.poll(async () => (await file(page)).categories.map((c) => c.name)).toEqual(['Inbox', 'Work', 'Shapes', 'Sub', 'Empty', 'Home', 'Reading']);
 	await expect(page).toHaveURL(app(`/p/${pid}/categories`));
 	await shoot(page, 'drag-categories', info.project.name);
+});
+
+test('a sub-category drags among its siblings and stays under its parent', async ({ page, app }, info) => {
+	await withDrag(page, app());
+	await page.goto(app(`/p/${pid}/categories`));
+	const page_ = page.getByRole('article', { name: 'Categories' });
+	await page_.getByRole('button', { name: 'Edit Shapes' }).click();
+	await page.getByRole('button', { name: 'New sub-category' }).click();
+	await page.getByRole('textbox', { name: 'New sub-category' }).fill('Second');
+	await page.keyboard.press('Enter');
+	await expect(page.locator('dialog[open]')).toHaveCount(0);
+	const subs = page_.getByRole('list', { name: 'Shapes sub-categories' });
+	await expect(subs.getByRole('button', { name: 'Second', exact: true })).toBeVisible();
+	const second = await box(subs.getByRole('button', { name: 'Second', exact: true }));
+	const sub = await box(subs.getByRole('button', { name: 'Sub', exact: true }));
+	await hand(info)(page, { x: second.x + 20, from: middle(second), to: middle(sub) });
+	await expect
+		.poll(async () => (await file(page)).categories.map((c) => c.name))
+		.toEqual(['Inbox', 'Work', 'Empty', 'Home', 'Shapes', 'Second', 'Sub', 'Reading']);
+	expect((await file(page)).categories.filter((c) => c.parent_id).map((c) => c.name)).toEqual(['Second', 'Sub']);
+	await expect(page).toHaveURL(app(`/p/${pid}/categories`));
 });
 
 test.describe('a real touch', () => {
