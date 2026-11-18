@@ -135,7 +135,7 @@ func TestEscInTheGNEditorSavesTheName(t *testing.T) {
 	assert.Equal(t, []string{"v1.3.0", "v1.2.0"}, categoryNames(m))
 }
 
-func TestEscStillCancelsAnOrdinaryNewCategory(t *testing.T) {
+func TestEscSavesAnOrdinaryNewCategoryToo(t *testing.T) {
 	m := newTestModel(t, versionProject("v1.3.0"))
 	require.True(t, m.selectItem(selection.FocusCategory, "v1.3.0"))
 	m.startAddingCategory()
@@ -143,7 +143,7 @@ func TestEscStillCancelsAnOrdinaryNewCategory(t *testing.T) {
 
 	pressKey(m, tea.KeyEscape)
 
-	assert.Equal(t, []string{"v1.3.0"}, categoryNames(m))
+	assert.Equal(t, []string{"v1.3.0", "draft"}, categoryNames(m))
 }
 
 func TestTheShortcutBarOffersGNOnAVersionOnly(t *testing.T) {
