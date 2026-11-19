@@ -36,7 +36,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -69,7 +68,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -222,18 +220,20 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
     BackHandler(!closing) { leave() }
     // A keyboard still starting takes a back to cancel itself, unseen by the insets: until it shows, the sheet takes back first.
     LaunchedEffect(Unit) {
-        delay(NO_KEYBOARD_MS)
+        withTimeoutOrNull(NO_KEYBOARD_MS) { snapshotFlow { starting }.first { !it } }
         starting = false
     }
+    val view = LocalView.current
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        val view = LocalView.current
-        val early = starting && !closing
-        DisposableEffect(early) {
-            val dispatcher = view.findOnBackInvokedDispatcher()
-            if (!early || dispatcher == null) return@DisposableEffect onDispose {}
+        LaunchedEffect(Unit) {
+            val dispatcher = view.findOnBackInvokedDispatcher() ?: return@LaunchedEffect
             val callback = OnBackInvokedCallback { leave() }
             dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_OVERLAY, callback)
-            onDispose { dispatcher.unregisterOnBackInvokedCallback(callback) }
+            try {
+                snapshotFlow { starting && !closing }.first { !it }
+            } finally {
+                dispatcher.unregisterOnBackInvokedCallback(callback)
+            }
         }
     }
 
