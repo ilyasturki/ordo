@@ -99,6 +99,8 @@
             // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
               # Off NixOS, libglvnd finds no EGL vendor in /run/opengl-driver and WebKit aborts: "Could not create EGL display".
               __EGL_VENDOR_LIBRARY_FILENAMES = "${pkgs.mesa}/share/glvnd/egl_vendor.d/50_mesa.json";
+              # Without NetworkManager, GLib's netlink monitor turns WebKit's navigator.onLine false from its second context on.
+              GIO_USE_NETWORK_MONITOR = "base";
             }
           );
         }
