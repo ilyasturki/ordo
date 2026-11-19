@@ -9,7 +9,9 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.provider.MediaStore
+import android.view.Choreographer
 import android.view.KeyEvent
+import android.view.inspector.WindowInspector
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -20,6 +22,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -45,6 +48,9 @@ import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.DpRect
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -78,6 +84,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 private const val WAIT = 30_000L
 
@@ -189,6 +197,38 @@ class ServerTest {
             focused
         }
         back()
+    }
+
+    // Where the keyboard starts on the screen, in dp; null while it is down.
+    private fun keyboardTop(): Float? {
+        var top: Float? = null
+        ins.runOnMainSync {
+            for (window in WindowInspector.getGlobalWindowViews()) {
+                val insets = ViewCompat.getRootWindowInsets(window) ?: continue
+                if (insets.isVisible(WindowInsetsCompat.Type.ime())) {
+                    top = (window.height - insets.getInsets(WindowInsetsCompat.Type.ime()).bottom) / compose.density.density
+                }
+            }
+        }
+        return top
+    }
+
+    private fun nextFrame() {
+        val drawn = CountDownLatch(1)
+        ins.runOnMainSync { Choreographer.getInstance().postFrameCallback { drawn.countDown() } }
+        drawn.await(WAIT, TimeUnit.MILLISECONDS)
+    }
+
+    // The keyboard's insets flip before the sheet has ridden up on it, a move the rule's idling doesn't wait for.
+    private fun tapOnceTheSheetRests(text: String) {
+        var last: DpRect? = null
+        compose.waitUntil(WAIT) {
+            nextFrame()
+            val now = compose.onNodeWithText(text).getUnclippedBoundsInRoot()
+            val top = keyboardTop()
+            (now == last && top != null && now.bottom.value <= top).also { last = now }
+        }
+        compose.onNodeWithText(text).performClick()
     }
 
     private fun inDialog(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isDialog()))
@@ -324,7 +364,7 @@ class ServerTest {
         compose.onNodeWithText("Pair a new device").performScrollTo().performClick()
         waitForText("Type the passphrase again to make a pairing code.")
         compose.onNode(hasSetTextAction()).performTextInput(passphrase)
-        compose.onNodeWithText("Make a code").performClick()
+        tapOnceTheSheetRests("Make a code")
         waitFor(hasTestTag("qr"))
         compose.onNodeWithTag("qr").assertIsDisplayed()
         compose.onNodeWithText("Share the link").assertExists()
@@ -336,8 +376,9 @@ class ServerTest {
             other.boot()
             assertNull(other.pair(link))
         }
-        // The first back may only close the keyboard.
-        repeat(2) { if (compose.onAllNodes(hasTestTag("qr")).fetchSemanticsNodes().isNotEmpty()) back() }
+        // The code takes the field's place, and the keyboard goes with it.
+        compose.waitUntil(WAIT) { keyboardTop() == null }
+        back()
         waitForDescription("Sign out $second")
     }
 
