@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-11-19
+
 ### Security
 
 - The web app runs on SvelteKit 3, which closes the four SvelteKit 2 advisories GitHub raised. None reached the static builds, which use none of the affected features
@@ -650,7 +652,8 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
 
-[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.15.1...HEAD
+[0.15.1]: https://github.com/ilyasturki/ordo/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/ilyasturki/ordo/compare/v0.14.3...v0.15.0
 [0.14.3]: https://github.com/ilyasturki/ordo/compare/v0.14.2...v0.14.3
 [0.14.2]: https://github.com/ilyasturki/ordo/compare/v0.14.1...v0.14.2
