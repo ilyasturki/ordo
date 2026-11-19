@@ -53,7 +53,7 @@ test('a, o, - and A add below the cursor; x and space cycle; d deletes; u and ct
 	await expect(page.getByRole('textbox', { name: 'New task' })).toHaveValue('');
 	await page.keyboard.press('Escape');
 	await closed(page);
-	expect((await titles(page)).slice(0, 2)).toEqual(['Shell completions for fish', 'Bash completions']);
+	await expect.poll(async () => (await titles(page)).slice(0, 2)).toEqual(['Shell completions for fish', 'Bash completions']);
 	await expect(cursor(page)).toContainText('Bash completions');
 
 	await page.keyboard.press('o');
