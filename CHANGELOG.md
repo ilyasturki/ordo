@@ -4,10 +4,6 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
-### Added
-
-- The public site serves a `robots.txt` that keeps crawlers out of `/app` and a `sitemap.xml` listing the landing
-
 ## [0.15.0] - 2026-11-19
 
 ### Added
@@ -15,6 +11,7 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 - `shift+enter` in a task's title being edited keeps the text before the cursor as the title and moves what follows to the top of the description, as one undo step, then opens the description editor on it. At the end of the title, it saves the title and opens the description
 - `gn` on a category named after a version, or any row in it, adds the next version's category: `v1.3.0 - polish` gives `v1.4.0`, in the same format and without the label, on the newest side of the versions you have, newest first or last as the project runs them. Its name opens in the editor to tweak, `esc` saves it like `enter`, and it is one undo step. With no version in the name, the status line says so. The app's category menu has Add next version
 - A web app, in two static builds from the flake: `web-site`, the public site with the app at `/app/` keeping projects in the browser, and `web-private`, the app alone for the host that proxies `ordo serve`. It runs edits through the same Go code as the TUI and the phone, and imports and exports a project's JSON file
+- The public site serves a `robots.txt` that keeps crawlers out of `/app` and a `sitemap.xml` listing the landing
 - `c` turns a task into a note and a note into a task, on the cursor's row or a visual range, in one undo step. A task loses its status and priority; one with a description, an image or subtasks, or a subtask, stays a task, and the status line says why. In the app, a task's ⋮ has Turn into note, and a note's Turn into task. A server from before this release refuses it
 - `o` adds a note below the cursor, like `_`, in one press on any keyboard layout
 - In the app, holding `+` opens a menu of what it can add to the focused category: a task, a note, a separator, a category or a project. A tap still adds a task, and in a project without categories the `+` adds the first one
