@@ -4,6 +4,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- The public site serves a `robots.txt` that keeps crawlers out of `/app` and a `sitemap.xml` listing the landing
+
 ## [0.15.0] - 2026-11-19
 
 ### Added

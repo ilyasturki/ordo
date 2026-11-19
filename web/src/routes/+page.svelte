@@ -4,9 +4,9 @@
 	import Command from '$lib/landing/Command.svelte';
 	import Icon from '$lib/landing/Icon.svelte';
 	import Surfaces from '$lib/landing/Surfaces.svelte';
+	import { origin as site } from '$lib/landing/origin';
 	import '$lib/landing/landing.css';
 
-	const site = 'https://ordo.ilyasturki.com/';
 	const title = 'Ordo: plan your projects one version at a time';
 	const description =
 		'A keyboard-driven project planner, in the terminal, on Android and in your browser. Each project is a plain JSON file.';
