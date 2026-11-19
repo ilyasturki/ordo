@@ -7,12 +7,22 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/ilyasturki/ordo/internal/core"
 	"github.com/ilyasturki/ordo/internal/data"
+	"github.com/ilyasturki/ordo/internal/domain"
 )
 
+func pinClock(t *testing.T, at time.Time) {
+	t.Helper()
+	was := domain.Now
+	domain.Now = func() time.Time { return at }
+	t.Cleanup(func() { domain.Now = was })
+}
+
 func TestExportAndImportMatchTheStore(t *testing.T) {
+	pinClock(t, time.Date(2026, 1, 2, 3, 4, 5, 999_000_000, time.UTC))
 	dir := t.TempDir()
 	store := data.NewStore(dir)
 	created, err := store.CreateProject("Ferry")

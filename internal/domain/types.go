@@ -139,8 +139,10 @@ func (t Task) IsTask() bool {
 	return t.Kind == ""
 }
 
+var Now = time.Now
+
 func NowTimestamp() string {
-	return time.Now().UTC().Format(time.RFC3339)
+	return Now().UTC().Format(time.RFC3339)
 }
 
 func NormalizeName(name string) string {
