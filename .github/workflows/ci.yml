@@ -105,6 +105,7 @@ jobs:
     # In the flake's devShell: its Playwright browsers are the ones web/package.json pins @playwright/test to.
     web:
         runs-on: ubuntu-26.04
+        timeout-minutes: 60
         steps:
             - name: Checkout code
               uses: actions/checkout@v6
