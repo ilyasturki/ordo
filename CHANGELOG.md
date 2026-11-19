@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-19
+
 ### Added
 
 - `shift+enter` in a task's title being edited keeps the text before the cursor as the title and moves what follows to the top of the description, as one undo step, then opens the description editor on it. At the end of the title, it saves the title and opens the description
@@ -643,7 +645,8 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
 
-[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.14.3...HEAD
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/ilyasturki/ordo/compare/v0.14.3...v0.15.0
 [0.14.3]: https://github.com/ilyasturki/ordo/compare/v0.14.2...v0.14.3
 [0.14.2]: https://github.com/ilyasturki/ordo/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/ilyasturki/ordo/compare/v0.14.0...v0.14.1
