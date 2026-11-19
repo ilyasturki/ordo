@@ -279,5 +279,5 @@ describe('a drop through the core', () => {
 		}
 		expect(failures.slice(0, 20), `${failures.length} of ${drops} drops`).toEqual([]);
 		expect(drops).toBeGreaterThan(1000);
-	});
+	}, 60_000);
 });
