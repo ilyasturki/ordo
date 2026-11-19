@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import type { Task } from '$lib/core/types';
-	import type { Local } from '$lib/local.svelte';
-	import { taskVisible } from '$lib/model/filter';
-	import { categoryPath, priorities, priorityLabel, priorityTone, tagLabel, tags } from '$lib/model/project';
+	import type { Task } from '#lib/core/types.ts';
+	import type { Local } from '#lib/local.svelte.ts';
+	import { taskVisible } from '#lib/model/filter.ts';
+	import { categoryPath, priorities, priorityLabel, priorityTone, tagLabel, tags } from '#lib/model/project.ts';
 	import Chip from './Chip.svelte';
 	import Icon from './Icon.svelte';
 	import IconButton from './IconButton.svelte';

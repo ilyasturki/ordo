@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { app } from '$lib/paths';
-	import Bump from '$lib/landing/Bump.svelte';
-	import Command from '$lib/landing/Command.svelte';
-	import Icon from '$lib/landing/Icon.svelte';
-	import Surfaces from '$lib/landing/Surfaces.svelte';
-	import { origin as site } from '$lib/landing/origin';
-	import '$lib/landing/landing.css';
+	import { app } from '#lib/paths.ts';
+	import Bump from '#lib/landing/Bump.svelte';
+	import Command from '#lib/landing/Command.svelte';
+	import Icon from '#lib/landing/Icon.svelte';
+	import Surfaces from '#lib/landing/Surfaces.svelte';
+	import { origin as site } from '#lib/landing/origin.ts';
+	import '#lib/landing/landing.css';
 
 	const title = 'Ordo: plan your projects one version at a time';
 	const description =

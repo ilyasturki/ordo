@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Local } from '$lib/local.svelte';
+	import type { Local } from '#lib/local.svelte.ts';
 
 	let { local }: { local: Local } = $props();
 

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import SignIn from '$lib/app/SignIn.svelte';
-	import Snackbar from '$lib/app/Snackbar.svelte';
-	import { openSession, session, useHere } from '$lib/session.svelte';
+	import SignIn from '#lib/app/SignIn.svelte';
+	import Snackbar from '#lib/app/Snackbar.svelte';
+	import { openSession, session, useHere } from '#lib/session.svelte.ts';
 
 	let { children } = $props();
 

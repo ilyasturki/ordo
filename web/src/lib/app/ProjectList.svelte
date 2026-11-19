@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { Project } from '$lib/core/types';
-	import type { Local } from '$lib/local.svelte';
-	import type { Block, Line } from '$lib/model/board';
-	import { dropPlace, entered, placeOp, slotAllowed } from '$lib/model/drag';
-	import { active } from '$lib/model/filter';
-	import { nextStatus } from '$lib/model/project';
-	import { app } from '$lib/paths';
+	import type { Project } from '#lib/core/types.ts';
+	import type { Local } from '#lib/local.svelte.ts';
+	import type { Block, Line } from '#lib/model/board.ts';
+	import { dropPlace, entered, placeOp, slotAllowed } from '#lib/model/drag.ts';
+	import { active } from '#lib/model/filter.ts';
+	import { nextStatus } from '#lib/model/project.ts';
+	import { app } from '#lib/paths.ts';
 	import CategoryHeader from './CategoryHeader.svelte';
 	import TaskRow from './TaskRow.svelte';
 	import { Reorder } from './reorder.svelte';

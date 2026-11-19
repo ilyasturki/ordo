@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import type { Answer, Op } from '$lib/core/types';
-	import type { Local } from '$lib/local.svelte';
-	import { addedLineShows } from '$lib/model/board';
-	import { categoryPath, category as findCategory, deletedWith, find, groupKey, isLine, projectGroups, versioned } from '$lib/model/project';
-	import { app } from '$lib/paths';
-	import { session } from '$lib/session.svelte';
+	import type { Answer, Op } from '#lib/core/types.ts';
+	import type { Local } from '#lib/local.svelte.ts';
+	import { addedLineShows } from '#lib/model/board.ts';
+	import { categoryPath, category as findCategory, deletedWith, find, groupKey, isLine, projectGroups, versioned } from '#lib/model/project.ts';
+	import { app } from '#lib/paths.ts';
+	import { session } from '#lib/session.svelte.ts';
 	import AddSheet from './AddSheet.svelte';
 	import Dialog from './Dialog.svelte';
 	import FilterSheet from './FilterSheet.svelte';

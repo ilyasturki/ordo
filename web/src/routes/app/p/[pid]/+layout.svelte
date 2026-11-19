@@ -2,19 +2,19 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { tick, untrack } from 'svelte';
-	import IconButton from '$lib/app/IconButton.svelte';
-	import Icon from '$lib/app/Icon.svelte';
-	import ProjectList from '$lib/app/ProjectList.svelte';
-	import ProjectMenu from '$lib/app/ProjectMenu.svelte';
-	import ProjectNav from '$lib/app/ProjectNav.svelte';
-	import ProjectTabs from '$lib/app/ProjectTabs.svelte';
-	import Sheets from '$lib/app/Sheets.svelte';
-	import { onKey } from '$lib/app/keys';
-	import { resetList, ui } from '$lib/app/ui.svelte';
-	import { lines, search, target } from '$lib/model/board';
-	import { active, hasValues, toFile } from '$lib/model/filter';
-	import { app } from '$lib/paths';
-	import { session } from '$lib/session.svelte';
+	import IconButton from '#lib/app/IconButton.svelte';
+	import Icon from '#lib/app/Icon.svelte';
+	import ProjectList from '#lib/app/ProjectList.svelte';
+	import ProjectMenu from '#lib/app/ProjectMenu.svelte';
+	import ProjectNav from '#lib/app/ProjectNav.svelte';
+	import ProjectTabs from '#lib/app/ProjectTabs.svelte';
+	import Sheets from '#lib/app/Sheets.svelte';
+	import { onKey } from '#lib/app/keys.ts';
+	import { resetList, ui } from '#lib/app/ui.svelte.ts';
+	import { lines, search, target } from '#lib/model/board.ts';
+	import { active, hasValues, toFile } from '#lib/model/filter.ts';
+	import { app } from '#lib/paths.ts';
+	import { session } from '#lib/session.svelte.ts';
 
 	let { children } = $props();
 
@@ -57,7 +57,7 @@
 	$effect(() => {
 		if (!project && !local.projects.some((p) => p.id === pid)) {
 			const next = local.projects[0];
-			void goto(next ? app(`/p/${next.id}`) : app(), { replaceState: true });
+			void goto(next ? app(`/p/${next.id}`) : app(), { replace: true });
 		}
 	});
 

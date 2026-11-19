@@ -1,25 +1,10 @@
 {
-	"extends": "./.svelte-kit/tsconfig.json",
+	"extends": "$app/tsconfig",
 	"compilerOptions": {
-		"allowJs": true,
 		"checkJs": false,
-		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
-		"resolveJsonModule": true,
-		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
-		"moduleResolution": "bundler",
-		"types": ["node"]
+		"types": ["$app/types", "node"]
 	},
-	"include": [
-		".svelte-kit/ambient.d.ts",
-		".svelte-kit/non-ambient.d.ts",
-		".svelte-kit/types/**/$types.d.ts",
-		"src/**/*.ts",
-		"src/**/*.svelte",
-		"scripts/**/*.ts",
-		"e2e/**/*.ts",
-		"*.config.ts"
-	]
+	"include": ["src/**/*.ts", "src/**/*.svelte", "scripts/**/*.ts", "e2e/**/*.ts", "*.config.ts"]
 }

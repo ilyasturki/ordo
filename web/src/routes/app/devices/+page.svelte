@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import Dialog from '$lib/app/Dialog.svelte';
-	import Field from '$lib/app/Field.svelte';
-	import Icon from '$lib/app/Icon.svelte';
-	import IconButton from '$lib/app/IconButton.svelte';
-	import Sheet from '$lib/app/Sheet.svelte';
-	import TextButton from '$lib/app/TextButton.svelte';
-	import { app } from '$lib/paths';
-	import { restart, session } from '$lib/session.svelte';
-	import type { DeviceInfo, Devices, PairCode } from '$lib/sync/api';
+	import Dialog from '#lib/app/Dialog.svelte';
+	import Field from '#lib/app/Field.svelte';
+	import Icon from '#lib/app/Icon.svelte';
+	import IconButton from '#lib/app/IconButton.svelte';
+	import Sheet from '#lib/app/Sheet.svelte';
+	import TextButton from '#lib/app/TextButton.svelte';
+	import { app } from '#lib/paths.ts';
+	import { restart, session } from '#lib/session.svelte.ts';
+	import type { DeviceInfo, Devices, PairCode } from '#lib/sync/api.ts';
 
 	const sync = session.sync;
 	const local = session.local!;
@@ -37,7 +37,7 @@
 	}
 
 	$effect(() => {
-		if (!sync) void goto(app(), { replaceState: true });
+		if (!sync) void goto(app(), { replace: true });
 		else void load();
 	});
 

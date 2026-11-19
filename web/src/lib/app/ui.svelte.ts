@@ -1,5 +1,5 @@
 import { goto } from '$app/navigation';
-import { app } from '$lib/paths';
+import { app } from '#lib/paths.ts';
 
 export type SheetState =
 	| { kind: 'add'; pid: string; cat: string; after?: string }
@@ -47,7 +47,12 @@ export function hold(id: string): void {
 
 export function openTask(pid: string, tid: string, replace = false): Promise<void> {
 	ui.cursor = 't:' + tid;
-	return goto(app(`/p/${pid}/t/${tid}`), { replaceState: replace, noScroll: true, keepFocus: replace });
+	return gotoInPlace(app(`/p/${pid}/t/${tid}`), replace, replace);
+}
+
+export function gotoInPlace(url: string, replace = false, keepFocus = false): Promise<void> {
+	if (!keepFocus && document.activeElement instanceof HTMLElement) document.activeElement.blur();
+	return goto(url, { replace, reset: false });
 }
 
 /** A wide screen shows the list and the open task side by side; a phone shows one at a time. */

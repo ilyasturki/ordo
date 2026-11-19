@@ -1,6 +1,6 @@
 import { goto } from '$app/navigation';
-import type { Local } from '$lib/local.svelte';
-import { app } from '$lib/paths';
+import type { Local } from '#lib/local.svelte.ts';
+import { app } from '#lib/paths.ts';
 import { download } from './ui.svelte';
 
 /** Asks for a project file and adds it as a new project, then shows it. */

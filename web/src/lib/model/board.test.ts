@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Category, Project, Status, Task } from '$lib/core/types';
+import type { Category, Project, Status, Task } from '#lib/core/types.ts';
 import { addedLineShows, lines, search, shownRows, target, type Header, type Line } from './board';
 import { fields, join, preview, refs } from './description';
 import { active, categoryVisible, fromFile, hasValues, noFilter, pruned, toFile, type Filter } from './filter';

@@ -9,6 +9,8 @@ test('a task opens as a page on a phone and beside the list on a wide screen', a
 	await taskLink(page, 'Encrypt secrets with age').click();
 	await expect(pane(page).getByRole('textbox', { name: 'Title' })).toHaveValue('Encrypt secrets with age');
 	await expect(page).toHaveURL(new RegExp(`${app('/p')}/[^/]+/t/[^/]+$`));
+	// The row hands focus back to the page, so enter goes to the list's keys and not to the link again.
+	await expect(page.locator('body')).toBeFocused();
 	const list = page.getByRole('list', { name: 'ferry' });
 	if (phone(info)) await expect(list).toBeHidden();
 	else await expect(list).toBeVisible();

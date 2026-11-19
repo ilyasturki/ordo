@@ -4,6 +4,10 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Security
+
+- The web app runs on SvelteKit 3, which closes the four SvelteKit 2 advisories GitHub raised. None reached the static builds, which use none of the affected features
+
 ## [0.15.0] - 2026-11-19
 
 ### Added

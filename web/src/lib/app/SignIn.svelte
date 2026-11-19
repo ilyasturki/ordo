@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { app, site } from '$lib/paths';
-	import { restart, session } from '$lib/session.svelte';
-	import { parsePairing, parseServer } from '$lib/sync/api';
-	import { login, offersPassphrase, pair } from '$lib/sync/session';
+	import { app, site } from '#lib/paths.ts';
+	import { restart, session } from '#lib/session.svelte.ts';
+	import { parsePairing, parseServer } from '#lib/sync/api.ts';
+	import { login, offersPassphrase, pair } from '#lib/sync/session.ts';
 	import Field from './Field.svelte';
 	import IconButton from './IconButton.svelte';
 

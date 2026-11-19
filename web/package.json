@@ -2,6 +2,9 @@
 	"name": "ordo-web",
 	"private": true,
 	"type": "module",
+	"imports": {
+		"#lib/*": "./src/lib/*"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -15,8 +18,8 @@
 	"devDependencies": {
 		"@material/material-color-utilities": "0.4.0",
 		"@playwright/test": "1.64.1",
-		"@sveltejs/adapter-static": "3.0.11",
-		"@sveltejs/kit": "2.70.4",
+		"@sveltejs/adapter-static": "4.0.1",
+		"@sveltejs/kit": "3.4.0",
 		"@sveltejs/vite-plugin-svelte": "7.3.1",
 		"@tailwindcss/vite": "4.3.5",
 		"@types/node": "24.19.2",

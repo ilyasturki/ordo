@@ -1,14 +1,13 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import Icon from '$lib/app/Icon.svelte';
-	import IconButton from '$lib/app/IconButton.svelte';
-	import { Reorder } from '$lib/app/reorder.svelte';
-	import { ui, wide } from '$lib/app/ui.svelte';
-	import type { Category } from '$lib/core/types';
-	import { categoryVisible } from '$lib/model/filter';
-	import { app } from '$lib/paths';
-	import { session } from '$lib/session.svelte';
+	import Icon from '#lib/app/Icon.svelte';
+	import IconButton from '#lib/app/IconButton.svelte';
+	import { Reorder } from '#lib/app/reorder.svelte.ts';
+	import { gotoInPlace, ui, wide } from '#lib/app/ui.svelte.ts';
+	import type { Category } from '#lib/core/types.ts';
+	import { categoryVisible } from '#lib/model/filter.ts';
+	import { app } from '#lib/paths.ts';
+	import { session } from '#lib/session.svelte.ts';
 
 	// The phone's categories page: each category with its menu, and moves where the phone drags.
 	const local = session.local!;
@@ -66,11 +65,11 @@
 			return;
 		}
 		ui.jump = cat.id;
-		if (!wide()) void goto(app(`/p/${pid}`), { noScroll: true });
+		if (!wide()) void gotoInPlace(app(`/p/${pid}`));
 	}
 
 	function back() {
-		void goto(app(`/p/${pid}`), { noScroll: true });
+		void gotoInPlace(app(`/p/${pid}`));
 	}
 </script>
 

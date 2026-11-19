@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import type { Local } from '$lib/local.svelte';
-	import { app } from '$lib/paths';
-	import type { Sync } from '$lib/sync/sync.svelte';
+	import type { Local } from '#lib/local.svelte.ts';
+	import { app } from '#lib/paths.ts';
+	import type { Sync } from '#lib/sync/sync.svelte.ts';
 	import Icon from './Icon.svelte';
 	import Sheet from './Sheet.svelte';
 	import TextButton from './TextButton.svelte';

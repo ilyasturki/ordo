@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tagDot, tags } from '$lib/model/project';
+	import { tagDot, tags } from '#lib/model/project.ts';
 
 	let { color, class: cls = 'size-2.5' }: { color: string; class?: string } = $props();
 	const dot = $derived(tagDot(color));

@@ -1,4 +1,4 @@
-import type { Category, Project, Task } from '$lib/core/types';
+import type { Category, Project, Task } from '#lib/core/types.ts';
 import { display, preview, refs } from './description';
 import { categoryVisible, lineMatches, taskVisible, type Filter } from './filter';
 import { finished, isLine, isSeparator } from './project';

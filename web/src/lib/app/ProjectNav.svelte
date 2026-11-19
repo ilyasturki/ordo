@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { Local } from '$lib/local.svelte';
-	import { groupKey } from '$lib/model/project';
-	import { app, site } from '$lib/paths';
+	import type { Local } from '#lib/local.svelte.ts';
+	import { groupKey } from '#lib/model/project.ts';
+	import { app, site } from '#lib/paths.ts';
 	import { importProject } from './actions';
 	import Icon from './Icon.svelte';
 	import { ui } from './ui.svelte';

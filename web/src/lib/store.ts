@@ -1,6 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Op } from '$lib/core/types';
-import type { FilterFile } from '$lib/model/filter';
+import type { Op } from '#lib/core/types.ts';
+import type { FilterFile } from '#lib/model/filter.ts';
 
 export type StoredProject = {
 	id: string;

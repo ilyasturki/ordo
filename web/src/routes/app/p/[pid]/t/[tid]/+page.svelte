@@ -2,18 +2,18 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { tick } from 'svelte';
-	import Chip from '$lib/app/Chip.svelte';
-	import Icon from '$lib/app/Icon.svelte';
-	import IconButton from '$lib/app/IconButton.svelte';
-	import Menu from '$lib/app/Menu.svelte';
-	import MenuItem from '$lib/app/MenuItem.svelte';
-	import TagDot from '$lib/app/TagDot.svelte';
-	import Thumbnail from '$lib/app/Thumbnail.svelte';
-	import { autosize } from '$lib/app/autosize';
-	import { priorityIcon, statusIcon } from '$lib/app/icons';
-	import { openTask, ui, wide } from '$lib/app/ui.svelte';
-	import type { Op } from '$lib/core/types';
-	import { fields, join, refs, type ImageRef } from '$lib/model/description';
+	import Chip from '#lib/app/Chip.svelte';
+	import Icon from '#lib/app/Icon.svelte';
+	import IconButton from '#lib/app/IconButton.svelte';
+	import Menu from '#lib/app/Menu.svelte';
+	import MenuItem from '#lib/app/MenuItem.svelte';
+	import TagDot from '#lib/app/TagDot.svelte';
+	import Thumbnail from '#lib/app/Thumbnail.svelte';
+	import { autosize } from '#lib/app/autosize.ts';
+	import { priorityIcon, statusIcon } from '#lib/app/icons.ts';
+	import { gotoInPlace, openTask, ui, wide } from '#lib/app/ui.svelte.ts';
+	import type { Op } from '#lib/core/types.ts';
+	import { fields, join, refs, type ImageRef } from '#lib/model/description.ts';
 	import {
 		categoryPath,
 		find,
@@ -30,9 +30,9 @@
 		statuses,
 		tagLabel,
 		tags
-	} from '$lib/model/project';
-	import { app } from '$lib/paths';
-	import { session } from '$lib/session.svelte';
+	} from '#lib/model/project.ts';
+	import { app } from '#lib/paths.ts';
+	import { session } from '#lib/session.svelte.ts';
 
 	const local = session.local!;
 	const pid = $derived(page.params.pid ?? '');
@@ -84,7 +84,7 @@
 	});
 
 	$effect(() => {
-		if (project && !found) void goto(app(`/p/${pid}`), { replaceState: true });
+		if (project && !found) void goto(app(`/p/${pid}`), { replace: true });
 	});
 
 	async function saveTitle() {
@@ -168,7 +168,7 @@
 	}
 
 	function close() {
-		void goto(app(`/p/${pid}`), { noScroll: true });
+		void gotoInPlace(app(`/p/${pid}`));
 	}
 
 	$effect(() => {

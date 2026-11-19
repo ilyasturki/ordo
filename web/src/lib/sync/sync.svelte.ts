@@ -1,5 +1,5 @@
-import type { Local, Outgoing } from '$lib/local.svelte';
-import { clearStore } from '$lib/store';
+import type { Local, Outgoing } from '#lib/local.svelte.ts';
+import { clearStore } from '#lib/store.ts';
 import { Api, Offline, ServerError, type Devices, type PairCode, type Session, type SyncResult } from './api';
 import { saveSession, syncedStore } from './session';
 

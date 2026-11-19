@@ -1,11 +1,10 @@
-import { goto } from '$app/navigation';
-import type { Project } from '$lib/core/types';
-import type { Local } from '$lib/local.svelte';
-import { stops, target, type Line } from '$lib/model/board';
-import { active } from '$lib/model/filter';
-import { find, isLine, isNote, isSeparator, nextStatus, nextTag, priorities, priorityOf } from '$lib/model/project';
-import { app } from '$lib/paths';
-import { hold, openTask, ui, wide } from './ui.svelte';
+import type { Project } from '#lib/core/types.ts';
+import type { Local } from '#lib/local.svelte.ts';
+import { stops, target, type Line } from '#lib/model/board.ts';
+import { active } from '#lib/model/filter.ts';
+import { find, isLine, isNote, isSeparator, nextStatus, nextTag, priorities, priorityOf } from '#lib/model/project.ts';
+import { app } from '#lib/paths.ts';
+import { gotoInPlace, hold, openTask, ui, wide } from './ui.svelte';
 
 /** The TUI's keys the web app takes, as `?` lists them. */
 export const keyHelp: [string, [string, string][]][] = [
@@ -199,7 +198,7 @@ function run(key: string, ctx: KeyContext): boolean {
 			if (ui.searching) {
 				ui.searching = false;
 				ui.query = '';
-			} else if (ctx.taskOpen) void goto(app(`/p/${pid}`), { noScroll: true });
+			} else if (ctx.taskOpen) void gotoInPlace(app(`/p/${pid}`));
 			else return false;
 			return true;
 	}

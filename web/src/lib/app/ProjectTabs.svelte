@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import type { Local } from '$lib/local.svelte';
-	import { groupKey } from '$lib/model/project';
-	import { app } from '$lib/paths';
+	import type { Local } from '#lib/local.svelte.ts';
+	import { groupKey } from '#lib/model/project.ts';
+	import { app } from '#lib/paths.ts';
 	import Icon from './Icon.svelte';
 	import { ui } from './ui.svelte';
 
@@ -20,7 +20,7 @@
 		if (e.metaKey || e.ctrlKey || e.shiftKey) return;
 		e.preventDefault();
 		if (id === pid) ui.sheet = { kind: 'project', pid };
-		else void goto(app(`/p/${id}`), { replaceState: true });
+		else void goto(app(`/p/${id}`), { replace: true });
 	}
 </script>
 

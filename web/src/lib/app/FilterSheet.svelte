@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import type { Local } from '$lib/local.svelte';
-	import { active, flip, hasValues, noFilter, type Filter } from '$lib/model/filter';
-	import { categoryPath, priorities, priorityLabel, priorityTone, statusLabel, statuses, tagLabel, tags } from '$lib/model/project';
+	import type { Local } from '#lib/local.svelte.ts';
+	import { active, flip, hasValues, noFilter, type Filter } from '#lib/model/filter.ts';
+	import { categoryPath, priorities, priorityLabel, priorityTone, statusLabel, statuses, tagLabel, tags } from '#lib/model/project.ts';
 	import Icon from './Icon.svelte';
 	import Sheet from './Sheet.svelte';
 	import TagDot from './TagDot.svelte';

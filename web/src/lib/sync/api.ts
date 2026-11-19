@@ -1,5 +1,5 @@
-import type { Op, Project, Verdict } from '$lib/core/types';
-import type { FilterFile } from '$lib/model/filter';
+import type { Op, Project, Verdict } from '#lib/core/types.ts';
+import type { FilterFile } from '#lib/model/filter.ts';
 
 /** web.Protocol: docs/sync.md says when it goes up. */
 export const protocol = 1;

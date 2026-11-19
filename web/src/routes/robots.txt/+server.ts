@@ -1,4 +1,4 @@
-import { origin } from '$lib/landing/origin';
+import { origin } from '#lib/landing/origin.ts';
 
 export const prerender = true;
 

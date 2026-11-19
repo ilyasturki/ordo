@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { importProject } from '$lib/app/actions';
-	import IconButton from '$lib/app/IconButton.svelte';
-	import Sheets from '$lib/app/Sheets.svelte';
-	import { ui } from '$lib/app/ui.svelte';
-	import { app, site } from '$lib/paths';
-	import { session } from '$lib/session.svelte';
+	import { importProject } from '#lib/app/actions.ts';
+	import IconButton from '#lib/app/IconButton.svelte';
+	import Sheets from '#lib/app/Sheets.svelte';
+	import { ui } from '#lib/app/ui.svelte.ts';
+	import { app, site } from '#lib/paths.ts';
+	import { session } from '#lib/session.svelte.ts';
 
 	const local = session.local!;
 
 	$effect(() => {
 		const next = local.project(local.current) ?? local.projects[0];
-		if (next) void goto(app(`/p/${next.id}`), { replaceState: true });
+		if (next) void goto(app(`/p/${next.id}`), { replace: true });
 	});
 </script>
 

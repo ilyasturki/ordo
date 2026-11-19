@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Row } from '$lib/model/board';
-	import { finished, isNote, isSeparator, priorityLabel, priorityOf, priorityTone, statusLabel } from '$lib/model/project';
+	import type { Row } from '#lib/model/board.ts';
+	import { finished, isNote, isSeparator, priorityLabel, priorityOf, priorityTone, statusLabel } from '#lib/model/project.ts';
 	import Chip from './Chip.svelte';
 	import IconButton from './IconButton.svelte';
 	import TagDot from './TagDot.svelte';

@@ -1,5 +1,5 @@
-import { site } from '$lib/paths';
-import { clearStore } from '$lib/store';
+import { site } from '#lib/paths.ts';
+import { clearStore } from '#lib/store.ts';
 import { Api, pairingCode, parsePairing, type Session } from './api';
 import type { Sync } from './sync.svelte';
 

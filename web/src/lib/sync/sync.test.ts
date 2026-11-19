@@ -1,10 +1,10 @@
 import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { nodeCore } from '$lib/core/node';
-import type { Project } from '$lib/core/types';
-import { Local } from '$lib/local.svelte';
-import { openStore } from '$lib/store';
+import { nodeCore } from '#lib/core/node.ts';
+import type { Project } from '#lib/core/types.ts';
+import { Local } from '#lib/local.svelte.ts';
+import { openStore } from '#lib/store.ts';
 import { ordo, serve, type Served } from '../../../e2e/serve';
 import { Api, parsePairing, parseServer, pairingCode, type Session } from './api';
 import { delays, Sync } from './sync.svelte';

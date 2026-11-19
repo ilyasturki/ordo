@@ -80,7 +80,6 @@ let
         root = ../web;
         fileset = fileset.unions [
           manifest
-          ../web/svelte.config.js
           ../web/vite.config.ts
           ../web/tsconfig.json
           ../web/static
@@ -103,8 +102,6 @@ let
         patchShebangs node_modules
         mkdir -p src/lib/core/wasm
         cp ${wasm}/ordo.wasm ${wasm}/wasm_exec.js src/lib/core/wasm/
-        # tsconfig.json extends .svelte-kit's, which only a sync without ORDO_WEB writes.
-        HOME="$TMPDIR" bun run prepare
         runHook postConfigure
       '';
       buildPhase = ''

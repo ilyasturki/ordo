@@ -1,9 +1,9 @@
-import type { Core } from '$lib/core/core';
-import type { Answer, Category, Op, Project } from '$lib/core/types';
-import { fromFile, noFilter, pruned, toFile, type Filter } from '$lib/model/filter';
-import { rankProjects } from '$lib/model/project';
-import type { DB, Queued } from '$lib/store';
-import type { ProjectState, SyncOp, ViewFile } from '$lib/sync/api';
+import type { Core } from '#lib/core/core.ts';
+import type { Answer, Category, Op, Project } from '#lib/core/types.ts';
+import { fromFile, noFilter, pruned, toFile, type Filter } from '#lib/model/filter.ts';
+import { rankProjects } from '#lib/model/project.ts';
+import type { DB, Queued } from '#lib/store.ts';
+import type { ProjectState, SyncOp, ViewFile } from '#lib/sync/api.ts';
 
 export type View = { folds: string[]; filter: Filter };
 

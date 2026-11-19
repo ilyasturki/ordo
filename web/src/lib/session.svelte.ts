@@ -1,9 +1,9 @@
-import { loadCore } from '$lib/core/core';
-import { Local } from '$lib/local.svelte';
-import { site } from '$lib/paths';
-import { openStore } from '$lib/store';
-import { readSession, syncedStore } from '$lib/sync/session';
-import { Sync } from '$lib/sync/sync.svelte';
+import { loadCore } from '#lib/core/core.ts';
+import { Local } from '#lib/local.svelte.ts';
+import { site } from '#lib/paths.ts';
+import { openStore } from '#lib/store.ts';
+import { readSession, syncedStore } from '#lib/sync/session.ts';
+import { Sync } from '#lib/sync/sync.svelte.ts';
 
 /** The server's copy once signed in, else the site build's own projects; the private build signs in first. */
 export const session: { local?: Local; sync?: Sync; signIn?: boolean; elsewhere?: boolean; error?: string } = $state({});

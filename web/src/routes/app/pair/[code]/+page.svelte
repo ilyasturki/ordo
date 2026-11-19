@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { app, site } from '$lib/paths';
-	import { restart } from '$lib/session.svelte';
-	import { pair } from '$lib/sync/session';
+	import { app, site } from '#lib/paths.ts';
+	import { restart } from '#lib/session.svelte.ts';
+	import { pair } from '#lib/sync/session.ts';
 
 	// A pairing link opened in the browser. A link preview fetches it too, so only a tap spends it.
 	const code = page.params.code ?? '';

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import type { Local } from '$lib/local.svelte';
-	import { app, site } from '$lib/paths';
+	import type { Local } from '#lib/local.svelte.ts';
+	import { app, site } from '#lib/paths.ts';
 	import { exportProject, importProject } from './actions';
 	import IconButton from './IconButton.svelte';
 	import Menu from './Menu.svelte';

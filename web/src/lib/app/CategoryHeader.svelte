@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Header } from '$lib/model/board';
+	import type { Header } from '#lib/model/board.ts';
 	import Chip from './Chip.svelte';
 	import Icon from './Icon.svelte';
 	import IconButton from './IconButton.svelte';

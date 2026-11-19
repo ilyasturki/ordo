@@ -1,4 +1,4 @@
-import type { Op } from '$lib/core/types';
+import type { Op } from '#lib/core/types.ts';
 import { blockEnd, type Block, type Header, type Line } from './board';
 import { isSeparator } from './project';
 

@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { nodeCore } from '$lib/core/node';
-import type { Core } from '$lib/core/core';
-import type { Op, Project } from '$lib/core/types';
-import { Local } from '$lib/local.svelte';
-import { openStore } from '$lib/store';
+import { nodeCore } from '#lib/core/node.ts';
+import type { Core } from '#lib/core/core.ts';
+import type { Op, Project } from '#lib/core/types.ts';
+import { Local } from '#lib/local.svelte.ts';
+import { openStore } from '#lib/store.ts';
 
 let stores = 0;
 let last: Local | undefined;

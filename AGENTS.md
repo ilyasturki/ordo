@@ -86,12 +86,12 @@ key, on the connected phone.
 picked by `ORDO_WEB`: `site`, the public landing at `/` with the app at `/app`,
 and `private`, the app at `/` beside `ordo serve`'s `/api`. The app's routes live
 once under `src/routes/app`; `src/hooks.ts` reroutes the private build onto them,
-and links go through `app()` in `$lib/paths`. Edits run in the wasm core
-(`$lib/core`), never in TypeScript, so an op change reaches the web at the next
+and links go through `app()` in `#lib/paths`. Edits run in the wasm core
+(`#lib/core`), never in TypeScript, so an op change reaches the web at the next
 `just wasm`. Colours come from `bun run theme`, never by hand in `colors.css`.
 
 Signed in to an `ordo serve`, the app works on a copy of the server's projects
-(`$lib/sync`, the phone's `SyncEngine.kt` in TypeScript): `Local` queues each
+(`#lib/sync`, the phone's `SyncEngine.kt` in TypeScript): `Local` queues each
 edit's replayable op, `Sync` sends the queue and adopts the answer. The private
 build signs in with the cookie on its own origin; the site build keeps a bearer
 token and the server's copy in `ordo-server`, apart from its own projects in `ordo`.

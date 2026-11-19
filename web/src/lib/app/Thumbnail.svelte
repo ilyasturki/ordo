@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Local } from '$lib/local.svelte';
-	import type { ImageRef } from '$lib/model/description';
+	import type { Local } from '#lib/local.svelte.ts';
+	import type { ImageRef } from '#lib/model/description.ts';
 	import Icon from './Icon.svelte';
 
 	// A reference this browser holds no file for shows its name: never a request that fails.

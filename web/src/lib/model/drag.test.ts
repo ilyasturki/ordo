@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { nodeCore } from '$lib/core/node';
-import type { Category, Project, Status, Task } from '$lib/core/types';
+import { nodeCore } from '#lib/core/node.ts';
+import type { Category, Project, Status, Task } from '#lib/core/types.ts';
 import { lines as boardLines, type Block, type Line } from './board';
 import { dropPlace, entered, placeOp, slotAllowed } from './drag';
 import { active, noFilter, type Filter } from './filter';

@@ -1,4 +1,4 @@
-import type { Category, Project, Task } from '$lib/core/types';
+import type { Category, Project, Task } from '#lib/core/types.ts';
 import { priorityOf, tagDot } from './project';
 
 /**

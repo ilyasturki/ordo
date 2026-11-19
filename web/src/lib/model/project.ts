@@ -1,4 +1,4 @@
-import type { Category, Project, Status, Task } from '$lib/core/types';
+import type { Category, Project, Status, Task } from '#lib/core/types.ts';
 
 export const statuses: Status[] = ['todo', 'in_progress', 'completed', 'cancelled'];
 
