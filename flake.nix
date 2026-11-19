@@ -84,17 +84,23 @@
           pkgs = nixpkgs.legacyPackages.${system};
         in
         {
-          web = pkgs.mkShellNoCC {
-            packages = [
-              pkgs.bun
-              pkgs.nodejs
-              pkgs.go
-            ];
-            PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
-            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
-            # scripts/web.sh checks web/package.json pins the @playwright/test these browsers are for.
-            ORDO_PLAYWRIGHT = pkgs.playwright-driver.version;
-          };
+          web = pkgs.mkShellNoCC (
+            {
+              packages = [
+                pkgs.bun
+                pkgs.nodejs
+                pkgs.go
+              ];
+              PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
+              PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
+              # scripts/web.sh checks web/package.json pins the @playwright/test these browsers are for.
+              ORDO_PLAYWRIGHT = pkgs.playwright-driver.version;
+            }
+            // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+              # Off NixOS, libglvnd finds no EGL vendor in /run/opengl-driver and WebKit aborts: "Could not create EGL display".
+              __EGL_VENDOR_LIBRARY_FILENAMES = "${pkgs.mesa}/share/glvnd/egl_vendor.d/50_mesa.json";
+            }
+          );
         }
         // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
           native = pkgs.mkShellNoCC rec {
