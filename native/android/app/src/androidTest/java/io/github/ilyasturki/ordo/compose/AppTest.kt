@@ -172,6 +172,7 @@ class AppTest : AppFixture() {
         compose.onNodeWithText("Add a separator").performClick()
         compose.onNodeWithText("Add").performClick()
         compose.waitUntilAtLeastOneExists(hasContentDescription("Separator"), 20_000)
+        waitSheetGone()
         compose.onNodeWithTag("list").performScrollToNode(hasContentDescription("Separator"))
         compose.onNodeWithContentDescription("Separator").performClick()
         waitAcrossPages(hasText("Separator label"))
