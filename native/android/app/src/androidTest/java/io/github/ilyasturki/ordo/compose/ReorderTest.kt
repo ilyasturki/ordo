@@ -202,16 +202,16 @@ class ReorderTest : AppFixture(listOf("Ordo", "Spare")) {
         runBlocking { engine.setFilter(PID, Filter(statuses = setOf("todo"))) }
         compose.waitUntilAtLeastOneExists(hasText("2 hidden by the filter"), 20_000)
         featureTop()
-        dragOnto(RECURRING, block(EXPORT))
-        waitFor(listOf(WEB, RECURRING, EXPORT, LATER)) { rows("Feature") }
         val pending = engine.state.value.pending
         val hidden = compose.onAllNodes(hasText("2 hidden by the filter")).fetchSemanticsNodes().filter { it.shown() }
-            .map { it.boundsInRoot.top - list().fetchSemanticsNode().boundsInRoot.top }.first { it > block(EXPORT).start }
-        dragOnto(EXPORT, hidden..hidden + px(48f))
+            .map { it.boundsInRoot.top - list().fetchSemanticsNode().boundsInRoot.top }.first { it > block(RECURRING).start }
+        dragOnto(RECURRING, hidden..hidden + px(48f))
         compose.waitForIdle()
         Thread.sleep(1_000)
         assertEquals("a drop that moves nothing sends nothing", pending, engine.state.value.pending)
-        assertEquals(listOf(WEB, RECURRING, EXPORT, LATER), rows("Feature"))
+        assertEquals(listOf(WEB, EXPORT, LATER, RECURRING), rows("Feature"))
+        dragOnto(RECURRING, block(EXPORT))
+        waitFor(listOf(WEB, RECURRING, EXPORT, LATER)) { rows("Feature") }
         dragOnto(EXPORT, span(header("Fix"))!!)
         waitFor(listOf(EXPORT, CURSOR, WRAPPED, CRASH)) { rows("Fix") }
     }

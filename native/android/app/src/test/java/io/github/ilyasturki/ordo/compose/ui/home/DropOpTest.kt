@@ -1,6 +1,6 @@
 package io.github.ilyasturki.ordo.compose.ui.home
 
-import io.github.ilyasturki.ordo.compose.model.Block
+import io.github.ilyasturki.ordo.compose.model.Movable
 import io.github.ilyasturki.ordo.compose.model.Board
 import io.github.ilyasturki.ordo.compose.model.Category
 import io.github.ilyasturki.ordo.compose.model.Filter
@@ -10,6 +10,7 @@ import io.github.ilyasturki.ordo.compose.model.Line
 import io.github.ilyasturki.ordo.compose.model.NoTasks
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.model.Project
+import io.github.ilyasturki.ordo.compose.model.Section
 import io.github.ilyasturki.ordo.compose.model.Status
 import io.github.ilyasturki.ordo.compose.model.Task
 import org.junit.Assert.assertEquals
@@ -18,7 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DropOpTest {
-    private fun dropOp(order: List<Line>, block: Block, lifted: List<Line>) = dropPlace(order, block, lifted)?.op
+    private fun dropOp(order: List<Line>, line: Movable, lifted: List<Line>) = dropPlace(order, line, lifted)?.op
 
     private fun task(id: String, status: String = Status.TODO, parent: String = "", kind: String = "") =
         Task(id = id, parentId = parent, title = id, status = status, kind = kind)
@@ -37,7 +38,7 @@ class DropOpTest {
 
     private fun lines(filter: Filter = Filter.NONE, folds: Set<String> = emptySet()) = Board.lines(project, filter, folds = folds)
 
-    private fun List<Line>.block(id: String) = first { it.key == "t:$id" } as Block
+    private fun List<Line>.block(id: String) = first { it.key == "t:$id" } as Movable
 
     private fun List<Line>.drag(id: String, over: String): List<Line> = moved(this, "t:$id", over)!!
 
@@ -69,11 +70,11 @@ class DropOpTest {
     }
 
     @Test
-    fun onlyRowsAndTheHeadersAfterTheFirstAreSlots() {
-        val lines = lines(Filter(statuses = setOf(Status.TODO)))
-        assertTrue(lines.any { it is Hidden } && lines.any { it is NoTasks })
+    fun onlyRowsSectionLinesAndTheHeadersAfterTheFirstAreSlots() {
+        val lines = lines(Filter(statuses = setOf(Status.TODO))) + Board.lines(sections, Filter(statuses = setOf(Status.TODO)))
+        assertTrue(lines.any { it is Hidden } && lines.any { it is NoTasks } && lines.any { it is Section })
         for ((i, line) in lines.withIndex()) {
-            assertEquals(line.key, line is Block || (line is Header && i > 0), swappable(line, i))
+            assertEquals(line.key, line is Movable || (line is Header && i > 0), swappable(line, i))
         }
     }
 
@@ -115,12 +116,12 @@ class DropOpTest {
     }
 
     @Test
-    fun aLiftedBlockNeverAddsNorDropsALine() {
-        for (filter in listOf(Filter.NONE, Filter(statuses = setOf(Status.TODO)))) {
-            val lines = lines(filter)
+    fun aLiftedLineNeverAddsNorDropsALine() {
+        val todo = Filter(statuses = setOf(Status.TODO))
+        for (lines in listOf(lines(), lines(todo), Board.lines(sections, todo), Board.lines(sections, todo, peek = "done"))) {
             for ((t, over) in lines.withIndex()) {
                 if (!swappable(over, t)) continue
-                for (block in lines.filterIsInstance<Block>()) {
+                for (block in lines.filterIsInstance<Movable>()) {
                     if (block.key == over.key) continue
                     val order = lines.drag(block.row.task.id, over.key)
                     assertEquals("${block.key} onto ${over.key}", lines.map { it.key }.sorted(), order.map { it.key }.sorted())
@@ -141,19 +142,47 @@ class DropOpTest {
     )
 
     @Test
-    fun underAFilterADropStaysInTheSectionItShowsIn() {
-        val lines = Board.lines(sections, Filter(statuses = setOf(Status.TODO)))
-        assertTrue(lines.none { it.key == row("done") || it.key == row("later") })
+    fun underAFilterASectionLineIsWhereADropLands() {
+        val todo = Filter(statuses = setOf(Status.TODO))
+        val lines = Board.lines(sections, todo)
+        assertEquals(listOf(Section("inbox", lines.block("done").row, 2, false), Section("work", lines.block("later").row, 1, false)), lines.filterIsInstance<Section>())
         for ((name, drag, want) in listOf(
-            Triple("up onto a separator: above the section hidden whole", Pair("c", row("next")), Ops.place("c", "inbox", "done")),
-            Triple("down to the last row: above the hidden tail", Pair("w", row("v")), Ops.place("w", "work", "later")),
-            Triple("up past a header: above the hidden tail", Pair("f", header("home")), Ops.place("f", "work", "later")),
+            Triple("up above the line: before the section", Pair("c", row("done")), Ops.place("c", "inbox", "done")),
+            Triple("up between the line and the next row: last of its section", Pair("c", row("next")), Ops.place("c", "inbox", "next")),
+            Triple("down between the line and the next row: last of its section", Pair("p", row("done")), Ops.place("p", "inbox", "next")),
+            Triple("down to the last row: above the line", Pair("w", row("v")), Ops.place("w", "work", "later")),
+            Triple("up past a header: under the line, last of its section", Pair("f", header("home")), Ops.place("f", "work", "")),
             Triple("up past hidden rows: as K, right above the next row", Pair("z", row("y")), Ops.place("z", "loose", "y")),
             Triple("down past hidden rows: as J, right below the last row", Pair("a", row("y")), Ops.place("a", "loose", "z")),
             Triple("first under its header", Pair("r", row("p")), Ops.place("r", "inbox", "p")),
+            Triple("the line dragged up: its separator alone", Pair("done", row("p")), Ops.place("done", "inbox", "p")),
+            Triple("the line dragged down: its separator alone", Pair("done", row("next")), Ops.place("done", "inbox", "c")),
+            Triple("the line dragged up past a header: last of the category above", Pair("later", header("work")), Ops.place("later", "inbox", "")),
         )) {
             assertEquals(name, want, drop(lines, drag.first, drag.second))
         }
+        val revealed = Board.lines(sections, todo, peek = "done")
+        assertEquals(listOf(row("p"), row("done"), row("b"), row("k"), row("next")), revealed.subList(1, 6).map { it.key })
+        for ((name, drag, want) in listOf(
+            Triple("up right under the line: first of its section", Pair("c", row("b")), Ops.place("c", "inbox", "b")),
+            Triple("down right under the line: first of its section", Pair("p", row("done")), Ops.place("p", "inbox", "b")),
+            Triple("up under its last row: last of its section", Pair("c", row("next")), Ops.place("c", "inbox", "next")),
+            Triple("up above the line: before the section", Pair("c", row("done")), Ops.place("c", "inbox", "done")),
+        )) {
+            assertEquals(name, want, drop(revealed, drag.first, drag.second))
+        }
+    }
+
+    @Test
+    fun aRowDroppedUnderALineShowsItsSeparatorAndTheRestJoinsTheCount() {
+        val todo = Filter(statuses = setOf(Status.TODO))
+        val lines = Board.lines(sections, todo)
+        val order = lines.drag("c", row("next"))
+        val drop = dropPlace(order, order.block("c"), lines)!!
+        val placed = Board.lines(sections.placed(drop), todo, held = setOf(drop.id))
+        assertEquals("the item keeps its key as a separator", order.take(6).map { it.key }, placed.take(6).map { it.key })
+        assertTrue(placed[2] !is Section)
+        assertEquals(Hidden("inbox", 2, false), placed[6])
     }
 
     @Test

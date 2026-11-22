@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.em
 import io.github.ilyasturki.ordo.compose.model.Header
 import io.github.ilyasturki.ordo.compose.model.Hidden
 import io.github.ilyasturki.ordo.compose.model.Row
+import io.github.ilyasturki.ordo.compose.model.Section
 import io.github.ilyasturki.ordo.compose.model.Status
 import io.github.ilyasturki.ordo.compose.ui.Icons
 import io.github.ilyasturki.ordo.compose.ui.marks
@@ -270,8 +271,48 @@ private fun NoteRow(text: String, tag: String, onOpen: () -> Unit, modifier: Mod
 }
 
 @Composable
-private fun SeparatorRule(modifier: Modifier) {
-    Box(modifier.height(3.dp).background(MaterialTheme.colorScheme.onSurface, CircleShape))
+private fun SeparatorRule(modifier: Modifier, color: Color = MaterialTheme.colorScheme.onSurface) {
+    Box(modifier.height(3.dp).background(color, CircleShape))
+}
+
+// The separator row's shape, quieter: its label and what the filter hides of its section.
+@Composable
+fun SectionLine(line: Section, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    val label = line.row.task.title
+    val count = when {
+        line.count == 0 -> ""
+        line.revealed -> "hide ${line.count}"
+        else -> "${line.count} hidden"
+    }
+    Row(
+        modifier
+            .fillMaxWidth()
+            .then(if (line.count > 0) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (label == "" && count == "") Modifier.semantics { contentDescription = "Separator" } else Modifier)
+            .padding(start = 20.dp, end = 16.dp)
+            .height(48.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (label != "" || count != "") {
+            SeparatorRule(Modifier.width(20.dp), color)
+            Spacer(Modifier.width(10.dp))
+            Text(
+                buildAnnotatedString {
+                    if (label != "") withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(label) }
+                    if (label != "" && count != "") append(" · ")
+                    append(count)
+                },
+                style = MaterialTheme.typography.titleSmall,
+                color = color,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.width(10.dp))
+        }
+        SeparatorRule(Modifier.weight(1f), color)
+        if (line.row.task.tagColor != "") TagDot(line.row.task.tagColor, Modifier.padding(start = 12.dp))
+    }
 }
 
 @Composable

@@ -51,9 +51,11 @@ import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Header
 import io.github.ilyasturki.ordo.compose.model.Hidden
 import io.github.ilyasturki.ordo.compose.model.Line
+import io.github.ilyasturki.ordo.compose.model.Movable
 import io.github.ilyasturki.ordo.compose.model.NoTasks
 import io.github.ilyasturki.ordo.compose.model.Ops
 import io.github.ilyasturki.ordo.compose.model.Project
+import io.github.ilyasturki.ordo.compose.model.Section
 import io.github.ilyasturki.ordo.compose.model.Seen
 import io.github.ilyasturki.ordo.compose.model.Status
 import io.github.ilyasturki.ordo.compose.sync.Entry
@@ -73,8 +75,9 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import sh.calvin.reorderable.rememberScroller
 
-// A peek reveals one category's hidden rows; held rows stay where an edit from the list left
-// them though the filter no longer matches. Both end when the project or the filter changes.
+// A peek reveals one category's hidden rows, or a section line's when it names the separator; held rows
+// stay where an edit from the list left them though the filter no longer matches. Both end when the
+// project or the filter changes.
 data class ListUi(val peek: String? = null, val held: Set<String> = emptySet())
 
 // One instance for every page without a state: a fresh one on each recomposition would never compare equal.
@@ -120,16 +123,18 @@ fun ProjectList(
     val tapping = { !lifting && SystemClock.uptimeMillis() - droppedAt > 400 }
     val listState = rememberLazyListState()
     var lifted by remember { mutableStateOf(emptyList<Line>()) }
-    var carried by remember { mutableStateOf<Block?>(null) }
+    var carried by remember { mutableStateOf<Movable?>(null) }
     var landed by remember { mutableStateOf<Drop?>(null) }
+    // A section line's separator stays out: held, it would show as a plain separator.
+    val holds = { line: Movable? -> filter.active && line is Block }
     // Before the library lets the row go: the list as the drop leaves it, so the row settles in its last slot.
     val finish by rememberUpdatedState(suspend {
         val order = dragOrder
-        val block = carried
-        val drop = if (order != null && block != null) dropPlace(order, block, lifted) else null
+        val line = carried
+        val drop = if (order != null && line != null) dropPlace(order, line, lifted) else null
         if (drop != null) {
             landed = drop
-            val held = if (filter.active) ui.held + drop.id else ui.held
+            val held = if (holds(line)) ui.held + drop.id else ui.held
             dragOrder = Board.lines(entry.project.placed(drop), filter, ui.peek, held, if (drop.unfold) folds - drop.cat else folds)
             withFrameNanos {}
             withFrameNanos {}
@@ -152,16 +157,16 @@ fun ProjectList(
         feedback.slot()
     }
     val onScreen by rememberUpdatedState(shown)
-    val drop: (Block) -> Unit = drop@{ block ->
+    val drop: (Movable) -> Unit = drop@{ line ->
         lifting = false
         droppedAt = SystemClock.uptimeMillis()
         val order = dragOrder
         dragOrder = null
-        val drop = landed ?: order?.let { dropPlace(it, block, lifted) }
+        val drop = landed ?: order?.let { dropPlace(it, line, lifted) }
         landed = null
         carried = null
         if (order == null || drop == null) return@drop
-        if (filter.active) onUi(ui.copy(held = ui.held + drop.id))
+        if (holds(line)) onUi(ui.copy(held = ui.held + drop.id))
         landing = order
         // The edit lands even if the page goes on the drop; only what follows it dies with the page.
         val answer = appScope.async { engine.edit(pid, drop.op, quiet = true) }
@@ -174,9 +179,9 @@ fun ProjectList(
         }
     }
     // A handle's gesture keeps the callbacks it started with: these reach the current ones.
-    val lift by rememberUpdatedState { block: Block ->
+    val lift by rememberUpdatedState { line: Movable ->
         lifted = onScreen
-        carried = block
+        carried = line
         lifting = true
         feedback.hold()
     }
@@ -232,7 +237,7 @@ fun ProjectList(
                         onUi(if (line.peeking) ui.copy(peek = null) else ui.copy(peek = line.cat))
                     }
                     is NoTasks -> Box(Modifier.alpha(if (line.key in blank) 0f else 1f)) { NoTasksLine() }
-                    is Block -> {
+                    is Movable -> {
                         val elevation by animateDpAsState(if (dragging) 6.dp else 0.dp, label = "lift")
                         // Each row is a handle of the block, so the autoscroll's edge test follows the row under the finger.
                         val handle = Modifier.draggableHandle(
@@ -246,7 +251,11 @@ fun ProjectList(
                             shadowElevation = elevation,
                             color = if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surface,
                         ) {
-                            Column(Modifier.fillMaxWidth()) {
+                            if (line is Section) {
+                                SectionLine(line, modifier = handle, onClick = {
+                                    if (tapping()) onUi(ui.copy(peek = if (line.revealed) null else line.row.task.id))
+                                })
+                            } else if (line is Block) Column(Modifier.fillMaxWidth()) {
                                 val cycle = { id: String, status: String ->
                                     if (tapping()) {
                                         if (filter.active) onUi(ui.copy(held = ui.held + id))
@@ -375,8 +384,8 @@ private class Pull(
     }
 }
 
-// The places a lifted block can take: no row lands above the first header, nor beside a line that only counts rows.
-internal fun swappable(line: Line, index: Int): Boolean = line is Block || (line is Header && index > 0)
+// The places a lifted line can take: no row lands above the first header, nor beside a line that only counts rows.
+internal fun swappable(line: Line, index: Int): Boolean = line is Movable || (line is Header && index > 0)
 
 // Every line keeps its place and height until the release, so each move is the swap the library expects.
 // The library asks from a layout that can trail the order by a frame: the same ask again changes nothing.
@@ -390,14 +399,14 @@ internal fun moved(order: List<Line>, from: String, to: String, up: Boolean = or
     return rest.apply { add(t, order[f]) }
 }
 
-// The "No tasks" lines of categories a lifted block has entered: blank, so the list holds still under the finger.
+// The "No tasks" lines of categories a lifted line has entered: blank, so the list holds still under the finger.
 internal fun entered(order: List<Line>): Set<String> {
     val out = HashSet<String>()
     var rows = false
     for (line in order) {
         when (line) {
             is Header -> rows = false
-            is Block -> rows = true
+            is Movable -> rows = true
             is NoTasks -> if (rows) out += line.key
             is Hidden -> {}
         }
@@ -405,34 +414,39 @@ internal fun entered(order: List<Line>): Set<String> {
     return out
 }
 
-private fun rows(order: List<Line>) = order.filter { it is Header || it is Block }.map { it.key }
+private fun rows(order: List<Line>) = order.filter { it is Header || it is Movable }.map { it.key }
 
 internal data class Drop(val id: String, val cat: String, val before: String, val unfold: Boolean) {
     val op: JsonObject get() = Ops.place(id, cat, before)
 }
 
-// Rows the filter hides between the rows shown around the drop stay below a block moved down, as J leaves
-// them, and above one moved up, as K does, but for a separator among them: the block stops above it, in the
-// section shown, so the separator stays hidden.
-internal fun dropPlace(order: List<Line>, block: Block, lifted: List<Line>): Drop? {
+// Rows the filter hides between the lines shown around the drop stay below a line moved down, as J leaves
+// them, and above one moved up, as K does. A collapsed section line holds its run: a row dropped under it lands last there.
+internal fun dropPlace(order: List<Line>, line: Movable, lifted: List<Line>): Drop? {
     val shape = rows(order)
     if (shape == rows(lifted)) return null
-    val i = order.indexOfFirst { it.key == block.key }
+    val i = order.indexOfFirst { it.key == line.key }
     if (i < 0) return null
     val h = (i - 1 downTo 0).firstOrNull { order[it] is Header } ?: return null
     val header = order[h] as Header
-    val id = block.row.task.id
+    val id = line.row.task.id
     val all = header.category.tasks
     val at = all.indexOfFirst { it.id == id }
     val tasks = if (at < 0) all else all.subList(0, at) + all.subList(Board.blockEnd(all, at), all.size)
     if (header.folded) return Drop(id, header.category.id, tasks.firstOrNull { it.parentId == "" }?.id.orEmpty(), true)
-    val above = order.subList(h + 1, i).lastOrNull { it is Block } as Block?
-    val below = order.subList(i + 1, order.size).takeWhile { it !is Header }.firstOrNull { it is Block } as Block?
+    val above = order.subList(h + 1, i).lastOrNull { it is Movable } as Movable?
+    val below = order.subList(i + 1, order.size).takeWhile { it !is Header }.firstOrNull { it is Movable } as Movable?
     val to = below?.let { b -> tasks.indexOfFirst { it.id == b.row.task.id }.takeIf { it >= 0 } } ?: tasks.size
-    val from = if (above == null) 0 else tasks.indexOfFirst { it.id == above.row.task.id }.let { if (it < 0) to else minOf(Board.blockEnd(tasks, it), to) }
-    val up = shape.indexOf(block.key) < rows(lifted).indexOf(block.key)
-    val slot = if (up) (from until to).firstOrNull { tasks[it].separator } ?: to else from
-    return Drop(id, header.category.id, tasks.getOrNull(slot)?.id.orEmpty(), false)
+    val from = if (above == null) 0 else tasks.indexOfFirst { it.id == above.row.task.id }.let {
+        when {
+            it < 0 -> to
+            above is Section && !above.revealed -> minOf(it + 1 + above.count, to)
+            above is Section -> minOf(it + 1, to)
+            else -> minOf(Board.blockEnd(tasks, it), to)
+        }
+    }
+    val up = shape.indexOf(line.key) < rows(lifted).indexOf(line.key)
+    return Drop(id, header.category.id, tasks.getOrNull(if (up) to else from)?.id.orEmpty(), false)
 }
 
 // The project once the drop lands, as the core's task.place leaves it.

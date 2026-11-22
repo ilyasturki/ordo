@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.DpRect
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.ilyasturki.ordo.compose.model.Filter
 import io.github.ilyasturki.ordo.compose.model.Ops
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -64,6 +65,20 @@ class ListTest : AppFixture() {
         scrollTo("Short")
         assertEquals(1, lines("Short").lineCount)
         assertEquals(2, lines(NOTE).lineCount)
+    }
+
+    @Test
+    fun aSectionTheFilterHidesWholeIsALineATapReveals() {
+        runBlocking { engine.setFilter(PID, Filter(priorities = setOf("high"))) }
+        scrollTo("Later · 1 hidden")
+        compose.onNodeWithText("Recurring tasks").assertDoesNotExist()
+        compose.onNodeWithText("5 hidden by the filter").assertDoesNotExist()
+        compose.onNodeWithText("Later · 1 hidden").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Later · hide 1"), 20_000)
+        compose.onNodeWithText("Recurring tasks").assertExists()
+        compose.onNodeWithText("Later · hide 1").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Later · 1 hidden"), 20_000)
+        compose.onNodeWithText("Recurring tasks").assertDoesNotExist()
     }
 
     @Test

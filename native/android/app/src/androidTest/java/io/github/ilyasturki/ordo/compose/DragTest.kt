@@ -122,7 +122,7 @@ class DragTest : AppFixture(composing = false, seed = "drag.json") {
 
     private fun filter(filter: Filter) {
         runBlocking { engine.setFilter(PID, filter) }
-        waitFor("the filter applies") { onScreen("2 hidden by the filter") }
+        waitFor("the filter applies") { onScreen("Done · 2 hidden") }
     }
 
     private val screen get() = ins.targetContext.resources.displayMetrics
@@ -146,23 +146,32 @@ class DragTest : AppFixture(composing = false, seed = "drag.json") {
     }
 
     @Test
-    fun aRowDroppedJustAboveASeparatorStaysInTheSectionShown() {
+    fun aRowDroppedAboveASectionLineLandsBeforeTheSection() {
         filter(OPEN)
         assertFalse(onScreen("Done"))
-        drag("Call the bank", bounds("Next").exactCenterY() - bounds("Call the bank").exactCenterY())
+        drag("Call the bank", bounds("Done · 2 hidden").exactCenterY() - bounds("Call the bank").exactCenterY())
         waitFor("Inbox", listOf("Plan the trip", "Call the bank", "Done", "Book the ferry", "Pack the bags", "Next", "Renew passport"))
         Thread.sleep(500)
-        assertFalse("no separator appears", onScreen("Done"))
+        assertTrue("the section stays collapsed under the row", bounds("Call the bank").bottom <= bounds("Done · 2 hidden").top)
     }
 
     @Test
-    fun underATagFilterARowDroppedJustAboveASeparatorStaysInTheSectionShown() {
-        filter(Filter(tags = setOf("green")))
-        assertFalse(onScreen("Done"))
+    fun aRowDroppedUnderASectionLineLandsLastInTheSection() {
+        filter(OPEN)
         drag("Call the bank", bounds("Next").exactCenterY() - bounds("Call the bank").exactCenterY())
-        waitFor("Inbox", listOf("Plan the trip", "Call the bank", "Done", "Book the ferry", "Pack the bags", "Next", "Renew passport"))
-        Thread.sleep(500)
-        assertFalse("no separator appears", onScreen("Done"))
+        waitFor("Inbox", listOf("Plan the trip", "Done", "Book the ferry", "Pack the bags", "Call the bank", "Next", "Renew passport"))
+        waitFor("the section's other rows go to the category's count") { onScreen("2 hidden by the filter") }
+        assertFalse(onScreen("Done · 2 hidden"))
+        assertTrue("the separator shows over the row", bounds("Done").bottom <= bounds("Call the bank").top)
+    }
+
+    @Test
+    fun aSectionLineDraggedMovesItsSeparatorAlone() {
+        filter(OPEN)
+        drag("Done · 2 hidden", bounds("Next").exactCenterY() - bounds("Done · 2 hidden").exactCenterY())
+        waitFor("Inbox", listOf("Plan the trip", "Book the ferry", "Pack the bags", "Next", "Done", "Call the bank", "Renew passport"))
+        waitFor("its rows stay behind, counted") { onScreen("2 hidden by the filter") }
+        assertTrue("the emptied section is a line nothing can tap", rows("Next").isEmpty() && rows("Next", untappable = true).isNotEmpty())
     }
 
     @Test
@@ -171,17 +180,20 @@ class DragTest : AppFixture(composing = false, seed = "drag.json") {
         drag("Write the report", bounds("Review the slides").exactCenterY() - bounds("Write the report").exactCenterY())
         waitFor("Work", listOf("Review the slides", "Write the report", "Later", "Old ticket", "Older ticket"))
         Thread.sleep(500)
-        assertFalse("no separator appears", onScreen("Later"))
+        assertTrue("the section stays collapsed", onScreen("Later · 2 hidden"))
     }
 
     @Test
     fun aRowDraggedUpAcrossAHeaderStaysAboveTheHiddenLine() {
         filter(OPEN)
-        val row = bounds("Write the report")
-        drag("Write the report", bounds("Work").exactCenterY() - row.top - row.height() * 0.15f)
-        waitFor("Inbox", listOf("Plan the trip", "Done", "Book the ferry", "Pack the bags", "Next", "Call the bank", "Renew passport", "Write the report"))
+        bringToTop("Shapes")
+        val row = bounds("Sub task")
+        drag("Sub task", bounds("Shapes  ›  Sub").exactCenterY() - row.top - row.height() * 0.15f)
+        waitFor("Shapes", listOf("Head", "Old one", "Mid", "A note", "Gone", "Tail", "Kept", "Last", "Sub task"))
         Thread.sleep(500)
-        assertTrue(bounds("Write the report").bottom <= bounds("2 hidden by the filter").top)
+        val landed = bounds("Sub task")
+        val hidden = rows("1 hidden by the filter").map { n -> Rect().also(n::getBoundsInScreen) }.filter { !it.isEmpty && it.top >= landed.bottom }.minBy { it.top }
+        assertTrue(hidden.bottom <= bounds("Shapes  ›  Sub").top)
     }
 
     @Test
@@ -210,9 +222,9 @@ class DragTest : AppFixture(composing = false, seed = "drag.json") {
             val below = rows("No tasks", untappable = true).map { n -> Rect().also(n::getBoundsInScreen) }.filter { !it.isEmpty && it.top >= empty.bottom }
             assertTrue("Empty keeps its No tasks line", below.any { it.top < empty.bottom + empty.height() })
         }
-        waitFor("Work", listOf("Write the report", "Review the slides", "Fix the sink", "Later", "Old ticket", "Older ticket"))
-        Thread.sleep(500)
-        assertFalse("no separator appears", onScreen("Later"))
+        waitFor("Work", listOf("Write the report", "Review the slides", "Later", "Old ticket", "Older ticket", "Fix the sink"))
+        waitFor("the separator shows over the row") { onScreen("Later") }
+        assertTrue(bounds("Later").bottom <= bounds("Fix the sink").top)
     }
 
     @Test

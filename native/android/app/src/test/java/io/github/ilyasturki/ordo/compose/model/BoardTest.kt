@@ -79,6 +79,7 @@ class BoardTest {
             is Block -> listOf(it.row.task.id + if (it.row.muted) "~" else "")
                 .plus(it.children.map { c -> "  " + c.task.id + if (c.muted) "~" else "" })
                 .joinToString(",")
+            is Section -> "[${it.row.task.id} · ${it.count}${if (it.revealed) ", revealed" else ""}]"
             is Hidden -> "(${it.count} hidden${if (it.peeking) ", peeking" else ""})"
             is NoTasks -> "(no tasks)"
         }
@@ -100,7 +101,8 @@ class BoardTest {
             shape(Board.lines(empty, Filter.NONE)),
         )
         assertEquals(
-            listOf("# A", "(no tasks)", "# B", "# B1 < B", "(no tasks)", "# C", "(no tasks)"),
+            "a separator the filter hides stays as its line",
+            listOf("# A", "(no tasks)", "# B", "# B1 < B", "(no tasks)", "# C", "[s · 0]"),
             shape(Board.lines(empty, Filter(statuses = setOf(Status.TODO)))),
         )
     }
@@ -108,7 +110,7 @@ class BoardTest {
     @Test
     fun aCategoryWhoseRowsTheFilterHidesCountsThemInstead() {
         assertEquals(
-            listOf("# Feature", "(5 hidden)", "# UI < Feature", "(1 hidden)", "# Fix", "(1 hidden)"),
+            listOf("# Feature", "[sep · 2]", "(3 hidden)", "# UI < Feature", "(1 hidden)", "# Fix", "(1 hidden)"),
             shape(Board.lines(project, Filter(tags = setOf("blue")))),
         )
     }
@@ -179,10 +181,10 @@ class BoardTest {
     }
 
     @Test
-    fun aParentShowsWhenAChildMatchesAndSeparatorsHide() {
+    fun aParentShowsWhenAChildMatchesAndAHiddenSectionCollapses() {
         val f = Filter(priorities = setOf("high"))
         assertEquals(
-            listOf("# Feature", "a,  a2", "(3 hidden)", "# UI < Feature", "(1 hidden)", "# Fix", "e"),
+            listOf("# Feature", "a,  a2", "[sep · 2]", "(1 hidden)", "# UI < Feature", "(1 hidden)", "# Fix", "e"),
             shape(Board.lines(project, f)),
         )
     }
@@ -263,6 +265,70 @@ class BoardTest {
             listOf("# Feature", "a,  a1~,  a2", "sep", "b~", "c", "(2 hidden, peeking)", "# UI < Feature", "(1 hidden)", "# Fix", "e"),
             shape(Board.lines(project, f, peek = "feat")),
         )
+    }
+
+    // Inbox [p, x done, —done, b done (b1 done), k done, —next, c, r], Work [w, —later, o done].
+    private val inbox = Project(
+        id = "s",
+        categories = listOf(
+            Category("inbox", "Inbox", tasks = listOf(
+                task("p"), task("x", Status.COMPLETED), task("done", kind = "separator"), task("b", Status.COMPLETED), task("b1", Status.COMPLETED, parent = "b"),
+                task("k", Status.COMPLETED), task("next", kind = "separator"), task("c"), task("r"),
+            )),
+            Category("work", "Work", tasks = listOf(task("w"), task("later", kind = "separator"), task("o", Status.COMPLETED))),
+        ),
+    )
+
+    private val todo = Filter(statuses = setOf(Status.TODO))
+
+    @Test
+    fun aSectionTheFilterHidesWholeStaysAsALineCountingItsRun() {
+        assertEquals(
+            "its subtasks count too, and only the rest goes to the category's line",
+            listOf("# Inbox", "p", "[done · 3]", "next", "c", "r", "(1 hidden)", "# Work", "w", "[later · 1]"),
+            shape(Board.lines(inbox, todo)),
+        )
+        assertEquals(
+            "a category the filter hides counts every row",
+            listOf("# Inbox", "(7 hidden)", "# Work", "w", "[later · 1]"),
+            shape(Board.lines(inbox, todo.copy(categories = setOf("work")))),
+        )
+    }
+
+    @Test
+    fun aSeparatorAHeldRowOrItsOwnTagShowsIsPlain() {
+        assertEquals(
+            listOf("# Inbox", "p", "done", "b~", "next", "c", "r", "(3 hidden)"),
+            shape(Board.lines(inbox, todo, held = setOf("b"))).take(8),
+        )
+        assertEquals(listOf("# Inbox", "p", "done", "next", "c", "r", "(4 hidden)"), shape(Board.lines(inbox, todo, held = setOf("done"))).take(7))
+        fun one(vararg tasks: Task) = Project(id = "t", categories = listOf(Category("c", "C", tasks = tasks.toList())))
+        val green = Filter(tags = setOf("green"))
+        assertEquals(listOf("# C", "s", "(1 hidden)"), shape(Board.lines(one(task("s", kind = "separator", tag = "green"), task("a", Status.COMPLETED)), green)))
+        assertEquals(
+            "the run stops at a row shown",
+            listOf("# C", "[s · 1]", "n", "(1 hidden)"),
+            shape(Board.lines(one(task("s", kind = "separator"), task("a", Status.COMPLETED), task("n", kind = "note", tag = "green"), task("b", Status.COMPLETED)), green)),
+        )
+    }
+
+    @Test
+    fun aPeekOfTheSeparatorRevealsItsRunMutedUnderTheLine() {
+        assertEquals(
+            listOf("# Inbox", "p", "[done · 3, revealed]", "b~,  b1~", "k~", "next", "c", "r", "(1 hidden)"),
+            shape(Board.lines(inbox, todo, peek = "done")).take(9),
+        )
+        assertEquals(
+            "a category's peek leaves the run behind its line",
+            listOf("# Inbox", "p", "x~", "[done · 3]", "next", "c", "r", "(1 hidden, peeking)"),
+            shape(Board.lines(inbox, todo, peek = "inbox")).take(8),
+        )
+    }
+
+    @Test
+    fun aSearchLeavesTheSectionLinesOut() {
+        assertEquals(emptyList<String>(), shape(Board.search(Board.lines(inbox, todo), "done")))
+        assertEquals(listOf("# Inbox", "done"), shape(Board.search(Board.lines(inbox, Filter.NONE), "done")))
     }
 
     @Test

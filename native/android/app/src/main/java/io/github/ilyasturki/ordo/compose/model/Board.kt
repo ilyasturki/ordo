@@ -28,10 +28,17 @@ data class Header(
     override val cat get() = category.id
 }
 
-// A top-level row with the subtasks the filter shows: the unit a drag moves.
-data class Block(override val cat: String, val row: Row, val children: List<Row>) : Line {
-    override val key get() = "t:${row.task.id}"
+// A line a drag lifts: its key is its row's, so a separator keeps its item as a section line and back.
+sealed interface Movable : Line {
+    val row: Row
+    override val key: String get() = "t:${row.task.id}"
 }
+
+// A top-level row with the subtasks the filter shows: the unit a drag moves.
+data class Block(override val cat: String, override val row: Row, val children: List<Row>) : Movable
+
+// A separator the filter hides, drawn in its place; count is the rows of its run, which a peek of its ID reveals.
+data class Section(override val cat: String, override val row: Row, val count: Int, val revealed: Boolean) : Movable
 
 data class Hidden(override val cat: String, val count: Int, val peeking: Boolean) : Line {
     override val key get() = "h:$cat"
@@ -45,8 +52,9 @@ data class NoTasks(override val cat: String) : Line {
 data class Seen(val index: Int, val offset: Int, val size: Int)
 
 // The list the TUI draws (internal/app/sync.go rebuildPositions): every category header, rows in
-// file order with the finished ones in place, and a line counting what the filter hides. A folded
-// category shows its header alone, and hides its sub-categories; a folded row hides its subtasks.
+// file order with the finished ones in place, a separator the filter hides as a section line in its
+// place, and a line counting the other rows it hides. A folded category shows its header alone, and
+// hides its sub-categories; a folded row hides its subtasks.
 object Board {
     // The category with the most pixels between start and end, the upper one on a tie.
     fun focused(lines: List<Line>, seen: List<Seen>, start: Int, end: Int): String? {
@@ -80,28 +88,47 @@ object Board {
             val first = out.size
             val shown = shownRows(cat, filter, held)
             val peeking = peek == cat.id
+            val sections = filter.categoryVisible(cat)
+            fun blocks(from: Int, to: Int, revealed: Boolean) {
+                var i = from
+                while (i < to) {
+                    val end = blockEnd(cat.tasks, i)
+                    if (shown[i] || revealed) {
+                        val folded = cat.tasks[i].id in folds
+                        val children = (i + 1 until end)
+                            .filter { !folded && (shown[it] || revealed) }
+                            .map { row(cat.tasks[it], cat, filter, held, hidden = !shown[it]) }
+                        val kids = cat.tasks.subList(i + 1, end)
+                        out += Block(
+                            cat.id,
+                            row(cat.tasks[i], cat, filter, held, hidden = !shown[i]).copy(
+                                childDone = kids.count { it.finished },
+                                childTotal = kids.size,
+                                folded = folded && kids.isNotEmpty(),
+                            ),
+                            children,
+                        )
+                    }
+                    i = end
+                }
+            }
+            var hidden = 0
             var i = 0
             while (i < cat.tasks.size) {
-                val end = blockEnd(cat.tasks, i)
-                if (shown[i] || peeking) {
-                    val folded = cat.tasks[i].id in folds
-                    val children = (i + 1 until end)
-                        .filter { !folded && (shown[it] || peeking) }
-                        .map { row(cat.tasks[it], cat, filter, held, hidden = !shown[it]) }
-                    val kids = cat.tasks.subList(i + 1, end)
-                    out += Block(
-                        cat.id,
-                        row(cat.tasks[i], cat, filter, held, hidden = !shown[i]).copy(
-                            childDone = kids.count { it.finished },
-                            childTotal = kids.size,
-                            folded = folded && kids.isNotEmpty(),
-                        ),
-                        children,
-                    )
+                val t = cat.tasks[i]
+                if (sections && t.separator && !shown[i]) {
+                    val end = sectionEnd(cat.tasks, shown, i)
+                    val revealed = peek == t.id && end > i + 1
+                    out += Section(cat.id, row(t, cat, filter, held, hidden = true), end - i - 1, revealed)
+                    if (revealed) blocks(i + 1, end, true)
+                    i = end
+                    continue
                 }
+                val end = blockEnd(cat.tasks, i)
+                blocks(i, end, peeking)
+                hidden += (i until end).count { !shown[it] && !cat.tasks[it].line }
                 i = end
             }
-            val hidden = cat.tasks.indices.count { !shown[it] && !cat.tasks[it].line }
             if (hidden > 0) out += Hidden(cat.id, hidden, peeking)
             if (out.size == first && project.categories.none { it.parentId == cat.id }) out += NoTasks(cat.id)
         }
@@ -161,7 +188,7 @@ object Board {
                         out += line.copy(children = children)
                     }
                 }
-                is Hidden -> {}
+                is Section, is Hidden -> {}
                 is NoTasks -> if (named) out += line
             }
         }
@@ -203,6 +230,13 @@ object Board {
     // Whether a separator or a note the category's menu adds, first in cat, would show under the filter.
     fun addedLineShows(cat: Category, filter: Filter, kind: String): Boolean =
         shownRows(cat.copy(tasks = listOf(Task(id = "+", status = "", kind = kind)) + cat.tasks), filter)[0]
+
+    // internal/operations HiddenSectionEnd, which J and K step over as one block.
+    private fun sectionEnd(tasks: List<Task>, shown: BooleanArray, sep: Int): Int {
+        var end = sep + 1
+        while (end < tasks.size && !shown[end] && !tasks[end].separator) end++
+        return end
+    }
 
     fun blockEnd(tasks: List<Task>, i: Int): Int {
         var end = i + 1
