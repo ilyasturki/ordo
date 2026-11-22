@@ -60,6 +60,44 @@ func renderHiddenLine(hidden int, peeking bool, indent int, selected, focused bo
 	return line
 }
 
+// sectionLabel names what a hidden section's line stands for: "Done · 2 hidden", "hide 2" while it shows them.
+func sectionLabel(title string, hidden int, peeking bool) string {
+	count := ""
+	switch {
+	case hidden == 0:
+	case peeking:
+		count = fmt.Sprintf("hide %d", hidden)
+	default:
+		count = fmt.Sprintf("%d hidden", hidden)
+	}
+	if title == "" || count == "" {
+		return title + count
+	}
+	return title + " · " + count
+}
+
+// renderSectionLine draws a separator the filter hides as a faint light rule naming the rows it hides.
+func renderSectionLine(sep domain.Task, hidden int, peeking bool, indent int, selected, focused bool, width int) string {
+	prefix := "  " + strings.Repeat(" ", indent)
+	if selected {
+		prefix = "> " + strings.Repeat(" ", indent)
+	}
+	avail := 0
+	if width > 0 {
+		avail = safeWidth(width, prefixWidth+indent)
+	}
+	layout := layoutSeparator(prefix, sectionLabel(strings.TrimSpace(sep.Title), hidden, peeking), ui.TagSegmentText(sep.TagColor), sepContentWidth(avail))
+	light := func(s string) string { return strings.ReplaceAll(s, separatorRule, sectionRule) }
+	style := ui.MutedStyle
+	if selected {
+		style = ui.GetSelectedStyle(focused)
+	}
+	return style.Render(light(layout.left)) + lineTagSegment(sep, layout.dot, selected, false) + style.Render(layout.label+light(layout.right))
+}
+
+// sectionRule is the light glyph that sets a hidden section's line below a separator's heavy one.
+const sectionRule = "─"
+
 // withStatus right-aligns statusText on line, truncating both to width.
 func withStatus(line, statusText string, width int) string {
 	if statusText == "" {

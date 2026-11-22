@@ -82,13 +82,14 @@ func TestHiddenRowCountsNoSeparatorAndNoContextParent(t *testing.T) {
 	m := newTestModel(t, domain.Project{ID: "p1", Categories: []domain.Category{{ID: "c1", Name: "Cat", Tasks: []domain.Task{
 		{ID: "parent", Title: "Parent", Status: domain.StatusCompleted},
 		{ID: "child", Title: "Child", Status: domain.StatusTodo, ParentID: "parent"},
-		{ID: "sep", Kind: domain.KindSeparator},
 		{ID: "done", Title: "Done", Status: domain.StatusCompleted},
+		{ID: "sep", Kind: domain.KindSeparator},
 	}}}})
 	m.ui.Filter.statuses[domain.StatusTodo] = true
 	m.rebuildPositions()
 
 	lineWith(t, screen(m), "(1 hidden by the filter)")
+	assert.Contains(t, rowIDs(m), "section:sep")
 }
 
 func TestEnterOnHiddenRowShowsItsCategorysTasks(t *testing.T) {
@@ -145,20 +146,102 @@ func TestPeekLastsUntilTheCursorLeavesTheCategory(t *testing.T) {
 	})
 }
 
-func TestPeekShowsTheCategorysSeparators(t *testing.T) {
+func hiddenSectionsModel(t *testing.T) *model {
+	t.Helper()
 	m := newTestModel(t, domain.Project{ID: "p1", Categories: []domain.Category{{ID: "c1", Name: "Cat", Tasks: []domain.Task{
 		{ID: "todo", Title: "Todo", Status: domain.StatusTodo},
-		{ID: "sep", Kind: domain.KindSeparator},
-		{ID: "done", Title: "Done", Status: domain.StatusCompleted},
+		{ID: "old", Title: "Old", Status: domain.StatusCompleted},
+		{ID: "sep", Title: "Done", Kind: domain.KindSeparator},
+		{ID: "done", Title: "Shipped", Status: domain.StatusCompleted},
+		{ID: "gone", Title: "Dropped", Status: domain.StatusCancelled},
 	}}}})
 	m.ui.Filter.statuses[domain.StatusTodo] = true
 	m.rebuildPositions()
+	return m
+}
+
+func TestPeekLeavesASectionsLineClosed(t *testing.T) {
+	m := hiddenSectionsModel(t)
 	selectRow(t, m, selection.FocusHidden, "c1")
+	lineWith(t, screen(m), "(1 hidden by the filter)")
 
 	m, _ = pressKeys(m, "enter")
 
-	assert.Equal(t, []string{"project:", "category:c1", "task:todo", "separator:sep", "task:done", "hidden:c1"}, rowIDs(m))
-	assert.Equal(t, "task:done", cursorItem(t, m))
+	assert.Equal(t, []string{"project:", "category:c1", "task:todo", "task:old", "section:sep", "hidden:c1"}, rowIDs(m))
+	assert.Equal(t, "task:old", cursorItem(t, m))
+	lineWith(t, screen(m), "Done · 2 hidden")
+}
+
+func TestEnterOnASectionsLineShowsItsRows(t *testing.T) {
+	for _, key := range []string{"enter", "space"} {
+		t.Run(key, func(t *testing.T) {
+			m := hiddenSectionsModel(t)
+			selectRow(t, m, selection.FocusSection, "sep")
+			assert.True(t, strings.HasPrefix(ansi.Strip(m.renderShortcutBar()), "enter show 2"))
+
+			m, _ = pressKeys(m, key)
+
+			assert.Equal(t, []string{"project:", "category:c1", "task:todo", "section:sep", "task:done", "task:gone", "hidden:c1"}, rowIDs(m))
+			assert.Equal(t, "task:done", cursorItem(t, m), "the cursor lands on the first row it shows")
+			lines := screen(m)
+			lineWith(t, lines, "Done · hide 2")
+			lineWith(t, lines, "(1 hidden by the filter)")
+			assert.Contains(t, lineWith(t, lines, "Shipped"), "(filtered out)")
+			assert.True(t, strings.HasPrefix(ansi.Strip(m.renderShortcutBar()), "esc hide 2"))
+
+			m, _ = pressKeys(m, "k", key)
+			assert.Equal(t, "section:sep", cursorItem(t, m))
+			assert.Equal(t, []string{"project:", "category:c1", "task:todo", "section:sep", "hidden:c1"}, rowIDs(m))
+			lineWith(t, screen(m), "Done · 2 hidden")
+		})
+	}
+	t.Run("esc on a row it shows", func(t *testing.T) {
+		m := hiddenSectionsModel(t)
+		selectRow(t, m, selection.FocusSection, "sep")
+		m, _ = pressKeys(m, "enter", "j", "esc")
+		assert.Equal(t, "section:sep", cursorItem(t, m), "the cursor goes back to the line")
+		assert.NotContains(t, rowIDs(m), "task:gone")
+	})
+	t.Run("leaving the category", func(t *testing.T) {
+		m := hiddenSectionsModel(t)
+		selectRow(t, m, selection.FocusSection, "sep")
+		m, _ = pressKeys(m, "enter", "k", "k", "k", "k")
+		assert.Equal(t, "project:", cursorItem(t, m))
+		assert.NotContains(t, rowIDs(m), "task:done")
+	})
+	t.Run("an empty section", func(t *testing.T) {
+		m := newTestModel(t, domain.Project{ID: "p1", Categories: []domain.Category{{ID: "c1", Name: "Cat", Tasks: []domain.Task{
+			{ID: "todo", Title: "Todo", Status: domain.StatusTodo},
+			{ID: "sep", Title: "Later", Kind: domain.KindSeparator},
+		}}}})
+		m.ui.Filter.statuses[domain.StatusTodo] = true
+		m.rebuildPositions()
+		selectRow(t, m, selection.FocusSection, "sep")
+		m, _ = pressKeys(m, "enter")
+		assert.Equal(t, "Nothing hidden there", m.ui.Screen.StatusMsg)
+		assert.Contains(t, ansi.Strip(lineWith(t, screen(m), "Later")), "── Later ─")
+	})
+}
+
+func TestASectionsLineRefusesWhatTheHiddenRowRefuses(t *testing.T) {
+	m := hiddenSectionsModel(t)
+	selectRow(t, m, selection.FocusSection, "sep")
+	before := taskIDs(m.project.Categories[0])
+	m, _ = pressKeys(m, "d", "x", "t", ">", "c", "p")
+	assert.Equal(t, before, taskIDs(m.project.Categories[0]))
+	assert.Equal(t, "section:sep", cursorItem(t, m))
+	m, _ = pressKeys(m, "v")
+	assert.Equal(t, "Visual mode starts on a task or a category", m.ui.Screen.StatusMsg)
+}
+
+func TestAddOnASectionsLineLandsAtItsEnd(t *testing.T) {
+	m := hiddenSectionsModel(t)
+	selectRow(t, m, selection.FocusSection, "sep")
+	m, _ = pressKeys(m, "a", "n", "e", "w", "enter")
+	cat := m.project.Categories[0]
+	require.Len(t, cat.Tasks, 6)
+	assert.Equal(t, "new", cat.Tasks[5].Title)
+	assert.Contains(t, rowIDs(m), "separator:sep", "the section shows a task now")
 }
 
 func TestEnterOnTheRowHidesThePeekAgain(t *testing.T) {

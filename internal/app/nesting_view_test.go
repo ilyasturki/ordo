@@ -47,6 +47,7 @@ func rowIDs(m *model) []string {
 		selection.FocusSeparator:   "separator",
 		selection.FocusDescription: "description",
 		selection.FocusHidden:      "hidden",
+		selection.FocusSection:     "section",
 	}
 	var out []string
 	for _, p := range m.positions() {

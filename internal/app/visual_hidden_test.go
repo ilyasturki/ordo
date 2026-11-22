@@ -131,24 +131,45 @@ func hiddenSectionModel(t *testing.T) *model {
 	withStubStateManager(m)
 	m.ui.Filter.statuses[domain.StatusTodo] = true
 	m.rebuildPositions()
-	require.NotContains(t, rowIDs(m), "separator:done")
+	require.Equal(t, []string{"project:", "category:c1", "task:p", "section:done", "separator:next", "task:c", "task:r"}, rowIDs(m))
 	return m
 }
 
-func TestShiftUpStopsAboveAHiddenSection(t *testing.T) {
+func TestShiftStepsOverAHiddenSectionsLine(t *testing.T) {
 	m := hiddenSectionModel(t)
 	selectRow(t, m, selection.FocusTask, "c")
 	m, _ = pressKeys(m, "K")
-	assert.Equal(t, []string{"p", "c", "done", "b", "k", "next", "r"}, taskIDs(m.project.Categories[0]))
+	assert.Equal(t, []string{"p", "done", "b", "k", "c", "next", "r"}, taskIDs(m.project.Categories[0]), "between the line and next: the section's end")
+	assert.Equal(t, []string{"project:", "category:c1", "task:p", "separator:done", "task:c", "separator:next", "task:r", "hidden:c1"}, rowIDs(m))
 	assert.Equal(t, "task:c", cursorItem(t, m))
-	assert.NotContains(t, rowIDs(m), "separator:done")
+
+	m, _ = pressKeys(m, "K")
+	assert.Equal(t, []string{"p", "c", "done", "b", "k", "next", "r"}, taskIDs(m.project.Categories[0]), "above the line")
+	assert.Equal(t, []string{"project:", "category:c1", "task:p", "task:c", "section:done", "separator:next", "task:r"}, rowIDs(m))
+
+	m, _ = pressKeys(m, "J")
+	assert.Equal(t, []string{"p", "done", "b", "k", "c", "next", "r"}, taskIDs(m.project.Categories[0]), "J steps over it the same way")
 }
 
-func TestVisualShiftUpStopsAboveAHiddenSection(t *testing.T) {
+func TestVisualShiftStepsOverAHiddenSectionsLine(t *testing.T) {
 	m := hiddenSectionModel(t)
 	selectRow(t, m, selection.FocusTask, "c")
-	m, _ = pressKeys(m, "v", "j", "K")
+	m, _ = pressKeys(m, "v", "j", "K", "K")
 	assert.Equal(t, []string{"p", "c", "r", "done", "b", "k", "next"}, taskIDs(m.project.Categories[0]))
 	assert.True(t, m.ui.Modes.IsVisual())
-	assert.NotContains(t, rowIDs(m), "separator:done")
+	assert.Equal(t, []string{"project:", "category:c1", "task:p", "task:c", "task:r", "section:done", "section:next"}, rowIDs(m))
+}
+
+func TestAHiddenSectionsLineMovesItsSeparatorAlone(t *testing.T) {
+	m := hiddenSectionModel(t)
+	selectRow(t, m, selection.FocusSection, "done")
+	m, _ = pressKeys(m, "K")
+	assert.Equal(t, []string{"done", "p", "b", "k", "next", "c", "r"}, taskIDs(m.project.Categories[0]))
+	assert.Equal(t, "separator:done", cursorItem(t, m), "the section shows p now")
+
+	m = hiddenSectionModel(t)
+	selectRow(t, m, selection.FocusSection, "done")
+	m, _ = pressKeys(m, "J")
+	assert.Equal(t, []string{"p", "b", "k", "next", "done", "c", "r"}, taskIDs(m.project.Categories[0]))
+	assert.Equal(t, "separator:done", cursorItem(t, m))
 }

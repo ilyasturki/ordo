@@ -13,6 +13,8 @@ const (
 	FocusSeparator
 	// FocusHidden is a category's "N hidden by the filter" row: CategoryIndex and ID are the category's, TaskIndex is -1.
 	FocusHidden
+	// FocusSection is a separator the filter hides, drawn with its hidden rows as one line: CategoryIndex, TaskIndex and ID are the separator's.
+	FocusSection
 )
 
 type Position struct {

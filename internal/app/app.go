@@ -723,7 +723,7 @@ func (m *model) copyTextForPosition(pos selection.Position) string {
 
 func (m *model) copySelected() tea.Cmd {
 	pos, ok := m.selectedPosition()
-	if !ok || pos.Kind == selection.FocusHidden {
+	if !ok || hiddenRowKind(pos.Kind) {
 		return nil
 	}
 	// A task or separator copy also stashes the row for paste; other kinds
@@ -739,7 +739,7 @@ func (m *model) copySelected() tea.Cmd {
 
 func (m *model) copyCategoryContent() tea.Cmd {
 	pos, ok := m.selectedPosition()
-	if !ok || pos.Kind == selection.FocusProject || pos.Kind == selection.FocusHidden {
+	if !ok || pos.Kind == selection.FocusProject || hiddenRowKind(pos.Kind) {
 		return nil
 	}
 	return m.copyToClipboard(export.CategoryMarkdown(m.project, pos.CategoryIndex, export.Options{Rewrite: m.deps.Attachments.Absolute}), "")
@@ -943,7 +943,13 @@ func (m model) renderLayoutItem(item LayoutItem) string {
 	case LayoutHidden:
 		cat := m.project.Categories[item.CategoryIndex]
 		hidden := hiddenByFilter(cat, &m.ui.Filter)
-		return renderHiddenLine(hidden, m.ui.Filter.peeks(cat.ID), m.rowIndent(item.CategoryIndex, -1), isSelected, focused, m.ui.Screen.Width)
+		return renderHiddenLine(hidden, m.ui.Filter.peeksRows(cat.ID), m.rowIndent(item.CategoryIndex, -1), isSelected, focused, m.ui.Screen.Width)
+
+	case LayoutSection:
+		cat := m.project.Categories[item.CategoryIndex]
+		sep := cat.Tasks[item.TaskIndex]
+		hidden := sectionHidden(cat, &m.ui.Filter, item.TaskIndex)
+		return renderSectionLine(sep, hidden, m.ui.Filter.peeksSection(sep.ID), m.rowIndent(item.CategoryIndex, item.TaskIndex), isSelected, focused, m.ui.Screen.Width)
 
 	case LayoutSpacing:
 		return strings.Repeat("\n", item.Height-1)

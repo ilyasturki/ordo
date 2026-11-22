@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -101,11 +102,17 @@ func (m *model) startAddingTask() {
 		newTask.ParentID = cat.Tasks[position.TaskIndex].ParentID
 	case selection.FocusHidden:
 		taskIndex = len(cat.Tasks)
+	case selection.FocusSection:
+		taskIndex = operations.HiddenSectionEnd(cat.Tasks, filterRows(*cat, &m.ui.Filter), position.TaskIndex)
 	}
 	// The editor writes to the cursor's row, which falls back to an ancestor when the new row is hidden.
-	if !taskRowVisible(&m.ui.Filter, newTask, cat.ID, cat.ParentID) {
-		m.ui.Screen.StatusMsg = "Clear the filter to add a task here"
-		return
+	if m.ui.Filter.HasActiveFilter() {
+		after := *cat
+		after.Tasks = slices.Insert(slices.Clone(cat.Tasks), taskIndex, newTask)
+		if !shownRows(after, &m.ui.Filter, nil)[taskIndex] {
+			m.ui.Screen.StatusMsg = "Clear the filter to add a task here"
+			return
+		}
 	}
 	m.recordHistory()
 	cat.InsertTask(taskIndex, newTask)
@@ -149,7 +156,7 @@ func (m *model) startAddingNote() {
 // refused when the filter would hide it out of reach.
 func (m *model) insertLineRow(kind string) (domain.Task, bool) {
 	position, ok := m.selectedPosition()
-	if !ok || position.Kind == selection.FocusHidden {
+	if !ok || hiddenRowKind(position.Kind) {
 		return domain.Task{}, false
 	}
 	catIndex := position.CategoryIndex

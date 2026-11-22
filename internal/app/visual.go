@@ -135,7 +135,7 @@ func (m *model) enterVisualMode() {
 		m.ui.Screen.StatusMsg = "Visual mode doesn't work on the project row"
 		return
 	}
-	if pos.Kind == selection.FocusHidden {
+	if hiddenRowKind(pos.Kind) {
 		m.ui.Screen.StatusMsg = "Visual mode starts on a task or a category"
 		return
 	}

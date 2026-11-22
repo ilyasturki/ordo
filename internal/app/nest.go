@@ -23,7 +23,7 @@ func (m *model) nestSelected(in bool) {
 		m.nestCategories(pos.CategoryIndex, pos.CategoryIndex+1, in)
 	case selection.FocusTask, selection.FocusDescription:
 		m.nestTasks([]string{m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID}, in)
-	case selection.FocusSeparator:
+	case selection.FocusSeparator, selection.FocusSection:
 		m.ui.Screen.StatusMsg = "A " + m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].Kind + " doesn't nest"
 	}
 }

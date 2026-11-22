@@ -60,6 +60,8 @@ type FilterState struct {
 	held map[string]bool
 	// peek is the category whose hidden rows show until the cursor leaves it.
 	peek string
+	// peekSection narrows peek to the rows of one hidden section's line, keyed by its separator.
+	peekSection string
 }
 
 func NewFilterState() FilterState {
@@ -267,9 +269,26 @@ func (f *FilterState) holds(taskID string) bool { return f.held[taskID] }
 func (f *FilterState) holding() bool            { return len(f.held) > 0 }
 func (f *FilterState) releaseHeld()             { f.held = nil }
 
-func (f *FilterState) startPeek(categoryID string)  { f.peek = categoryID }
+func (f *FilterState) startPeek(categoryID string) { f.peek, f.peekSection = categoryID, "" }
+
+// startSectionPeek reveals the rows the line of separator sepID hides, and ends as a peek at its category does.
+func (f *FilterState) startSectionPeek(categoryID, sepID string) {
+	f.peek, f.peekSection = categoryID, sepID
+}
+
+// peeks is true for a peek at the category's rows or at one of its sections.
 func (f *FilterState) peeks(categoryID string) bool { return f.peek != "" && f.peek == categoryID }
-func (f *FilterState) endPeek()                     { f.peek = "" }
+
+// peeksRows is a peek at the rows the category's "N hidden by the filter" row counts.
+func (f *FilterState) peeksRows(categoryID string) bool {
+	return f.peeks(categoryID) && f.peekSection == ""
+}
+
+func (f *FilterState) peeksSection(sepID string) bool {
+	return f.peek != "" && f.peekSection == sepID
+}
+
+func (f *FilterState) endPeek() { f.peek, f.peekSection = "", "" }
 
 // FilteredOut is false for a held task an edit brought back into the filter.
 func (f *FilterState) FilteredOut(task domain.Task, categoryID, parentCategoryID string) bool {

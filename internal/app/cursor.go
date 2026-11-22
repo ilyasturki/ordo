@@ -16,6 +16,7 @@ var cursorKindNames = map[selection.FocusKind]string{
 	selection.FocusSeparator:   "separator",
 	selection.FocusDescription: "description",
 	selection.FocusHidden:      "hidden",
+	selection.FocusSection:     "section",
 }
 
 func cursorKindFromName(name string) (selection.FocusKind, bool) {
@@ -157,6 +158,10 @@ func (m *model) itemAnchors(kind selection.FocusKind, id string) []itemRef {
 		return refs
 	case selection.FocusDescription:
 		refs = append(refs, itemRef{selection.FocusTask, id})
+	case selection.FocusSeparator:
+		refs = append(refs, itemRef{selection.FocusSection, id})
+	case selection.FocusSection:
+		refs = append(refs, itemRef{selection.FocusSeparator, id})
 	}
 	ci, ti := m.findTaskByID(id)
 	if ci < 0 {
@@ -166,5 +171,18 @@ func (m *model) itemAnchors(kind selection.FocusKind, id string) []itemRef {
 	if parent := domain.ParentIndex(cat.Tasks, ti); parent >= 0 {
 		refs = append(refs, itemRef{selection.FocusTask, cat.Tasks[parent].ID})
 	}
+	if sep := m.sectionHiding(cat, ti); sep != "" {
+		refs = append(refs, itemRef{selection.FocusSection, sep})
+	}
 	return append(refs, m.itemAnchors(selection.FocusCategory, cat.ID)...)
+}
+
+// sectionHiding is the separator whose line stands for the row at ti, or "".
+func (m *model) sectionHiding(cat domain.Category, ti int) string {
+	for sep, end := range hiddenSections(cat, &m.ui.Filter, filterRows(cat, &m.ui.Filter)) {
+		if ti > sep && ti < end {
+			return cat.Tasks[sep].ID
+		}
+	}
+	return ""
 }

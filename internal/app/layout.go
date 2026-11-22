@@ -20,6 +20,7 @@ const (
 	LayoutEmptyCategory // "(no tasks)" placeholder
 	LayoutHidden        // "(N hidden by the filter)" row (own focusable row)
 	LayoutSpacing       // Blank lines between elements
+	LayoutSection       // A separator the filter hides, as one line for its hidden rows
 )
 
 type LayoutItem struct {
@@ -168,6 +169,10 @@ func (b *LayoutBuilder) Build(project domain.Project, positions []selection.Posi
 
 		case selection.FocusHidden:
 			item.Kind, item.Height = LayoutHidden, 1
+			add(item)
+
+		case selection.FocusSection:
+			item.Kind, item.Height = LayoutSection, 1
 			add(item)
 
 		case selection.FocusTask:

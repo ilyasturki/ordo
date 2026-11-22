@@ -50,7 +50,7 @@ func (m model) infoLines() []string {
 		return m.projectInfoLines()
 	case selection.FocusCategory, selection.FocusHidden:
 		return m.categoryInfoLines(pos.CategoryIndex)
-	case selection.FocusSeparator:
+	case selection.FocusSeparator, selection.FocusSection:
 		return m.separatorInfoLines(pos.CategoryIndex, pos.TaskIndex)
 	case selection.FocusTask, selection.FocusDescription:
 		return m.taskInfoLines(pos.CategoryIndex, pos.TaskIndex)

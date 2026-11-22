@@ -119,7 +119,7 @@ var helpModeSections = []helpSection{
 		title: "While a filter is on (f)",
 		entries: []helpEntry{
 			{keys: "F", desc: "turn it off, every task showing, and back on"},
-			{keys: "enter / space", desc: "on \"N hidden by the filter\": show them, then hide them again"},
+			{keys: "enter / space", desc: "on \"N hidden by the filter\" or \"── Done · N hidden\": show them, then hide them again"},
 			{keys: "esc", desc: "hide what that row shows"},
 			{keys: "j / k", desc: "leave an edited row or a shown category to hide it"},
 		},
@@ -150,6 +150,7 @@ var helpMarksSection = helpSection{
 		{keys: "1/3", desc: "subtasks finished"},
 		{keys: "✂", desc: "cut, p puts it back"},
 		{keys: "━━", desc: "separator"},
+		{keys: "── · 2 hidden", desc: "separator whose rows the filter hides, J/K step over it"},
 		{keys: " -  text", desc: "note"},
 		{keys: "▼ / ▶", desc: "category open / folded"},
 		{keys: "↑", desc: "pinned category, first among its siblings"},

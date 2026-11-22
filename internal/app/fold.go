@@ -16,6 +16,8 @@ func (m *model) toggleFold() {
 	switch pos.Kind {
 	case selection.FocusCategory, selection.FocusHidden:
 		id = pos.ID
+	case selection.FocusSection:
+		id = m.project.Categories[pos.CategoryIndex].ID
 	case selection.FocusTask, selection.FocusDescription:
 		cat := m.project.Categories[pos.CategoryIndex]
 		id = cat.ID

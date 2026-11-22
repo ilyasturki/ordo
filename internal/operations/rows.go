@@ -212,7 +212,8 @@ func ShiftTasks(p *domain.Project, ids []string, dir int, v View) error {
 	return nil
 }
 
-// nextShownBlocks spans [a, b) from the run through the first shown sibling block in dir.
+// nextShownBlocks spans [a, b) from the run through the first shown sibling block in dir, a hidden
+// section counting as one block.
 func nextShownBlocks(cat domain.Category, shown []bool, lo, hi, dir int) (int, int, bool) {
 	if dir > 0 {
 		head := domain.LastBlockStart(cat.Tasks, lo, hi)
@@ -224,6 +225,9 @@ func nextShownBlocks(cat domain.Category, shown []bool, lo, hi, dir int) (int, i
 			if slices.Contains(shown[nlo:nhi], true) {
 				return hi, nhi, true
 			}
+			if cat.Tasks[nlo].IsSeparator() {
+				return hi, HiddenSectionEnd(cat.Tasks, shown, nlo), true
+			}
 			head = nlo
 		}
 	}
@@ -233,26 +237,11 @@ func nextShownBlocks(cat domain.Category, shown []bool, lo, hi, dir int) (int, i
 		if !ok {
 			return 0, 0, false
 		}
-		if slices.Contains(shown[nlo:head], true) {
-			return aboveHiddenSection(cat.Tasks, shown, nlo), lo, true
+		if slices.Contains(shown[nlo:head], true) || cat.Tasks[nlo].IsSeparator() {
+			return nlo, lo, true
 		}
 		head = nlo
 	}
-}
-
-func aboveHiddenSection(tasks []domain.Task, shown []bool, a int) int {
-	s := a
-	for {
-		nlo, _, ok := domain.SiblingBlock(tasks, s, -1)
-		if !ok || slices.Contains(shown[nlo:s], true) {
-			break
-		}
-		s = nlo
-	}
-	if s < a && tasks[s].IsSeparator() {
-		return s
-	}
-	return a
 }
 
 // shiftTasksAcross expects tasks [lo, hi) of category catIdx to be top-level blocks.

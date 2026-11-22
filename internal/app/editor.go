@@ -93,7 +93,7 @@ func (m *model) startExternalEdit() tea.Cmd {
 		return nil
 	}
 	// Separators and the hidden row carry no editable body; the external editor is a no-op on them.
-	if pos.Kind == selection.FocusSeparator || pos.Kind == selection.FocusHidden {
+	if pos.Kind == selection.FocusSeparator || hiddenRowKind(pos.Kind) {
 		return nil
 	}
 

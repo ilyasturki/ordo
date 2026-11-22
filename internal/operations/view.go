@@ -10,6 +10,16 @@ type View interface {
 	CategoryVisible(cat domain.Category) bool
 }
 
+// HiddenSectionEnd ends the hidden section a separator the filter hides opens: the rows after it up to
+// the next shown row or separator, which a front end draws as one line in its place.
+func HiddenSectionEnd(tasks []domain.Task, shown []bool, sep int) int {
+	end := sep + 1
+	for end < len(tasks) && !shown[end] && !tasks[end].IsSeparator() {
+		end++
+	}
+	return end
+}
+
 // AllShown is the View of a front end with no filter and nothing folded.
 var AllShown View = allShown{}
 

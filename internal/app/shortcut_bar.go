@@ -113,10 +113,19 @@ func (m model) normalHints() []ui.Hint {
 	case ok && pos.Kind == selection.FocusHidden:
 		cat := m.project.Categories[pos.CategoryIndex]
 		label := "show "
-		if m.ui.Filter.peeks(cat.ID) {
+		if m.ui.Filter.peeksRows(cat.ID) {
 			label = "hide "
 		}
 		hints = slices.Insert(hints, 0, ui.Hint{Key: "enter", Label: label + strconv.Itoa(hiddenByFilter(cat, &m.ui.Filter))})
+	case ok && pos.Kind == selection.FocusSection:
+		n := sectionHidden(m.project.Categories[pos.CategoryIndex], &m.ui.Filter, pos.TaskIndex)
+		label := "show "
+		if m.ui.Filter.peeksSection(pos.ID) {
+			label = "hide "
+		}
+		if n > 0 {
+			hints = slices.Insert(hints, 0, ui.Hint{Key: "enter", Label: label + strconv.Itoa(n)})
+		}
 	case peeking:
 		hints = slices.Insert(hints, 0, hide)
 	}
@@ -131,7 +140,13 @@ func (m model) peekEscHint() (ui.Hint, bool) {
 	if err != nil {
 		return ui.Hint{}, false
 	}
-	n := hiddenByFilter(m.project.Categories[ci], &m.ui.Filter)
+	cat := m.project.Categories[ci]
+	n := hiddenByFilter(cat, &m.ui.Filter)
+	if m.ui.Filter.peekSection != "" {
+		if sep, err := cat.FindTaskByID(m.ui.Filter.peekSection); err == nil {
+			n = sectionHidden(cat, &m.ui.Filter, sep)
+		}
+	}
 	return ui.Hint{Key: "esc", Label: "hide " + strconv.Itoa(n)}, n > 0
 }
 

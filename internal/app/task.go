@@ -18,7 +18,7 @@ func (m *model) deleteSelected() {
 		return
 	}
 	pos, ok := m.selectedPosition()
-	if !ok || pos.Kind == selection.FocusProject || pos.Kind == selection.FocusHidden {
+	if !ok || pos.Kind == selection.FocusProject || hiddenRowKind(pos.Kind) {
 		return
 	}
 	if pos.Kind == selection.FocusDescription {

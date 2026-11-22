@@ -35,43 +35,67 @@ func (m *model) toggleFilterOff() {
 
 func (m *model) onHiddenRow() bool {
 	pos, ok := m.selectedPosition()
-	return ok && pos.Kind == selection.FocusHidden
+	return ok && hiddenRowKind(pos.Kind)
 }
 
-// toggleHiddenTasks peeks at the hidden row's category or ends the peek, reporting whether the cursor was on one.
+// hiddenRowKind is a line counting rows the filter hides, which no edit reaches.
+func hiddenRowKind(kind selection.FocusKind) bool {
+	return kind == selection.FocusHidden || kind == selection.FocusSection
+}
+
+// toggleHiddenTasks peeks at what the hidden row or a section's line hides or ends the peek, reporting whether the cursor was on one.
 func (m *model) toggleHiddenTasks() bool {
 	pos, ok := m.selectedPosition()
-	if !ok || pos.Kind != selection.FocusHidden {
+	if !ok || !hiddenRowKind(pos.Kind) {
 		return false
 	}
-	if m.ui.Filter.peeks(pos.ID) {
+	cat := m.project.Categories[pos.CategoryIndex]
+	if pos.Kind == selection.FocusSection {
+		if m.ui.Filter.peeksSection(pos.ID) {
+			m.hidePeek()
+		} else if sectionHidden(cat, &m.ui.Filter, pos.TaskIndex) == 0 {
+			m.ui.Screen.StatusMsg = "Nothing hidden there"
+		} else {
+			m.startPeek(pos, func() { m.ui.Filter.startSectionPeek(cat.ID, pos.ID) })
+		}
+		return true
+	}
+	if m.ui.Filter.peeksRows(cat.ID) {
 		m.hidePeek()
 		return true
 	}
-	shown := make(map[string]bool)
-	for _, p := range m.positions() {
-		if p.Kind == selection.FocusTask {
-			shown[p.ID] = true
-		}
-	}
-	m.ui.Filter.startPeek(pos.ID)
-	m.rebuildPositions()
-	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
-		return p.Kind == selection.FocusTask && p.CategoryIndex == pos.CategoryIndex && !shown[p.ID]
-	})
-	m.ensureVisible()
-	m.ui.Screen.StatusMsg = "Hidden again by esc, or on leaving the category"
+	m.startPeek(pos, func() { m.ui.Filter.startPeek(cat.ID) })
 	return true
 }
 
-// hidePeek leaves the cursor where it is, or on the hidden row when its own row goes with the peek.
+// startPeek lands on the first row the peek brings up.
+func (m *model) startPeek(pos selection.Position, start func()) {
+	shown := make(map[string]bool)
+	for _, p := range m.positions() {
+		if p.Kind == selection.FocusTask || p.Kind == selection.FocusSeparator {
+			shown[p.ID] = true
+		}
+	}
+	start()
+	m.rebuildPositions()
+	m.ui.Selection.SelectByPredicate(func(p selection.Position) bool {
+		return (p.Kind == selection.FocusTask || p.Kind == selection.FocusSeparator) && p.CategoryIndex == pos.CategoryIndex && !shown[p.ID]
+	})
+	m.ensureVisible()
+	m.ui.Screen.StatusMsg = "Hidden again by esc, or on leaving the category"
+}
+
+// hidePeek leaves the cursor where it is, or on the line the peek came from when its own row goes with it.
 func (m *model) hidePeek() {
-	category := m.ui.Filter.peek
+	from := itemRef{selection.FocusHidden, m.ui.Filter.peek}
+	if m.ui.Filter.peekSection != "" {
+		from = itemRef{selection.FocusSection, m.ui.Filter.peekSection}
+	}
 	was, _ := m.selectedPosition()
 	m.ui.Filter.endPeek()
 	m.rebuildPositions()
 	if now, ok := m.selectedPosition(); !ok || now.Kind != was.Kind || now.ID != was.ID {
-		m.selectItem(selection.FocusHidden, category)
+		m.selectItem(from.kind, from.id)
 	}
 	m.ensureVisible()
 	m.ui.Screen.StatusMsg = "Hidden by the filter again"

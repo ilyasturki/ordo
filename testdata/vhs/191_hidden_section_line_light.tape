@@ -1,8 +1,9 @@
-Output "/tmp/ordo-vt/vhs-out/180_shift_above_hidden_section.gif"
+Output "/tmp/ordo-vt/vhs-out/191_hidden_section_line_light.gif"
 Set Shell "bash"
 Set Width 1200
 Set Height 600
 Set FontSize 16
+Set Theme "Builtin Light"
 Env ORDO_DATA_PATH "/tmp/ordo-vt/data"
 Env ORDO_CONFIG_PATH "/tmp/ordo-vt/cfg"
 
@@ -12,7 +13,7 @@ Enter
 Sleep 800ms
 Show
 
-# Todo filter: the "done" section's rows are all completed, so it hides whole.
+# Todo filter: the "done" section stays as one faint line.
 Type "f"
 Sleep 300ms
 Enter
@@ -22,21 +23,25 @@ Sleep 200ms
 Type "q"
 Sleep 300ms
 Type "gg"
-Type "jjjj"
+Type "jjj"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/180_filtered.png"
+Screenshot "/tmp/ordo-vt/vhs-out/191_line.png"
 Sleep 300ms
 
-# K on the vet visit lands it under "Post the parcel", above the hidden section: no "done" appears.
+Enter
+Sleep 400ms
+Screenshot "/tmp/ordo-vt/vhs-out/191_revealed.png"
+Sleep 300ms
+Type "k"
+Enter
+Sleep 400ms
+
+# K on the vet visit lands it at the end of "done".
+Type "jj"
+Sleep 200ms
 Type "K"
 Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/180_shifted.png"
-Sleep 300ms
-
-# Clearing the filter shows it above "done".
-Type "F"
-Sleep 400ms
-Screenshot "/tmp/ordo-vt/vhs-out/180_unfiltered.png"
+Screenshot "/tmp/ordo-vt/vhs-out/191_k_into_section.png"
 # Let the final capture land before quitting (see run.sh).
 Sleep 500ms
 

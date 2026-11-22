@@ -7,6 +7,7 @@ import (
 	"github.com/ilyasturki/ordo/internal/app/selection"
 	"github.com/ilyasturki/ordo/internal/data"
 	"github.com/ilyasturki/ordo/internal/domain"
+	"github.com/ilyasturki/ordo/internal/operations"
 )
 
 func (m *model) storeTaskUpdate() {
@@ -87,9 +88,9 @@ func (m *model) restoreSelection(kind selection.FocusKind, catID, taskID string)
 		(catID != "" && m.selectItem(selection.FocusCategory, catID))
 }
 
-// taskRowVisible is the filter's verdict alone; shownRows adds sections, nesting and folds on top.
+// taskRowVisible is the filter's verdict alone; shownRows adds sections, nesting, peeks and folds on top.
 func taskRowVisible(filter *FilterState, task domain.Task, categoryID, parentCategoryID string) bool {
-	if filter == nil || filter.holds(task.ID) || filter.peeks(categoryID) {
+	if filter == nil || filter.holds(task.ID) {
 		return true
 	}
 	if !task.IsTask() {
@@ -117,7 +118,8 @@ func showSections(cat domain.Category, shown []bool) {
 	}
 }
 
-func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool {
+// filterRows is what the filter shows of the category, held rows included, before any peek or fold.
+func filterRows(cat domain.Category, filter *FilterState) []bool {
 	shown := make([]bool, len(cat.Tasks))
 	for i, task := range cat.Tasks {
 		shown[i] = taskRowVisible(filter, task, cat.ID, cat.ParentID)
@@ -125,30 +127,99 @@ func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool
 	showSections(cat, shown)
 	for i := 0; i < len(cat.Tasks); {
 		end := domain.BlockEnd(cat.Tasks, i)
-		folded := fold != nil && fold.IsFolded(cat.Tasks[i].ID)
 		for j := i + 1; j < end; j++ {
 			shown[i] = shown[i] || shown[j]
-			shown[j] = shown[j] && !folded
 		}
 		i = end
 	}
 	return shown
 }
 
-// hiddenByFilter counts tasks alone, and the same during a peek.
+// hiddenSections maps each separator the filter hides to the end of the rows its line stands for.
+func hiddenSections(cat domain.Category, filter *FilterState, shown []bool) map[int]int {
+	if filter == nil || !filter.HasActiveFilter() || !filter.CategoryVisible(cat.ID, cat.ParentID) {
+		return nil
+	}
+	var sections map[int]int
+	for i, task := range cat.Tasks {
+		if task.IsSeparator() && !shown[i] {
+			if sections == nil {
+				sections = make(map[int]int)
+			}
+			sections[i] = operations.HiddenSectionEnd(cat.Tasks, shown, i)
+		}
+	}
+	return sections
+}
+
+// sectionRows marks the separators of sections and the rows their lines stand for.
+func sectionRows(sections map[int]int, n int) []bool {
+	in := make([]bool, n)
+	for sep, end := range sections {
+		for i := sep; i < end; i++ {
+			in[i] = true
+		}
+	}
+	return in
+}
+
+func shownRows(cat domain.Category, filter *FilterState, fold *FoldState) []bool {
+	shown := filterRows(cat, filter)
+	if filter != nil && filter.peeks(cat.ID) {
+		peekRows(cat, filter, shown)
+	}
+	if fold != nil {
+		for i := 0; i < len(cat.Tasks); {
+			end := domain.BlockEnd(cat.Tasks, i)
+			if fold.IsFolded(cat.Tasks[i].ID) {
+				clear(shown[i+1 : end])
+			}
+			i = end
+		}
+	}
+	return shown
+}
+
+// peekRows shows what the peek reveals: one section's rows, or the category's others.
+func peekRows(cat domain.Category, filter *FilterState, shown []bool) {
+	sections := hiddenSections(cat, filter, shown)
+	for sep, end := range sections {
+		if filter.peeksSection(cat.Tasks[sep].ID) {
+			for i := sep + 1; i < end; i++ {
+				shown[i] = true
+			}
+			return
+		}
+	}
+	if !filter.peeksRows(cat.ID) {
+		return
+	}
+	in := sectionRows(sections, len(shown))
+	for i := range shown {
+		shown[i] = shown[i] || !in[i]
+	}
+}
+
+// hiddenByFilter counts the tasks the filter hides outside a section's line, and the same during a peek.
 func hiddenByFilter(cat domain.Category, filter *FilterState) int {
 	if filter == nil || !filter.HasActiveFilter() {
 		return 0
 	}
-	unpeeked := *filter
-	unpeeked.endPeek()
+	shown := filterRows(cat, filter)
+	in := sectionRows(hiddenSections(cat, filter, shown), len(shown))
 	n := 0
-	for i, shown := range shownRows(cat, &unpeeked, nil) {
-		if !shown && cat.Tasks[i].IsTask() {
+	for i, task := range cat.Tasks {
+		if !shown[i] && task.IsTask() && !in[i] {
 			n++
 		}
 	}
 	return n
+}
+
+// sectionHidden counts the rows the line of the separator at sep stands for.
+func sectionHidden(cat domain.Category, filter *FilterState, sep int) int {
+	shown := filterRows(cat, filter)
+	return operations.HiddenSectionEnd(cat.Tasks, shown, sep) - sep - 1
 }
 
 // expandedTaskID's description row shows even while descriptions are hidden.
@@ -179,7 +250,17 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 			continue
 		}
 		shown := shownRows(category, filter, fold)
+		sections := hiddenSections(category, filter, filterRows(category, filter))
 		for tIndex, task := range category.Tasks {
+			if _, ok := sections[tIndex]; ok {
+				positions = append(positions, selection.Position{
+					Kind:          selection.FocusSection,
+					CategoryIndex: cIndex,
+					TaskIndex:     tIndex,
+					ID:            task.ID,
+				})
+				continue
+			}
 			if !shown[tIndex] {
 				continue
 			}

@@ -205,48 +205,68 @@ func TestShiftTasksSkipsHiddenBlocks(t *testing.T) {
 	wantLayout(t, p, "cat:a", "h", "y", "x")
 }
 
-func TestShiftTasksUpStopsAboveAHiddenSection(t *testing.T) {
-	hidden := hiding{hidden: map[string]bool{"done": true, "b": true, "k": true}}
-	t.Run("row", func(t *testing.T) {
-		p := outline(t, "cat:a", "p", "--done", "b", "k", "--next", "c", "r")
-		if err := ShiftTasks(p, []string{"c"}, -1, hidden); err != nil {
+func TestShiftTasksStepsOverAHiddenSection(t *testing.T) {
+	shift := func(t *testing.T, hidden []string, ids []string, dir int, rows ...string) *domain.Project {
+		t.Helper()
+		h := hiding{hidden: map[string]bool{}}
+		for _, id := range hidden {
+			h.hidden[id] = true
+		}
+		p := outline(t, append([]string{"cat:a"}, rows...)...)
+		if err := ShiftTasks(p, ids, dir, h); err != nil {
 			t.Fatal(err)
 		}
+		return p
+	}
+	section := []string{"done", "b", "k"}
+	rows := []string{"p", "--done", "b", "k", "--next", "c", "r"}
+	t.Run("K lands at the end of the section", func(t *testing.T) {
+		wantLayout(t, shift(t, section, []string{"c"}, -1, rows...), "cat:a", "p", "--done", "b", "k", "c", "--next", "r")
+	})
+	t.Run("K again lands above it", func(t *testing.T) {
+		p := shift(t, []string{"b", "k"}, []string{"c"}, -1, "p", "--done", "b", "k", "c", "--next", "r")
 		wantLayout(t, p, "cat:a", "p", "c", "--done", "b", "k", "--next", "r")
 	})
-	t.Run("block", func(t *testing.T) {
-		p := outline(t, "cat:a", "p", "--done", "b", "k", "--next", "c", "r")
-		if err := ShiftTasks(p, []string{"c", "r"}, -1, hidden); err != nil {
-			t.Fatal(err)
-		}
-		wantLayout(t, p, "cat:a", "p", "c", "r", "--done", "b", "k", "--next")
+	t.Run("J lands at the end of the section", func(t *testing.T) {
+		wantLayout(t, shift(t, section, []string{"p"}, 1, rows...), "cat:a", "--done", "b", "k", "p", "--next", "c", "r")
 	})
-	t.Run("first in the category", func(t *testing.T) {
-		p := outline(t, "cat:a", "--done", "b", "k", "--next", "c")
-		if err := ShiftTasks(p, []string{"c"}, -1, hidden); err != nil {
-			t.Fatal(err)
-		}
-		wantLayout(t, p, "cat:a", "c", "--done", "b", "k", "--next")
-	})
-	t.Run("down unchanged", func(t *testing.T) {
-		p := outline(t, "cat:a", "p", "--done", "b", "k", "--next", "c", "r")
-		if err := ShiftTasks(p, []string{"p"}, 1, hidden); err != nil {
-			t.Fatal(err)
-		}
+	t.Run("J again leaves it", func(t *testing.T) {
+		p := shift(t, []string{"b", "k"}, []string{"p"}, 1, "--done", "b", "k", "p", "--next", "c", "r")
 		wantLayout(t, p, "cat:a", "--done", "b", "k", "--next", "p", "c", "r")
 	})
+	t.Run("block", func(t *testing.T) {
+		wantLayout(t, shift(t, section, []string{"c", "r"}, -1, rows...), "cat:a", "p", "--done", "b", "k", "c", "r", "--next")
+	})
+	t.Run("first in the category", func(t *testing.T) {
+		p := shift(t, section, []string{"c"}, -1, "--done", "b", "k", "--next", "c")
+		wantLayout(t, p, "cat:a", "--done", "b", "k", "c", "--next")
+	})
+	t.Run("K from right under the section", func(t *testing.T) {
+		p := shift(t, []string{"ideas", "x"}, []string{"n"}, -1, "p", "--ideas", "x", "n", "--next")
+		wantLayout(t, p, "cat:a", "p", "n", "--ideas", "x", "--next")
+	})
+	t.Run("J stops before a row the section's filter shows", func(t *testing.T) {
+		p := shift(t, []string{"ideas", "x", "y"}, []string{"p"}, 1, "p", "--ideas", "x", "n", "y", "--next")
+		wantLayout(t, p, "cat:a", "--ideas", "x", "p", "n", "y", "--next")
+	})
+	t.Run("an empty section", func(t *testing.T) {
+		wantLayout(t, shift(t, []string{"later"}, []string{"p"}, 1, "p", "--later", "--next", "c"), "cat:a", "--later", "p", "--next", "c")
+		wantLayout(t, shift(t, []string{"later"}, []string{"c"}, -1, "p", "--later", "--next", "c"), "cat:a", "p", "--later", "c", "--next")
+	})
+	t.Run("its separator moves alone", func(t *testing.T) {
+		wantLayout(t, shift(t, section, []string{"done"}, -1, rows...), "cat:a", "--done", "p", "b", "k", "--next", "c", "r")
+		wantLayout(t, shift(t, section, []string{"done"}, 1, rows...), "cat:a", "p", "b", "k", "--next", "--done", "c", "r")
+	})
+	t.Run("a shown separator moves alone", func(t *testing.T) {
+		wantLayout(t, shift(t, nil, []string{"next"}, 1, rows...), "cat:a", "p", "--done", "b", "k", "c", "--next", "r")
+		wantLayout(t, shift(t, []string{"h"}, []string{"next"}, 1, "p", "--next", "c", "h", "r"), "cat:a", "p", "c", "--next", "h", "r")
+	})
 	t.Run("hidden plain rows unchanged", func(t *testing.T) {
-		p := outline(t, "cat:a", "p", "b", "k", "--next", "c", "r")
-		if err := ShiftTasks(p, []string{"c"}, -1, hidden); err != nil {
-			t.Fatal(err)
-		}
+		p := shift(t, []string{"b", "k"}, []string{"c"}, -1, "p", "b", "k", "--next", "c", "r")
 		wantLayout(t, p, "cat:a", "p", "b", "k", "c", "--next", "r")
 	})
 	t.Run("hidden run opening on a plain row unchanged", func(t *testing.T) {
-		p := outline(t, "cat:a", "p", "b", "--done", "k", "--next", "c")
-		if err := ShiftTasks(p, []string{"c"}, -1, hidden); err != nil {
-			t.Fatal(err)
-		}
+		p := shift(t, section, []string{"c"}, -1, "p", "b", "--done", "k", "--next", "c")
 		wantLayout(t, p, "cat:a", "p", "b", "--done", "k", "c", "--next")
 	})
 }

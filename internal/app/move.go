@@ -19,7 +19,7 @@ func (m *model) moveSelectedRow(dir int) {
 	switch pos.Kind {
 	case selection.FocusCategory:
 		reason = m.shiftCategories(pos.CategoryIndex, domain.BlockEnd(m.project.Categories, pos.CategoryIndex), dir)
-	case selection.FocusTask, selection.FocusSeparator, selection.FocusDescription:
+	case selection.FocusTask, selection.FocusSeparator, selection.FocusDescription, selection.FocusSection:
 		m.shiftTasks([]string{m.project.Categories[pos.CategoryIndex].Tasks[pos.TaskIndex].ID}, dir)
 	default:
 		return

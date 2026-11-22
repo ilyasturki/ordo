@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -91,17 +92,49 @@ func TestLinesShowWithNoFilterOrDuringAPeek(t *testing.T) {
 	f := NewFilterState()
 	f.statuses[domain.StatusTodo] = true
 	f.startPeek("c1")
-	assert.Equal(t, []string{"t1", "s1", "n1", "t2", "s2", "t3", "n2", "s4", "s3", "t4"}, shownIDs(p, f))
+	assert.Equal(t, []string{"t1", "s2", "t3", "n2", "s3", "t4"}, shownIDs(p, f), "the category's peek leaves its sections' lines closed")
+	f.startSectionPeek("c1", "s1")
+	assert.Equal(t, []string{"t1", "n1", "t2", "s2", "t3", "n2", "s3", "t4"}, shownIDs(p, f), "a section's peek shows its rows under its line")
 	f.endPeek()
 	f.off = true
 	assert.Len(t, shownIDs(p, f), 10)
 }
 
-func TestHiddenCountLeavesLinesOut(t *testing.T) {
+func TestASectionTheFilterHidesIsOneLine(t *testing.T) {
 	m := newTestModel(t, sectionsProject())
 	m.ui.Filter.statuses[domain.StatusTodo] = true
 	m.rebuildPositions()
-	assert.Equal(t, 1, hiddenByFilter(m.project.Categories[0], &m.ui.Filter), "only t2 is a hidden task")
+	assert.Equal(t, []string{"project:", "category:c1", "task:t1", "section:s1", "separator:s2", "task:t3", "separator:n2", "section:s4", "category:c2", "separator:s3", "task:t4"}, rowIDs(m))
+	cat := m.project.Categories[0]
+	assert.Equal(t, 2, sectionHidden(cat, &m.ui.Filter, 1), "a note and a task")
+	assert.Equal(t, 0, sectionHidden(cat, &m.ui.Filter, 7), "an empty section")
+	assert.Equal(t, 0, hiddenByFilter(cat, &m.ui.Filter), "t2 counts on its section's line")
+	lines := screen(m)
+	assert.Contains(t, lineWith(t, lines, "done ones · 2 hidden"), "── done ones · 2 hidden ─")
+	assert.Contains(t, lineWith(t, lines, "later"), "── later ─")
+	assert.NotContains(t, strings.Join(lines, "\n"), "hidden by the filter")
+}
+
+func TestEveryHiddenTaskCountsOnce(t *testing.T) {
+	p := sectionsProject()
+	p.Categories[0].Tasks = append(p.Categories[0].Tasks[:6], append([]domain.Task{{ID: "t5", Title: "five", Status: domain.StatusCompleted}}, p.Categories[0].Tasks[6:]...)...)
+	f := NewFilterState()
+	f.statuses[domain.StatusTodo] = true
+	cat := p.Categories[0]
+	shown := filterRows(cat, &f)
+	inLines := 0
+	for sep, end := range hiddenSections(cat, &f, shown) {
+		for _, task := range cat.Tasks[sep+1 : end] {
+			if task.IsTask() {
+				inLines++
+			}
+		}
+	}
+	assert.Equal(t, 1, inLines, "t2 behind its section's line")
+	assert.Equal(t, 1, hiddenByFilter(cat, &f), "t5 among shown rows")
+
+	f.startPeek("c1")
+	assert.Equal(t, []string{"t1", "s2", "t3", "t5", "n2"}, shownIDs(domain.Project{Categories: []domain.Category{cat}}, f), "the category's peek shows t5 alone")
 }
 
 func TestAddLineUnderAFilterWhenItWouldShow(t *testing.T) {
