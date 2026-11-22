@@ -107,6 +107,11 @@ var errGone = errors.New("project not held")
 // Perform runs a user's edit; its answer's Queue is what to send. A project.create given no pid
 // mints one and answers it as Row.
 func (s *Session) Perform(pid string, rawOp []byte) Answer {
+	return s.PerformIn(pid, rawOp, nil)
+}
+
+// PerformIn is Perform from a list that hides the rows of these IDs: a shift steps over them, as the TUI's.
+func (s *Session) PerformIn(pid string, rawOp []byte, hidden []string) Answer {
 	var op operations.Op
 	if err := json.Unmarshal(rawOp, &op); err != nil {
 		return unreadable(err)
@@ -119,7 +124,7 @@ func (s *Session) Perform(pid string, rawOp []byte) Answer {
 		pid = id
 	}
 	before := operations.Clone(s.held(pid))
-	out, wire, err := s.perform(pid, op)
+	out, wire, err := s.perform(pid, op, hiding(hidden))
 	a := answer(out, err)
 	if errors.Is(err, domain.ErrDuplicateCategoryName) {
 		a.Clash = operations.CategoryClash(&before, op)
@@ -131,7 +136,18 @@ func (s *Session) Perform(pid string, rawOp []byte) Answer {
 	return a
 }
 
-func (s *Session) perform(pid string, op operations.Op) (operations.Outcome, operations.Op, error) {
+func hiding(ids []string) operations.View {
+	if len(ids) == 0 {
+		return operations.AllShown
+	}
+	h := make(operations.Hiding, len(ids))
+	for _, id := range ids {
+		h[id] = true
+	}
+	return h
+}
+
+func (s *Session) perform(pid string, op operations.Op, v operations.View) (operations.Outcome, operations.Op, error) {
 	if operations.ProjectAction(op.Action) {
 		out, err := s.projectOp(pid, op)
 		return out, op, err
@@ -140,7 +156,7 @@ func (s *Session) perform(pid string, op operations.Op) (operations.Outcome, ope
 	if !ok {
 		return operations.Outcome{}, operations.Op{}, errGone
 	}
-	return operations.Perform(p, op)
+	return operations.PerformIn(p, op, v)
 }
 
 // Replay runs an op from the queue again, on a copy the server just sent.

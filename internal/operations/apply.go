@@ -70,7 +70,7 @@ var appliers = map[string]applier{
 	"task.kind":        setKind,
 	"task.nest":        nestRows(true),
 	"task.unnest":      nestRows(false),
-	"task.shift":       shiftRows,
+	"task.shift":       shiftRows(AllShown),
 	"task.move":        moveRows,
 	"task.place":       placeRows,
 	"task.restore":     restoreRows,
@@ -95,9 +95,16 @@ func Replayable(action string) bool {
 
 // Apply runs op on p, and leaves p as it was on any error, ErrNoChange included.
 func Apply(p *domain.Project, op Op) (Outcome, error) {
+	return applyIn(p, op, AllShown)
+}
+
+func applyIn(p *domain.Project, op Op, v View) (Outcome, error) {
 	fn, ok := appliers[op.Action]
 	if !ok {
 		return Outcome{}, fmt.Errorf("%w: %s", ErrUnknownAction, op.Action)
+	}
+	if op.Action == "task.shift" {
+		fn = shiftRows(v)
 	}
 	before := Clone(*p)
 	out, err := fn(p, op)
@@ -114,6 +121,11 @@ func Apply(p *domain.Project, op Op) (Outcome, error) {
 // may have moved on since: an add with the ID it minted, a cycle as the status it landed on,
 // a nest, un-nest or shift as the place its rows landed.
 func Perform(p *domain.Project, op Op) (Outcome, Op, error) {
+	return PerformIn(p, op, AllShown)
+}
+
+// PerformIn is Perform for a list that hides rows: a shift steps over what v hides, as the TUI's.
+func PerformIn(p *domain.Project, op Op, v View) (Outcome, Op, error) {
 	switch op.Action {
 	case "task.add", "task.insert", "separator.add", "note.add", "category.add", "version.next":
 		if op.New == "" {
@@ -124,7 +136,7 @@ func Perform(p *domain.Project, op Op) (Outcome, Op, error) {
 			op.New = id
 		}
 	}
-	out, err := Apply(p, op)
+	out, err := applyIn(p, op, v)
 	if err != nil {
 		return out, Op{}, err
 	}
@@ -441,18 +453,20 @@ func nestRows(in bool) applier {
 	}
 }
 
-func shiftRows(p *domain.Project, op Op) (Outcome, error) {
-	if len(op.IDs) == 0 {
-		return Outcome{}, ErrNoChange
+func shiftRows(v View) func(*domain.Project, Op) (Outcome, error) {
+	return func(p *domain.Project, op Op) (Outcome, error) {
+		if len(op.IDs) == 0 {
+			return Outcome{}, ErrNoChange
+		}
+		dir := 1
+		if op.Up {
+			dir = -1
+		}
+		if err := ShiftTasks(p, op.IDs, dir, v); err != nil {
+			return Outcome{}, err
+		}
+		return Outcome{Row: op.IDs[0]}, nil
 	}
-	dir := 1
-	if op.Up {
-		dir = -1
-	}
-	if err := ShiftTasks(p, op.IDs, dir, AllShown); err != nil {
-		return Outcome{}, err
-	}
-	return Outcome{Row: op.IDs[0]}, nil
 }
 
 func moveRows(p *domain.Project, op Op) (Outcome, error) {

@@ -89,6 +89,37 @@ func TestPerformQueuesWhatTheServerReplays(t *testing.T) {
 	}
 }
 
+func TestAShiftStepsOverTheRowsTheListHides(t *testing.T) {
+	p := domain.Project{ID: "p1", Name: "Trip", Categories: []domain.Category{{ID: "c1", Name: "Plan", Tasks: []domain.Task{
+		{ID: "p", Title: "p", Status: domain.StatusTodo},
+		{ID: "done", Title: "Done", Kind: domain.KindSeparator},
+		{ID: "b", Title: "b", Status: domain.StatusCompleted},
+		{ID: "k", Title: "k", Status: domain.StatusCompleted},
+		{ID: "next", Title: "Next", Kind: domain.KindSeparator},
+		{ID: "c", Title: "c", Status: domain.StatusTodo},
+	}}}}
+	raw, _ := json.Marshal(p)
+	s := core.New()
+	pid, err := s.Open(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := s.PerformIn(pid, op(operations.Op{Action: "task.shift", IDs: []string{"p"}}), []string{"done", "b", "k"})
+	if a.Status != operations.Applied || a.Queue == nil || a.Queue.Action != "task.place" || a.Queue.Before != "next" {
+		t.Fatalf("answer = %+v", a)
+	}
+	var ids []string
+	for _, task := range held(t, s, pid).Categories[0].Tasks {
+		ids = append(ids, task.ID)
+	}
+	if want := []string{"done", "b", "k", "p", "next", "c"}; !slices.Equal(ids, want) {
+		t.Fatalf("order = %v, want %v", ids, want)
+	}
+	if again := s.Perform(pid, op(operations.Op{Action: "task.shift", IDs: []string{"p"}, Up: true})); again.Status != operations.Applied || again.Queue.Before != "k" {
+		t.Fatalf("a shift with nothing hidden steps one row = %+v", again)
+	}
+}
+
 func TestAnswersCarryWhatTheAppShows(t *testing.T) {
 	s, pid := opened(t)
 	add := s.Perform(pid, op(operations.Op{Action: "task.add", Cat: "c1", Title: "new"}))

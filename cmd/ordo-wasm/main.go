@@ -22,7 +22,11 @@ func main() {
 		return held(s.Import([]byte(args[0].String())))
 	}))
 	api.Set("perform", js.FuncOf(func(_ js.Value, args []js.Value) any {
-		return answer(s.Perform(args[0].String(), []byte(args[1].String())))
+		var hidden []string
+		if len(args) > 2 && args[2].Type() == js.TypeString {
+			_ = json.Unmarshal([]byte(args[2].String()), &hidden)
+		}
+		return answer(s.PerformIn(args[0].String(), []byte(args[1].String()), hidden))
 	}))
 	api.Set("replay", js.FuncOf(func(_ js.Value, args []js.Value) any {
 		return answer(s.Replay(args[0].String(), []byte(args[1].String())))

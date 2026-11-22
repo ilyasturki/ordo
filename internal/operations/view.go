@@ -36,3 +36,18 @@ func (allShown) Shown(cat domain.Category) []bool {
 func (allShown) Filtering() bool                      { return false }
 func (allShown) Folded(string) bool                   { return false }
 func (allShown) CategoryVisible(domain.Category) bool { return true }
+
+// Hiding is the View of a list that hides the rows of these IDs, folded or filtered out alike.
+type Hiding map[string]bool
+
+func (h Hiding) Shown(cat domain.Category) []bool {
+	shown := make([]bool, len(cat.Tasks))
+	for i, t := range cat.Tasks {
+		shown[i] = !h[t.ID]
+	}
+	return shown
+}
+
+func (h Hiding) Filtering() bool                    { return len(h) > 0 }
+func (Hiding) Folded(string) bool                   { return false }
+func (Hiding) CategoryVisible(domain.Category) bool { return true }
