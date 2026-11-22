@@ -4,6 +4,8 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.15.2] - 2026-11-22
+
 ### Changed
 
 - Under a filter, a separator whose rows the filter all hides stays in place as one faint line, `── Done · 2 hidden`, in the TUI, the app and the web, instead of vanishing with its rows. `enter` on it, or a tap, shows them under it and reads `Done · hide 2` until you hide them again or leave the category; `(N hidden by the filter)` at the category's end now counts only the rows outside such lines. `J`/`K` and a drag take the line as one row: above it lands before the section, just under it lands at the section's end, where its separator shows again. The line itself moves its separator, as a separator does. This replaces 0.15.0's guesses that kept a row moved up from landing in a section the filter hid
@@ -662,7 +664,8 @@ phasionary is now ordo. The binary, the Go module, the `ORDO_*` variables and th
 
 First tagged release: a TUI and CLI over one JSON file per project, with categories, priorities, statuses, time estimates, a project picker, markdown import and export, and a Nix flake.
 
-[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.15.1...HEAD
+[Unreleased]: https://github.com/ilyasturki/ordo/compare/v0.15.2...HEAD
+[0.15.2]: https://github.com/ilyasturki/ordo/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/ilyasturki/ordo/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/ilyasturki/ordo/compare/v0.14.3...v0.15.0
 [0.14.3]: https://github.com/ilyasturki/ordo/compare/v0.14.2...v0.14.3
