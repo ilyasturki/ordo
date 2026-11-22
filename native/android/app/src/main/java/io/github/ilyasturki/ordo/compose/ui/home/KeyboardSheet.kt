@@ -142,6 +142,8 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
     var closing by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var refused by remember { mutableStateOf(false) }
+    // A fall the sheet itself started before a late refusal: it isn't the next dismissal.
+    var ownFall by remember { mutableStateOf(false) }
     var pulling by remember { mutableStateOf(false) }
     var pullFrom by remember { mutableFloatStateOf(0f) }
     var pull by remember { mutableFloatStateOf(0f) }
@@ -193,11 +195,11 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
         scope.launch { rest.animateTo(0f, spatial) }
     }
 
-    // The keyboard carried down from where the gesture left it, the sheet riding it; without one in hand, its own way down.
     fun carry(spec: AnimationSpec<Float>, velocity: Float = 0f) {
         scope.launch {
             if (hand.await()) {
                 launch { drag.animateTo(0f, spec) }
+                launch { rest.animateTo(0f, spec) }
                 hand.settle(down = true, spec, velocity)
             } else {
                 drop()
@@ -205,14 +207,12 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
         }
     }
 
-    // The keyboard and the sheet back where the gesture took them from.
     fun putBack(spec: AnimationSpec<Float>, velocity: Float = 0f) {
         scope.launch { drag.animateTo(0f, spec) }
         scope.launch { if (hand.await()) hand.settle(down = false, spec, velocity) }
     }
 
     fun stayUp() {
-        refused = true
         scope.launch {
             rest.snapTo(max(rest.value, raised))
             launch { drag.animateTo(0f, spatial) }
@@ -234,11 +234,13 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
     }
 
     // Saves and lowers at once; a refusal answered before the save suspends keeps the keyboard up, a later one rests the sheet.
-    fun leave(lower: () -> Unit) {
-        if (closing || busy) return
+    // False when it did nothing, so a gesture that ended on it is still the caller's to settle.
+    fun leave(lower: () -> Unit): Boolean {
+        if (closing || busy) return false
         if (refused) {
             closing = true
-            return lower()
+            lower()
+            return true
         }
         busy = true
         var answered = false
@@ -254,9 +256,12 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
                 done -> {}
                 closing -> {
                     closing = false
+                    refused = true
+                    ownFall = hand.active || ime.getBottom(density) > 0
                     stayUp()
                 }
                 else -> {
+                    refused = true
                     putBack(spatial)
                     stayUp()
                 }
@@ -266,7 +271,10 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
             closing = true
             lower()
         }
+        return true
     }
+
+    fun release(spec: AnimationSpec<Float>, velocity: Float = 0f) = if (closing) carry(spec, velocity) else putBack(spec, velocity)
 
     // A sheet that takes over from another finds the keyboard up: it shows in place.
     LaunchedEffect(Unit) {
@@ -287,10 +295,11 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
             }
         }.distinctUntilChanged().collect { now ->
             val dismissed = was == Keyboard.UP || (was == Keyboard.DOWN && now == Keyboard.FALLING)
-            if (dismissed && now != Keyboard.UP && !closing && !hand.active) {
+            if (dismissed && now != Keyboard.UP && !closing && !hand.active && !ownFall) {
                 val ours = window.isWindowFocused && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
                 if (ours && !busy) leave(::drop) else stayUp()
             }
+            if (now == Keyboard.DOWN) ownFall = false
             was = now
         }
     }
@@ -345,8 +354,11 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
                     }
                 }
             },
-            completed = { if (hand.active) leave { carry(tween(POST_COMMIT_MS, easing = COMMIT_EASING)) } else leave(::drop) },
-            cancelled = { if (!closing) putBack(tween(POST_COMMIT_MS, easing = CANCEL_EASING)) },
+            completed = {
+                val left = if (hand.active) leave { carry(tween(POST_COMMIT_MS, easing = COMMIT_EASING)) } else leave(::drop)
+                if (!left) release(tween(POST_COMMIT_MS, easing = if (closing) COMMIT_EASING else CANCEL_EASING))
+            },
+            cancelled = { release(tween(POST_COMMIT_MS, easing = CANCEL_EASING)) },
         )
         owner?.navigationEventDispatcher?.addHandler(back, NavigationEventDispatcher.PRIORITY_OVERLAY)
         onDispose { back.remove() }
@@ -398,7 +410,8 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
                         pulling = false
                         val shown = full.coerceAtLeast(1)
                         val carried = -velocity * shown / (shown + height - bars.getBottom(density)).coerceAtLeast(1)
-                        if (pull > height / 2f || velocity > with(density) { FLING.toPx() }) leave { carry(spatial, carried) } else putBack(spatial, carried)
+                        val far = pull > height / 2f || velocity > with(density) { FLING.toPx() }
+                        if (!far || !leave { carry(spatial, carried) }) release(spatial, carried)
                     },
                 )
                 .semantics { paneTitle = "Sheet" },

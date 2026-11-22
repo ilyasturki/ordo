@@ -244,7 +244,15 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
     var after by rememberSaveable { mutableStateOf("") }
     val pid = entry.id
     val hidden = categories.firstOrNull { it.id == cat }?.let { !filter.taskVisible(Task(id = "", priority = priority, tagColor = tag), it) } == true
-    var left by remember { mutableStateOf(false) }
+    var left by rememberSaveable { mutableStateOf(false) }
+    // A sheet recreated after its leaving save landed opens empty.
+    LaunchedEffect(Unit) {
+        if (left) {
+            left = false
+            title = ""
+            details = null
+        }
+    }
 
     // Runs on the app's scope: the edits after the insert land even when the sheet has gone. A dismissal's save leaves the text in place while the sheet goes.
     suspend fun commit(leaving: Boolean): Boolean {
