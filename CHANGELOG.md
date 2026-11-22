@@ -7,6 +7,11 @@ All notable changes to ordo are listed here. The format follows [Keep a Changelo
 ### Changed
 
 - Under a filter, a separator whose rows the filter all hides stays in place as one faint line, `── Done · 2 hidden`, in the TUI, the app and the web, instead of vanishing with its rows. `enter` on it, or a tap, shows them under it and reads `Done · hide 2` until you hide them again or leave the category; `(N hidden by the filter)` at the category's end now counts only the rows outside such lines. `J`/`K` and a drag take the line as one row: above it lands before the section, just under it lands at the section's end, where its separator shows again. The line itself moves its separator, as a separator does. This replaces 0.15.0's guesses that kept a row moved up from landing in a section the filter hid
+### Fixed
+
+- In the app, a swipe down on the add sheet or a name sheet takes the keyboard down with it under the finger, as one motion, instead of the sheet sliding under a keyboard that stays put and leaves after
+- In the app, a back swipe on a sheet moves the sheet and the keyboard with the finger and saves when you let go, instead of saving as the swipe starts. A swipe taken back leaves the sheet, the keyboard and your text as they were, where it used to save anyway and leave the keyboard up over the list
+- In the app, a back right after opening a sheet closes it for good: the keyboard no longer rises after it, carrying the empty sheet up. What you typed stays in the field until the sheet is gone, instead of the field emptying before it moves
 
 ## [0.15.1] - 2026-11-19
 

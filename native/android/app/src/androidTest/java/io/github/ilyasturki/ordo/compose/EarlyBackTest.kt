@@ -4,15 +4,20 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-// One back at every moment of the keyboard's start, through the system's input in real time: the keyboard takes a back
-// while it starts, and the sheet still closes on it and keeps what was typed.
+// One back at every moment of the keyboard's start, through the system's input in real time: the sheet closes on it,
+// keeps what was typed, and the keyboard it asked for never comes up after.
 @RunWith(AndroidJUnit4::class)
 class EarlyBackTest : AppFixture(composing = false) {
     private val ins get() = InstrumentationRegistry.getInstrumentation()
@@ -38,6 +43,15 @@ class EarlyBackTest : AppFixture(composing = false) {
         }
     }
 
+    private fun keyboardIsUp(): Boolean {
+        var up = false
+        ins.runOnMainSync {
+            val top = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).singleOrNull()
+            up = top != null && ViewCompat.getRootWindowInsets(top.window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        }
+        return up
+    }
+
     private fun backWhileTheKeyboardStarts(open: () -> Unit, text: String, wait: Long, saved: () -> Boolean) {
         open()
         waitFor("the sheet opens") { described("Close sheet") != null }
@@ -50,6 +64,7 @@ class EarlyBackTest : AppFixture(composing = false) {
         waitFor("one back $wait ms in closes the sheet", 4_000) { described("Close sheet") == null }
         waitFor("one back $wait ms in saves $text", 4_000, saved)
         Thread.sleep(800)
+        assertFalse("the keyboard asked for before a back $wait ms in stays down", keyboardIsUp())
     }
 
     @Test

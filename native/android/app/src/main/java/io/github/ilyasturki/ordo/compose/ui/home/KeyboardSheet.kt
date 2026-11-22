@@ -2,31 +2,34 @@ package io.github.ilyasturki.ordo.compose.ui.home
 
 import android.content.res.Configuration
 import android.os.Build
+import android.os.CancellationSignal
 import android.os.SystemClock
-import android.window.OnBackInvokedCallback
-import android.window.OnBackInvokedDispatcher
-import androidx.activity.compose.BackHandler
+import android.view.View
+import android.view.Window
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imeAnimationSource
 import androidx.compose.foundation.layout.imeAnimationTarget
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -36,10 +39,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -54,7 +60,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -62,17 +67,31 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsAnimationControlListenerCompat
+import androidx.core.view.WindowInsetsAnimationControllerCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.navigationevent.NavigationEvent
+import androidx.navigationevent.NavigationEventDispatcher
+import androidx.navigationevent.NavigationEventHandler
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import io.github.ilyasturki.ordo.compose.ui.LocalAppScope
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 // What a keyboard sheet's content runs to finish: the sheet closes once the commit lands, and holds every other close until it has answered.
 typealias Finish = (commit: suspend () -> Boolean) -> Unit
@@ -96,51 +115,104 @@ class SheetMenus {
 val LocalSheetMenus = compositionLocalOf<SheetMenus?> { null }
 
 // A sheet in the page's own window, placed by the keyboard alone: it rises and leaves on the keyboard's own frames, as one motion.
-// Every dismissal (back, a swipe down, a tap outside, the keyboard's own back) first runs onLeave; a refusal keeps the sheet up, resting on the bottom edge, and the next dismissal drops it.
+// A swipe down or a back gesture moves the keyboard by hand, the sheet riding it; only the release or the completed back dismisses.
+// Every dismissal (back, a swipe down, a tap outside, the keyboard's own hide) first runs onLeave; a refusal keeps the sheet up, resting on the bottom edge, and the next dismissal drops it.
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @Composable ColumnScope.(Finish) -> Unit) {
     val density = LocalDensity.current
     val appScope = LocalAppScope.current
     val scope = rememberCoroutineScope()
-    val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val window = LocalWindowInfo.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val view = LocalView.current
+    val activity = LocalActivity.current
     val ime = WindowInsets.ime
     val source = WindowInsets.imeAnimationSource
     val target = WindowInsets.imeAnimationTarget
-    val lift = ime.exclude(WindowInsets.navigationBars)
+    val bars = WindowInsets.navigationBars
     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     // The sheet's presence while the keyboard isn't carrying it: none, or a hardware keyboard, or a refused close.
     val rest = remember { Animatable(0f) }
+    // The sheet's own offset when no keyboard carries it: a drag or a back peek beside a hardware keyboard.
     val drag = remember { Animatable(0f) }
-    var height by remember { mutableStateOf(0) }
+    val hand = remember { ImeHand(view, activity?.window) }
+    var height by remember { mutableIntStateOf(0) }
     var closing by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var refused by remember { mutableStateOf(false) }
-    var starting by remember { mutableStateOf(true) }
+    var pulling by remember { mutableStateOf(false) }
+    var pullFrom by remember { mutableFloatStateOf(0f) }
+    var pull by remember { mutableFloatStateOf(0f) }
+    var peek by remember { mutableFloatStateOf(0f) }
     val menus = remember { SheetMenus() }
     val leaving by rememberUpdatedState(onLeave)
     val gone by rememberUpdatedState(onGone)
 
-    val raised by remember {
+    var tall by remember { mutableIntStateOf(0) }
+    // A keyboard turned back mid-rise starts its fall from a source of 0: its height is the one it was rising to.
+    val full by remember {
         derivedStateOf {
-            val full = max(source.getBottom(density), target.getBottom(density))
-            if (full <= 0) 0f else (ime.getBottom(density).toFloat() / full).coerceIn(0f, 1f)
+            val now = max(source.getBottom(density), target.getBottom(density))
+            if (now > 0 || ime.getBottom(density) == 0) now else tall
         }
     }
-    val presence by remember { derivedStateOf { max(raised, rest.value) } }
+    val raised by remember {
+        derivedStateOf { if (full <= 0) 0f else (ime.getBottom(density).toFloat() / full).coerceIn(0f, 1f) }
+    }
+    // How far the sheet's top stands above the window's bottom: on the keyboard, its nav bar padding behind it, sinking into it as it falls.
+    val lifted by remember {
+        derivedStateOf {
+            val kb = ime.getBottom(density).toFloat()
+            val bar = bars.getBottom(density).toFloat()
+            max(kb + raised * (height - bar), rest.value * (max(kb - bar, 0f) + height))
+        }
+    }
+    val lowest = remember { floatArrayOf(Float.MAX_VALUE) }
+    // Once the sheet is leaving it only goes down: a keyboard that shows late doesn't lift it again.
+    val top by remember {
+        derivedStateOf {
+            val now = if (pulling) pullFrom - pull else lifted - drag.value
+            if (closing) min(now, lowest[0]).also { lowest[0] = it } else now.also { lowest[0] = Float.MAX_VALUE }
+        }
+    }
+    val presence by remember {
+        derivedStateOf { if (lifted <= 0f) 0f else max(raised, rest.value) * (top / lifted).coerceIn(0f, 1f) }
+    }
 
-    fun close() {
-        if (closing) return
-        closing = true
-        focusManager.clearFocus(force = true)
+    // The keyboard's bottom inset that puts the sheet's top where the finger has it.
+    fun underFinger(shown: Int): Float {
+        val bar = bars.getBottom(density)
+        return (pullFrom - pull) * shown / (shown + height - bar).coerceAtLeast(1)
+    }
+
+    // The keyboard's own way down, the sheet riding it. The field keeps focus until the sheet is gone: losing it detaches the keyboard, which then leaves on a motion of its own.
+    fun drop() {
         keyboard?.hide()
         scope.launch { rest.animateTo(0f, spatial) }
     }
 
+    // The keyboard carried down from where the gesture left it, the sheet riding it; without one in hand, its own way down.
+    fun carry(spec: AnimationSpec<Float>, velocity: Float = 0f) {
+        scope.launch {
+            if (hand.await()) {
+                launch { drag.animateTo(0f, spec) }
+                hand.settle(down = true, spec, velocity)
+            } else {
+                drop()
+            }
+        }
+    }
+
+    // The keyboard and the sheet back where the gesture took them from.
+    fun putBack(spec: AnimationSpec<Float>, velocity: Float = 0f) {
+        scope.launch { drag.animateTo(0f, spec) }
+        scope.launch { if (hand.await()) hand.settle(down = false, spec, velocity) }
+    }
+
     fun stayUp() {
+        refused = true
         scope.launch {
             rest.snapTo(max(rest.value, raised))
             launch { drag.animateTo(0f, spatial) }
@@ -154,23 +226,45 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
         appScope.launch(Dispatchers.Main) {
             val done = commit()
             busy = false
-            if (done) close()
+            if (done && !closing) {
+                closing = true
+                drop()
+            }
         }
     }
 
-    fun leave() {
+    // Saves and lowers at once; a refusal answered before the save suspends keeps the keyboard up, a later one rests the sheet.
+    fun leave(lower: () -> Unit) {
         if (closing || busy) return
-        if (refused) return close()
+        if (refused) {
+            closing = true
+            return lower()
+        }
         busy = true
-        appScope.launch(Dispatchers.Main) {
+        var answered = false
+        appScope.launch(Dispatchers.Main.immediate, CoroutineStart.UNDISPATCHED) {
             val done = leaving()
+            answered = true
             busy = false
-            if (done) {
-                close()
-            } else {
-                refused = true
-                stayUp()
+            when {
+                done && !closing -> {
+                    closing = true
+                    lower()
+                }
+                done -> {}
+                closing -> {
+                    closing = false
+                    stayUp()
+                }
+                else -> {
+                    putBack(spatial)
+                    stayUp()
+                }
             }
+        }
+        if (!answered) {
+            closing = true
+            lower()
         }
     }
 
@@ -178,7 +272,10 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
     LaunchedEffect(Unit) {
         if (target.getBottom(density) > 0) rest.snapTo(1f)
     }
-    // The keyboard heading down is a dismissal only when this window let it go: a dialog over it or the app leaving takes it too.
+    LaunchedEffect(Unit) {
+        snapshotFlow { max(source.getBottom(density), target.getBottom(density)) }.collect { if (it > 0) tall = it }
+    }
+    // The keyboard heading down on its own is a dismissal only when this window let it go: a dialog over it or the app leaving takes it too.
     // A busy main thread can merge the keyboard's rise into its fall, so a keyboard first seen on its way down counts as well.
     LaunchedEffect(Unit) {
         var was: Keyboard? = null
@@ -189,20 +286,29 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
                 else -> Keyboard.DOWN
             }
         }.distinctUntilChanged().collect { now ->
-            if (now != Keyboard.DOWN) starting = false
             val dismissed = was == Keyboard.UP || (was == Keyboard.DOWN && now == Keyboard.FALLING)
-            if (dismissed && now != Keyboard.UP && !closing) {
+            if (dismissed && now != Keyboard.UP && !closing && !hand.active) {
                 val ours = window.isWindowFocused && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-                if (ours && !busy) leave() else stayUp()
+                if (ours && !busy) leave(::drop) else stayUp()
             }
             was = now
         }
     }
+    // A keyboard brought back up after it went down since the refusal takes the refusal away; one still rising or put back by a cancelled gesture doesn't.
     LaunchedEffect(Unit) {
-        snapshotFlow { raised >= 1f && target.getBottom(density) > 0 }.collect { up ->
-            if (up && !closing) {
+        var fromDown = false
+        snapshotFlow {
+            when {
+                raised >= 1f && target.getBottom(density) > 0 -> 1
+                ime.getBottom(density) == 0 -> -1
+                else -> 0
+            }
+        }.distinctUntilChanged().collect { at ->
+            if (at < 0 && refused) fromDown = true
+            if (at > 0 && !closing) {
                 rest.snapTo(0f)
-                refused = false
+                if (fromDown) refused = false
+                fromDown = false
             }
         }
     }
@@ -212,29 +318,38 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
         val coming = withTimeoutOrNull(if (hardware) 0L else NO_KEYBOARD_MS) { snapshotFlow { target.getBottom(density) > 0 }.first { it } }
         if (coming == null && !closing) rest.animateTo(1f, spatial)
     }
+    // A keyboard asked for before the dismissal can still show after it: it goes straight back down.
     LaunchedEffect(closing) {
         if (!closing) return@LaunchedEffect
-        withTimeoutOrNull(GONE_WAIT_MS) { snapshotFlow { ime.getBottom(density) == 0 && rest.value == 0f }.first { it } }
-        gone()
+        snapshotFlow { target.getBottom(density) > 0 && !hand.active }.collect { if (it) keyboard?.hide() }
     }
-    BackHandler(!closing) { leave() }
-    // A keyboard still starting takes a back to cancel itself, unseen by the insets: until it shows, the sheet takes back first.
-    LaunchedEffect(Unit) {
-        withTimeoutOrNull(NO_KEYBOARD_MS) { snapshotFlow { starting }.first { !it } }
-        starting = false
+    LaunchedEffect(closing) {
+        if (!closing) return@LaunchedEffect
+        withTimeoutOrNull(GONE_WAIT_MS) { snapshotFlow { ime.getBottom(density) == 0 && rest.value == 0f && !hand.active }.first { it } }
+        snapshotFlow { busy }.first { !it }
+        if (closing) gone()
     }
-    val view = LocalView.current
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        LaunchedEffect(Unit) {
-            val dispatcher = view.findOnBackInvokedDispatcher() ?: return@LaunchedEffect
-            val callback = OnBackInvokedCallback { leave() }
-            dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_OVERLAY, callback)
-            try {
-                snapshotFlow { starting && !closing }.first { !it }
-            } finally {
-                dispatcher.unregisterOnBackInvokedCallback(callback)
-            }
-        }
+    DisposableEffect(hand) { onDispose { hand.end() } }
+
+    // Above the keyboard's own back, for the sheet's whole life: a key back or a completed gesture saves, a cancelled one leaves everything as it was.
+    val owner = LocalNavigationEventDispatcherOwner.current
+    DisposableEffect(owner) {
+        val back = SheetBack(
+            progressed = { p ->
+                if (!closing) {
+                    peek = PEEK * BACK_EASING.transform(p)
+                    if (hand.take { shown, from -> min(from.toFloat(), shown * (1f - peek)) }) {
+                        hand.follow()
+                    } else {
+                        scope.launch { drag.snapTo(peek * height) }
+                    }
+                }
+            },
+            completed = { if (hand.active) leave { carry(tween(POST_COMMIT_MS, easing = COMMIT_EASING)) } else leave(::drop) },
+            cancelled = { if (!closing) putBack(tween(POST_COMMIT_MS, easing = CANCEL_EASING)) },
+        )
+        owner?.navigationEventDispatcher?.addHandler(back, NavigationEventDispatcher.PRIORITY_OVERLAY)
+        onDispose { back.remove() }
     }
 
     val scrim = BottomSheetDefaults.ScrimColor
@@ -247,13 +362,13 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         val menu = menus.open
-                        if (waitForUpOrCancellation() != null && !menu && menus.closedAt < down.uptimeMillis) leave()
+                        if (waitForUpOrCancellation() != null && !menu && menus.closedAt < down.uptimeMillis) leave(::drop)
                     }
                 }
                 .semantics {
                     contentDescription = "Close sheet"
                     onClick {
-                        leave()
+                        leave(::drop)
                         true
                     }
                 },
@@ -264,14 +379,26 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
                 .widthIn(max = BottomSheetDefaults.SheetMaxWidth)
                 .fillMaxWidth()
                 .onSizeChanged { height = it.height }
-                .offset { IntOffset(0, -lift.getBottom(this)) }
-                .graphicsLayer { translationY = (1f - presence) * size.height + drag.value }
+                .graphicsLayer { translationY = size.height - top }
                 .draggable(
-                    rememberDraggableState { d -> scope.launch { drag.snapTo((drag.value + d).coerceAtLeast(0f)) } },
+                    rememberDraggableState { d ->
+                        pull = max(0f, pull + d)
+                        hand.follow()
+                    },
                     Orientation.Vertical,
                     enabled = !closing,
+                    onDragStarted = {
+                        pullFrom = top
+                        pull = 0f
+                        pulling = true
+                        hand.take { shown, _ -> underFinger(shown) }
+                    },
                     onDragStopped = { velocity ->
-                        if (drag.value > height / 2f || velocity > with(density) { FLING.toPx() }) leave() else drag.animateTo(0f, spatial)
+                        drag.snapTo(lifted - (pullFrom - pull))
+                        pulling = false
+                        val shown = full.coerceAtLeast(1)
+                        val carried = -velocity * shown / (shown + height - bars.getBottom(density)).coerceAtLeast(1)
+                        if (pull > height / 2f || velocity > with(density) { FLING.toPx() }) leave { carry(spatial, carried) } else putBack(spatial, carried)
                     },
                 )
                 .semantics { paneTitle = "Sheet" },
@@ -286,6 +413,104 @@ fun KeyboardSheet(onLeave: suspend () -> Boolean, onGone: () -> Unit, content: @
     }
 }
 
+private class SheetBack(
+    private val progressed: (Float) -> Unit,
+    private val completed: () -> Unit,
+    private val cancelled: () -> Unit,
+) : NavigationEventHandler<NavigationEventInfo>(NavigationEventInfo.None, true) {
+    override fun onBackProgressed(event: NavigationEvent) = progressed(event.progress)
+
+    override fun onBackCompleted() = completed()
+
+    override fun onBackCancelled() = cancelled()
+}
+
+// The keyboard moved by hand through the platform's insets controller: everything riding its insets follows.
+private class ImeHand(private val view: View, private val window: Window?) : WindowInsetsAnimationControlListenerCompat {
+    var active by mutableStateOf(false)
+        private set
+    private var controller: WindowInsetsAnimationControllerCompat? = null
+    private var signal: CancellationSignal? = null
+    private var ready = CompletableDeferred<Boolean>()
+    private var goal: (shown: Int, from: Int) -> Float = { shown, _ -> shown.toFloat() }
+    private var from = 0
+    private var turn = 0
+
+    // False when there is no software keyboard up to take: the caller moves the sheet itself.
+    fun take(goal: (shown: Int, from: Int) -> Float): Boolean {
+        this.goal = goal
+        if (active) {
+            turn++
+            return true
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+        val window = window ?: return false
+        if (ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) != true) return false
+        active = true
+        ready = CompletableDeferred()
+        val cancel = CancellationSignal()
+        signal = cancel
+        WindowCompat.getInsetsController(window, view).controlWindowInsetsAnimation(WindowInsetsCompat.Type.ime(), -1, null, cancel, this)
+        return true
+    }
+
+    fun follow() {
+        val c = controller ?: return
+        place(c, goal(c.shownStateInsets.bottom, from))
+    }
+
+    // False when the platform never handed the keyboard over.
+    suspend fun await(): Boolean {
+        if (!active) return false
+        if (withTimeoutOrNull(READY_MS) { ready.await() } == true) return true
+        end()
+        return false
+    }
+
+    suspend fun settle(down: Boolean, spec: AnimationSpec<Float>, velocity: Float = 0f) {
+        val c = controller ?: return
+        val mine = ++turn
+        val end = if (down) c.hiddenStateInsets.bottom else c.shownStateInsets.bottom
+        animate(c.currentInsets.bottom.toFloat(), end.toFloat(), velocity, spec) { value, _ ->
+            if (turn == mine) controller?.let { place(it, value) }
+        }
+        if (turn == mine) controller?.finish(!down)
+    }
+
+    // The sheet gone mid-gesture: the keyboard goes with it.
+    fun end() {
+        val c = controller
+        if (c != null) c.finish(false) else signal?.cancel()
+        reset()
+    }
+
+    private fun place(c: WindowInsetsAnimationControllerCompat, bottom: Float) {
+        if (!c.isReady) return
+        val shown = c.shownStateInsets.bottom
+        val hidden = c.hiddenStateInsets.bottom
+        val at = bottom.roundToInt().coerceIn(hidden, shown)
+        c.setInsetsAndAlpha(Insets.of(0, 0, 0, at), 1f, if (shown == hidden) 1f else (shown - at).toFloat() / (shown - hidden))
+    }
+
+    override fun onReady(controller: WindowInsetsAnimationControllerCompat, types: Int) {
+        this.controller = controller
+        from = controller.currentInsets.bottom
+        ready.complete(true)
+        follow()
+    }
+
+    override fun onFinished(controller: WindowInsetsAnimationControllerCompat) = reset()
+
+    override fun onCancelled(controller: WindowInsetsAnimationControllerCompat?) = reset()
+
+    private fun reset() {
+        controller = null
+        signal = null
+        active = false
+        ready.complete(false)
+    }
+}
+
 private enum class Keyboard { UP, FALLING, DOWN }
 
 // A software keyboard can take a second to start rising on a loaded phone.
@@ -294,5 +519,15 @@ private const val NO_KEYBOARD_MS = 2000L
 // A keyboard that never goes down doesn't keep a closed sheet on screen.
 private const val GONE_WAIT_MS = 1500L
 
+// The platform hands over a keyboard that is up within a frame or two.
+private const val READY_MS = 500L
+
 // M3's bottom sheet velocity threshold.
 private val FLING = 125.dp
+
+// The platform's IME back animation (ImeBackAnimationController): a peek of a tenth while the finger moves, 200 ms to either end.
+private const val PEEK = 0.1f
+private const val POST_COMMIT_MS = 200
+private val BACK_EASING = CubicBezierEasing(0.1f, 0.1f, 0f, 1f)
+private val COMMIT_EASING = CubicBezierEasing(0.3f, 0f, 1f, 1f)
+private val CANCEL_EASING = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)

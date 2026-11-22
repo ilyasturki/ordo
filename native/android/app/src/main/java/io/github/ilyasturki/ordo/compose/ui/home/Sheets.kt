@@ -244,9 +244,11 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
     var after by rememberSaveable { mutableStateOf("") }
     val pid = entry.id
     val hidden = categories.firstOrNull { it.id == cat }?.let { !filter.taskVisible(Task(id = "", priority = priority, tagColor = tag), it) } == true
+    var left by remember { mutableStateOf(false) }
 
-    // Runs on the app's scope: the edits after the insert land even when the sheet has gone.
-    suspend fun commit(quiet: Boolean): Boolean {
+    // Runs on the app's scope: the edits after the insert land even when the sheet has gone. A dismissal's save leaves the text in place while the sheet goes.
+    suspend fun commit(leaving: Boolean): Boolean {
+        if (left) return true
         val text = title.replace(space, " ").trim()
         if (text.isEmpty() || cat.isEmpty()) {
             if (details.isNullOrBlank()) return true
@@ -257,10 +259,11 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
             feedback.reject()
             return false
         }
-        title = ""
+        if (leaving) left = true else title = ""
         val shown = if (text.length > 40) text.take(39) + "…" else text
-        val a = engine.edit(pid, Ops.insert(cat, after, text), quiet = quiet, said = "Added “$shown”")
+        val a = engine.edit(pid, Ops.insert(cat, after, text), quiet = !leaving, said = "Added “$shown”")
         if (!a.applied) {
+            left = false
             title = text
             feedback.reject()
             return false
@@ -271,13 +274,13 @@ fun AddSheet(entry: Entry, filter: Filter, initialCat: String, onDismiss: () -> 
         details?.takeIf(String::isNotBlank)?.let { engine.edit(pid, Ops.description(row, it.trim(), ""), quiet = true) }
         if (priority != "") engine.edit(pid, Ops.priority(row, priority), quiet = true)
         if (tag != "") engine.edit(pid, Ops.tag(row, tag), quiet = true)
-        details = null
+        if (!leaving) details = null
         onAdded(cat)
         return true
     }
-    val save: () -> Unit = { appScope.launch(Dispatchers.Main) { commit(quiet = true) } }
+    val save: () -> Unit = { appScope.launch(Dispatchers.Main) { commit(leaving = false) } }
 
-    KeyboardSheet(onLeave = { commit(quiet = false) }, onGone = onDismiss) {
+    KeyboardSheet(onLeave = { commit(leaving = true) }, onGone = onDismiss) {
         Column(Modifier.padding(top = 8.dp, bottom = 4.dp)) {
             TextField(
                 title,
