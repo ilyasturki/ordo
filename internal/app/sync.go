@@ -206,7 +206,11 @@ func hiddenByFilter(cat domain.Category, filter *FilterState) int {
 		return 0
 	}
 	shown := filterRows(cat, filter)
-	in := sectionRows(hiddenSections(cat, filter, shown), len(shown))
+	return hiddenOutside(cat, shown, hiddenSections(cat, filter, shown))
+}
+
+func hiddenOutside(cat domain.Category, shown []bool, sections map[int]int) int {
+	in := sectionRows(sections, len(shown))
 	n := 0
 	for i, task := range cat.Tasks {
 		if !shown[i] && task.IsTask() && !in[i] {
@@ -250,7 +254,13 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 			continue
 		}
 		shown := shownRows(category, filter, fold)
-		sections := hiddenSections(category, filter, filterRows(category, filter))
+		var sections map[int]int
+		hidden := 0
+		if filter != nil && filter.HasActiveFilter() {
+			base := filterRows(category, filter)
+			sections = hiddenSections(category, filter, base)
+			hidden = hiddenOutside(category, base, sections)
+		}
 		for tIndex, task := range category.Tasks {
 			if _, ok := sections[tIndex]; ok {
 				positions = append(positions, selection.Position{
@@ -288,7 +298,7 @@ func rebuildPositions(categories []domain.Category, filter *FilterState, fold *F
 				})
 			}
 		}
-		if hiddenByFilter(category, filter) > 0 {
+		if hidden > 0 {
 			positions = append(positions, selection.Position{
 				Kind:          selection.FocusHidden,
 				CategoryIndex: cIndex,

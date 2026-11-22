@@ -179,6 +179,9 @@ func (m *model) itemAnchors(kind selection.FocusKind, id string) []itemRef {
 
 // sectionHiding is the separator whose line stands for the row at ti, or "".
 func (m *model) sectionHiding(cat domain.Category, ti int) string {
+	if !m.ui.Filter.HasActiveFilter() {
+		return ""
+	}
 	for sep, end := range hiddenSections(cat, &m.ui.Filter, filterRows(cat, &m.ui.Filter)) {
 		if ti > sep && ti < end {
 			return cat.Tasks[sep].ID
