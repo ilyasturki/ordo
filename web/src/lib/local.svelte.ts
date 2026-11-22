@@ -151,11 +151,11 @@ export class Local {
 
 	/**
 	 * Runs a user's edit and keeps what it changed. A quiet edit says nothing; another says what it
-	 * did with an Undo, or `said` when the core answers no message. A project.create given no pid
-	 * answers the new one as row.
+	 * did with an Undo, or `said` when the core answers no message. A shift steps over the `hidden`
+	 * rows, the IDs the list doesn't draw. A project.create given no pid answers the new one as row.
 	 */
-	async perform(pid: string, op: Op, { quiet = false, said = '' } = {}): Promise<Answer> {
-		const answer = this.#core.perform(pid, op);
+	async perform(pid: string, op: Op, { quiet = false, said = '', hidden }: { quiet?: boolean; said?: string; hidden?: string[] } = {}): Promise<Answer> {
+		const answer = this.#core.perform(pid, op, hidden);
 		const target = op.action === 'project.create' && pid === '' ? (answer.row ?? '') : pid;
 		if (answer.status === 'applied') {
 			await this.#land(target, answer.queue ? [answer.queue] : []);

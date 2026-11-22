@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Category, Project, Status, Task } from '#lib/core/types.ts';
-import { addedLineShows, lines, search, shownRows, target, type Header, type Line } from './board';
+import { addedLineShows, lines, search, shownRows, stops, target, unshown, type Header, type Line } from './board';
 import { fields, join, preview, refs } from './description';
 import { active, categoryVisible, fromFile, hasValues, noFilter, pruned, toFile, type Filter } from './filter';
 import { hasVersion, nextTag, priorityLabel, priorities, rankProjects } from './project';
@@ -52,6 +52,8 @@ function shape(ls: Line[]): string[] {
 				return [l.row.task.id + (l.row.muted ? '~' : ''), ...l.children.map((c) => '  ' + c.task.id + (c.muted ? '~' : ''))].join(',');
 			case 'hidden':
 				return `(${l.count} hidden${l.peeking ? ', peeking' : ''})`;
+			case 'section':
+				return `[${l.row.task.title} · ${l.count}${l.revealed ? ', revealed' : ''}]`;
 			case 'empty':
 				return '(no tasks)';
 		}
@@ -73,19 +75,58 @@ describe('board', () => {
 	it('says so for an empty category without sub-categories', () => {
 		const empty = project([cat('a', 'A'), cat('b', 'B'), cat('b1', 'B1', [], 'b'), cat('c', 'C', [task('s', { kind: 'separator' })])]);
 		expect(shape(lines(empty, noFilter))).toEqual(['# A', '(no tasks)', '# B', '# B1 < B', '(no tasks)', '# C', 's']);
-		expect(shape(lines(empty, f({ statuses: ['todo'] })))).toEqual(['# A', '(no tasks)', '# B', '# B1 < B', '(no tasks)', '# C', '(no tasks)']);
+		expect(shape(lines(empty, f({ statuses: ['todo'] })))).toEqual(['# A', '(no tasks)', '# B', '# B1 < B', '(no tasks)', '# C', '[s · 0]']);
 	});
 
 	it('counts the rows a filter hides', () => {
-		expect(shape(lines(board, f({ tags: ['blue'] })))).toEqual(['# Feature', '(5 hidden)', '# UI < Feature', '(1 hidden)', '# Fix', '(1 hidden)']);
+		expect(shape(lines(board, f({ tags: ['blue'] })))).toEqual(['# Feature', '[sep · 2]', '(3 hidden)', '# UI < Feature', '(1 hidden)', '# Fix', '(1 hidden)']);
 	});
 
 	it('keeps finished rows in place with no filter', () => {
 		expect(shape(lines(board, noFilter))).toEqual(['# Feature', 'a,  a1,  a2', 'sep', 'b', 'c', '# UI < Feature', 'd', '# Fix', 'e']);
 	});
 
-	it('shows a parent when a child matches, and hides separators', () => {
-		expect(shape(lines(board, f({ priorities: ['high'] })))).toEqual(['# Feature', 'a,  a2', '(3 hidden)', '# UI < Feature', '(1 hidden)', '# Fix', 'e']);
+	it('shows a parent when a child matches, and a separator it hides as its section’s line', () => {
+		expect(shape(lines(board, f({ priorities: ['high'] })))).toEqual(['# Feature', 'a,  a2', '[sep · 2]', '(1 hidden)', '# UI < Feature', '(1 hidden)', '# Fix', 'e']);
+	});
+
+	// Trip [x done, p, —Done, b done, k done, —Next, c, r, q done], Two [—, d done, —End].
+	const trip = (o: { tag?: string } = {}) =>
+		project([
+			cat('trip', 'Trip', [
+				task('x', { status: 'completed' }),
+				task('p', { tag: o.tag }),
+				task('done', { kind: 'separator', title: 'Done', tag: o.tag }),
+				task('b', { status: 'completed' }),
+				task('k', { status: 'completed' }),
+				task('next', { kind: 'separator', title: 'Next' }),
+				task('c'),
+				task('r'),
+				task('q', { status: 'completed' })
+			]),
+			cat('two', 'Two', [task('u', { kind: 'separator', title: '' }), task('d', { status: 'completed' }), task('end', { kind: 'separator', title: 'End' })])
+		]);
+
+	it('draws a separator the filter hides as its section’s line, counting its run apart', () => {
+		const todo = f({ statuses: ['todo'] });
+		expect(shape(lines(trip(), todo))).toEqual(['# Trip', 'p', '[Done · 2]', 'next', 'c', 'r', '(2 hidden)', '# Two', '[ · 1]', '[End · 0]']);
+		expect(stops(lines(trip(), todo))).toEqual(['c:trip', 't:p', 't:done', 't:next', 't:c', 't:r', 'h:trip', 'c:two', 't:u', 't:end']);
+		expect(shape(lines(trip(), todo, { peek: 'done' })).slice(0, 9), 'a revealed run, muted under its line').toEqual(['# Trip', 'p', '[Done · 2, revealed]', 'b~', 'k~', 'next', 'c', 'r', '(2 hidden)']);
+		expect(shape(lines(trip(), todo, { peek: 'trip' })).slice(0, 9), 'the category’s peek leaves the run behind its line').toEqual(['# Trip', 'x~', 'p', '[Done · 2]', 'next', 'c', 'r', 'q~', '(2 hidden, peeking)']);
+		expect(shape(lines(trip(), todo, { held: new Set(['done']) })).slice(0, 7), 'a held separator').toEqual(['# Trip', 'p', 'done', 'next', 'c', 'r', '(4 hidden)']);
+		expect(shape(lines(trip(), todo, { held: new Set(['d']) })).slice(-4), 'a held row').toEqual(['# Two', 'u', 'd~', '[End · 0]']);
+		expect(shape(lines(trip({ tag: 'green' }), f({ tags: ['green'] }))).slice(0, 5), 'its own tag').toEqual(['# Trip', 'p', 'done', '[Next · 3]', '(3 hidden)']);
+		expect(shape(lines(trip(), f({ categories: ['two'] }))).slice(0, 2), 'not in a category the filter leaves out').toEqual(['# Trip', '(7 hidden)']);
+		expect(shape(lines(trip(), noFilter)).slice(0, 10)).toEqual(['# Trip', 'x', 'p', 'done', 'b', 'k', 'next', 'c', 'r', 'q']);
+		expect(shape(search(lines(trip(), todo), 'e')), 'search leaves the lines out').toEqual(['# Trip', 'next']);
+	});
+
+	it('names the rows the list doesn’t draw', () => {
+		const todo = f({ statuses: ['todo'] });
+		expect(unshown(trip(), lines(trip(), todo))).toEqual(['x', 'done', 'b', 'k', 'q', 'u', 'd', 'end']);
+		expect(unshown(trip(), lines(trip(), todo, { peek: 'done' }))).toEqual(['x', 'done', 'q', 'u', 'd', 'end']);
+		expect(unshown(board, lines(board, noFilter, { folds: new Set(['a', 'fix']) }))).toEqual(['a1', 'a2', 'e']);
+		expect(unshown(board, lines(board, noFilter))).toEqual([]);
 	});
 
 	it('shows lines with their section under the filter', () => {

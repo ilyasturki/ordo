@@ -3,7 +3,7 @@ import type { Answer, Op } from './types';
 export type Exports = {
 	open(raw: string): string;
 	import(raw: string): string;
-	perform(pid: string, op: string): string;
+	perform(pid: string, op: string, hidden?: string): string;
 	replay(pid: string, op: string): string;
 	project(pid: string): string | null;
 	export(pid: string): string | null;
@@ -37,9 +37,10 @@ export class Core {
 		return held(this.#x.import(raw));
 	}
 
-	/** Runs a user's edit. A project.create given no pid mints one and answers it as row. */
-	perform(pid: string, op: Op): Answer {
-		return JSON.parse(this.#x.perform(pid, JSON.stringify(op))) as Answer;
+	/** Runs a user's edit, a shift stepping over the hidden rows. A project.create given no pid mints one and answers it as row. */
+	perform(pid: string, op: Op, hidden?: string[]): Answer {
+		const out = hidden ? this.#x.perform(pid, JSON.stringify(op), JSON.stringify(hidden)) : this.#x.perform(pid, JSON.stringify(op));
+		return JSON.parse(out) as Answer;
 	}
 
 	/** Runs a queued or undo op again. */

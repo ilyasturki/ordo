@@ -1,12 +1,13 @@
 <script lang="ts">
 	import type { Project } from '#lib/core/types.ts';
 	import type { Local } from '#lib/local.svelte.ts';
-	import type { Block, Line } from '#lib/model/board.ts';
-	import { dropPlace, entered, placeOp, slotAllowed } from '#lib/model/drag.ts';
+	import type { Line } from '#lib/model/board.ts';
+	import { dropPlace, entered, placeOp, slotAllowed, type Moving } from '#lib/model/drag.ts';
 	import { active } from '#lib/model/filter.ts';
 	import { nextStatus } from '#lib/model/project.ts';
 	import { app } from '#lib/paths.ts';
 	import CategoryHeader from './CategoryHeader.svelte';
+	import SectionLine from './SectionLine.svelte';
 	import TaskRow from './TaskRow.svelte';
 	import { Reorder } from './reorder.svelte';
 	import { hold, openTask, ui } from './ui.svelte';
@@ -28,29 +29,29 @@
 		return entered(drag.order().map((k) => at.get(k)!));
 	});
 
-	function press(e: PointerEvent, block: Block) {
+	function press(e: PointerEvent, item: Moving) {
 		if (searching || !list) return;
 		const from = shown;
-		const others = from.filter((l) => l.key !== block.key);
+		const others = from.filter((l) => l.key !== item.key);
 		drag.press(e, {
-			key: block.key,
+			key: item.key,
 			items: [...list.children] as HTMLElement[],
 			allowed: (slot) => slotAllowed(others, slot),
 			top,
 			drop: (order) => {
 				const at = new Map(from.map((l) => [l.key, l]));
-				void land(order.map((k) => at.get(k)!), block, from);
+				void land(order.map((k) => at.get(k)!), item, from);
 			}
 		});
 		lifted = from;
 	}
 
-	async function land(order: Line[], block: Block, from: Line[]) {
-		const drop = dropPlace(order, block, from);
+	async function land(order: Line[], item: Moving, from: Line[]) {
+		const drop = dropPlace(order, item, from);
 		if (!drop) return;
 		landing = order;
-		ui.cursor = block.key;
-		if (active(local.view(pid).filter)) hold(drop.id);
+		ui.cursor = item.key;
+		if (item.kind === 'block' && active(local.view(pid).filter)) hold(drop.id);
 		const answer = await local.perform(pid, placeOp(drop), { quiet: true });
 		if (answer.status === 'applied' && drop.unfold) await local.setFolded(pid, drop.cat, false);
 		else if (answer.status === 'refused') local.say(answer.msg ?? '');
@@ -103,7 +104,7 @@
 				data-line={line.key}
 				class={drag.look(line.key)}
 				style:transform={drag.transform(line.key)}
-				onpointerdown={line.kind === 'block' ? (e) => press(e, line) : undefined}
+				onpointerdown={line.kind === 'block' || line.kind === 'section' ? (e) => press(e, line) : undefined}
 			>
 				{#if drag.key === line.key}<span class="absolute inset-x-2 inset-y-0 -z-10 rounded-lg bg-surface-container-high shadow-lg"></span>{/if}
 				{#if line.kind === 'header'}
@@ -135,6 +136,8 @@
 							onOpen={(e) => open(e, c.task.id)}
 						/>
 					{/each}
+				{:else if line.kind === 'section'}
+					<SectionLine section={line} selected={ui.cursor === line.key} onclick={() => (ui.peek = line.revealed ? undefined : line.row.task.id)} />
 				{:else if line.kind === 'hidden'}
 					<button
 						type="button"

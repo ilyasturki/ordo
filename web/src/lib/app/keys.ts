@@ -1,6 +1,6 @@
-import type { Project } from '#lib/core/types.ts';
+import type { Answer, Project } from '#lib/core/types.ts';
 import type { Local } from '#lib/local.svelte.ts';
-import { stops, target, type Line } from '#lib/model/board.ts';
+import { lines, stops, target, unshown, type Line } from '#lib/model/board.ts';
 import { active } from '#lib/model/filter.ts';
 import { find, isLine, isNote, isSeparator, nextStatus, nextTag, priorities, priorityOf } from '#lib/model/project.ts';
 import { app } from '#lib/paths.ts';
@@ -87,11 +87,20 @@ function run(key: string, ctx: KeyContext): boolean {
 	const project = local.held(pid) ?? ctx.project;
 	const cursor = ui.cursor;
 	const task = cursor.startsWith('t:') ? find(project, cursor.slice(2)) : undefined;
-	const catOf = () =>
-		cursor.startsWith('c:') ? cursor.slice(2) : (task?.cat.id ?? ctx.lines.find((l) => l.key === cursor)?.cat ?? target(project, local.view(pid).filter, ui.focus)?.id);
+	const line = ctx.lines.find((l) => l.key === cursor);
+	const section = line?.kind === 'section' ? line : undefined;
+	const catOf = () => (cursor.startsWith('c:') ? cursor.slice(2) : (task?.cat.id ?? line?.cat ?? target(project, local.view(pid).filter, ui.focus)?.id));
+	// A hidden section's separator stays its line: a hold would show it.
+	const keep = () => {
+		if (task && !section && active(local.view(pid).filter)) hold(task.task.id);
+	};
 	const edit = (op: Parameters<Local['perform']>[1], quiet = true) => {
-		if (task && active(local.view(pid).filter)) hold(task.task.id);
+		keep();
 		void local.perform(pid, op, { quiet });
+	};
+	const reveal = () => {
+		if (section && section.count > 0) ui.peek = section.revealed ? undefined : section.row.task.id;
+		return !!section;
 	};
 	switch (key) {
 		case 'j':
@@ -104,6 +113,7 @@ function run(key: string, ctx: KeyContext): boolean {
 			return move(ctx, Infinity);
 		case 'Enter':
 		case 'e':
+			if (reveal()) return true;
 			if (task) {
 				ui.editTitle = true;
 				void openTask(pid, task.task.id);
@@ -131,6 +141,7 @@ function run(key: string, ctx: KeyContext): boolean {
 		case ' ':
 		case 'x':
 		case 'shift+space':
+			if (key === ' ' && reveal()) return true;
 			if (!task || isLine(task.task)) return false;
 			edit({ action: 'status.cycle', ids: [task.task.id], reverse: key === 'shift+space' }, key === 'shift+space' || nextStatus(task.task.status) !== 'completed');
 			return true;
@@ -154,7 +165,8 @@ function run(key: string, ctx: KeyContext): boolean {
 		case 'J':
 		case 'K':
 			if (!task) return false;
-			edit({ action: 'task.shift', ids: [task.task.id], up: key === 'K' }, false);
+			keep();
+			void shift(local, project, task.task.id, key === 'K');
 			return true;
 		case '>':
 		case '<':
@@ -205,6 +217,13 @@ function run(key: string, ctx: KeyContext): boolean {
 	return false;
 }
 
+/** A J or K as the list shows the project: the rows it doesn't draw are stepped over, as the TUI's. */
+export function shift(local: Local, project: Project, id: string, up: boolean): Promise<Answer> {
+	const view = local.view(project.id);
+	const shown = lines(project, view.filter, { peek: ui.peek, held: new Set(ui.held), folds: new Set(view.folds) });
+	return local.perform(project.id, { action: 'task.shift', ids: [id], up }, { hidden: unshown(project, shown) });
+}
+
 /** The row the cursor lands on once its own goes: the next, else the one above. */
 function neighbour(ctx: KeyContext): string {
 	const all = stops(ctx.lines);
@@ -221,7 +240,8 @@ function move(ctx: KeyContext, by: number): boolean {
 	ui.cursor = all[next];
 	document.querySelector(`[data-key="${ui.cursor}"]`)?.scrollIntoView({ block: 'nearest' });
 	// The open task follows the cursor, as a mail client's reading pane does.
-	if (ctx.taskOpen && wide() && ui.cursor.startsWith('t:')) void openTask(ctx.project.id, ui.cursor.slice(2), true);
+	const onto = ctx.lines.find((l) => l.key === ui.cursor);
+	if (ctx.taskOpen && wide() && ui.cursor.startsWith('t:') && onto?.kind !== 'section') void openTask(ctx.project.id, ui.cursor.slice(2), true);
 	return true;
 }
 

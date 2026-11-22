@@ -5,6 +5,8 @@ import { nodeCore } from '#lib/core/node.ts';
 import type { Core } from '#lib/core/core.ts';
 import type { Op, Project } from '#lib/core/types.ts';
 import { Local } from '#lib/local.svelte.ts';
+import { lines, unshown } from '#lib/model/board.ts';
+import { noFilter } from '#lib/model/filter.ts';
 import { openStore } from '#lib/store.ts';
 
 let stores = 0;
@@ -29,6 +31,7 @@ async function fresh(): Promise<{ local: Local; reopen: () => Promise<Local> }> 
 }
 
 const ferry = readFileSync(new URL('../../../assets/demo/ferry.json', import.meta.url), 'utf8');
+const drag = readFileSync(new URL('../../../testdata/native/drag.json', import.meta.url), 'utf8');
 
 describe('Local', () => {
 	it('keeps a created project and its edits through a reload', async () => {
@@ -133,6 +136,42 @@ describe('undo and redo', () => {
 		local.snack!.action!.run();
 		await new Promise((r) => setTimeout(r, 0));
 		expect(local.project(pid)!.categories[0].tasks[0].id).toBe(id);
+	});
+});
+
+describe('a shift', () => {
+	it('steps over the rows the list hides, a hidden section as one row, and queues where it landed', async () => {
+		const { local } = await fresh();
+		const pid = await local.import(drag);
+		const todo = { ...noFilter, statuses: ['todo'] };
+		const inbox = () => local.project(pid)!.categories[0].tasks.map((t) => t.title);
+		const id = (title: string) => local.project(pid)!.categories[0].tasks.find((t) => t.title === title)!.id;
+		const shift = (title: string, up: boolean) =>
+			local.perform(pid, { action: 'task.shift', ids: [id(title)], up }, { quiet: true, hidden: unshown(local.project(pid)!, lines(local.project(pid)!, todo)) });
+		const start = inbox();
+		expect(start).toEqual(['Plan the trip', 'Done', 'Book the ferry', 'Pack the bags', 'Next', 'Call the bank', 'Renew passport']);
+		for (const [title, up, want] of [
+			['Call the bank', true, ['Plan the trip', 'Done', 'Book the ferry', 'Pack the bags', 'Call the bank', 'Next', 'Renew passport']],
+			['Call the bank', true, ['Plan the trip', 'Call the bank', 'Done', 'Book the ferry', 'Pack the bags', 'Next', 'Renew passport']]
+		] as const) {
+			expect((await shift(title, up)).queue?.action).toBe('task.place');
+			expect(inbox(), `${up ? 'K' : 'J'} on ${title}`).toEqual(want);
+		}
+		await local.undo();
+		await local.undo();
+		expect(inbox()).toEqual(start);
+		for (const [title, up, want] of [
+			['Plan the trip', false, ['Done', 'Book the ferry', 'Pack the bags', 'Plan the trip', 'Next', 'Call the bank', 'Renew passport']],
+			['Done', true, ['Done', 'Plan the trip', 'Book the ferry', 'Pack the bags', 'Next', 'Call the bank', 'Renew passport']],
+			['Done', false, ['Plan the trip', 'Book the ferry', 'Pack the bags', 'Next', 'Done', 'Call the bank', 'Renew passport']]
+		] as const) {
+			expect((await shift(title, up)).status).toBe('applied');
+			expect(inbox(), `${up ? 'K' : 'J'} on ${title}`).toEqual(want);
+			await local.undo();
+			expect(inbox()).toEqual(start);
+		}
+		await local.perform(pid, { action: 'task.shift', ids: [id('Plan the trip')] }, { quiet: true });
+		expect(inbox(), 'with nothing hidden, one row').toEqual(['Done', 'Plan the trip', 'Book the ferry', 'Pack the bags', 'Next', 'Call the bank', 'Renew passport']);
 	});
 });
 

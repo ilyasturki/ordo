@@ -11,6 +11,7 @@
 	import Thumbnail from '#lib/app/Thumbnail.svelte';
 	import { autosize } from '#lib/app/autosize.ts';
 	import { priorityIcon, statusIcon } from '#lib/app/icons.ts';
+	import { shift } from '#lib/app/keys.ts';
 	import { gotoInPlace, openTask, ui, wide } from '#lib/app/ui.svelte.ts';
 	import type { Op } from '#lib/core/types.ts';
 	import { fields, join, refs, type ImageRef } from '#lib/model/description.ts';
@@ -217,8 +218,8 @@
 			{/each}
 		</Menu>
 		<Menu open={menu === 'more'} onclose={() => (menu = '')} anchor={more} align="end" label="Task">
-			<MenuItem icon="arrowUp" label="Move up" keys="K" onclick={() => edit({ action: 'task.shift', ids: [tid], up: true }, false)} />
-			<MenuItem icon="arrowDown" label="Move down" keys="J" onclick={() => edit({ action: 'task.shift', ids: [tid] }, false)} />
+			<MenuItem icon="arrowUp" label="Move up" keys="K" onclick={() => void shift(local, project, tid, true)} />
+			<MenuItem icon="arrowDown" label="Move down" keys="J" onclick={() => void shift(local, project, tid, false)} />
 			{#if !isLine(task)}
 				{#if task.parent_id}
 					<MenuItem icon="outdent" label="Un-nest" keys="<" onclick={() => edit({ action: 'task.unnest', ids: [tid] }, false)} />

@@ -1,138 +1,6 @@
-import type { Locator, Page, TestInfo } from '@playwright/test';
-import type { Project } from '../src/lib/core/types';
 import { expect, shoot, test } from './fixtures';
+import { box, centre, drag, file, filter, hand, header, list, middle, open, pid, row, section, titles, withDrag } from './drag';
 import { phone } from './ordo';
-
-const fixture = new URL('../../testdata/native/drag.json', import.meta.url).pathname;
-const pid = '0rd0-web-fixture';
-
-async function withDrag(page: Page, url: string): Promise<void> {
-	await page.goto(url);
-	await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
-	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: 'Import a project' }).click();
-	await (await chooser).setFiles(fixture);
-	await expect(list(page)).toBeVisible();
-}
-
-const list = (page: Page) => page.getByRole('list', { name: 'Drag' });
-
-const row = (page: Page, title: string) =>
-	list(page)
-		.locator('[data-key^="t:"]')
-		.filter({ has: page.getByRole('link', { name: new RegExp('^' + title) }) });
-
-const header = (page: Page, name: string) => list(page).getByRole('button', { name: `${name}, category menu` });
-
-/** The project as this browser keeps it. */
-function file(page: Page): Promise<Project> {
-	return page.evaluate(
-		(pid) =>
-			new Promise<Project>((ok) => {
-				const open = indexedDB.open('ordo');
-				open.onsuccess = () => {
-					const get = open.result.transaction('projects').objectStore('projects').get(pid);
-					get.onsuccess = () => {
-						open.result.close();
-						ok(JSON.parse(get.result.raw));
-					};
-				};
-			}),
-		pid
-	);
-}
-
-const titles = async (page: Page, category: string) =>
-	(await file(page)).categories.find((c) => c.name === category)!.tasks.filter((t) => !t.parent_id).map((t) => t.title);
-
-async function box(locator: Locator) {
-	await expect(locator).toBeVisible();
-	return (await locator.boundingBox())!;
-}
-
-async function filter(page: Page, ...chips: string[]) {
-	await page.getByRole('button', { name: 'Filter', exact: true }).click();
-	const sheet = page.getByRole('dialog', { name: 'Filter' });
-	for (const chip of chips) await sheet.getByRole('button', { name: chip, exact: true }).click();
-	await page.keyboard.press('Escape');
-	await expect(sheet).toBeHidden();
-	await expect(page.getByText('2 hidden by the filter').first()).toBeVisible();
-}
-
-const open = ['Todo', 'In Progress'];
-
-type Drag = { x: number; from: number; to: number; hold?: number; held?: () => Promise<void> };
-
-/** A mouse pressed on the row, moved by steps to the point and held there before the release. */
-async function mouse(page: Page, { x, from, to, hold = 300, held }: Drag) {
-	await page.mouse.move(x, from);
-	await page.mouse.down();
-	await page.mouse.move(x, from + 6, { steps: 2 });
-	await page.mouse.move(x, to, { steps: 20 });
-	await page.waitForTimeout(hold);
-	await held?.();
-	await page.mouse.up();
-}
-
-/** A finger held on the row until it lifts, then slid to the point, as the browser reports its pointer. */
-async function finger(page: Page, d: Drag) {
-	await page.evaluate(async ({ x, from, to, hold = 300 }) => {
-		const fire = (type: string, y: number) =>
-			(document.elementFromPoint(x, y) ?? document.body).dispatchEvent(
-				new PointerEvent(type, {
-					bubbles: true,
-					cancelable: true,
-					composed: true,
-					pointerId: 7,
-					pointerType: 'touch',
-					isPrimary: true,
-					clientX: x,
-					clientY: y,
-					button: type === 'pointermove' ? -1 : 0,
-					buttons: type === 'pointerup' ? 0 : 1
-				})
-			);
-		const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
-		fire('pointerdown', from);
-		await wait(600);
-		for (let i = 1; i <= 20; i++) {
-			fire('pointermove', from + ((to - from) * i) / 20);
-			await wait(30);
-		}
-		await wait(hold);
-		fire('pointerup', to);
-	}, { x: d.x, from: d.from, to: d.to, hold: d.hold });
-}
-
-const hand = (info: TestInfo) => (phone(info) ? finger : mouse);
-
-/** Drags the row by dy, from its middle; a mouse calls held before letting go. */
-async function drag(page: Page, info: TestInfo, title: string, dy: number, hold?: number, held?: () => Promise<void>) {
-	const at = await box(row(page, title));
-	await hand(info)(page, { x: at.x + at.width / 2, from: at.y + at.height / 2, to: at.y + at.height / 2 + dy, hold, held });
-}
-
-const middle = (b: { y: number; height: number }) => b.y + b.height / 2;
-
-/** Scrolls the line to the middle of the view, clear of the edges that scroll the list under a lifted row. */
-const centre = (locator: Locator) => locator.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-
-for (const [name, chips] of [
-	['a status filter', open],
-	['a tag filter', ['Green']]
-] as const) {
-	test(`under ${name} a row dropped just above a separator stays in the section shown`, async ({ page, app }, info) => {
-		await withDrag(page, app());
-		await filter(page, ...chips);
-		await expect(row(page, 'Done')).toHaveCount(0);
-		await drag(page, info, 'Call the bank', middle(await box(row(page, 'Next'))) - middle(await box(row(page, 'Call the bank'))));
-		await expect
-			.poll(() => titles(page, 'Inbox'))
-			.toEqual(['Plan the trip', 'Call the bank', 'Done', 'Book the ferry', 'Pack the bags', 'Next', 'Renew passport']);
-		await expect(row(page, 'Done'), 'no separator appears').toHaveCount(0);
-		await expect(page).toHaveURL(app(`/p/${pid}`));
-	});
-}
 
 test('a row dropped above a separator with no filter lands there', async ({ page, app }, info) => {
 	await withDrag(page, app());
@@ -147,7 +15,7 @@ test('under a filter a row moved last in a category leaves its hidden tail hidde
 	await filter(page, ...open);
 	await drag(page, info, 'Write the report', middle(await box(row(page, 'Review the slides'))) - middle(await box(row(page, 'Write the report'))));
 	await expect.poll(() => titles(page, 'Work')).toEqual(['Review the slides', 'Write the report', 'Later', 'Old ticket', 'Older ticket']);
-	await expect(row(page, 'Later'), 'no separator appears').toHaveCount(0);
+	await expect(section(page, 'Later · 2 hidden'), 'the tail stays behind its line').toBeVisible();
 });
 
 for (const [name, chips] of [
@@ -164,10 +32,9 @@ for (const [name, chips] of [
 		await expect
 			.poll(() => titles(page, 'Inbox'))
 			.toEqual(['Plan the trip', 'Done', 'Book the ferry', 'Pack the bags', 'Next', 'Call the bank', 'Renew passport', 'Write the report']);
-		if (!chips.length) return;
-		const hidden = page.getByText('2 hidden by the filter').first();
-		expect((await box(row(page, 'Write the report'))).y + at.height, 'above the hidden line').toBeLessThanOrEqual((await box(hidden)).y + 1);
-		await shoot(page, 'drag-across-header', info.project.name);
+		const under = await row(page, 'Write the report').evaluate((el) => el.closest('[role="listitem"]')!.nextElementSibling?.getAttribute('data-line'));
+		expect(under, 'last of Inbox, right above the Work header').toBe('c:cccccccc-0000-4000-8000-000000000024');
+		if (chips.length) await shoot(page, 'drag-across-header', info.project.name);
 	});
 }
 
@@ -186,15 +53,16 @@ for (const [name, chips] of [
 	});
 }
 
-test('under a filter a row dragged up through an empty category leaves its no tasks line and lands above', async ({ page, app }, info) => {
+test('under a filter a row dragged up through an empty category leaves its no tasks line and lands at the end of the hidden section above', async ({ page, app }, info) => {
 	await withDrag(page, app());
 	await filter(page, ...open);
 	await centre(header(page, 'Home'));
 	const at = await box(row(page, 'Fix the sink'));
 	await drag(page, info, 'Fix the sink', middle(await box(header(page, 'Empty'))) - at.y - at.height * 0.15, 800);
-	await expect.poll(() => titles(page, 'Work')).toEqual(['Write the report', 'Review the slides', 'Fix the sink', 'Later', 'Old ticket', 'Older ticket']);
+	await expect.poll(() => titles(page, 'Work')).toEqual(['Write the report', 'Review the slides', 'Later', 'Old ticket', 'Older ticket', 'Fix the sink']);
 	await expect(list(page).getByText('No tasks')).toBeVisible();
-	await expect(row(page, 'Later')).toHaveCount(0);
+	await expect(row(page, 'Later'), 'its separator shows with the row').toBeVisible();
+	await expect(section(page, 'Later · 2 hidden')).toHaveCount(0);
 });
 
 test('a row dragged down past a folded header lands first there and unfolds it', async ({ page, app }, info) => {

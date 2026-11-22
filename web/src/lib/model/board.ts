@@ -30,8 +30,10 @@ export type Header = {
 /** A top-level row with the subtasks the filter shows. */
 export type Block = { kind: 'block'; key: string; cat: string; row: Row; children: Row[] };
 export type Hidden = { kind: 'hidden'; key: string; cat: string; count: number; peeking: boolean };
+/** A separator the filter hides, in its place: the count of its run's rows, which a peek at its ID reveals. */
+export type Section = { kind: 'section'; key: string; cat: string; row: Row; count: number; revealed: boolean };
 export type NoTasks = { kind: 'empty'; key: string; cat: string };
-export type Line = Header | Block | Hidden | NoTasks;
+export type Line = Header | Block | Hidden | Section | NoTasks;
 
 export function blockEnd(tasks: Task[], i: number): number {
 	let end = i + 1;
@@ -61,6 +63,13 @@ export function shownRows(cat: Category, filter: Filter, held: Set<string> = new
 		i = end;
 	}
 	return shown;
+}
+
+/** operations.HiddenSectionEnd: the run a hidden separator opens ends at the next shown row or separator. */
+export function hiddenSectionEnd(tasks: Task[], shown: boolean[], sep: number): number {
+	let end = sep + 1;
+	while (end < tasks.length && !shown[end] && !isSeparator(tasks[end])) end++;
+	return end;
 }
 
 /** Whether a separator or a note added first in cat would show under the filter. */
@@ -111,8 +120,9 @@ function foldedHeader(project: Project, cat: Category, parentName: string): Head
 
 /**
  * The list the TUI draws: every category header, rows in file order with the finished ones in
- * place, and a line counting what the filter hides. A folded category shows its header alone and
- * hides its sub-categories; a folded row hides its subtasks.
+ * place, a separator the filter hides as its section's line, and a line counting the other rows
+ * the filter hides. A folded category shows its header alone and hides its sub-categories; a
+ * folded row hides its subtasks.
  */
 export function lines(
 	project: Project,
@@ -136,13 +146,27 @@ export function lines(
 		const shown = shownRows(cat, filter, held);
 		const peeking = peek === cat.id;
 		const tasks = cat.tasks;
+		const sections = categoryVisible(filter, cat);
+		const run: (string | undefined)[] = [];
+		const visible = (j: number) => shown[j] || (run[j] === undefined ? peeking : run[j] === peek);
 		for (let i = 0; i < tasks.length; ) {
 			const end = blockEnd(tasks, i);
-			if (shown[i] || peeking) {
+			if (sections && isSeparator(tasks[i]) && !shown[i]) {
+				const runEnd = hiddenSectionEnd(tasks, shown, i);
+				for (let j = i + 1; j < runEnd; j++) run[j] = tasks[i].id;
+				out.push({
+					kind: 'section',
+					key: 't:' + tasks[i].id,
+					cat: cat.id,
+					row: row(tasks[i], cat, filter, held, true),
+					count: runEnd - i - 1,
+					revealed: peek === tasks[i].id
+				});
+			} else if (visible(i)) {
 				const folded = folds.has(tasks[i].id);
 				const children: Row[] = [];
 				for (let j = i + 1; j < end; j++) {
-					if (!folded && (shown[j] || peeking)) children.push(row(tasks[j], cat, filter, held, !shown[j]));
+					if (!folded && visible(j)) children.push(row(tasks[j], cat, filter, held, !shown[j]));
 				}
 				const kids = tasks.slice(i + 1, end);
 				out.push({
@@ -160,7 +184,7 @@ export function lines(
 			}
 			i = end;
 		}
-		const hidden = tasks.filter((t, i) => !shown[i] && !isLine(t)).length;
+		const hidden = tasks.filter((t, i) => !shown[i] && !isLine(t) && run[i] === undefined).length;
 		if (hidden > 0) out.push({ kind: 'hidden', key: 'h:' + cat.id, cat: cat.id, count: hidden, peeking });
 		if (out.length === first && !project.categories.some((c) => c.parent_id === cat.id)) {
 			out.push({ kind: 'empty', key: 'n:' + cat.id, cat: cat.id });
@@ -217,11 +241,21 @@ export function target(project: Project, filter: Filter, focus: string | undefin
 export function stops(shown: Line[]): string[] {
 	const out: string[] = [];
 	for (const line of shown) {
-		if (line.kind === 'header') out.push(line.key);
-		else if (line.kind === 'block') {
+		if (line.kind === 'block') {
 			out.push(line.key);
 			for (const c of line.children) out.push('t:' + c.task.id);
-		} else if (line.kind === 'hidden') out.push(line.key);
+		} else if (line.kind !== 'empty') out.push(line.key);
 	}
 	return out;
+}
+
+/** The IDs of the project's rows the list doesn't draw, which a J or K steps over as the TUI's. */
+export function unshown(project: Project, shown: Line[]): string[] {
+	const drawn = new Set<string>();
+	for (const line of shown) {
+		if (line.kind !== 'block') continue;
+		drawn.add(line.row.task.id);
+		for (const c of line.children) drawn.add(c.task.id);
+	}
+	return project.categories.flatMap((c) => c.tasks.filter((t) => !drawn.has(t.id)).map((t) => t.id));
 }
